@@ -154,14 +154,34 @@ class MessageChannel;
 class CoapOptionIterator;
 
 /**
- * Send an empty ACK or RST message.
+ * Send a response ACK.
  *
  * @param channel Message channel.
- * @param msg Received message.
- * @param type Type of the message to send.
+ * @param msg CON request message.
+ * @param code Status code.
+ * @param payload Payload data.
+ * @param payloadSize Payload size.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type);
+int sendResponseAck(MessageChannel& channel, Message& msg, CoapCode code, const char* payload = nullptr, size_t payloadSize = 0);
+
+/**
+ * Send an empty ACK.
+ *
+ * @param channel Message channel.
+ * @param msg CON message.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int sendEmptyAck(MessageChannel& channel, Message& msg);
+
+/**
+ * Send an RST.
+ *
+ * @param channel Message channel.
+ * @param msg CON or NON message.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int sendRst(MessageChannel& channel, Message& msg);
 
 /**
  * Append an URI path entry to a string.

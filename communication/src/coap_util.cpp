@@ -21,6 +21,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
+#include <cstdint>
 #include <cassert>
 
 #include "coap_util.h"
@@ -29,13 +31,46 @@
 #include "coap_message_encoder.h"
 #include "coap_message_decoder.h"
 #include "str_util.h"
+#include "endian_util.h"
 #include "logging.h"
 #include "scope_guard.h"
 #include "check.h"
 
 namespace particle::protocol {
 
-int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
+namespace {
+
+int parseMessageHeader(const Message& msg, CoapMessageId& id, char token[MAX_COAP_TOKEN_SIZE], size_t& tokenSize) {
+    // Not using CoapMessageDecoder as it parses the entire message
+    auto msgLen = msg.length();
+    if (msgLen < 4) {
+        return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+    }
+    auto msgData = msg.buf();
+    uint32_t h = 0;
+    std::memcpy(&h, msgData, sizeof(uint32_t));
+    h = bigEndianToNative(h);
+    size_t tkl = (h >> 24) & 0x0f;
+    if (tkl > MAX_COAP_TOKEN_SIZE) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    if (msgLen < tkl + 4) {
+        return SYSTEM_ERROR_NOT_ENOUGH_DATA;
+    }
+    std::memcpy(token, msgData + 4, tkl);
+    tokenSize = tkl;
+    id = h & 0xffff;
+    return 0;
+}
+
+int sendResponse(MessageChannel& channel, Message& msg, CoapType type, CoapCode code = CoapCode::EMPTY,
+        const char* payload = nullptr, size_t payloadSize = 0) {
+    // Get the ID and token of the original message
+    char token[MAX_COAP_TOKEN_SIZE];
+    size_t tokenSize;
+    CoapMessageId id;
+    CHECK(parseMessageHeader(msg, id, token, tokenSize));
+    // Allocate a buffer for a response message
     auto msgLen = msg.length();
     auto msgCapacity = msg.capacity();
     Message resp;
@@ -49,20 +84,48 @@ int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type) {
         msg.set_buffer(msg.buf(), msgCapacity);
         msg.set_length(msgLen);
     });
+    // Serialize a response
     CoapMessageEncoder e((char*)resp.buf(), resp.capacity());
     e.type(type);
-    e.code(CoapCode::EMPTY);
+    e.code(code);
     e.id(0); // Serialized by the message channel
+    if (code != CoapCode::EMPTY) {
+        e.token(token, tokenSize);
+    }
+    if (payloadSize > 0) {
+        e.payload(payload, payloadSize);
+    }
     size_t n = CHECK(e.encode());
     if (n > resp.capacity()) {
+        LOG(ERROR, "No enough space in CoAP message buffer");
         return SYSTEM_ERROR_TOO_LARGE;
     }
     resp.set_length(n);
-    resp.set_id(msg.get_id());
+    if (type == CoapType::ACK || type == CoapType::RST) {
+        resp.set_id(msg.get_id());
+    }
+    // Send the response
     err = channel.send(resp);
     if (err != ProtocolError::NO_ERROR) {
         return toSystemError(err);
     }
+    return resp.get_id();
+}
+
+} // namespace
+
+int sendResponseAck(MessageChannel& channel, Message& msg, CoapCode code, const char* payload, size_t payloadSize) {
+    CHECK(sendResponse(channel, msg, CoapType::ACK, code, payload, payloadSize));
+    return 0;
+}
+
+int sendEmptyAck(MessageChannel& channel, Message& msg) {
+    CHECK(sendResponse(channel, msg, CoapType::ACK, CoapCode::EMPTY));
+    return 0;
+}
+
+int sendRst(MessageChannel& channel, Message& msg) {
+    CHECK(sendResponse(channel, msg, CoapType::RST));
     return 0;
 }
 

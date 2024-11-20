@@ -181,16 +181,8 @@ private:
     int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);
     void clearMessage(const RefCountPtr<Message>& msg);
 
-    int sendResponseAck(int id, const CoapToken& token, CoapCode code);
-    int sendEmptyAckOrRst(int id, CoapType type);
-
-    int sendEmptyAck(int id) {
-        return sendEmptyAckOrRst(id, CoapType::ACK);
-    }
-
-    int sendRst(int id) {
-        return sendEmptyAckOrRst(id, CoapType::RST);
-    }
+    int sendResponseAck(CoapCode code);
+    int sendEmptyAck();
 
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, const char* data, size_t size);
     void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val);

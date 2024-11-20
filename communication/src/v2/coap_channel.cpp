@@ -1080,8 +1080,7 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
         errStatus = CoapCode::SERVICE_UNAVAILABLE;
     }
     if (errStatus != CoapCode() && res != SYSTEM_ERROR_NO_MEMORY) {
-        CoapToken token(d.token(), d.tokenSize());
-        int r = sendResponseAck(d.id(), token, errStatus);
+        int r = sendResponseAck(errStatus);
         if (r < 0 && res >= 0) {
             return r;
         }
@@ -1247,7 +1246,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
 
     if (hasBlockOpt) {
         if (hasMore) {
-            CHECK(sendResponseAck(d.id(), req->token, CoapCode::CONTINUE));
+            CHECK(sendResponseAck(CoapCode::CONTINUE));
             ++req->blockIndex.value();
             addRefToList(recvBlockReqs_, req);
             return Result::HANDLED;
@@ -1255,7 +1254,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         req->state = MessageState::READ;
     }
     // Acknowledge the request
-    CHECK(sendEmptyAck(d.id()));
+    CHECK(sendEmptyAck());
     addRefToList(recvReqs_, req); // TODO: Support No-Response option
 
     if (!req->payload) {
@@ -1304,7 +1303,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     req->state = MessageState::DONE;
     if (d.type() == CoapType::CON) {
         // Acknowledge the response
-        CHECK(sendEmptyAck(d.id()));
+        CHECK(sendEmptyAck());
     }
     // Check if it's a blockwise response
     auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer. If null, a response object hasn't been created yet
@@ -1682,41 +1681,15 @@ void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
     msg->state = MessageState::DONE;
 }
 
-int CoapChannel::sendResponseAck(int id, const CoapToken& token, CoapCode code) {
-    MessageBuffer msg;
-    CHECK_PROTOCOL(protocol_->get_channel().response(msgBuf_, msg, msgBuf_.capacity() - msgBuf_.length()));
-    CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
-    e.type(CoapType::ACK);
-    e.code(code);
-    e.id(0); // Will be set by the underlying message channel
-    e.token(token.data(), token.size());
-    size_t n = CHECK(e.encode());
-    if (n > msg.capacity()) {
-        LOG(ERROR, "No enough space in CoAP message buffer");
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    msg.set_length(n);
-    msg.set_id(id);
-    CHECK_PROTOCOL(protocol_->get_channel().send(msg));
+int CoapChannel::sendResponseAck(CoapCode code) {
+    assert(msgBuf_.has_id());
+    CHECK(protocol::sendResponseAck(protocol_->get_channel(), msgBuf_, code));
     return 0;
 }
 
-int CoapChannel::sendEmptyAckOrRst(int id, CoapType type) {
-    assert(type == CoapType::ACK || type == CoapType::RST);
-    MessageBuffer msg;
-    CHECK_PROTOCOL(protocol_->get_channel().response(msgBuf_, msg, msgBuf_.capacity() - msgBuf_.length()));
-    CoapMessageEncoder e((char*)msg.buf(), msg.capacity());
-    e.type(type);
-    e.code(CoapCode::EMPTY);
-    e.id(0); // Will be set by the underlying message channel
-    size_t n = CHECK(e.encode());
-    if (n > msg.capacity()) {
-        LOG(ERROR, "No enough space in CoAP message buffer");
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
-    msg.set_length(n);
-    msg.set_id(id);
-    CHECK_PROTOCOL(protocol_->get_channel().send(msg));
+int CoapChannel::sendEmptyAck() {
+    assert(msgBuf_.has_id());
+    CHECK(protocol::sendEmptyAck(protocol_->get_channel(), msgBuf_));
     return 0;
 }
 

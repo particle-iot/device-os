@@ -130,7 +130,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
 
     // Acknowledge the request
     if (d.type() == CoapType::CON) {
-        int r = sendEmptyAckOrRst(channel, msg, CoapType::ACK);
+        int r = sendEmptyAck(channel, msg);
         if (r < 0) {
             LOG(ERROR, "Failed to send ACK: %d", r);
             return ProtocolError::COAP_ERROR;
