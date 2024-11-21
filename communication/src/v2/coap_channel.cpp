@@ -1224,17 +1224,21 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         req->method = static_cast<coap_method>(method);
         req->coapId = d.id();
         req->token = CoapToken(d.token(), d.tokenSize());
-        if (hasBlockOpt) {
+        if (hasBlockOpt || (handler && (handler->flags & COAP_MESSAGE_FULL))) {
             req->payload = makeRefCountPtr<CoapPayload>();
             if (!req->payload) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
+        }
+        if (hasBlockOpt) {
             req->tag = reqTag;
             req->blockIndex = 0;
             req->state = MessageState::WAIT_BLOCK;
         } else {
-            req->pos = const_cast<char*>(d.payload());
-            req->end = req->pos + d.payloadSize();
+            if (!req->payload) {
+                req->pos = const_cast<char*>(d.payload());
+                req->end = req->pos + d.payloadSize();
+            }
             req->state = MessageState::READ;
         }
     }
