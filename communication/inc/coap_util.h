@@ -62,6 +62,11 @@ public:
         msg_ = msg;
     }
 
+    coap_message** operator&() {
+        coap_destroy_message(msg_, nullptr);
+        return &msg_;
+    }
+
     CoapMessagePtr& operator=(const CoapMessagePtr&) = delete;
 
     CoapMessagePtr& operator=(CoapMessagePtr&& ptr) {
@@ -122,6 +127,11 @@ public:
     void reset(coap_payload* payload = nullptr) {
         coap_destroy_payload(p_, nullptr);
         p_ = payload;
+    }
+
+    coap_payload** operator&() {
+        coap_destroy_payload(p_, nullptr);
+        return &p_;
     }
 
     CoapPayloadPtr& operator=(const CoapPayloadPtr&) = delete;

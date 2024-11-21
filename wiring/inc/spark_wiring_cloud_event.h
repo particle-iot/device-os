@@ -36,6 +36,8 @@ namespace particle {
 class Buffer;
 class Variant;
 
+class CoapMessagePtr;
+
 /**
  * A cloud event.
  */
@@ -260,6 +262,15 @@ public:
     int saveData(const char* path);
 
     /**
+     * Check if the event has payload data.
+     *
+     * @return `true` if the event has payload data, otherwise `false`.
+     */
+    bool hasData() const {
+        return size() > 0;
+    }
+
+    /**
      * Set a callback to be invoked when the status of the event changes.
      *
      * @param callback Callback.
@@ -432,7 +443,9 @@ private:
         return s != Status::SENDING && s != Status::INVALID;
     }
 
-    static int coapRequestCallback(coap_message* msg, const char* path, int method, int req_id, void* arg);
+    static int receiveRequestApp(CoapMessagePtr msg);
+    static int receiveRequestSystem(coap_message* msg, const char* path, int method, int req_id, void* arg);
+
     static void sendComplete(int err, void* arg);
 
     friend class ::CloudClass;

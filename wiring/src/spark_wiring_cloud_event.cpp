@@ -34,6 +34,39 @@
 
 namespace particle {
 
+namespace {
+
+int getUriPath(coap_message* msg, char* path, size_t size) {
+    auto p = path;
+    auto end = path + size;
+    coap_option* opt = nullptr;
+    CHECK(coap_get_option(msg, &opt, COAP_OPTION_URI_PATH, nullptr /* reserved */));
+    if (opt) {
+        int optNum = 0;
+        do {
+            if (p < end) {
+                *p = '/';
+            }
+            ++p;
+            p += CHECK(coap_get_string_option_value(opt, p, (p < end) ? end - p : 0, nullptr /* reserved */));
+            CHECK(coap_get_next_option(msg, &opt, &optNum, nullptr /* reserved */));
+        } while (opt && optNum == COAP_OPTION_URI_PATH);
+    } else {
+        if (p < end) {
+            *p = '/';
+        }
+        ++p;
+    }
+    if (p < end) {
+        *p = '\0';
+    } else if (end != path) {
+        *(end - 1) = '\0';
+    }
+    return p - path;
+}
+
+} // namespace
+
 struct CloudEvent::Data: public RefCount {
     CString name;
     CoapPayloadPtr payload;
@@ -457,7 +490,7 @@ int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> cal
     });
     if (s_subscriptions.size() == 1) {
         // Register a handler for event requests
-        int r = coap_add_request_handler("/E", COAP_METHOD_POST, COAP_MESSAGE_FULL, coapRequestCallback, nullptr /* arg */,
+        int r = coap_add_request_handler("/E", COAP_METHOD_POST, COAP_MESSAGE_FULL, receiveRequestSystem, nullptr /* arg */,
                 nullptr /* reserved */);
         if (r < 0) {
             LOG(ERROR, "coap_add_request_handler() failed: %d", r);
@@ -476,75 +509,14 @@ void CloudEvent::unsubscribeAll() {
     s_subscriptions.clear();
 }
 
-int CloudEvent::coapRequestCallback(coap_message* apiMsg, const char* path, int method, int reqId, void* arg) {
-    CoapMessagePtr msg(apiMsg);
-
-    size_t pathLen = std::strlen(path);
-    if (pathLen < 3) { // strlen("/E/")
-        return 0; // Ignore the request
-    }
-    auto name = path + 3;
-    auto nameLen = pathLen - 3;
-
-    // Create an event instance
-    auto d = makeRefCountPtr<Data>();
-    if (!d) {
-        return 0;
-    }
-    d->name = CString(name, nameLen);
-    if (!d->name) {
-        return 0;
-    }
-
-    // Get the payload object
-    coap_payload* apiPayload = nullptr;
-    int r = coap_get_payload(msg.get(), &apiPayload, nullptr /* reserved */);
-    if (r < 0) {
-        LOG(ERROR, "coap_get_payload() failed: %d", r);
-        return 0;
-    }
-    if (!apiPayload) {
-        return 0; // Shouldn't happen
-    }
-    d->payload = CoapPayloadPtr(apiPayload);
-
-    // Get the content format option
-    coap_option* opt = nullptr;
-    r = coap_get_option(msg.get(), &opt, COAP_OPTION_CONTENT_FORMAT, nullptr /* reserved */);
-    if (r < 0) {
-        LOG(ERROR, "coap_get_option() failed: %d", r);
-        return 0;
-    }
-    if (opt) {
-        unsigned val = 0;
-        int r = coap_get_uint_option_value(opt, &val, nullptr /* reserved */);
-        if (r < 0) {
-            LOG(ERROR, "coap_get_uint_option_value() failed: %d", r); // Does it need to have a return value?
-            return 0;
-        }
-        d->contentType = val;
-    }
-
-    // Invoke the matching subscription handlers
-    CloudEvent ev(std::move(d));
-    for (auto& sub: s_subscriptions) {
-        if (sub.prefixLen > nameLen || std::memcmp((const char*)sub.prefix, name, sub.prefixLen) != 0) {
-            continue;
-        }
-        sub.callback(ev);
-    }
-    return 0;
-}
-
 int CloudEvent::send() {
     char uriPath[COAP_MAX_URI_PATH_LENGTH];
     int r = std::snprintf(uriPath, sizeof(uriPath), "E/%s", (const char*)d_->name);
     if (r < 0 || (size_t)r >= sizeof(uriPath)) {
         return Error::INTERNAL;
     }
-    coap_message* apiMsg = nullptr;
-    auto reqId = CHECK(coap_begin_request(&apiMsg, uriPath, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
-    CoapMessagePtr msg(apiMsg);
+    CoapMessagePtr msg;
+    auto reqId = CHECK(coap_begin_request(&msg, uriPath, COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
     if (d_->payload) {
         CHECK(coap_set_payload(msg.get(), d_->payload.get(), nullptr /* reserved */));
     }
@@ -573,14 +545,14 @@ coap_payload* CloudEvent::getValidPayload() {
         return nullptr;
     }
     if (!d_->payload) {
-        coap_payload* p = nullptr;
+        CoapPayloadPtr p;
         int r = coap_create_payload(&p, nullptr /* reserved */);
         if (r < 0) {
             LOG(ERROR, "coap_create_payload() failed: %d", r);
             setInvalid(r);
             return nullptr;
         }
-        d_->payload.reset(p);
+        d_->payload = std::move(p);
     }
     return d_->payload.get();
 }
@@ -598,6 +570,70 @@ void CloudEvent::setStatus(Status status, int err) {
         d_->payload.reset();
         d_->onStatusChange = nullptr;
     }
+}
+
+int CloudEvent::receiveRequestApp(CoapMessagePtr msg) {
+    // Get the event name
+    char path[COAP_MAX_URI_PATH_LENGTH + 1];
+    size_t pathLen = CHECK(getUriPath(msg.get(), path, sizeof(path)));
+    if (pathLen <= 3 /* strlen("/E/") */ || pathLen > COAP_MAX_URI_PATH_LENGTH) {
+        return Error::BAD_DATA;
+    }
+    auto name = path + 3;
+    auto nameLen = pathLen - 3;
+
+    // Get the content format option
+    unsigned contentType = COAP_FORMAT_TEXT_PLAIN;
+    coap_option* opt = nullptr;
+    CHECK(coap_get_option(msg.get(), &opt, COAP_OPTION_CONTENT_FORMAT, nullptr /* reserved */));
+    if (opt) {
+        CHECK(coap_get_uint_option_value(opt, &contentType, nullptr /* reserved */));
+    }
+
+    // Invoke the subscription handlers
+    for (auto& sub: s_subscriptions) {
+        if (sub.prefixLen > nameLen || std::memcmp((const char*)sub.prefix, name, sub.prefixLen) != 0) {
+            continue;
+        }
+
+        // Create a separate event instance for each of the matching subscription handlers
+        auto d = makeRefCountPtr<Data>();
+        if (!d) {
+            return Error::NO_MEMORY;
+        }
+        d->name = CString(name, nameLen);
+        if (!d->name) {
+            return Error::NO_MEMORY;
+        }
+        d->contentType = contentType;
+
+        // Payload objects are reference counted. If there are multiple matching subscription handlers,
+        // all created event instances will reference the same payload object
+        CHECK(coap_get_payload(msg.get(), &d->payload, nullptr /* reserved */));
+
+        CloudEvent ev(std::move(d));
+        sub.callback(std::move(ev));
+    }
+    return 0;
+}
+
+// Called in the system thread
+int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr msg(apiMsg);
+    // Run the subscription handlers in the application thread
+    int r = application_thread_invoke([](void* arg) {
+        CoapMessagePtr msg(static_cast<coap_message*>(arg));
+        int r = receiveRequestApp(std::move(msg));
+        if (r < 0) {
+            LOG(ERROR, "Failed to handle received event: %d", r);
+        }
+    }, msg.get(), nullptr /* reserved */);
+    // FIXME: application_thread_invoke() doesn't really handle errors as of now
+    if (r == 0) {
+        // Keep the reference around until the application callback is called
+        msg.release();
+    }
+    return 0;
 }
 
 // Called in the system thread

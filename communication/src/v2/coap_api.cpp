@@ -128,7 +128,7 @@ int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_a
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endRequest(msg, respCb, ackCb, errorCb, arg);
     if (r < 0) {
-        msg.unwrap(); // The calling code retains ownership over the message
+        msg.unwrap(); // The calling code retains ownership over the message if an error occurred
         return r;
     }
     return 0;
@@ -150,7 +150,7 @@ int coap_end_response(coap_message* apiMsg, coap_ack_callback ackCb, coap_error_
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endResponse(msg, ackCb, errorCb, arg);
     if (r < 0) {
-        msg.unwrap(); // The calling code retains ownership over the message
+        msg.unwrap(); // The calling code retains ownership over the message if an error occurred
         return r;
     }
     return 0;
@@ -196,7 +196,7 @@ int coap_create_payload(coap_payload** apiPayload, void* reserved) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     assert(apiPayload);
-    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap()); // Transfer ownership over the payload instance to the calling code
+    *apiPayload = reinterpret_cast<coap_payload*>(payload.unwrap()); // Transfer ownership over the payload object to the calling code
     return 0;
 }
 
@@ -228,8 +228,6 @@ int coap_get_payload_size(coap_payload* apiPayload, void* reserved) {
 }
 
 int coap_set_payload(coap_message* apiMsg, coap_payload* apiPayload, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_set_payload(apiMsg, apiPayload, reserved));
-
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     RefCountPtr<CoapPayload> payload(reinterpret_cast<CoapPayload*>(apiPayload));
     CHECK(CoapChannel::instance()->setPayload(msg, payload));
@@ -237,8 +235,6 @@ int coap_set_payload(coap_message* apiMsg, coap_payload* apiPayload, void* reser
 }
 
 int coap_get_payload(coap_message* apiMsg, coap_payload** apiPayload, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_get_payload(apiMsg, apiPayload, reserved));
-
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     RefCountPtr<CoapPayload> payload;
     CHECK(CoapChannel::instance()->getPayload(msg, payload));
