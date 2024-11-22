@@ -54,7 +54,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 	if (retransmit)
 	{
 		LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %d of %d", (int)msg->get_id(),
-				(int)msg->get_transmit_count() - 1, (int)CoAPMessage::MAX_RETRANSMIT);
+				(int)msg->get_transmit_count() - 1, (int)MAX_RETRANSMIT);
 		send_message(msg, channel);
 	}
 	return retransmit;
@@ -123,7 +123,7 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 		}
 		else
 		{
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + MAX_TRANSMIT_SPAN);
 		}
 		add(*coapmsg);
 	}
@@ -180,7 +180,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 				return INSUFFICIENT_STORAGE;
 			// the timeout here is ideally purely academic since the application will respond immediately with an ACK/RESET
 			// which will be stored in place of this message, with it's own timeout.
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + MAX_TRANSMIT_SPAN);
 			add(*coapmsg);
 		}
 	}

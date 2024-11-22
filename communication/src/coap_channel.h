@@ -32,6 +32,27 @@ namespace particle
 namespace protocol
 {
 
+const uint16_t ACK_TIMEOUT = 4000;
+const uint16_t ACK_RANDOM_FACTOR = 1500;
+const uint16_t ACK_RANDOM_DIVISOR = 1000;
+const uint8_t MAX_RETRANSMIT = 3;
+const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
+
+/**
+ * The number of outstanding messages allowed.
+ */
+const uint8_t NSTART = 1;
+
+/**
+ * Determines the transmit timeout for the given transmission count.
+ */
+inline system_tick_t transmit_timeout(uint8_t transmit_count)
+{
+	system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
+	timeout += ((timeout * (rand()%256))>>9);
+	return timeout;
+}
+
 bool is_ack_or_reset(const uint8_t* buf, size_t len);
 
 /**
@@ -158,19 +179,6 @@ private:
 
 public:
 
-	static const uint16_t ACK_TIMEOUT = 4000;
-	static const uint16_t ACK_RANDOM_FACTOR = 1500;
-	static const uint16_t ACK_RANDOM_DIVISOR = 1000;
-	static const uint8_t MAX_RETRANSMIT = 3;
-	static const uint16_t MAX_TRANSMIT_SPAN = 45*1000;
-
-
-	/**
-	 * The number of outstanding messages allowed.
-	 */
-	static const uint8_t NSTART = 1;
-
-
 	CoAPMessage(message_id_t id_) : next(nullptr), timeout(0), id(id_), transmit_count(0), delivered(nullptr), send_time(0), data_len(0) {
 		message_count++;
 	}
@@ -257,16 +265,6 @@ public:
 	system_tick_t get_send_time()
 	{
 		return this->send_time;
-	}
-
-	/**
-	 * Determines the transmit timeout for the given transmission count.
-	 */
-	static inline system_tick_t transmit_timeout(uint8_t transmit_count)
-	{
-		system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
-		timeout += ((timeout * (rand()%256))>>9);
-		return timeout;
 	}
 
 	inline CoAPType::Enum get_type() const

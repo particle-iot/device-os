@@ -31,6 +31,7 @@ LOG_SOURCE_CATEGORY("comm.coap")
 
 #include "mbedtls_config.h" // For MBEDTLS_SSL_MAX_CONTENT_LEN
 
+#include "../coap_channel.h" // For ACK_TIMEOUT, MAX_TRANSMIT_SPAN, etc.
 #include "v2/coap_channel.h"
 #include "coap_payload.h"
 #include "coap_options.h"
@@ -57,19 +58,20 @@ namespace particle::protocol::v2 {
 
 namespace {
 
-// Maximum supported size of CoAP framing data, i.e. everything preceeding the payload data in a CoAP
-// message including the payload marker
-const size_t MAX_COAP_FRAMING_SIZE = 128;
-static_assert(MAX_COAP_FRAMING_SIZE + COAP_BLOCK_SIZE <= PROTOCOL_BUFFER_SIZE);
+// Maximum supported size of CoAP framing data not including the payload marker
+const size_t MAX_MESSAGE_PREFIX_SIZE = 127;
+static_assert(MAX_MESSAGE_PREFIX_SIZE + COAP_BLOCK_SIZE + 1 /* Payload marker */ <= PROTOCOL_BUFFER_SIZE);
 
 const unsigned BLOCK_SZX = 6; // Value of the SZX field for 1024-byte blocks (RFC 7959, 2.2)
 static_assert(COAP_BLOCK_SIZE == 1024); // When changing the block size, make sure to update BLOCK_SZX accordingly
 
 const size_t DEFAULT_TAG_SIZE = 4; // Default size of an ETag (RFC 7252) or Request-Tag (RFC 9175) option
 
-const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
+// Use the CoAP parameters from the old protocol implementation
+const unsigned MAX_TRANSMIT_SPAN = protocol::MAX_TRANSMIT_SPAN;
+const unsigned MAX_RETRANSMIT = protocol::MAX_RETRANSMIT;
 
-const unsigned MAX_RETRANSMIT_COUNT = 3;
+const unsigned DEFAULT_REQUEST_TIMEOUT = 60000;
 
 static_assert(COAP_INVALID_REQUEST_ID == 0); // Used by value in the code
 
@@ -126,6 +128,12 @@ inline CoapToken tokenFrom(token_t token) {
     static_assert(sizeof(token) <= CoapToken::MAX_SIZE);
     token = nativeToLittleEndian(token);
     return CoapToken((const char*)&token, sizeof(token));
+}
+
+inline system_tick_t transmitTimeout(unsigned transmitCount) {
+    // For consistency, use the same algorithm for calculating a retransmission timeout as the old
+    // protocol, even though it deviates from the spec
+    return protocol::transmit_timeout(transmitCount);
 }
 
 // TODO: Use a generic intrusive list container
@@ -274,7 +282,7 @@ struct CoapChannel::RequestMessage: Message {
 
     ResponseMessage* blockResponse; // Response for which this block request is retrieving data
 
-    system_tick_t transmitTime; // Time the request was last sent
+    system_tick_t transmitTime; // Time the request was last sent or received
     unsigned transmitTimeout; // Retransmission timeout
     unsigned transmitCount; // Number of transmissions
     unsigned timeout; // Request timeout
@@ -1036,30 +1044,47 @@ int CoapChannel::run() {
         return 0;
     }
     auto now = millis();
+
+    // Handle retransmission timeouts for requests with a payload object. Timeouts for other
+    // confirmable messages are still handled by the old protocol implementation
     auto msg = findRefInList(unackMsgs_, [&](auto msg) {
-        // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
         if (msg->type != MessageType::REQUEST) {
             return false;
         }
+        // Requests with a payload object have a non-zero `transmitTimeout`
         auto req = static_cast<RequestMessage*>(msg);
         return req->transmitTimeout && now - req->transmitTime >= req->transmitTimeout;
     });
-    if (!msg) {
+    if (msg) {
+        removeRefFromList(unackMsgs_, msg);
+        auto req = staticPtrCast<RequestMessage>(msg);
+        if (req->transmitCount >= MAX_RETRANSMIT + 1) {
+            LOG(ERROR, "CoAP message timeout; ID: %d", req->coapId);
+            clearMessage(req);
+            if (req->errorCallback) {
+                req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
+            }
+            return SYSTEM_ERROR_COAP_TIMEOUT;
+        }
+        // Retransmit the message
+        LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT);
+        CHECK(sendPayloadBlock(req, true /* retransmit */));
         return 0;
     }
-    removeRefFromList(unackMsgs_, msg);
-    auto req = staticPtrCast<RequestMessage>(msg);
-    if (req->transmitCount >= MAX_RETRANSMIT_COUNT + 1) {
-        LOG(ERROR, "CoAP message timeout; ID: %d", req->coapId);
+
+    // Handle blockwise transfer timeouts
+    auto req = findRefInList(recvBlockReqs_, [&](auto req) {
+        // As per RFC 7959, 2.5, a partial request body can be discarded when a period of EXCHANGE_LIFETIME
+        // has elapsed since the most recent block was received. Here, MAX_TRANSMIT_SPAN is used instead as
+        // it aligns better with the non-spec compliant timings used by the old protocol implementation
+        return now - req->transmitTime >= MAX_TRANSMIT_SPAN;
+    });
+    if (req) {
+        LOG(ERROR, "Blockwise transfer timeout; request ID: %d", req->id);
         clearMessage(req);
-        if (req->errorCallback) {
-            req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
-        }
-        return SYSTEM_ERROR_COAP_TIMEOUT;
+        return 0;
     }
-    // Retransmit message
-    LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT_COUNT);
-    CHECK(sendPayloadBlock(req, true /* retransmit */));
+
     // TODO: As of now, the server always replies with piggybacked responses so we don't need to
     // handle separate response timeouts
     return 0;
@@ -1251,6 +1276,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
     if (hasBlockOpt) {
         if (hasMore) {
             CHECK(sendResponseAck(CoapCode::CONTINUE));
+            req->transmitTime = millis();
             ++req->blockIndex.value();
             addRefToList(recvBlockReqs_, req);
             return Result::HANDLED;
@@ -1517,7 +1543,7 @@ int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg) {
 
 int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     assert(curMsgId_ == msg->id);
-    char prefix[MAX_COAP_FRAMING_SIZE];
+    char prefix[MAX_MESSAGE_PREFIX_SIZE];
     CoapMessageEncoder e(prefix, sizeof(prefix));
     e.type(CoapType::CON);
     e.id(0); // Will be set by the underlying message channel
@@ -1559,7 +1585,7 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
 
     auto msgBuf = (char*)msgBuf_.buf();
     size_t newPrefixSize = CHECK(e.encode());
-    if (newPrefixSize > MAX_COAP_FRAMING_SIZE) {
+    if (newPrefixSize > MAX_MESSAGE_PREFIX_SIZE) {
         LOG(ERROR, "Too many CoAP options");
         return SYSTEM_ERROR_TOO_LARGE;
     }
@@ -1617,14 +1643,11 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransm
         msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
     }
     CHECK(sendMessage(msg, retransmit, true /* passthrough */));
-    // TODO: Handle retransmissions for all outgoing messages, not just requests that have a payload object
+    // TODO: Handle retransmissions for all messages sent by the new implementation, not just requests
+    // that have a payload object
     auto req = staticPtrCast<RequestMessage>(msg);
     req->transmitTime = millis();
-    if (!req->transmitCount) {
-        req->transmitTimeout = 3000; // TODO: Randomize
-    } else {
-        req->transmitTimeout *= 2;
-    }
+    req->transmitTimeout = transmitTimeout(req->transmitCount);
     ++req->transmitCount;
     return 0;
 }

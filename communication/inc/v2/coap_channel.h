@@ -51,8 +51,8 @@ class CoapMessage: public RefCount {
 public:
     virtual ~CoapMessage() = default;
 
-    // TODO: Expose the relevant methods from CoapChannel (setPayload(), addOption(), etc.) as
-    // methods of this class
+    // TODO: Expose the relevant methods of CoapChannel (setPayload(), addOption(), etc.) as methods
+    // of this class instead
 };
 
 /**
