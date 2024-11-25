@@ -109,6 +109,11 @@ const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
 // const uint32_t UBLOX_NCP_BANDMASK_01_64_R510 = 0x0B0E189F;  // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,28 [all default enabled]
 const uint8_t UBLOX_NCP_BANDMASK_65_128_R510 = 0x40;        // Band 66,85 enabled, 71 disabled [used as a mask]
 
+const auto UBLOX_NCP_R5_EHS_STD_CLK_T1_MS = 23000; // Standard EHS timing
+const auto UBLOX_NCP_R5_EHS_STD_CLK_T2_MS = 2000;  //  |
+const auto UBLOX_NCP_R5_EHS_QTR_CLK_T1_MS = 80000; // 1/4 clock EHS timing
+const auto UBLOX_NCP_R5_EHS_QTR_CLK_T2_MS = 5000;  //  |
+
 // FIXME: for now using a very large buffer
 const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 const auto UBLOX_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
@@ -205,6 +210,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     lastFirmwareInstallRespCodeR510_ = -1;
     waitReadyRetries_ = 0;
     sleepNoPPPWrite_ = false;
+    ehsExtendedTiming_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -1062,8 +1068,8 @@ int SaraNcpClient::waitReady(bool powerOn) {
         // Hard reset the modem
         modemHardReset(true);
         ncpState(NcpState::OFF);
-        if (++waitReadyRetries_ >= 10) {
-            waitReadyRetries_ = 10;
+        if (++waitReadyRetries_ >= 3) {
+            waitReadyRetries_ = 3;
             modemEmergencyHardReset();
         }
 
@@ -2851,7 +2857,7 @@ int SaraNcpClient::modemEmergencyHardReset() {
         return SYSTEM_ERROR_NONE;
     }
 
-    LOG(TRACE, "Emergency hardware shutdown");
+    LOG(TRACE, "Emergency hardware shutdown the modem (%s)", ehsExtendedTiming_ ? "EXT" : "STD");
     const auto pwrState = modemPowerState();
     // We can only reset the modem in the powered state
     if (!pwrState) {
@@ -2859,16 +2865,21 @@ int SaraNcpClient::modemEmergencyHardReset() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    const auto t1 = ehsExtendedTiming_ ? UBLOX_NCP_R5_EHS_QTR_CLK_T1_MS : UBLOX_NCP_R5_EHS_STD_CLK_T1_MS;
+    const auto t2 = ehsExtendedTiming_ ? UBLOX_NCP_R5_EHS_QTR_CLK_T2_MS : UBLOX_NCP_R5_EHS_STD_CLK_T2_MS;
+
+    ehsExtendedTiming_ = !ehsExtendedTiming_; // toggle between timing each time EHS is called
+
     // Low held on power pin
     hal_gpio_write(UBPWR, 0);
     HAL_Delay_Milliseconds(500);
     // Low held on reset pin
     hal_gpio_write(UBRST, 0);
     // Release power pin after 23s (23.5)
-    HAL_Delay_Milliseconds(23000);
+    HAL_Delay_Milliseconds(t1);
     hal_gpio_write(UBPWR, 1);
     // Release reset pin after 1.5s (2s)
-    HAL_Delay_Milliseconds(2000);
+    HAL_Delay_Milliseconds(t2);
     hal_gpio_write(UBRST, 1);
 
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
