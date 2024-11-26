@@ -1135,8 +1135,12 @@ int QuectelNcpClient::initReady(ModemState state) {
         skipAll(serial_.get(), 1000);
         CHECK(waitAtResponse(10000));
 
-        // Select either internal or external SIM card slot depending on the configuration
-        CHECK(selectSimCard());
+        // Cannot use ncpId() as this is not programmed on first boot during manufacturing
+        // Read NCP ID from OTP when initializing the modem after provisioning
+        if (platform_primary_ncp_identifier() != PLATFORM_NCP_QUECTEL_BG95_S5) {
+            // Select either internal or external SIM card slot depending on the configuration
+            CHECK(selectSimCard());
+        }
 
         // Just in case disconnect
         // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
