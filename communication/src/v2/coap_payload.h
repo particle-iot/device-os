@@ -32,16 +32,12 @@ namespace particle::protocol::v2 {
 /**
  * Payload data of a CoAP message.
  *
- * The initial portion of the data is stored in RAM. The data above the certain size is stored in a
- * temporary file.
+ * The initial portion of the data is stored on the heap. The data above the configured size (`maxHeapSize`)
+ * is stored in a temporary file.
  */
 class CoapPayload: public RefCount {
 public:
-    CoapPayload() :
-            size_(0),
-            fileNum_(0) {
-    }
-
+    explicit CoapPayload(size_t maxHeapSize = COAP_BLOCK_SIZE);
     ~CoapPayload();
 
     int read(char* data, size_t size, size_t pos);
@@ -50,13 +46,14 @@ public:
     int setSize(size_t size);
 
     size_t size() const {
-        return size_;
+        return dataSize_;
     }
 
 private:
     Buffer buf_; // Portion of the payload data stored in RAM
     std::unique_ptr<lfs_file_t> file_; // Handle of the temporary file with the rest of the payload data
-    size_t size_; // Total size of the payload data
+    size_t dataSize_; // Total size of the payload data
+    const size_t maxHeapSize_; // Maximum amount of payload data that can be stored on the heap
     unsigned fileNum_; // Sequence number of the temporary file
 
     int createTempFile(lfs_t* fs);

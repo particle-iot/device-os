@@ -35,9 +35,6 @@ using fs::FsLock;
 
 namespace {
 
-// Maximum amount of payload data that can be stored on the heap for a single message
-const size_t MAX_PAYLOAD_SIZE_IN_RAM = COAP_BLOCK_SIZE;
-
 // Initial amount of the heap memory allocated for storing payload data
 const size_t INITIAL_BUFFER_CAPACITY = 128;
 
@@ -47,15 +44,11 @@ const size_t MAX_PATH_LEN = 127;
 // Directory for storing temporary files
 const auto TEMP_DIR = "/tmp/coap";
 
-static_assert(MAX_PAYLOAD_SIZE_IN_RAM <= COAP_MAX_PAYLOAD_SIZE);
-
-static_assert(INITIAL_BUFFER_CAPACITY <= MAX_PAYLOAD_SIZE_IN_RAM);
-
-unsigned g_tempFileCount = 0;
+unsigned g_lastFileNum = 0;
 bool g_tempDirCreated = false;
 
 int formatTempFilePath(char* buf, size_t size, unsigned fileNum) {
-    int n = std::snprintf(buf, size, "%s/payload_%u", TEMP_DIR, fileNum);
+    int n = std::snprintf(buf, size, "%s/p%u", TEMP_DIR, fileNum);
     if (n < 0 || (size_t)n >= size) {
         return SYSTEM_ERROR_PATH_TOO_LONG;
     }
@@ -83,6 +76,12 @@ inline int removeFile(lfs_t* fs, const char* path) {
 
 } // namespace
 
+CoapPayload::CoapPayload(size_t maxHeapSize) :
+        dataSize_(0),
+        maxHeapSize_(std::min<size_t>(maxHeapSize, COAP_MAX_PAYLOAD_SIZE)),
+        fileNum_(0) {
+}
+
 CoapPayload::~CoapPayload() {
     if (file_) {
         FsLock fs;
@@ -91,13 +90,13 @@ CoapPayload::~CoapPayload() {
 }
 
 int CoapPayload::read(char* data, size_t size, size_t pos) {
-    if (pos >= size_) {
+    if (pos >= dataSize_) {
         return SYSTEM_ERROR_END_OF_STREAM;
     }
     char* d = data;
-    size_t bytesToRead = std::min(size, size_ - pos);
-    if (pos < MAX_PAYLOAD_SIZE_IN_RAM) {
-        size_t bytesInRam = std::min(size_, MAX_PAYLOAD_SIZE_IN_RAM) - pos;
+    size_t bytesToRead = std::min(size, dataSize_ - pos);
+    if (pos < maxHeapSize_) {
+        size_t bytesInRam = std::min(dataSize_, maxHeapSize_) - pos;
         size_t n = std::min(bytesToRead, bytesInRam);
         std::memcpy(d, buf_.data() + pos, n);
         bytesToRead -= n;
@@ -107,7 +106,7 @@ int CoapPayload::read(char* data, size_t size, size_t pos) {
     if (bytesToRead > 0) {
         FsLock fs;
         assert(file_);
-        CHECK(seekInFile(fs.instance(), file_.get(), pos - MAX_PAYLOAD_SIZE_IN_RAM));
+        CHECK(seekInFile(fs.instance(), file_.get(), pos - maxHeapSize_));
         size_t n = CHECK_FS(lfs_file_read(fs.instance(), file_.get(), d, bytesToRead));
         if (n < bytesToRead) {
             // The payload size was set using setSize() or the file was modifed by somebody else
@@ -124,13 +123,12 @@ int CoapPayload::write(const char* data, size_t size, size_t pos) {
     }
     size_t p = pos;
     size_t bytesToWrite = size;
-    if (p < MAX_PAYLOAD_SIZE_IN_RAM) {
-        size_t n = std::min(bytesToWrite, MAX_PAYLOAD_SIZE_IN_RAM - p);
+    if (p < maxHeapSize_) {
+        size_t n = std::min(bytesToWrite, maxHeapSize_ - p);
         auto newSize = buf_.size() + n;
         if (newSize > buf_.capacity()) {
             // TODO: Use a pool of fixed-size chainable buffers
-            auto newCapacity = std::min(std::max(std::max(buf_.capacity() * 3 / 2, newSize), INITIAL_BUFFER_CAPACITY),
-                    MAX_PAYLOAD_SIZE_IN_RAM);
+            auto newCapacity = std::min(std::max(std::max(buf_.capacity() * 3 / 2, newSize), INITIAL_BUFFER_CAPACITY), maxHeapSize_);
             if (!buf_.reserve(newCapacity)) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
@@ -147,14 +145,14 @@ int CoapPayload::write(const char* data, size_t size, size_t pos) {
             CHECK(createTempFile(fs.instance()));
         }
         assert(file_);
-        CHECK(seekInFile(fs.instance(), file_.get(), p - MAX_PAYLOAD_SIZE_IN_RAM));
+        CHECK(seekInFile(fs.instance(), file_.get(), p - maxHeapSize_));
         size_t n = CHECK_FS(lfs_file_write(fs.instance(), file_.get(), data, bytesToWrite));
         if (n != bytesToWrite) {
             return SYSTEM_ERROR_FILESYSTEM;
         }
     }
-    if (pos + size > size_) {
-        size_ = pos + size;
+    if (pos + size > dataSize_) {
+        dataSize_ = pos + size;
     }
     return size;
 }
@@ -163,15 +161,15 @@ int CoapPayload::setSize(size_t size) {
     if (size > COAP_MAX_PAYLOAD_SIZE) {
         return SYSTEM_ERROR_COAP_TOO_LARGE_PAYLOAD;
     }
-    size_t bytesInRam = std::min(size, MAX_PAYLOAD_SIZE_IN_RAM);
+    size_t bytesInRam = std::min(size, maxHeapSize_);
     if (!buf_.resize(bytesInRam)) { // The uninitialized data is zero-filled as necessary
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    if (size > MAX_PAYLOAD_SIZE_IN_RAM && !file_) {
+    if (size > maxHeapSize_ && !file_) {
         FsLock fs;
         CHECK(createTempFile(fs.instance()));
     }
-    size_ = size;
+    dataSize_ = size;
     return 0;
 }
 
@@ -185,7 +183,7 @@ int CoapPayload::createTempFile(lfs_t* fs) {
         CHECK(mkdirp(TEMP_DIR));
         g_tempDirCreated = true;
     }
-    auto fileNum = ++g_tempFileCount;
+    auto fileNum = ++g_lastFileNum;
     char path[MAX_PATH_LEN + 1];
     CHECK(formatTempFilePath(path, sizeof(path), fileNum));
     CHECK_FS(lfs_file_open(fs, file.get(), path, LFS_O_RDWR | LFS_O_CREAT | LFS_O_EXCL));

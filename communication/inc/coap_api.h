@@ -427,10 +427,13 @@ int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved);
  * Create a payload data instance.
  *
  * @param payload Payload data instance.
+ * @param max_heap_size Maximum amount of payload data that can be stored on the heap. The data
+ *        exceeding the specified size will be stored in a temporary file. The recommended value is
+ *        `COAP_BLOCK_SIZE`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_create_payload(coap_payload** payload, void* reserved);
+int coap_create_payload(coap_payload** payload, size_t max_heap_size, void* reserved);
 
 /**
  * Destroy a payload data instance.

@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstring>
 #include <cstdio>
 
@@ -35,6 +36,8 @@
 namespace particle {
 
 namespace {
+
+const size_t DEFAULT_MAX_PAYLOAD_HEAP_SIZE = COAP_BLOCK_SIZE;
 
 int getUriPath(coap_message* msg, char* path, size_t size) {
     auto p = path;
@@ -72,6 +75,7 @@ struct CloudEvent::Data: public RefCount {
     CoapPayloadPtr payload;
     std::function<OnStatusChange> onStatusChange;
     Status status;
+    size_t maxHeapSize;
     size_t pos;
     int contentType;
     int requestId;
@@ -80,6 +84,7 @@ struct CloudEvent::Data: public RefCount {
 
     Data() :
             status(Status::NEW),
+            maxHeapSize(DEFAULT_MAX_PAYLOAD_HEAP_SIZE),
             pos(0),
             contentType((int)ContentType::TEXT),
             requestId(COAP_INVALID_REQUEST_ID),
@@ -282,6 +287,21 @@ Variant CloudEvent::dataAsVariant() {
         return Variant();
     }
     return v;
+}
+
+CloudEvent& CloudEvent::maxHeapSize(size_t size) {
+    if (!isWritable() || d_->payload) {
+        return *this;
+    }
+    d_->maxHeapSize = std::min(size, MAX_DATA_SIZE);
+    return *this;
+}
+
+size_t CloudEvent::maxHeapSize() const {
+    if (!d_) {
+        return DEFAULT_MAX_PAYLOAD_HEAP_SIZE;
+    }
+    return d_->maxHeapSize;
 }
 
 CloudEvent& CloudEvent::onStatusChange(std::function<OnStatusChange> callback) {
@@ -546,7 +566,7 @@ coap_payload* CloudEvent::getValidPayload() {
     }
     if (!d_->payload) {
         CoapPayloadPtr p;
-        int r = coap_create_payload(&p, nullptr /* reserved */);
+        int r = coap_create_payload(&p, d_->maxHeapSize, nullptr /* reserved */);
         if (r < 0) {
             LOG(ERROR, "coap_create_payload() failed: %d", r);
             setInvalid(r);

@@ -271,6 +271,27 @@ public:
     }
 
     /**
+     * Set the maximum size of event data that can be store on the heap.
+     *
+     * The data exceeding the specified size will be stored in a temporary file.
+     *
+     * This method has no effect if the event already contains any data.
+     *
+     * The default value is 1024 bytes.
+     *
+     * @param size Data size.
+     * @return This event instance.
+     */
+    CloudEvent& maxHeapSize(size_t size);
+
+    /**
+     * Get the maximum size of event data that can be store on the heap.
+     *
+     * @return Data size.
+     */
+    size_t maxHeapSize() const;
+
+    /**
      * Set a callback to be invoked when the status of the event changes.
      *
      * @param callback Callback.

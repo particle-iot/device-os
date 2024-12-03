@@ -190,8 +190,8 @@ int coap_peek_block(coap_message* apiMsg, char* data, size_t size, void* reserve
     return n;
 }
 
-int coap_create_payload(coap_payload** apiPayload, void* reserved) {
-    auto payload = makeRefCountPtr<CoapPayload>();
+int coap_create_payload(coap_payload** apiPayload, size_t max_heap_size, void* reserved) {
+    auto payload = makeRefCountPtr<CoapPayload>(max_heap_size);
     if (!payload) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
