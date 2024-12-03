@@ -65,6 +65,12 @@ inline Dev cellular_dev_from_ncp(PlatformNCPIdentifier identifer) {
     case PLATFORM_NCP_QUECTEL_BG95_M5:
         device = DEV_QUECTEL_BG95_M5;
         break;
+    case PLATFORM_NCP_QUECTEL_EG800Q_NA:
+        device = DEV_QUECTEL_EG800Q_NA;
+        break;
+    case PLATFORM_NCP_QUECTEL_EG800Q_EU:
+        device = DEV_QUECTEL_EG800Q_EU;
+        break;
     case PLATFORM_NCP_QUECTEL_BG95_S5:
         device = DEV_QUECTEL_BG95_S5;
         break;

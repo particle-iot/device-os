@@ -93,6 +93,7 @@ const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1029,6 +1030,9 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     auto resp = parser_.sendCommand("AT+IPR=%u", baud);
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        HAL_Delay_Milliseconds(500); // As per the spec: After the baud rate is changed, it is necessary to wait for 500 ms to send the next command.
+    }
     return serial_->setBaudRate(baud);
 }
 
@@ -1047,7 +1051,9 @@ bool QuectelNcpClient::isQuecCat1Device() {
     return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
-            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA);
 }
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
@@ -1078,6 +1084,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         if (fwVersion_ >= 8) {
             runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX;
         }
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
     }
     return runtimeBaudrate;
 }
@@ -1109,6 +1117,11 @@ int QuectelNcpClient::initReady(ModemState state) {
         HAL_Delay_Milliseconds(1000);
     }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+        // Disable URCs for SMS, RI and other, otherwise, the remote modem state in muxer channel will be set to 0
+        CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
+    }
 
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
@@ -1392,6 +1405,7 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
             CHECK(checkNetConfForImsi());
         }
     }
+
     // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
     for (int i = 0; i < CGDCONT_ATTEMPTS; i++) {
         // FIXME: for now IPv4 context only
@@ -1416,7 +1430,7 @@ int QuectelNcpClient::registerNet() {
     resetRegistrationState();
 
     if (isQuecCat1Device() || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-        // Register GPRS, LET, NB-IOT network
+        // Register GPRS, LTE, NB-IOT network
         r = CHECK_PARSER(parser_.execCommand("AT+CREG=2"));
         CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
         r = CHECK_PARSER(parser_.execCommand("AT+CGREG=2"));
@@ -1953,6 +1967,8 @@ int QuectelNcpClient::processEventsImpl() {
     // Check the signal seen by the module while trying to register
     // Do not need to check for an OK, as this is just for debugging purpose
     CHECK_PARSER(parser_.execCommand("AT+QCSQ"));
+    CHECK_PARSER(parser_.execCommand("AT+QNWINFO"));
+    CHECK_PARSER(parser_.execCommand("AT+QENG=\"servingcell\""));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
@@ -2000,8 +2016,16 @@ int QuectelNcpClient::modemInit() const {
 
     // DTR=0: normal mode, DTR=1: sleep mode
     // NOTE: The BGDTR pins is inverted
-    conf.value = 1;
-    CHECK(hal_gpio_configure(BGDTR, &conf, nullptr));
+    if (BGDTR != PIN_INVALID) {
+        conf.value = 1;
+        CHECK(hal_gpio_configure(BGDTR, &conf, nullptr));
+    }
+
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
+    // Configure BUFEN as Push-Pull Output and default to 0 (enabled)
+    conf.value = 0;
+    CHECK(hal_gpio_configure(BUFEN, &conf, nullptr));
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
 
     LOG(TRACE, "Modem low level initialization OK");
 
@@ -2192,8 +2216,12 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
 
 bool QuectelNcpClient::modemPowerState() const {
     // LOG(TRACE, "BGVINT: %d", hal_gpio_read(BGVINT));
+#if HAL_PLATFORM_CELLULAR_MODEM_VINT_INVERTED
     // NOTE: The BGVINT pin is inverted
     return !hal_gpio_read(BGVINT);
+#else
+    return hal_gpio_read(BGVINT);
+#endif
 }
 
 uint32_t QuectelNcpClient::getDefaultSerialConfig() const {
