@@ -172,7 +172,7 @@ test(api_rgb) {
     API_COMPILE(RGB.onChange(externalLEDHandler));
     API_COMPILE(RGB.onChange(&ExternalLed::handler, &externalLed));
 #if HAL_PLATFORM_NRF52840 // GEN3
-#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+#if (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_ELECTRON2)
     API_COMPILE(RGB.mirrorTo(A4, A5, A3));
     API_COMPILE(RGB.mirrorTo(A4, A5, A3, false));
     API_COMPILE(RGB.mirrorTo(A4, A5, A3, true, true));
@@ -181,7 +181,7 @@ test(api_rgb) {
     API_COMPILE(RGB.mirrorTo(A1, A0, A7));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, false));
     API_COMPILE(RGB.mirrorTo(A1, A0, A7, true, true));
-#endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#endif // (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_ELECTRON2)
 #elif HAL_PLATFORM_RTL872X
     API_COMPILE(RGB.mirrorTo(A2, A4, A5));
     API_COMPILE(RGB.mirrorTo(A2, A4, A5, false));

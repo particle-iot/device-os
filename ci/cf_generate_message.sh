@@ -84,7 +84,7 @@ EOF
 )
 
     fields=""
-    for p in MSoM; do
+    for p in MSoM Electron2; do
         if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
             msg=":scrum_closed: $p\\n"
         else

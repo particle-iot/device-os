@@ -44,7 +44,7 @@ int selectInternalAntenna() {
     hal_gpio_mode(ANTSW2, OUTPUT);
     hal_gpio_write(ANTSW1, 0);
     hal_gpio_write(ANTSW2, 1);
-#elif PLATFORM_ID == PLATFORM_BORON
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
     hal_gpio_mode(ANTSW1, OUTPUT);
     hal_gpio_write(ANTSW1, 1);
 #elif PLATFORM_ID == PLATFORM_TRACKER
@@ -67,7 +67,7 @@ int selectExtenalAntenna() {
     hal_gpio_mode(ANTSW2, OUTPUT);
     hal_gpio_write(ANTSW1, 1);
     hal_gpio_write(ANTSW2, 0);
-#elif PLATFORM_ID == PLATFORM_BORON
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
     hal_gpio_mode(ANTSW1, OUTPUT);
     hal_gpio_write(ANTSW1, 0);
 #elif PLATFORM_ID == PLATFORM_TRACKER
@@ -131,7 +131,7 @@ int disableRadioAntenna() {
 #if PLATFORM_ID == PLATFORM_ARGON
     hal_gpio_mode(ANTSW1, PIN_MODE_NONE);
     hal_gpio_mode(ANTSW2, PIN_MODE_NONE);
-#elif PLATFORM_ID == PLATFORM_BORON
+#elif PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
     // There is a logic inverter between the ANTSW1 and the antenna switch.
     // There is a pull-down resistor on ANTSW1, so we can safely configure the ANTSW1 to PIN_MODE_NONE.
     hal_gpio_mode(ANTSW1, PIN_MODE_NONE);

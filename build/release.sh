@@ -8,8 +8,8 @@ function display_help ()
     echo '
 usage: release.sh [--output-directory=<binary_output_directory>]
                   (--platform=<argon|asom|boron|bsom...
-                  |b5som|esomx|p2>...
-                  | --platform-id=<12|13|15|22|23|25|26|32>)
+                  |b5som|esomx|p2|msom|electron2>...
+                  | --platform-id=<12|13|15|22|23|25|26|32|35|37>)
                   [--debug] [--help] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -250,6 +250,10 @@ elif [ ! -z $PLATFORM ]; then
             PLATFORM_ID="35"
             GEN3=true
             ;;
+        "electron2")
+            PLATFORM_ID="37"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform: \"$PLATFORM\"!"
             exit 6
@@ -297,6 +301,10 @@ else
             PLATFORM="msom"
             GEN3=true
             ;;
+        37)
+            PLATFORM="electron2"
+            GEN3=true
+            ;;
         *)
             echo "ERROR: No rules to release platform id: $PLATFORM_ID!"
             exit 7
@@ -337,7 +345,7 @@ rm -rf $ABSOLUTE_TARGET_DIRECTORY/
 #########################
 
 # GEN3
-if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ] || [ $PLATFORM_ID -eq 35 ]; then
+if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ] || [ $PLATFORM_ID -eq 22 ] || [ $PLATFORM_ID -eq 23 ] || [ $PLATFORM_ID -eq 25 ] || [ $PLATFORM_ID -eq 26 ] || [ $PLATFORM_ID -eq 28 ] || [ $PLATFORM_ID -eq 32 ] || [ $PLATFORM_ID -eq 35 ] || [ $PLATFORM_ID -eq 37 ]; then
     # Configure
     if [ $DEBUG = true ]; then
         cd ../main

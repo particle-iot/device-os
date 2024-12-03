@@ -21,7 +21,7 @@ const int START_PIN = D0;
 #elif (PLATFORM_ID == PLATFORM_TRACKERM)
     START_PIN = D8;         // Overwrite start pin for trackerm
     const int PIN_MAX = D9; // TEST: D8,D9
-#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_ELECTRON2)
     const int PIN_MAX = A0; // TEST: D0 ~ D6
 #elif (PLATFORM_ID == PLATFORM_B5SOM)
     const int PIN_MAX = D23;// TEST: D0 ~ D6

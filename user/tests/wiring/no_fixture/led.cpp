@@ -236,20 +236,20 @@ test(LED_11_MirroringWorks) {
     RGB.brightness(255);
 
 #if HAL_PLATFORM_NRF52840
-# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+# if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
     const pin_t pins[3] = {A4, A5, A3};
 # elif PLATFORM_ID == PLATFORM_ESOMX
     const pin_t pins[3] = {A3, A4, A5};
 # else
     // SoM
     const hal_pin_t pins[3] = {A1, A0, A7};
-#endif // PLATFORM_ID != PLATFORM_ARGON && PLATFORM_ID != PLATFORM_BORON
+# endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
 #elif HAL_PLATFORM_RTL872X
-#if PLATFORM_ID == PLATFORM_MSOM
+# if PLATFORM_ID == PLATFORM_MSOM
     const hal_pin_t pins[3] = {D4, D5, D6};
-#else
+# else
     const hal_pin_t pins[3] = {A2, A5, S0};
-#endif // PLATFORM_ID == PLATFORM_MSOM
+# endif // PLATFORM_ID == PLATFORM_MSOM
 #else // HAL_PLATFORM_RTL872X
 #error "Unsupported platform"
 #endif

@@ -152,6 +152,8 @@ private:
 # define USBD_PRODUCT_NAME              "B5-SoM"
 #elif PLATFORM_ID == PLATFORM_TRACKER
 # define USBD_PRODUCT_NAME              "Tracker"
+#elif PLATFORM_ID == PLATFORM_ELECTRON2
+# define USBD_PRODUCT_NAME              "Electron 2"
 #endif
 #define USBD_PRODUCT_STRING             USBD_PRODUCT_NAME " " "DFU Mode"
 #define USBD_CONFIGURATION_STRING       USBD_PRODUCT_STRING

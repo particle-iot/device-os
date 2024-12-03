@@ -15,11 +15,11 @@ std::pair<hal_pin_t, hal_pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
             return {SDA, SCL};
         }
         case HAL_I2C_INTERFACE2: {
-#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX
+#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_ELECTRON2
             return {PMIC_SDA, PMIC_SCL};
 #else
             return {D2, D3};
-#endif //PLATFORM_ID == PLATFORM_BORON && PLATFORM_TRACKER
+#endif // PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_ELECTRON2
         }
         case HAL_I2C_INTERFACE3: {
             return {D9, D8};

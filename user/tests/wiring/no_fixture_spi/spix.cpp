@@ -19,7 +19,7 @@
 #include "unit-test/unit-test.h"
 
 static pin_t expectedSsPin(hal_spi_interface_t spi) {
-#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON
+#if PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
     return (spi == HAL_SPI_INTERFACE1) ? D14 : D5;
 #elif PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM
     return (spi == HAL_SPI_INTERFACE1) ? D8 : D5;
