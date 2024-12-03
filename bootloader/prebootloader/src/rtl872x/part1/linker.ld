@@ -6,9 +6,10 @@ MEMORY
 {
     INCLUDE memory_backup_ram.ld
   
-    SRAM          (xrw) : ORIGIN = platform_km0_part1_ram_start,   LENGTH = platform_km0_part1_ram_size
-    APP_FLASH     (rx)  : ORIGIN = platform_km0_part1_flash_start, LENGTH = platform_km0_part1_flash_size
-    RETENTION_RAM (xrw) : ORIGIN = platform_retention_ram_start,   LENGTH = platform_retention_ram_size
+    SRAM          (xrw) : ORIGIN = platform_km0_part1_ram_start,         LENGTH = platform_km0_part1_ram_size
+    SRAM_EXT      (xrw) : ORIGIN = platform_km0_part1_ram_ext_start,     LENGTH = platform_km0_part1_ram_ext_size
+    APP_FLASH     (rx)  : ORIGIN = platform_km0_part1_flash_start,       LENGTH = platform_km0_part1_flash_size
+    RETENTION_RAM (xrw) : ORIGIN = platform_retention_ram_start,         LENGTH = platform_retention_ram_size
     WIFI_FW_RAM   (rwx) : ORIGIN = platform_km0_part1_wifi_fw_ram_start, LENGTH = platform_km0_part1_wifi_fw_ram_size
 }
 
@@ -75,6 +76,17 @@ SECTIONS
         . = ALIGN(4);
         link_wifi_fw_used_end = . ;
     } > WIFI_FW_RAM AT> APP_FLASH
+
+    .ram_text_ext :
+    {
+        link_ram_ext_copy_flash_start = LOADADDR( .ram_text_ext );
+        . = ALIGN(4);
+        link_ram_ext_copy_start = .;
+
+        *(.text)
+        *(.text.*)
+        link_ram_ext_copy_end = .;
+    } > SRAM_EXT AT> APP_FLASH
 
     .ram_text :
     {

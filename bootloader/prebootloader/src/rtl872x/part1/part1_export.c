@@ -36,6 +36,11 @@ extern uintptr_t link_ram_copy_start;
 extern uintptr_t link_ram_copy_end;
 #define link_ram_copy_size ((uintptr_t)&link_ram_copy_end - (uintptr_t)&link_ram_copy_start)
 
+extern uintptr_t link_ram_ext_copy_flash_start;
+extern uintptr_t link_ram_ext_copy_start;
+extern uintptr_t link_ram_ext_copy_end;
+#define link_ram_ext_copy_size ((uintptr_t)&link_ram_ext_copy_end - (uintptr_t)&link_ram_ext_copy_start)
+
 extern uintptr_t link_global_data_initial_values;
 extern uintptr_t link_global_data_start;
 extern uintptr_t link_global_data_end;
@@ -51,6 +56,10 @@ __attribute__((section(".xip.text"), used)) int bootloader_part1_preinit(void) {
     // Copy .text
     if ((&link_ram_copy_start != &link_ram_copy_flash_start) && (link_ram_copy_size != 0)) {
         _memcpy(&link_ram_copy_start, &link_ram_copy_flash_start, link_ram_copy_size);
+    }
+    // Copy extended .text
+    if ((&link_ram_ext_copy_start != &link_ram_ext_copy_flash_start) && (link_ram_ext_copy_size != 0)) {
+        _memcpy(&link_ram_ext_copy_start, &link_ram_ext_copy_flash_start, link_ram_ext_copy_size);
     }
     // Copy .data
     if ((&link_global_data_start != &link_global_data_initial_values) && (link_global_data_size != 0)) {
