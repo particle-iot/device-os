@@ -92,7 +92,7 @@ int parseUriPath(const char* path, CoapOptions& opts) {
     return 0;
 }
 
-unsigned encodeBlockOption(int num, bool m) {
+unsigned encodeBlockOptionValue(int num, bool m) {
     unsigned opt = (num << 4) | BLOCK_SZX;
     if (m) {
         opt |= 0x08;
@@ -100,7 +100,7 @@ unsigned encodeBlockOption(int num, bool m) {
     return opt;
 }
 
-int decodeBlockOption(unsigned opt, int& num, bool& m) {
+int decodeBlockOptionValue(unsigned opt, int& num, bool& m) {
     unsigned szx = opt & 0x07;
     if (szx != BLOCK_SZX) {
         // Server is required to use exactly the same block size
@@ -351,6 +351,18 @@ struct CoapChannel::ConnectionHandler {
             openFailed(false),
             next(nullptr),
             prev(nullptr) {
+    }
+};
+
+struct CoapChannel::EncodingContext {
+    CoapMessageEncoder& encoder;
+    const Message* message;
+    bool hasMoreBlocks;
+
+    explicit EncodingContext(CoapMessageEncoder& encoder) :
+            encoder(encoder),
+            message(nullptr),
+            hasMoreBlocks(false) {
     }
 };
 
@@ -1127,7 +1139,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
     while (it.next()) {
         int r = 0;
         if (it.option() == CoapOption::BLOCK1) {
-            r = decodeBlockOption(it.toUInt(), blockIndex, hasMore);
+            r = decodeBlockOptionValue(it.toUInt(), blockIndex, hasMore);
             hasBlockOpt = true;
         } else if (it.option() == CoapOption::REQUEST_TAG) {
             if (it.size() <= CoapTag::MAX_SIZE) {
@@ -1273,6 +1285,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         req->payloadPos += d.payloadSize();
     }
 
+    // Acknowledge the request
     if (hasBlockOpt) {
         if (hasMore) {
             CHECK(sendResponseAck(CoapCode::CONTINUE));
@@ -1283,9 +1296,8 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         }
         req->state = MessageState::READ;
     }
-    // Acknowledge the request
     CHECK(sendEmptyAck());
-    addRefToList(recvReqs_, req); // TODO: Support No-Response option
+    addRefToList(recvReqs_, req);
 
     if (!req->payload) {
         // Acquire the message buffer
@@ -1297,6 +1309,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
     NAMED_SCOPE_GUARD(releaseMsgBufGuard, {
         releaseMessageBuffer();
     });
+
     // Invoke the request handler
     assert(handler && handler->callback);
     int r = handler->callback(reinterpret_cast<coap_message*>(req.get()), path, req->method, req->id, handler->callbackArg);
@@ -1306,6 +1319,7 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
         // TODO: Send an error response if it wasn't sent by the handler
         return Result::HANDLED;
     }
+
     // Transfer ownership over the message to called code
     req.unwrap();
     releaseMsgBufGuard.dismiss();
@@ -1344,7 +1358,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     while (it.next()) {
         int r = 0;
         if (it.option() == CoapOption::BLOCK2) {
-            r = decodeBlockOption(it.toUInt(), blockIndex, hasMore);
+            r = decodeBlockOptionValue(it.toUInt(), blockIndex, hasMore);
         } else if (it.option() == CoapOption::ETAG) {
             if (it.size() <= CoapTag::MAX_SIZE) {
                 etag = CoapTag(it.data(), it.size());
@@ -1512,7 +1526,7 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
             if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
                 // Check if a response is needed
                 auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
-                if (opt && (opt->toUint() & 0x1a) == 0x1a) { // RFC 7967, 2.1
+                if (opt && (opt->toUint() & 26) == 26) { // Suppress all response codes (RFC 7967, 2.1)
                     noResp = true;
                 }
             }
@@ -1557,31 +1571,35 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     }
     e.token(msg->token.data(), msg->token.size());
 
+    EncodingContext ctx(e);
+    ctx.message = msg.get();
+    ctx.hasMoreBlocks = msg->hasMore.value_or(false);
+
     if (isRequest) {
         auto req = staticPtrCast<RequestMessage>(msg);
         if (req->type == MessageType::BLOCK_REQUEST && req->tag.size() > 0) {
             // Requesting the next block of a blockwise response
-            encodeOption(e, req, CoapOption::ETAG /* 4 */, req->tag.data(), req->tag.size());
+            encodeOption(ctx, CoapOption::ETAG /* 4 */, req->tag.data(), req->tag.size());
         }
         if (req->blockIndex.has_value()) {
             // See control vs descriptive usage of the block options in RFC 7959, 2.3
             if (req->type == MessageType::BLOCK_REQUEST) {
-                auto opt = encodeBlockOption(req->blockIndex.value(), false /* m */);
-                encodeOption(e, req, CoapOption::BLOCK2 /* 23 */, opt);
+                auto opt = encodeBlockOptionValue(req->blockIndex.value(), false /* m */);
+                encodeOption(ctx, CoapOption::BLOCK2 /* 23 */, opt);
             } else {
                 assert(req->hasMore.has_value());
-                auto opt = encodeBlockOption(req->blockIndex.value(), req->hasMore.value());
-                encodeOption(e, req, CoapOption::BLOCK1 /* 27 */, opt);
+                auto opt = encodeBlockOptionValue(req->blockIndex.value(), req->hasMore.value());
+                encodeOption(ctx, CoapOption::BLOCK1 /* 27 */, opt);
             }
         }
         if (req->type == MessageType::REQUEST && req->tag.size() > 0) {
             // Sending the next block of a blockwise request
-            encodeOption(e, req, CoapOption::REQUEST_TAG /* 292 */, req->tag.data(), req->tag.size());
+            encodeOption(ctx, CoapOption::REQUEST_TAG /* 292 */, req->tag.data(), req->tag.size());
         }
     } // TODO: Support device-to-cloud blockwise responses
 
     // Encode remaining options
-    encodeOptions(e, msg);
+    encodeOptions(ctx);
 
     auto msgBuf = (char*)msgBuf_.buf();
     size_t newPrefixSize = CHECK(e.encode());
@@ -1720,24 +1738,27 @@ int CoapChannel::sendEmptyAck() {
     return 0;
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num,
-        const char* data, size_t size) {
+void CoapChannel::encodeOption(EncodingContext& ctx, CoapOption num, const char* data, size_t size) {
     // Encode the options that must precede the given option in the serialized message
-    encodeOptions(e, msg, (unsigned)num);
+    encodeOptions(ctx, (unsigned)num);
     // Encode the given option
-    e.option(num, data, size);
+    ctx.encoder.option(num, data, size);
 }
 
-void CoapChannel::encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val) {
-    encodeOptions(e, msg, (unsigned)num);
-    e.option(num, val);
+void CoapChannel::encodeOption(EncodingContext& ctx, CoapOption num, unsigned val) {
+    encodeOptions(ctx, (unsigned)num);
+    ctx.encoder.option(num, val);
 }
 
-void CoapChannel::encodeOptions(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, unsigned lastNum) {
-    auto lastEncodedNum = e.lastOptionNumber();
-    auto opt = msg->options.findNext(lastEncodedNum);
-    while (opt && opt->number() <= lastNum) {
-        e.option(opt->number(), opt->data(), opt->size());
+void CoapChannel::encodeOptions(EncodingContext& ctx, unsigned lastNumToEncode) {
+    auto lastEncodedNum = ctx.encoder.lastOptionNumber();
+    auto opt = ctx.message->options.findNext(lastEncodedNum);
+    unsigned num = 0;
+    while (opt && (num = opt->number()) <= lastNumToEncode) {
+        // The No-Response option is only added to the last block of the request
+        if (num != CoapOption::NO_RESPONSE || !ctx.hasMoreBlocks) {
+            ctx.encoder.option(num, opt->data(), opt->size());
+        }
         opt = opt->next();
     }
 }

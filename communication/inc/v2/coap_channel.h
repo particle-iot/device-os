@@ -150,6 +150,7 @@ private:
     struct ResponseMessage;
     struct RequestHandler;
     struct ConnectionHandler;
+    struct EncodingContext;
 
     CoapChannel(); // Use instance()
 
@@ -184,9 +185,9 @@ private:
     int sendResponseAck(CoapCode code);
     int sendEmptyAck();
 
-    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, const char* data, size_t size);
-    void encodeOption(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, CoapOption num, unsigned val);
-    void encodeOptions(CoapMessageEncoder& e, const RefCountPtr<Message>& msg, unsigned lastNum = MAX_COAP_OPTION_NUMBER);
+    void encodeOption(EncodingContext& ctx, CoapOption num, const char* data, size_t size);
+    void encodeOption(EncodingContext& ctx, CoapOption num, unsigned val);
+    void encodeOptions(EncodingContext& ctx, unsigned lastNumToEncode = MAX_COAP_OPTION_NUMBER);
 
     int handleProtocolError(ProtocolError error);
 
