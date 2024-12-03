@@ -282,14 +282,14 @@ public:
      * @param size Data size.
      * @return This event instance.
      */
-    CloudEvent& maxHeapSize(size_t size);
+    CloudEvent& maxDataSizeInRam(size_t size);
 
     /**
      * Get the maximum size of event data that can be store on the heap.
      *
      * @return Data size.
      */
-    size_t maxHeapSize() const;
+    size_t maxDataSizeInRam() const;
 
     /**
      * Set a callback to be invoked when the status of the event changes.
@@ -343,7 +343,9 @@ public:
     /**
      * Cancel sending the event.
      *
-     * Calling this method is no-op if the event is not currently being sent to the Cloud.
+     * This method has no effect if the event is not currently being sent to the Cloud.
+     *
+     * A cancelled event cannot be published again.
      */
     void cancel();
 
@@ -423,9 +425,9 @@ public:
 protected:
     typedef void OnEventReceived(CloudEvent event);
 
-    // The methods below are called by CloudClass
-
     int publish();
+
+    static bool canPublish(size_t size);
 
     static int subscribe(const char* prefix, std::function<OnEventReceived> callback);
     static void unsubscribeAll();
@@ -465,9 +467,9 @@ private:
     }
 
     static int receiveRequestApp(CoapMessagePtr msg);
-    static int receiveRequestSystem(coap_message* msg, const char* path, int method, int req_id, void* arg);
+    static int receiveRequestSystem(coap_message* msg, const char* path, int method, int reqId, void* arg);
 
-    static void sendComplete(int err, void* arg);
+    static void sendComplete(int err, int reqId, void* arg);
 
     friend class ::CloudClass;
 };

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <mutex>
 #include <cstring>
 #include <cstdio>
 
@@ -38,6 +39,84 @@ namespace particle {
 namespace {
 
 const size_t DEFAULT_MAX_PAYLOAD_HEAP_SIZE = COAP_BLOCK_SIZE;
+
+const size_t MAX_EVENT_DATA_IN_FLIGHT = 32 * 1024;
+
+class EventLock {
+public:
+    ~EventLock() {
+        if (mutex_) {
+            os_mutex_recursive_destroy(mutex_);
+        }
+    }
+
+    void lock() {
+        if (mutex_) {
+            os_mutex_recursive_lock(mutex_);
+        }
+    }
+
+    void unlock() {
+        if (mutex_) {
+            os_mutex_recursive_unlock(mutex_);
+        }
+    }
+
+    static EventLock& instance() {
+        static EventLock lock;
+        return lock;
+    }
+
+private:
+    os_mutex_recursive_t mutex_;
+
+    EventLock() :
+            mutex_(nullptr) {
+        os_mutex_recursive_create(&mutex_);
+    }
+};
+
+class RateLimiter {
+public:
+    bool take(size_t size) {
+        std::lock_guard lock(EventLock::instance());
+        size = sizeInFullBlocks(size);
+        if (dataInFlight_ + size > MAX_EVENT_DATA_IN_FLIGHT) {
+            return false;
+        }
+        dataInFlight_ += size;
+        return true;
+    }
+
+    bool canTake(size_t size) {
+        std::lock_guard lock(EventLock::instance());
+        return dataInFlight_ + sizeInFullBlocks(size) <= MAX_EVENT_DATA_IN_FLIGHT;
+    }
+
+    void give(size_t size) {
+        std::lock_guard lock(EventLock::instance());
+        dataInFlight_ -= sizeInFullBlocks(size);
+        if (dataInFlight_ < 0) {
+            dataInFlight_ = 0;
+        }
+    }
+
+    static RateLimiter& instance() {
+        static RateLimiter limiter;
+        return limiter;
+    }
+
+private:
+    int dataInFlight_;
+
+    RateLimiter() :
+            dataInFlight_(0) {
+    }
+
+    static size_t sizeInFullBlocks(size_t size) {
+        return std::max<size_t>(((size + COAP_BLOCK_SIZE - 1) / COAP_BLOCK_SIZE) * COAP_BLOCK_SIZE, COAP_BLOCK_SIZE);
+    }
+};
 
 int getUriPath(coap_message* msg, char* path, size_t size) {
     auto p = path;
@@ -289,7 +368,7 @@ Variant CloudEvent::dataAsVariant() {
     return v;
 }
 
-CloudEvent& CloudEvent::maxHeapSize(size_t size) {
+CloudEvent& CloudEvent::maxDataSizeInRam(size_t size) {
     if (!isWritable() || d_->payload) {
         return *this;
     }
@@ -297,7 +376,7 @@ CloudEvent& CloudEvent::maxHeapSize(size_t size) {
     return *this;
 }
 
-size_t CloudEvent::maxHeapSize() const {
+size_t CloudEvent::maxDataSizeInRam() const {
     if (!d_) {
         return DEFAULT_MAX_PAYLOAD_HEAP_SIZE;
     }
@@ -332,7 +411,11 @@ void CloudEvent::cancel() {
     }
     coap_cancel_request(d_->requestId, nullptr /* reserved */);
     d_->requestId = COAP_INVALID_REQUEST_ID;
-    setFailed(Error::CANCELLED);
+    RateLimiter::instance().give(this->size());
+    // TODO: For now, transition to an invalid state as an event in a failed state can be sent again
+    // and that would create a race condition between cancellation and normal completion of the event
+    // in sendComplete()
+    setInvalid(Error::CANCELLED);
 }
 
 void CloudEvent::reset() {
@@ -488,13 +571,25 @@ int CloudEvent::publish() {
         LOG(ERROR, "Event name is missing");
         return setFailed(Error::INVALID_STATE);
     }
+    size_t size = this->size();
+    if (!RateLimiter::instance().take(size)) {
+        return Error::LIMIT_EXCEEDED;
+    }
+    NAMED_SCOPE_GUARD(limiterGiveGuard, {
+        RateLimiter::instance().give(size);
+    });
     setStatus(Status::SENDING);
     int r = send();
     if (r < 0) {
         LOG(ERROR, "Failed to send event: %d", r);
         return setFailed(r);
     }
+    limiterGiveGuard.dismiss();
     return 0;
+}
+
+bool CloudEvent::canPublish(size_t size) {
+    return RateLimiter::instance().canTake(size);
 }
 
 int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> callback) {
@@ -546,12 +641,10 @@ int CloudEvent::send() {
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
     CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */,
             [](int reqId, void* arg) { // ack_cb
-                sendComplete(0 /* err */, arg);
+                sendComplete(0 /* err */, reqId, arg);
                 return 0;
             },
-            [](int err, int reqId, void* arg) { // error_cb
-                sendComplete(err, arg);
-            }, d_.get(), nullptr /* reserved */));
+            sendComplete /* error_cb */, d_.get(), nullptr /* reserved */));
     // The system now owns the message
     msg.release();
     // Keep the reference around until either the ACK or error callback is called
@@ -657,7 +750,7 @@ int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int
 }
 
 // Called in the system thread
-void CloudEvent::sendComplete(int err, void* arg) {
+void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
     auto d = RefCountPtr<Data>::wrap(static_cast<Data*>(arg));
     d->sendResult = err;
     // Run a callback in the application thread to update the status of the event
@@ -667,6 +760,7 @@ void CloudEvent::sendComplete(int err, void* arg) {
             return; // The event was cancelled
         }
         event.d_->requestId = COAP_INVALID_REQUEST_ID;
+        RateLimiter::instance().give(event.size());
         if (event.d_->sendResult < 0) {
             LOG(ERROR, "Failed to send event: %d", event.d_->sendResult);
             event.setFailed(event.d_->sendResult);
