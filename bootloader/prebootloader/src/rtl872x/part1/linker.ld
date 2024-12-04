@@ -77,17 +77,6 @@ SECTIONS
         link_wifi_fw_used_end = . ;
     } > WIFI_FW_RAM AT> APP_FLASH
 
-    .ram_text_ext :
-    {
-        link_ram_ext_copy_flash_start = LOADADDR( .ram_text_ext );
-        . = ALIGN(4);
-        link_ram_ext_copy_start = .;
-
-        *(.text)
-        *(.text.*)
-        link_ram_ext_copy_end = .;
-    } > SRAM_EXT AT> APP_FLASH
-
     .ram_text :
     {
         link_ram_copy_flash_start = LOADADDR( .ram_text );
@@ -137,6 +126,17 @@ SECTIONS
         . = ALIGN(4);
         link_ram_copy_end = .;
     } > SRAM AT> APP_FLASH
+
+    .ram_text_ext :
+    {
+        link_ram_ext_copy_flash_start = LOADADDR( .ram_text_ext );
+        . = ALIGN(4);
+        link_ram_ext_copy_start = .;
+
+        *(.text)
+        *(.text.*)
+        link_ram_ext_copy_end = .;
+    } > SRAM_EXT AT> APP_FLASH
 
     /* Static RAM start */
     INCLUDE linker_static_ram_start.ld
