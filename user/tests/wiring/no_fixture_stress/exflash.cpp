@@ -211,7 +211,7 @@ test(EXFLASH_03_aligned_and_unaligned_writes_from_internal_flash_work) {
     assertNotEqual(addr, (uintptr_t)0);
     assertEqual(addr % 4, 0);
 
-    static uint8_t dummy[8192 + 4] __attribute((aligned(4))) = {0xff, 0xff, 0xff, 0xff};
+    static const uint8_t dummy[8192 + 4] __attribute__((aligned(4))) = {0xff, 0xff, 0xff, 0xff};
 
     for (size_t iOffset = 0; iOffset < 4; iOffset++) {
         for (size_t oOffset = 0; oOffset  < 4; oOffset++) {
