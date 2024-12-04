@@ -19,12 +19,17 @@ x                                                                               
 | Main stack                  |            | Main stack                            |
 +-----------------------------+ 0x0008F000 +---------------------------------------+
 |                             |            |                                       |
-| Heap                        |            |                                       |
+|                             |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            |                                       |
 | KM0 part1 static RAM        |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            | Heap                                  |
 | KM0 part1 RAM code          |            |                                       |
++-----------------------------+ 0x00086010 |                                       |
+| KM0 part1 Dynalib           |            |                                       |
 +-----------------------------+ 0x00086000 |                                       |
+|                             |            |                                       |
+| KM0 part1 RAM code ext      |            |                                       |
++-----------------------------+ 0x00083400 |                                       |
 |                             |            |                                       |
 | KM0 MBR static RAM          |            |                                       |
 +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+            +~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+
@@ -78,11 +83,15 @@ platform_km0_bootloader_stack_start = platform_km0_bootloader_stack_end - platfo
 
 
 /* Bootloader RAM, contains static data and code */
-platform_km0_mbr_ram_size  = 16K;
+platform_km0_mbr_ram_size  = 5K;
 platform_km0_mbr_ram_start = platform_km0_ram_start;
 platform_km0_mbr_ram_end   = platform_km0_mbr_ram_start + platform_km0_mbr_ram_size;
 
-platform_km0_part1_ram_start = platform_km0_mbr_ram_end;
+platform_km0_part1_ram_ext_size = 11K;
+platform_km0_part1_ram_ext_start = platform_km0_mbr_ram_end;
+platform_km0_part1_ram_ext_end = platform_km0_part1_ram_ext_start + platform_km0_part1_ram_ext_size;
+
+platform_km0_part1_ram_start = platform_km0_part1_ram_ext_end;
 platform_km0_part1_ram_end = platform_km0_bootloader_stack_start;
 platform_km0_part1_ram_size = platform_km0_part1_ram_end - platform_km0_part1_ram_start;
 

@@ -264,39 +264,7 @@ void HAL_Core_Restore_Interrupt(IRQn_Type irqn) {
 
 #if HAL_PLATFORM_PROHIBIT_XIP
 static void prohibit_xip(void) {
-    const uint8_t regions = (MPU->TYPE & MPU_TYPE_DREGION_Msk) >> MPU_TYPE_DREGION_Pos;
-    // Disable MPU
-    MPU->CTRL = 0;
-    // Clear all regions
-    for (uint8_t i = 0; i < regions; i++) {
-        MPU->RNR    = i;
-        MPU->RASR   = 0;
-        MPU->RBAR   = 0;
-    }
-
-    uint8_t st = 0;
-    sd_nvic_critical_region_enter(&st);
-
-    // Forbid access to XIP
-    MPU->RNR = 0;
-    MPU->RBAR = EXTERNAL_FLASH_XIP_BASE;
-    // XN: 1, instruction fetches disabled
-    // AP: 0b000, all accesses generate a permission fault
-    // TEX: 0b000, S: 0, C: 1, B: 0, as suggested by core manual for flash memory
-    const uint32_t attr = 0x10050000;
-    MPU->RASR = attr | (1 << MPU_RASR_ENABLE_Pos) | ((31 - __CLZ(EXTERNAL_FLASH_XIP_LENGTH) - 1) << MPU_RASR_SIZE_Pos);
-    // Enable MPU
-    MPU->CTRL = 0x00000005;
-
-    sd_nvic_critical_region_exit(st);
-
-    // Use a DSB followed by an ISB instruction to ensure that the new MPU configuration is used by subsequent instructions.
-    __DSB();
-    __ISB();
-
-    // Uncomment the code bellow will trigger hardfault
-    // uint8_t data = *((uint8_t*)(EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_OTA_ADDRESS));
-    // LOG(ERROR, "%d", data);
+    // FIXME
 }
 #endif // HAL_PLATFORM_PROHIBIT_XIP
 

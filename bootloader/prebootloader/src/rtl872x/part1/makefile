@@ -15,6 +15,7 @@ LIB_DIRS += $(dir $(LIB_DEPS))
 BOOTLOADER_USE_LTO?=y
 export COMPILE_LTO=BOOTLOADER_USE_LTO
 export BOOTLOADER_MODULE=1
+export LINKER_NON_CONT_REGIONS=1
 
 include $(PROJECT_ROOT)/build/platform-id.mk
 # Include top level makefile which can override certain things
