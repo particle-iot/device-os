@@ -19,6 +19,10 @@
 #include <mutex>
 #include <cstring>
 #include <cstdio>
+#include <cerrno>
+
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "spark_wiring_cloud_event.h"
 #include "spark_wiring_variant.h"
@@ -363,10 +367,110 @@ Variant CloudEvent::dataAsVariant() const {
 }
 
 CloudEvent& CloudEvent::loadData(const char* path) {
+    if (!isWritable()) {
+        return *this;
+    }
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        LOG(ERROR, "open() failed: %d", errno);
+        setFailed(Error::FILE);
+        return *this;
+    }
+    NAMED_SCOPE_GUARD(closeFileGuard, {
+        int r = close(fd);
+        if (r < 0) {
+            LOG(ERROR, "close() failed: %d", errno);
+        }
+    });
+    auto payload = getValidPayload();
+    if (!payload) {
+        return *this;
+    }
+    char buf[128];
+    size_t offs = 0;
+    for (;;) {
+        int r = ::read(fd, buf, sizeof(buf));
+        if (r < 0) {
+            LOG(ERROR, "read() failed: %d", errno);
+            setFailed(Error::FILE);
+            return *this;
+        }
+        if (r == 0) {
+            break; // EOF
+        }
+        size_t n = r;
+        r = coap_write_payload(payload, buf, n, offs, nullptr /* reserved */);
+        if (r < 0) {
+            if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+                LOG(ERROR, "Event data is too large");
+                setFailed(r);
+                return *this;
+            }
+            LOG(ERROR, "coap_write_payload() failed: %d", r);
+            setInvalid(r);
+            return *this;
+        }
+        offs += n;
+    }
+    closeFileGuard.dismiss();
+    int r = close(fd);
+    if (r < 0) {
+        LOG(ERROR, "close() failed: %d", errno);
+        setFailed(Error::FILE);
+        return *this;
+    }
+    r = coap_set_payload_size(payload, offs, nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
+        setInvalid(r);
+        return *this;
+    }
+    d_->pos = offs;
     return *this;
 }
 
 int CloudEvent::saveData(const char* path) {
+    if (!isReadable()) {
+        return error();
+    }
+    int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY);
+    if (fd < 0) {
+        LOG(ERROR, "open() failed: %d", errno);
+        return Error::FILE;
+    }
+    NAMED_SCOPE_GUARD(closeFileGuard, {
+        int r = close(fd);
+        if (r < 0) {
+            LOG(ERROR, "close() failed: %d", errno);
+        }
+    });
+    if (d_->payload) {
+        char buf[128];
+        size_t offs = 0;
+        for (;;) {
+            int r = coap_read_payload(d_->payload.get(), buf, sizeof(buf), offs, nullptr /* reserved */);
+            if (r < 0) {
+                if (r == Error::END_OF_STREAM) {
+                    break;
+                }
+                LOG(ERROR, "coap_read_payload() failed: %d", r);
+                return r;
+            }
+            size_t n = r;
+            r = ::write(fd, buf, n);
+            if (r < 0) {
+                LOG(ERROR, "read() failed: %d", errno);
+                return Error::FILE;
+            }
+            offs += n;
+        }
+    }
+    closeFileGuard.dismiss();
+    int r = close(fd);
+    if (r < 0) {
+        LOG(ERROR, "close() failed: %d", errno);
+        return Error::FILE;
+    }
     return 0;
 }
 
@@ -442,7 +546,7 @@ CloudEvent& CloudEvent::maxDataInRam(size_t size) {
     if (!isWritable() || d_->payload) {
         return *this;
     }
-    d_->maxHeapSize = std::min(size, MAX_DATA_SIZE);
+    d_->maxHeapSize = std::min(size, MAX_SIZE);
     return *this;
 }
 

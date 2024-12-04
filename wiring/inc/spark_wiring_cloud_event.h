@@ -95,8 +95,10 @@ public:
 
     /**
      * Maximum supported size of event data.
+     *
+     * Events containing up to 16384 bytes of data are supported.
      */
-    static const size_t MAX_DATA_SIZE = COAP_MAX_PAYLOAD_SIZE;
+    static const size_t MAX_SIZE = COAP_MAX_PAYLOAD_SIZE;
 
     /**
      * Default constructor.
