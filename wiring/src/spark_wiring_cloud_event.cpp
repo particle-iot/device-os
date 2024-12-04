@@ -370,7 +370,7 @@ int CloudEvent::saveData(const char* path) {
     return 0;
 }
 
-int CloudEvent::setDataSize(size_t size) {
+int CloudEvent::setSize(size_t size) {
     if (!isWritable()) {
         int err = error();
         if (err < 0) {
@@ -397,7 +397,7 @@ int CloudEvent::setDataSize(size_t size) {
     return 0;
 }
 
-size_t CloudEvent::dataSize() const {
+size_t CloudEvent::size() const {
     if (!isReadable() || !d_->payload) {
         return 0;
     }
@@ -481,7 +481,7 @@ void CloudEvent::cancel() {
     }
     coap_cancel_request(d_->requestId, nullptr /* reserved */);
     d_->requestId = COAP_INVALID_REQUEST_ID;
-    RateLimiter::instance().give(dataSize());
+    RateLimiter::instance().give(this->size());
     // TODO: For now, transition to an invalid state as an event in a failed state can be sent again
     // and that would create a race condition between cancellation and normal completion of the event
     // in sendComplete()
@@ -571,15 +571,15 @@ int CloudEvent::publish() {
     }
     if (status == Status::SENDING) {
         LOG(ERROR, "Event is being sent already");
-        return Error::INVALID_STATE;
+        return Error::BUSY;
     }
     if (!d_->name) {
         LOG(ERROR, "Event name is missing");
-        return setFailed(Error::INVALID_STATE);
+        return setFailed(Error::INVALID_ARGUMENT);
     }
-    size_t size = dataSize();
+    size_t size = this->size();
     if (!RateLimiter::instance().take(size)) {
-        LOG(ERROR, "Reached limit for event data in flight");
+        LOG(ERROR, "Limit for event data in flight is reached");
         return setFailed(Error::LIMIT_EXCEEDED);
     }
     NAMED_SCOPE_GUARD(rateLimiterGuard, {
@@ -763,7 +763,7 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
             return; // The event was cancelled
         }
         event.d_->requestId = COAP_INVALID_REQUEST_ID;
-        RateLimiter::instance().give(event.dataSize());
+        RateLimiter::instance().give(event.size());
         if (event.d_->sendResult < 0) {
             LOG(ERROR, "Failed to send event: %d", event.d_->sendResult);
             event.setFailed(event.d_->sendResult);

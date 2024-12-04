@@ -271,22 +271,22 @@ public:
      * @param size New size.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    int setDataSize(size_t size);
+    int setSize(size_t size);
 
     /**
      * Get the size of the event data.
      *
      * @return Data size.
      */
-    size_t dataSize() const;
+    size_t size() const;
 
     /**
-     * Check if the event has payload data.
+     * Check if the event data is empty.
      *
-     * @return `true` if the event has payload data, otherwise `false`.
+     * @return `true` if the event data is empty, otherwise `false`.
      */
-    bool hasData() const {
-        return dataSize() > 0;
+    bool isEmpty() const {
+        return size() > 0;
     }
 
     /**
@@ -341,40 +341,62 @@ public:
     Status status() const;
 
     /**
-     * Check if the event is valid.
+     * Check if this is a newly created event.
      *
-     * @return `true` if the event is valid, otherwise `false`.
+     * This method is a shorthand for `event.status() == CloudEvent::NEW`.
+     *
+     * @return `true` if this is a new event, otherwise `false`.
      */
-    bool valid() const {
-        return status() != Status::INVALID;
+    bool isNew() const {
+        return status() == Status::NEW;
     }
 
     /**
      * Check if the event is being sent to the Cloud.
      *
+     * This method is a shorthand for `event.status() == CloudEvent::SENDING`.
+     *
      * @return `true` if the event is being sent to the Cloud, otherwise `false`.
      */
-    bool sending() {
+    bool isSending() {
         return status() == Status::SENDING;
     }
 
     /**
      * Check if the event was sent to the Cloud successfully.
      *
+     * This method is a shorthand for `event.status() == CloudEvent::SENT`.
+     *
      * @return `true` if the event was sent successfully, otherwise `false`.
      */
-    bool sent() const {
+    bool isSent() const {
         return status() == Status::SENT;
     }
 
     /**
-     * Check if the event is in a failed or invalid state.
+     * Check if the event is not in a failed or invalid state.
+     *
+     * This method is a shorthand for `event.status() != CloudEvent::FAILED && event.status() != CloudEvent::INVALID`.
+     *
+     * If the returned value is `false`, the error code of the last failed operation can be obtained
+     * via `error()`.
      *
      * @return `true` if the event is not in a failed or invalid state, otherwise `false`.
      */
-    bool ok() const {
+    bool isOk() const {
         auto s = status();
         return s != Status::FAILED && s != Status::INVALID;
+    }
+
+    /**
+     * Check if the event is valid.
+     *
+     * This method is a shorthand for `event.status() != CloudEvent::INVALID`.
+     *
+     * @return `true` if the event is valid, otherwise `false`.
+     */
+    bool isValid() const {
+        return status() != Status::INVALID;
     }
 
     /**

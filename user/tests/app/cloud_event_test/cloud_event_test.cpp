@@ -319,14 +319,14 @@ int newApiInit(const char* testName, unsigned eventCount) {
 int newApiRun() {
     // Fail the test if any of the events have failed
     for (auto& ev: events) {
-        if (!ev.ok()) {
+        if (!ev.isOk()) {
             return ev.error();
         }
     }
     // Proceed to the next step if all the events have been sent successfully
     bool allSent = true;
     for (auto& ev: events) {
-        if (!ev.sent()) {
+        if (!ev.isSent()) {
             allSent = false;
             break;
         }
@@ -336,7 +336,7 @@ int newApiRun() {
     }
     // Keep waiting if some of the events are still in progress
     for (auto& ev: events) {
-        if (ev.sending()) {
+        if (ev.isSending()) {
             testIdle();
             return 0;
         }
@@ -360,7 +360,7 @@ int newApiRun() {
     for (auto& ev: events) {
         bool ok = Particle.publish(ev);
         if (!ok) {
-            int err = ev.ok() ? Error::UNKNOWN : ev.error();
+            int err = ev.isOk() ? Error::BUSY : ev.error();
             Log.error("Particle.publish() failed: %d", err);
             return err;
         }
