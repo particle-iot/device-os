@@ -105,7 +105,7 @@ int hal_flash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size)
     __flash_acquire();
 
     int ret = hal_flash_common_write(addr, data_buf, data_size,
-                                     &fstorage_perform_write, &hal_flash_common_dummy_read);
+                                     &fstorage_perform_write, &hal_flash_common_dummy_read, 0);
 
     __flash_release();
 

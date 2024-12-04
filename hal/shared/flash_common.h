@@ -34,9 +34,13 @@ extern "C" {
 typedef int (*hal_flash_common_write_cb)(uintptr_t addr, const uint8_t* data, size_t size);
 typedef int (*hal_flash_common_read_cb)(uintptr_t addr, uint8_t* data, size_t size);
 
+typedef enum hal_flash_common_write_flags {
+    HAL_FLASH_COMMON_WRITE_FLAG_FORCE_TEMP_BUFFER = 0x01
+} hal_flash_common_write_flags;
+
 int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
                            hal_flash_common_write_cb write_func,
-                           hal_flash_common_read_cb read_func);
+                           hal_flash_common_read_cb read_func, uint32_t flags);
 
 
 /* This function can be used for unaligned writes to retrive the data from the flash

@@ -451,8 +451,13 @@ int hal_exflash_uninit(void) {
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     FlashLock lk;
 
+    uint32_t flags = 0;
+    if (!nrfx_is_in_ram(data_buf)) {
+        flags |= HAL_FLASH_COMMON_WRITE_FLAG_FORCE_TEMP_BUFFER;
+    }
+
     int ret = hal_flash_common_write(addr, data_buf, data_size,
-                                     &perform_write, &hal_flash_common_dummy_read);
+                                     &perform_write, &hal_flash_common_dummy_read, flags);
     exflash_qspi_wait_completion();
     return ret;
 }

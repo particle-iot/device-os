@@ -564,7 +564,7 @@ int hal_exflash_uninit(void) {
 __attribute__((section(".ram.text"), noinline))
 int hal_exflash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
     ExFlashLock lk;
-    CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+    CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read, 0));
     dcacheCleanInvalidateAligned(addr + SPI_FLASH_BASE, data_size);
     return SYSTEM_ERROR_NONE;
 }
@@ -878,7 +878,7 @@ int hal_exflash_write_special(hal_exflash_special_sector_t sp, uintptr_t addr, c
 
             FLASH_TxCmd(MXIC_FLASH_CMD_ENSO, 0, nullptr);
             if (isSecureOtpMode(normalContent)) {
-                CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read));
+                CHECK(hal_flash_common_write(addr, data_buf, data_size, &perform_write, &hal_flash_common_dummy_read, 0));
             } else {
                 return SYSTEM_ERROR_INVALID_STATE;
             }
