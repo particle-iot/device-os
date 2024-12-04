@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "spark_wiring_stream.h"
+
 #include "coap_api.h"
 #include "coap_defs.h"
 #include "logging.h"
@@ -155,6 +157,66 @@ public:
 
 private:
     coap_payload* p_;
+};
+
+/**
+ * An input stream adapter for CoAP payload data.
+ */
+class CoapPayloadInputStream: public Stream {
+public:
+    explicit CoapPayloadInputStream(coap_payload* payload) :
+            payload_(payload),
+            pos_(0) {
+    }
+
+    int read() override {
+        char c;
+        if (readBytes(&c, 1) != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
+    size_t readBytes(char* data, size_t size) override {
+        int n = coap_read_payload(payload_, data, size, pos_, nullptr /* reserved */);
+        if (n < 0) {
+            return 0;
+        }
+        pos_ += n;
+        return n;
+    }
+
+    int peek() override {
+        char c;
+        int n = coap_read_payload(payload_, &c, 1, pos_, nullptr /* reserved */);
+        if (n != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
+    int available() override {
+        int size = coap_get_payload_size(payload_, nullptr /* reserved */);
+        if (size < 0) {
+            return 0;
+        }
+        return size - pos_;
+    }
+
+    size_t write(uint8_t b) override {
+        return 0; // Not supported
+    }
+
+    size_t write(const uint8_t* data, size_t size) override {
+        return 0; // Not supported
+    }
+
+    void flush() override {
+    }
+
+private:
+    coap_payload* payload_;
+    size_t pos_;
 };
 
 namespace protocol {

@@ -281,7 +281,6 @@ CloudEvent& CloudEvent::data(const Variant& data) {
     if (!payload) {
         return *this;
     }
-    // TODO: Don't use this stream object directly
     d_->pos = 0;
     int r = encodeToCBOR(data, *this);
     if (r < 0) {
@@ -349,18 +348,13 @@ String CloudEvent::dataAsString() const {
     return str;
 }
 
-Variant CloudEvent::dataAsVariant() {
+Variant CloudEvent::dataAsVariant() const {
     if (!isReadable() || !d_->payload) {
         return Variant();
     }
-    // TODO: Don't use this stream object directly
-    auto origPos = d_->pos;
-    d_->pos = 0;
-    SCOPE_GUARD({
-        d_->pos = origPos;
-    });
+    CoapPayloadInputStream stream(d_->payload.get());
     Variant v;
-    int r = decodeFromCBOR(v, *this);
+    int r = decodeFromCBOR(v, stream);
     if (r < 0) {
         LOG(ERROR, "decodeFromCBOR() failed: %d", r);
         return Variant();
@@ -368,7 +362,83 @@ Variant CloudEvent::dataAsVariant() {
     return v;
 }
 
-CloudEvent& CloudEvent::maxDataSizeInRam(size_t size) {
+CloudEvent& CloudEvent::loadData(const char* path) {
+    return *this;
+}
+
+int CloudEvent::saveData(const char* path) {
+    return 0;
+}
+
+int CloudEvent::setDataSize(size_t size) {
+    if (!isWritable()) {
+        int err = error();
+        if (err < 0) {
+            return err;
+        }
+        return Error::INVALID_STATE;
+    }
+    auto payload = getValidPayload();
+    if (!payload) {
+        return error();
+    }
+    int r = coap_set_payload_size(payload, size, nullptr /* reserved */);
+    if (r < 0) {
+        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
+            LOG(ERROR, "Event data is too large");
+            return setFailed(r);
+        }
+        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
+        return setInvalid(r);
+    }
+    if (d_->pos > size) {
+        d_->pos = size;
+    }
+    return 0;
+}
+
+size_t CloudEvent::dataSize() const {
+    if (!isReadable() || !d_->payload) {
+        return 0;
+    }
+    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+    if (r < 0) {
+        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
+        return 0;
+    }
+    return r;
+}
+
+int CloudEvent::seek(size_t pos) {
+    // The current position is used both when reading and writing so using the least restrictive
+    // status check here
+    if (!isReadable()) {
+        return error();
+    }
+    size_t size = 0;
+    if (d_->payload) {
+        int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
+        if (r < 0) {
+            LOG(ERROR, "coap_get_payload_size() failed: %d", r);
+            return r;
+        }
+        size = r;
+    }
+    if (pos > size) {
+        pos = size;
+    }
+    d_->pos = pos;
+    return pos;
+}
+
+size_t CloudEvent::pos() const {
+    if (!isReadable()) {
+        return 0;
+    }
+    return d_->pos;
+}
+
+CloudEvent& CloudEvent::maxDataInRam(size_t size) {
     if (!isWritable() || d_->payload) {
         return *this;
     }
@@ -376,7 +446,7 @@ CloudEvent& CloudEvent::maxDataSizeInRam(size_t size) {
     return *this;
 }
 
-size_t CloudEvent::maxDataSizeInRam() const {
+size_t CloudEvent::maxDataInRam() const {
     if (!d_) {
         return DEFAULT_MAX_PAYLOAD_HEAP_SIZE;
     }
@@ -411,7 +481,7 @@ void CloudEvent::cancel() {
     }
     coap_cancel_request(d_->requestId, nullptr /* reserved */);
     d_->requestId = COAP_INVALID_REQUEST_ID;
-    RateLimiter::instance().give(this->size());
+    RateLimiter::instance().give(dataSize());
     // TODO: For now, transition to an invalid state as an event in a failed state can be sent again
     // and that would create a race condition between cancellation and normal completion of the event
     // in sendComplete()
@@ -485,77 +555,13 @@ int CloudEvent::write(const char* data, size_t size) {
     return r;
 }
 
-int CloudEvent::size(size_t size) {
-    if (!isWritable()) {
-        int err = error();
-        if (err < 0) {
-            return err;
-        }
-        return Error::INVALID_STATE;
-    }
-    auto payload = getValidPayload();
-    if (!payload) {
-        return error();
-    }
-    int r = coap_set_payload_size(payload, size, nullptr /* reserved */);
-    if (r < 0) {
-        if (r == Error::COAP_TOO_LARGE_PAYLOAD) {
-            LOG(ERROR, "Event data is too large");
-            return setFailed(r);
-        }
-        LOG(ERROR, "coap_set_payload_size() failed: %d", r);
-        return setInvalid(r);
-    }
-    if (d_->pos > size) {
-        d_->pos = size;
-    }
-    return 0;
-}
-
-size_t CloudEvent::size() const {
-    if (!isReadable() || !d_->payload) {
-        return 0;
-    }
-    int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-    if (r < 0) {
-        LOG(ERROR, "coap_get_payload_size() failed: %d", r);
-        return 0;
-    }
-    return r;
-}
-
-int CloudEvent::pos(size_t pos) {
-    // The current position is used both when reading and writing so using the least restrictive
-    // status check here
-    if (!isReadable()) {
-        return error();
-    }
-    size_t size = 0;
-    if (d_->payload) {
-        int r = coap_get_payload_size(d_->payload.get(), nullptr /* reserved */);
-        if (r < 0) {
-            LOG(ERROR, "coap_get_payload_size() failed: %d", r);
-            return r;
-        }
-        size = r;
-    }
-    if (pos > size) {
-        pos = size;
-    }
-    d_->pos = pos;
-    return pos;
-}
-
-size_t CloudEvent::pos() const {
-    if (!isReadable()) {
-        return 0;
-    }
-    return d_->pos;
-}
-
 CloudEvent& CloudEvent::operator=(CloudEvent event) {
     swap(*this, event);
     return *this;
+}
+
+bool CloudEvent::canPublish(size_t size) {
+    return RateLimiter::instance().canTake(size);
 }
 
 int CloudEvent::publish() {
@@ -571,25 +577,22 @@ int CloudEvent::publish() {
         LOG(ERROR, "Event name is missing");
         return setFailed(Error::INVALID_STATE);
     }
-    size_t size = this->size();
+    size_t size = dataSize();
     if (!RateLimiter::instance().take(size)) {
-        return Error::LIMIT_EXCEEDED;
+        LOG(ERROR, "Reached limit for event data in flight");
+        return setFailed(Error::LIMIT_EXCEEDED);
     }
-    NAMED_SCOPE_GUARD(limiterGiveGuard, {
+    NAMED_SCOPE_GUARD(rateLimiterGuard, {
         RateLimiter::instance().give(size);
     });
-    setStatus(Status::SENDING);
     int r = send();
     if (r < 0) {
         LOG(ERROR, "Failed to send event: %d", r);
         return setFailed(r);
     }
-    limiterGiveGuard.dismiss();
+    setStatus(Status::SENDING);
+    rateLimiterGuard.dismiss();
     return 0;
-}
-
-bool CloudEvent::canPublish(size_t size) {
-    return RateLimiter::instance().canTake(size);
 }
 
 int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> callback) {
@@ -760,7 +763,7 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
             return; // The event was cancelled
         }
         event.d_->requestId = COAP_INVALID_REQUEST_ID;
-        RateLimiter::instance().give(event.size());
+        RateLimiter::instance().give(event.dataSize());
         if (event.d_->sendResult < 0) {
             LOG(ERROR, "Failed to send event: %d", event.d_->sendResult);
             event.setFailed(event.d_->sendResult);

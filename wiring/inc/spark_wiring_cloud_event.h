@@ -217,6 +217,8 @@ public:
     /**
      * Set the event data.
      *
+     * The event data will be encoded in CBOR format.
+     *
      * @param data Event data.
      * @return This event instance.
      */
@@ -232,18 +234,20 @@ public:
     Buffer data() const;
 
     /**
-     * Get the event data.
+     * Get the event data as a `String`.
      *
      * @return Event data.
      */
     String dataAsString() const;
 
     /**
-     * Get the event data.
+     * Get the event data as a `Variant`.
+     *
+     * The event data is expected to be encoded in CBOR format.
      *
      * @return Event data.
      */
-    Variant dataAsVariant() /* FIXME: const */; // TODO: Rename?
+    Variant dataAsVariant() const;
 
     /**
      * Load the event data from a file.
@@ -262,16 +266,46 @@ public:
     int saveData(const char* path);
 
     /**
+     * Set the size of the event data.
+     *
+     * @param size New size.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int setDataSize(size_t size);
+
+    /**
+     * Get the size of the event data.
+     *
+     * @return Data size.
+     */
+    size_t dataSize() const;
+
+    /**
      * Check if the event has payload data.
      *
      * @return `true` if the event has payload data, otherwise `false`.
      */
     bool hasData() const {
-        return size() > 0;
+        return dataSize() > 0;
     }
 
     /**
-     * Set the maximum size of event data that can be store on the heap.
+     * Set the current position in the event data.
+     *
+     * @param pos New position.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int seek(size_t pos);
+
+    /**
+     * Get the current position in the event data.
+     *
+     * @return Current position.
+     */
+    size_t pos() const;
+
+    /**
+     * Set the maximum size of event data that can be stored on the heap.
      *
      * The data exceeding the specified size will be stored in a temporary file.
      *
@@ -282,14 +316,14 @@ public:
      * @param size Data size.
      * @return This event instance.
      */
-    CloudEvent& maxDataSizeInRam(size_t size);
+    CloudEvent& maxDataInRam(size_t size);
 
     /**
      * Get the maximum size of event data that can be store on the heap.
      *
      * @return Data size.
      */
-    size_t maxDataSizeInRam() const;
+    size_t maxDataInRam() const;
 
     /**
      * Set a callback to be invoked when the status of the event changes.
@@ -333,11 +367,22 @@ public:
         return status() == Status::SENT;
     }
 
+    /**
+     * Check if the event is in a failed or invalid state.
+     *
+     * @return `true` if the event is not in a failed or invalid state, otherwise `false`.
+     */
     bool ok() const {
         auto s = status();
         return s != Status::FAILED && s != Status::INVALID;
     }
 
+    /**
+     * Get the error code.
+     *
+     * @return 0 if the event is not in a failed or invalid state, otherwise an error code defined
+     *         by `Error::Type`.
+     */
     int error() const;
 
     /**
@@ -349,8 +394,23 @@ public:
      */
     void cancel();
 
+    /**
+     * Clear and reinitialize the event instance.
+     *
+     * Calling this method has the same effect as creating a new event instance:
+     *
+     * ```cpp
+     * // These two statements are equivalent
+     * event.reset();
+     * event = CloudEvent();
+     * ```
+     */
     void reset();
 
+    /**
+     * Methods reimplemented from base `Stream` class.
+     */
+    ///@{
     int read() override {
         char c;
         size_t n = read(&c, 1);
@@ -375,10 +435,6 @@ public:
 
     int available() override;
 
-    // Convenience overloads not available in Stream
-    int read(char* data, size_t size);
-    int peek(char* data, size_t size);
-
     size_t write(uint8_t b) override {
         return write(&b, 1);
     }
@@ -391,24 +447,38 @@ public:
         return r;
     }
 
-    // Convenience overloads not available in Print
+    void flush() override {
+    }
+    ///@}
+
+    /**
+     * Convenience overloads not available in the base `Stream` class.
+     */
+    ///@{
+    int read(char* data, size_t size);
+    int peek(char* data, size_t size);
+
     int write(const char* data) {
         return write(data, std::strlen(data));
     }
 
     int write(const char* data, size_t size);
+    ///@}
 
-    void flush() override {
-    }
-
-    int size(size_t size);
-    size_t size() const;
-
-    int pos(size_t pos);
-    size_t pos() const;
-
+    /**
+     * Assignment operator.
+     *
+     * @param event Event instance to assign from.
+     * @return This event instance.
+     */
     CloudEvent& operator=(CloudEvent event);
 
+    /**
+     * Comparison operators.
+     *
+     * Two event instances are considered equal if they reference the same underlying event data.
+     */
+    ///@{
     bool operator==(const CloudEvent& event) const {
         return d_.get() == event.d_.get();
     }
@@ -416,6 +486,16 @@ public:
     bool operator!=(const CloudEvent& event) const {
         return d_.get() != event.d_.get();
     }
+    ///@}
+
+    /**
+     * Check if an event with a given size would be within the limit for the amount of event data in
+     * flight once it's attempted to be published.
+     *
+     * @param size Size of the event data.
+     * @return `true` if the event can be published, otherwise `false`.
+     */
+    static bool canPublish(size_t size);
 
     friend void swap(CloudEvent& event1, CloudEvent& event2) {
         using std::swap;
@@ -426,8 +506,6 @@ protected:
     typedef void OnEventReceived(CloudEvent event);
 
     int publish();
-
-    static bool canPublish(size_t size);
 
     static int subscribe(const char* prefix, std::function<OnEventReceived> callback);
     static void unsubscribeAll();
