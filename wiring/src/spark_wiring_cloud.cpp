@@ -2,7 +2,6 @@
 #include <cstdio>
 
 #include "spark_wiring_cloud.h"
-#include "spark_wiring_cloud_event.h"
 #include "spark_wiring_ledger.h"
 #include "spark_wiring_variant.h"
 #include "spark_wiring_print.h"
@@ -162,7 +161,7 @@ Future<bool> CloudClass::publish(const char* name, const Variant& data, PublishF
     if (r < 0) {
         return Future<bool>((Error::Type)r);
     }
-    return publish_event(name, s.c_str(), s.length(), static_cast<int>(protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR),
+    return publish_event(name, s.c_str(), s.length(), static_cast<int>(protocol::CoapContentFormat::PARTICLE_STRUCTURED),
             DEFAULT_CLOUD_EVENT_TTL, flags);
 }
 
@@ -273,20 +272,24 @@ bool CloudClass::subscribe(const char* name, particle::EventHandlerWithVariantFn
     return subscribeWithFlags(name, h, fnPtr, SUBSCRIBE_FLAG_CBOR_DATA);
 }
 
-bool CloudClass::subscribe(const char* name, EventHandlerWithCloudEvent* handler) {
+bool CloudClass::subscribe(const char* name, EventHandlerWithCloudEvent* handler, const SubscribeOptions& opts) {
     std::function<EventHandlerWithCloudEvent> fn(handler);
     if (!fn) {
         return false;
     }
-    return subscribe(name, std::move(fn));
+    return subscribe(name, std::move(fn), opts);
 }
 
-bool CloudClass::subscribe(const char* name, std::function<EventHandlerWithCloudEvent> handler) {
-    bool ok = subscribeWithFlags(name, nullptr /* handler */, nullptr /* handlerData */, SUBSCRIBE_FLAG_LARGE_EVENT);
+bool CloudClass::subscribe(const char* name, std::function<EventHandlerWithCloudEvent> handler, const SubscribeOptions& opts) {
+    int flags = SUBSCRIBE_FLAG_LARGE_EVENT;
+    if (opts.structured()) {
+        flags |= SUBSCRIBE_FLAG_CBOR_DATA;
+    }
+    bool ok = subscribeWithFlags(name, nullptr /* handler */, nullptr /* handlerData */, flags);
     if (!ok) {
         return false;
     }
-    int r = CloudEvent::subscribe(name, std::move(handler));
+    int r = CloudEvent::subscribe(name, std::move(handler), opts);
     if (r < 0) {
         return false;
     }

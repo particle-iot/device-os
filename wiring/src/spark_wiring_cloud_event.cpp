@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "spark_wiring_cloud_event.h"
-#include "spark_wiring_variant.h"
+#include "spark_wiring_cloud.h"
 #include "spark_wiring_error.h"
 
 #include "system_cloud.h" // For MAX_EVENT_NAME_LENGTH
@@ -158,18 +158,18 @@ struct CloudEvent::Data: public RefCount {
     CoapPayloadPtr payload;
     std::function<OnStatusChange> onStatusChange;
     Status status;
+    ContentType contentType;
     size_t maxHeapSize;
     size_t pos;
-    int contentType;
     int requestId;
     int sendResult;
     int error;
 
     Data() :
             status(Status::NEW),
+            contentType(ContentType::TEXT),
             maxHeapSize(DEFAULT_MAX_PAYLOAD_HEAP_SIZE),
             pos(0),
-            contentType((int)ContentType::TEXT),
             requestId(COAP_INVALID_REQUEST_ID),
             sendResult(0),
             error(0) {
@@ -237,7 +237,7 @@ CloudEvent& CloudEvent::contentType(ContentType type) {
     if (!isWritable()) {
         return *this;
     }
-    d_->contentType = (int)type;
+    d_->contentType = type;
     return *this;
 }
 
@@ -245,7 +245,7 @@ ContentType CloudEvent::contentType() const {
     if (!d_) {
         return ContentType::TEXT;
     }
-    return (ContentType)d_->contentType;
+    return d_->contentType;
 }
 
 CloudEvent& CloudEvent::data(const char* data, size_t size) {
@@ -277,7 +277,7 @@ CloudEvent& CloudEvent::data(const char* data, size_t size) {
     return *this;
 }
 
-CloudEvent& CloudEvent::data(const Variant& data) {
+CloudEvent& CloudEvent::data(const EventData& data) {
     if (!isWritable()) {
         return *this;
     }
@@ -304,7 +304,7 @@ CloudEvent& CloudEvent::data(const Variant& data) {
         setInvalid(r);
         return *this;
     }
-    d_->contentType = (int)protocol::CoapContentFormat::PARTICLE_JSON_AS_CBOR;
+    d_->contentType = ContentType::STRUCTURED;
     return *this;
 }
 
@@ -330,7 +330,7 @@ Buffer CloudEvent::data() const {
     return buf;
 }
 
-String CloudEvent::dataAsString() const {
+String CloudEvent::dataString() const {
     if (!isReadable() || !d_->payload) {
         return String();
     }
@@ -352,18 +352,19 @@ String CloudEvent::dataAsString() const {
     return str;
 }
 
-Variant CloudEvent::dataAsVariant() const {
+EventData CloudEvent::dataStructured() const {
     if (!isReadable() || !d_->payload) {
-        return Variant();
+        return EventData();
     }
+    // Use a separate stream object so that this method remains constant
     CoapPayloadInputStream stream(d_->payload.get());
-    Variant v;
-    int r = decodeFromCBOR(v, stream);
+    EventData d;
+    int r = decodeFromCBOR(d, stream);
     if (r < 0) {
         LOG(ERROR, "decodeFromCBOR() failed: %d", r);
-        return Variant();
+        return EventData();
     }
-    return v;
+    return d;
 }
 
 CloudEvent& CloudEvent::loadData(const char* path) {
@@ -699,7 +700,7 @@ int CloudEvent::publish() {
     return 0;
 }
 
-int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> callback) {
+int CloudEvent::subscribe(const char* prefix, std::function<OnEventReceived> callback, const SubscribeOptions& /* opts */) {
     Subscription sub;
     sub.callback = std::move(callback);
     sub.prefixLen = std::strlen(prefix);
@@ -742,7 +743,7 @@ int CloudEvent::send() {
     if (d_->payload) {
         CHECK(coap_set_payload(msg.get(), d_->payload.get(), nullptr /* reserved */));
     }
-    if (d_->contentType != (int)ContentType::TEXT) {
+    if (d_->contentType != ContentType::TEXT) {
         CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_CONTENT_FORMAT, (unsigned)d_->contentType, nullptr /* reserved */));
     }
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
@@ -803,11 +804,11 @@ int CloudEvent::receiveRequestApp(CoapMessagePtr msg) {
     auto nameLen = pathLen - 3;
 
     // Get the content format option
-    unsigned contentType = COAP_FORMAT_TEXT_PLAIN;
+    unsigned contentFmt = COAP_FORMAT_TEXT_PLAIN;
     coap_option* opt = nullptr;
     CHECK(coap_get_option(msg.get(), &opt, COAP_OPTION_CONTENT_FORMAT, nullptr /* reserved */));
     if (opt) {
-        CHECK(coap_get_uint_option_value(opt, &contentType, nullptr /* reserved */));
+        CHECK(coap_get_uint_option_value(opt, &contentFmt, nullptr /* reserved */));
     }
 
     // Invoke the subscription handlers
@@ -825,7 +826,7 @@ int CloudEvent::receiveRequestApp(CoapMessagePtr msg) {
         if (!d->name) {
             return Error::NO_MEMORY;
         }
-        d->contentType = contentType;
+        d->contentType = (ContentType)contentFmt; // ContentType values are the CoAP's content format IDs
 
         // Payload objects are reference counted. If there are multiple matching subscription handlers,
         // all created event instances will reference the same payload object

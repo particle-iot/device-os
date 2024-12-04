@@ -41,6 +41,7 @@
 #include "spark_wiring_error.h"
 #include "spark_wiring_global.h"
 #include "spark_wiring_network.h"
+#include "spark_wiring_cloud_event.h"
 #include "interrupts_hal.h"
 #include "system_mode.h"
 
@@ -72,7 +73,6 @@ struct is_string_literal {
 
 namespace particle {
 
-class CloudEvent;
 class Ledger;
 class Variant;
 
@@ -85,7 +85,8 @@ enum class ContentType: int {
     TEXT = (int)protocol::CoapContentFormat::TEXT_PLAIN, ///< `text/plain; charset=utf-8`.
     JPEG = (int)protocol::CoapContentFormat::IMAGE_JPEG, ///< `image/jpeg`.
     PNG = (int)protocol::CoapContentFormat::IMAGE_PNG, ///< `image/png`.
-    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM ///< `application/octet-stream`.
+    BINARY = (int)protocol::CoapContentFormat::APPLICATION_OCTET_STREAM, ///< `application/octet-stream`.
+    STRUCTURED = (int)protocol::CoapContentFormat::PARTICLE_STRUCTURED ///< Implementation-specific structured data format.
 };
 
 typedef void (*EventHandlerWithContentType)(const char* name, const char* data, size_t size, ContentType type);
@@ -397,8 +398,10 @@ public:
     bool subscribe(const char* name, particle::EventHandlerWithVariant handler);
     bool subscribe(const char* name, particle::EventHandlerWithVariantFn handler);
 
-    bool subscribe(const char* name, particle::EventHandlerWithCloudEvent* handler);
-    bool subscribe(const char* name, std::function<particle::EventHandlerWithCloudEvent> handler);
+    bool subscribe(const char* name, particle::EventHandlerWithCloudEvent* handler,
+            const particle::SubscribeOptions& opts = particle::SubscribeOptions());
+    bool subscribe(const char* name, std::function<particle::EventHandlerWithCloudEvent> handler,
+            const particle::SubscribeOptions& opts = particle::SubscribeOptions());
 
     void unsubscribe();
 

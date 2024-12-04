@@ -127,7 +127,7 @@ enum class CoapContentFormat {
     IMAGE_PNG = 23,
     APPLICATION_CBOR = 60,
     // Vendor-specific formats
-    PARTICLE_JSON_AS_CBOR = 65001 // application/vnd.particle.json+cbor
+    PARTICLE_STRUCTURED = 65001 // application/vnd.particle.json+cbor
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapContentFormat)

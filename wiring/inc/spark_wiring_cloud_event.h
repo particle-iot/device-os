@@ -21,7 +21,7 @@
 #include <utility>
 #include <cstring>
 
-#include "spark_wiring_cloud.h"
+#include "spark_wiring_variant.h"
 #include "spark_wiring_stream.h"
 #include "spark_wiring_vector.h"
 
@@ -29,14 +29,64 @@
 
 #include "ref_count.h"
 
+class CloudClass;
+
 struct coap_payload;
 
 namespace particle {
 
 class Buffer;
-class Variant;
-
 class CoapMessagePtr;
+
+typedef Variant EventData;
+
+enum class ContentType: int;
+
+/**
+ * Subscription options.
+ */
+class SubscribeOptions {
+public:
+    /**
+     * Default constructor.
+     *
+     * Constructs an options object with default parameters.
+     */
+    SubscribeOptions() :
+            struct_(false) {
+    }
+
+    /**
+     * Enable/disable encoding of event data in a structured data format.
+     *
+     * This option instructs the Cloud to encode all events sent to the device for this subscription
+     * in a compact structured data format.
+     *
+     * The exact format used is implementation-specific. The application is expected to parse the
+     * data in this format using the methods of the `CloudEvent` class, such as `dataStructured()`.
+     *
+     * By default, this option is disabled.
+     *
+     * @param enabled Whether the option is enabled.
+     * @return This options object.
+     */
+    SubscribeOptions& structured(bool enabled) {
+        struct_ = enabled;
+        return *this;
+    }
+
+    /**
+     * Check if encoding of event data in a structured data format is enabled.
+     *
+     * @return `true` if the option is enabled, otherwise `false`.
+     */
+    bool structured() const {
+        return struct_;
+    }
+
+private:
+    bool struct_;
+};
 
 /**
  * A cloud event.
@@ -219,12 +269,13 @@ public:
     /**
      * Set the event data.
      *
-     * The event data will be encoded in CBOR format.
+     * The event data will be encoded in a compact structured format that will be expanded as JSON
+     * in the Cloud once the event is published.
      *
      * @param data Event data.
      * @return This event instance.
      */
-    CloudEvent& data(const Variant& data);
+    CloudEvent& data(const EventData& data);
 
     /**
      * Get the event data.
@@ -240,16 +291,17 @@ public:
      *
      * @return Event data.
      */
-    String dataAsString() const;
+    String dataString() const;
 
     /**
-     * Get the event data as a `Variant`.
+     * Parse the structured event data.
      *
-     * The event data is expected to be encoded in CBOR format.
+     * The event data is expected to be encoded in the structured data format. See the documentation
+     * for `SubscribeOptions::structured(bool)` for details.
      *
-     * @return Event data.
+     * @return Parsed event data.
      */
-    Variant dataAsVariant() const;
+    EventData dataStructured() const;
 
     /**
      * Load the event data from a file.
@@ -531,7 +583,8 @@ protected:
 
     int publish();
 
-    static int subscribe(const char* prefix, std::function<OnEventReceived> callback);
+    static int subscribe(const char* prefix, std::function<OnEventReceived> callback,
+            const SubscribeOptions& opts = SubscribeOptions());
     static void unsubscribeAll();
 
 private:
