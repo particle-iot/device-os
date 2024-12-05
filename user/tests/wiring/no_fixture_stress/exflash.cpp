@@ -22,6 +22,39 @@
 
 #include "storage_hal.h"
 
+namespace {
+
+#if HAL_PLATFORM_RTL872X
+std::pair<hal_storage_id, uintptr_t> getOtaStorage() {
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr /* reserved */);
+    });
+    uintptr_t addr = 0;
+    for (size_t i = 0; i < info.module_count; ++i) {
+        const auto& module = info.modules[i];
+        if (module.info.module_function == MODULE_FUNCTION_SYSTEM_PART) {
+            uintptr_t end = (uintptr_t)module.info.module_end_address;
+            end += 4; // CRC32
+            end = ((end) & 0xFFFFF000) + 0x1000; // 4K aligned
+            addr = end - EXTERNAL_FLASH_XIP_BASE;
+            break;
+        }
+    }
+    return {HAL_STORAGE_ID_EXTERNAL_FLASH, addr};
+}
+#elif HAL_PLATFORM_NRF52840
+std::pair<hal_storage_id, uintptr_t> getOtaStorage() {
+    return {HAL_STORAGE_ID_EXTERNAL_FLASH, EXTERNAL_FLASH_OTA_ADDRESS};
+}
+#else
+#error "Unsupported platform"
+#endif
+
+}
+
 #if HAL_PLATFORM_FILESYSTEM && (HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X) && !HAL_PLATFORM_PROHIBIT_XIP
 
 void performXipRead(std::atomic_bool& exit) {
@@ -112,7 +145,7 @@ void performNonXipRead(std::atomic_bool& exit) {
     for (uint32_t* addr = (uint32_t*)EXTERNAL_FLASH_XIP_BASE; !exit && addr < (uint32_t*)(EXTERNAL_FLASH_XIP_BASE + EXTERNAL_FLASH_SIZE); addr++) {
         // We need to be doing something useful here, so that XIP accesses are not optimized out
         uint32_t dummy = 0;
-        hal_storage_read(HAL_STORAGE_ID_INTERNAL_FLASH, (uintptr_t)addr, (uint8_t*)&dummy, sizeof(dummy));
+        hal_storage_read(HAL_STORAGE_ID_EXTERNAL_FLASH, (uintptr_t)addr - EXTERNAL_FLASH_XIP_BASE, (uint8_t*)&dummy, sizeof(dummy));
         uint32_t result = HAL_Core_Compute_CRC32((const uint8_t*)&dummy, sizeof(dummy));
         (void)HAL_Core_Compute_CRC32((const uint8_t*)&result, sizeof(result));
     }
@@ -172,3 +205,17 @@ test(EXFLASH_02_rtl872x_validate_mode) {
     assertEqual((uint32_t)SPIC->baudr, (uint32_t)1);
 }
 #endif // HAL_PLATFORM_RTL872X
+
+test(EXFLASH_03_aligned_and_unaligned_writes_from_internal_flash_work) {
+    auto [storage, addr] = getOtaStorage();
+    assertNotEqual(addr, (uintptr_t)0);
+    assertEqual(addr % 4, 0);
+
+    static const uint8_t dummy[8192 + 4] __attribute__((aligned(4))) = {0xff, 0xff, 0xff, 0xff};
+
+    for (size_t iOffset = 0; iOffset < 4; iOffset++) {
+        for (size_t oOffset = 0; oOffset  < 4; oOffset++) {
+            assertEqual(sizeof(dummy) - iOffset, hal_storage_write(storage, addr + oOffset, dummy + iOffset, sizeof(dummy) - iOffset));
+        }
+    }
+}

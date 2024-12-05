@@ -48,7 +48,7 @@ SECTIONS
     {
         . = ALIGN(4);
         link_wifi_fw_bss_start = . ;
-        *lib_wifi_fw.a: (.bss .bss.* .FW.ram.bss .FW.ram.bss.*)
+        *lib_wifi_fw.a: (.bss .bss.* .FW.ram.bss .FW.ram.bss.* COMMON)
         link_wifi_fw_bss_end = . ;
         . = ALIGN(4);
     } > WIFI_FW_RAM AT> WIFI_FW_RAM

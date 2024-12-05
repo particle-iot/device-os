@@ -140,3 +140,5 @@
 #elif PLATFORM_ID == PLATFORM_TRACKER
 # define HAL_PLATFORM_USB_PRODUCT_STRING              "Tracker"
 #endif
+
+#define HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES __attribute__((weak))

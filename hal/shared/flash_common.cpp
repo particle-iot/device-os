@@ -18,8 +18,10 @@
 #include "flash_common.h"
 #include <cstring>
 #include <algorithm>
+#include "hal_platform.h"
 
-__attribute__((weak)) int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
+HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES
+int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* buf, size_t size) {
     /* This function is used for unaligned writes to retrive the data from the flash
      * to keep unaligned unaffected bytes unmodified.
      * Due to how flash memory works, we can simply return 0xff, as the bits in the flash memory
@@ -30,7 +32,10 @@ __attribute__((weak)) int hal_flash_common_dummy_read(uintptr_t addr, uint8_t* b
     return 0;
 }
 
-static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size,
+namespace {
+
+HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES
+int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size,
                                 hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
 {
     if (size > 0) {
@@ -57,8 +62,11 @@ static int write_unaligned_word(uintptr_t addr, const uint8_t* data, size_t size
     return 0;
 }
 
-__attribute__((weak)) int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
-                           hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func)
+} // anonymous
+
+HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES
+int hal_flash_common_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size,
+                           hal_flash_common_write_cb write_func, hal_flash_common_read_cb read_func, uint32_t flags)
 {
 
     /* Fist we need to align the destination address */
@@ -80,7 +88,7 @@ __attribute__((weak)) int hal_flash_common_write(uintptr_t addr, const uint8_t* 
     }
 
     /* destination address should already be aligned due to the previous step */
-    if (IS_WORD_ALIGNED(addr) && IS_WORD_ALIGNED((uintptr_t)data_buf)) {
+    if (IS_WORD_ALIGNED(addr) && IS_WORD_ALIGNED((uintptr_t)data_buf) && !(flags & HAL_FLASH_COMMON_WRITE_FLAG_FORCE_TEMP_BUFFER)) {
         /* Fast-path: both addresses are aligned */
         const size_t bytes_to_copy = ADDR_ALIGN_WORD(data_size);
         if (bytes_to_copy > 0) {
@@ -95,7 +103,7 @@ __attribute__((weak)) int hal_flash_common_write(uintptr_t addr, const uint8_t* 
         }
     } else {
         /* Slow-path: use a temporary buffer */
-        /* TODO: Use a shared 4k (both internal and external flash block size) static global buffer? */
+        /* NOTE: 256 byte buffer is a good choice at least for QSPI flashes because it's the program page size */
         uint8_t temp_buf[FLASH_OPERATION_TEMP_BLOCK_SIZE] __attribute__((aligned(4)));
 
         const size_t total_bytes_to_copy = ADDR_ALIGN_WORD(data_size);
