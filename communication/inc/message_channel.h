@@ -87,14 +87,16 @@ public:
     	return length() < MINIMUM_COAP_MESSAGE_LENGTH;
     }
 
-    bool passthrough() const
-    {
-    	return passthrough_;
-    }
-
+    // If enabled, instructs the legacy CoAP implementation to pass this message to the underlying
+    // transport layer without keeping track of it
     void passthrough(bool enabled)
     {
     	passthrough_ = enabled;
+    }
+
+    bool passthrough() const
+    {
+    	return passthrough_;
     }
 
     CoAPType::Enum get_type() const

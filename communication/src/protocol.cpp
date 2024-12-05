@@ -88,7 +88,8 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	if (type == CoAPType::ACK || type == CoAPType::RESET) {
+	// The passthrough flag is set for a received ACK for which a previously sent CON was not found
+	if (!message.passthrough() && (type == CoAPType::ACK || type == CoAPType::RESET)) {
 		// todo - this is a little too simple in the case of an empty ACK for a separate response
 		// the message should then be bound to the token. see CH19037
 		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
