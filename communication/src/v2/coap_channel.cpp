@@ -132,7 +132,7 @@ inline CoapToken tokenFrom(token_t token) {
 
 inline system_tick_t transmitTimeout(unsigned transmitCount) {
     // For consistency, use the same algorithm for calculating a retransmission timeout as the old
-    // protocol, even though it deviates from the spec
+    // implementation, even though it deviates from the spec
     return protocol::transmit_timeout(transmitCount);
 }
 
@@ -284,7 +284,7 @@ struct CoapChannel::RequestMessage: Message {
 
     system_tick_t transmitTime; // Time the request was last sent or received
     unsigned transmitTimeout; // Retransmission timeout
-    unsigned transmitCount; // Number of transmissions
+    unsigned transmitCount; // Total number of transmissions
     unsigned timeout; // Request timeout
 
     coap_method method; // Method code
@@ -324,7 +324,7 @@ struct CoapChannel::RequestHandler {
     RequestHandler* next; // Next handler in the list
     RequestHandler* prev; // Previous handler in the list
 
-    RequestHandler(CString path, size_t pathLen, coap_method method, coap_request_callback callback, void* callbackArg, int flags) :
+    RequestHandler(CString path, size_t pathLen, coap_method method, int flags, coap_request_callback callback, void* callbackArg) :
             path(std::move(path)),
             pathLen(pathLen),
             method(method),
@@ -476,6 +476,7 @@ int CoapChannel::beginResponse(RefCountPtr<CoapMessage>& coapMsg, int status, in
     resp->sessionId = sessId_;
     resp->token = req->token;
     resp->status = status;
+    resp->flags = flags;
     resp->state = MessageState::WRITE;
     coapMsg = std::move(resp);
     return 0;
@@ -750,13 +751,10 @@ void CoapChannel::disposeMessage(const RefCountPtr<CoapMessage>& coapMsg) {
     clearMessage(msg);
 }
 
-int CoapChannel::addRequestHandler(const char* path, coap_method method, coap_request_callback callback,
-        void* callbackArg, int flags) {
+int CoapChannel::addRequestHandler(const char* path, coap_method method, int flags, coap_request_callback callback,
+        void* callbackArg) {
     if (!callback) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    if (state_ != State::CLOSED) {
-        return SYSTEM_ERROR_INVALID_STATE;
     }
     size_t pathLen = 0;
     if (path) {
@@ -785,8 +783,8 @@ int CoapChannel::addRequestHandler(const char* path, coap_method method, coap_re
         if (!pathStr && path) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        std::unique_ptr<RequestHandler> handler(new(std::nothrow) RequestHandler(std::move(pathStr), pathLen, method, callback,
-                callbackArg, flags));
+        std::unique_ptr<RequestHandler> handler(new(std::nothrow) RequestHandler(std::move(pathStr), pathLen, method,
+                flags, callback, callbackArg));
         if (!handler) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
@@ -814,10 +812,6 @@ int CoapChannel::addRequestHandler(const char* path, coap_method method, coap_re
 }
 
 void CoapChannel::removeRequestHandler(const char* path, coap_method method) {
-    if (state_ != State::CLOSED) {
-        LOG(ERROR, "Cannot remove handler while channel is open");
-        return;
-    }
     size_t pathLen = 0;
     if (path) {
         if (path[0] == '/') {
@@ -841,9 +835,6 @@ int CoapChannel::addConnectionHandler(coap_connection_callback callback, void* c
     if (!callback) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (state_ != State::CLOSED) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
     auto h = findInList(connHandlers_, [=](auto h) {
         return h->callback == callback;
     });
@@ -858,10 +849,6 @@ int CoapChannel::addConnectionHandler(coap_connection_callback callback, void* c
 }
 
 void CoapChannel::removeConnectionHandler(coap_connection_callback callback) {
-    if (state_ != State::CLOSED) {
-        LOG(ERROR, "Cannot remove handler while channel is open");
-        return;
-    }
     auto h = findInList(connHandlers_, [=](auto h) {
         return h->callback == callback;
     });
@@ -1055,10 +1042,9 @@ int CoapChannel::run() {
     if (state_ != State::OPEN) {
         return 0;
     }
-    auto now = millis();
-
     // Handle retransmission timeouts for requests with a payload object. Timeouts for other
     // confirmable messages are still handled by the old protocol implementation
+    auto now = millis();
     auto msg = findRefInList(unackMsgs_, [&](auto msg) {
         if (msg->type != MessageType::REQUEST) {
             return false;
@@ -1068,7 +1054,6 @@ int CoapChannel::run() {
         return req->transmitTimeout && now - req->transmitTime >= req->transmitTimeout;
     });
     if (msg) {
-        removeRefFromList(unackMsgs_, msg);
         auto req = staticPtrCast<RequestMessage>(msg);
         if (req->transmitCount >= MAX_RETRANSMIT + 1) {
             LOG(ERROR, "CoAP message timeout; ID: %d", req->coapId);
@@ -1079,6 +1064,8 @@ int CoapChannel::run() {
             return SYSTEM_ERROR_COAP_TIMEOUT;
         }
         // Retransmit the message
+        removeRefFromList(unackMsgs_, msg);
+        msg->state = MessageState::WRITE;
         LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT);
         CHECK(sendPayloadBlock(req, true /* retransmit */));
         return 0;
@@ -1111,18 +1098,18 @@ int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     assert(d.type() == CoapType::CON); // TODO: Support non-confirmable requests
 
     CoapCode errStatus = CoapCode(); // No error
-    int res = handleRequestImpl(d, errStatus);
-    if (res < 0) {
-        LOG(ERROR, "Failed to handle request: %d", res);
+    int result = handleRequestImpl(d, errStatus);
+    if (result < 0) {
+        LOG(ERROR, "Failed to handle request: %d", result);
         errStatus = CoapCode::SERVICE_UNAVAILABLE;
     }
-    if (errStatus != CoapCode() && res != SYSTEM_ERROR_NO_MEMORY) {
+    if (errStatus != CoapCode() && result != SYSTEM_ERROR_NO_MEMORY) {
         int r = sendResponseAck(errStatus);
-        if (r < 0 && res >= 0) {
-            return r;
+        if (r < 0 && result >= 0) {
+            result = r;
         }
     }
-    return res;
+    return result;
 }
 
 int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {

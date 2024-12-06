@@ -222,6 +222,7 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		if (type == CoAPType::CON) {
 			bool eventHandled = false;
 			if (message_type == CoAPMessageType::EVENT) {
+				// Event requests can be handled by both the new and old CoAP implementations
 				auto err = subscriptions.handle_event(message, descriptor.call_event_handler, channel, eventHandled);
 				if (err != ProtocolError::NO_ERROR) {
 					return err;

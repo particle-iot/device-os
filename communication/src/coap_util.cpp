@@ -48,7 +48,7 @@ int parseMessageHeader(const Message& msg, CoapMessageId& id, char token[MAX_COA
     }
     auto msgData = msg.buf();
     uint32_t h = 0;
-    std::memcpy(&h, msgData, sizeof(uint32_t));
+    std::memcpy(&h, msgData, 4);
     h = bigEndianToNative(h);
     size_t tkl = (h >> 24) & 0x0f;
     if (tkl > MAX_COAP_TOKEN_SIZE) {
@@ -92,9 +92,7 @@ int sendResponse(MessageChannel& channel, Message& msg, CoapType type, CoapCode 
     if (code != CoapCode::EMPTY) {
         e.token(token, tokenSize);
     }
-    if (payloadSize > 0) {
-        e.payload(payload, payloadSize);
-    }
+    e.payload(payload, payloadSize);
     size_t n = CHECK(e.encode());
     if (n > resp.capacity()) {
         LOG(ERROR, "No enough space in CoAP message buffer");
@@ -102,7 +100,7 @@ int sendResponse(MessageChannel& channel, Message& msg, CoapType type, CoapCode 
     }
     resp.set_length(n);
     if (type == CoapType::ACK || type == CoapType::RST) {
-        resp.set_id(msg.get_id());
+        resp.set_id(id);
     }
     // Send the response
     err = channel.send(resp);

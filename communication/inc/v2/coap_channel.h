@@ -32,7 +32,6 @@
 
 namespace particle::protocol {
 
-class CoapMessageEncoder;
 class CoapMessageDecoder;
 class Protocol;
 
@@ -73,7 +72,7 @@ public:
 
     // Methods called by the CoAP API functions (coap_api.h)
 
-    int beginRequest(RefCountPtr<CoapMessage>& msg, const char* uri, coap_method method, int timeout, int flags);
+    int beginRequest(RefCountPtr<CoapMessage>& msg, const char* path, coap_method method, int timeout, int flags);
     int endRequest(RefCountPtr<CoapMessage> msg, coap_response_callback respCallback, coap_ack_callback ackCallback,
             coap_error_callback errorCallback, void* callbackArg);
 
@@ -99,7 +98,7 @@ public:
 
     void disposeMessage(const RefCountPtr<CoapMessage>& msg);
 
-    int addRequestHandler(const char* path, coap_method method, coap_request_callback callback, void* callbackArg, int flags);
+    int addRequestHandler(const char* path, coap_method method, int flags, coap_request_callback callback, void* callbackArg);
     void removeRequestHandler(const char* path, coap_method method);
 
     int addConnectionHandler(coap_connection_callback callback, void* callbackArg);

@@ -49,7 +49,7 @@ const uint8_t NSTART = 1;
 inline system_tick_t transmit_timeout(uint8_t transmit_count)
 {
 	system_tick_t timeout = (ACK_TIMEOUT << transmit_count);
-	timeout += ((timeout * (rand()%256))>>9);
+	timeout += (timeout * (rand() % 256)) >> 9;
 	return timeout;
 }
 

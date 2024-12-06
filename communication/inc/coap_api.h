@@ -424,29 +424,28 @@ int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_call
 int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved);
 
 /**
- * Create a payload data instance.
+ * Create a payload instance.
  *
- * @param payload Payload data instance.
+ * @param[out] payload Payload instance.
  * @param max_heap_size Maximum amount of payload data that can be stored on the heap. The data
- *        exceeding the specified size will be stored in a temporary file. The recommended value is
- *        `COAP_BLOCK_SIZE`.
+ *        exceeding the specified size will be stored in a temporary file.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 int coap_create_payload(coap_payload** payload, size_t max_heap_size, void* reserved);
 
 /**
- * Destroy a payload data instance.
+ * Destroy a payload instance.
  *
- * @param payload Payload data instance.
+ * @param payload Payload instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void coap_destroy_payload(coap_payload* payload, void* reserved);
 
 /**
- * Write payload data.
+ * Write the payload data.
  *
- * @param payload Payload data instance.
+ * @param payload Payload instance.
  * @param data Input buffer.
  * @param size Number of bytes to write.
  * @param reserved Reserved argument. Must be set to `NULL`.
@@ -456,9 +455,9 @@ void coap_destroy_payload(coap_payload* payload, void* reserved);
 int coap_write_payload(coap_payload* payload, const char* data, size_t size, size_t pos, void* reserved);
 
 /**
- * Read payload data.
+ * Read the payload data.
  *
- * @param payload Payload data instance.
+ * @param payload Payload instance.
  * @param data Output buffer.
  * @param size Number of bytes to read.
  * @param reserved Reserved argument. Must be set to `NULL`.
@@ -468,9 +467,9 @@ int coap_write_payload(coap_payload* payload, const char* data, size_t size, siz
 int coap_read_payload(coap_payload* payload, char* data, size_t size, size_t pos, void* reserved);
 
 /**
- * Set the size of payload data.
+ * Set the size of the payload data.
  *
- * @param payload Payload data instance.
+ * @param payload Payload instance.
  * @param size New data size.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
@@ -478,9 +477,9 @@ int coap_read_payload(coap_payload* payload, char* data, size_t size, size_t pos
 int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved);
 
 /**
- * Get the size of payload data.
+ * Get the size of the payload data.
  *
- * @param payload Payload data instance.
+ * @param payload Payload instance.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return On success, the size of the payload data. Otherwise, an error code defined by the
  *     `system_error_t` enum.
@@ -490,8 +489,8 @@ int coap_get_payload_size(coap_payload* payload, void* reserved);
 /**
  * Set the payload data of a message.
  *
- * After calling this function, the caller is still responsible for destroying its reference to
- * the payload instance via `coap_destroy_payload()`.
+ * The caller is still responsible for destroying its reference to the payload instance via
+ * `coap_destroy_payload()` after calling this function.
  *
  * @param msg Request or response message.
  * @param payload Payload data instance.
@@ -503,7 +502,7 @@ int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved);
 /**
  * Get the payload data of a message.
  *
- * The obtained reference to the paylaod instance needs to be destroyed via `coap_destroy_payload()`
+ * The obtained reference to the payload instance needs to be destroyed via `coap_destroy_payload()`
  * when it's no longer needed.
  *
  * @param msg Request or response message.

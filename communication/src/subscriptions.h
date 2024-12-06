@@ -151,7 +151,7 @@ public:
 		const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
 		for (int i = 0; i < NUM_HANDLERS; i++)
 		{
-			if (NULL == event_handlers[i].handler)
+			if (!event_handlers[i].handler && !(event_handlers[i].flags & SubscriptionFlag::LARGE_EVENT))
 			{
 				const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
 				const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);

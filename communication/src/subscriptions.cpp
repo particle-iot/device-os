@@ -129,7 +129,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
     }
 
     // Acknowledge the request
-    if (d.type() == CoapType::CON) {
+    if (d.type() == CoapType::CON && channel.is_unreliable()) {
         int r = sendEmptyAck(channel, msg);
         if (r < 0) {
             LOG(ERROR, "Failed to send ACK: %d", r);
@@ -156,11 +156,7 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
     }
 
     for (size_t i = 0; i < oldHandlerCount; ++i) {
-        auto h = oldHandlers[i];
-        if (!h->handler) {
-            break;
-        }
-        callback(sizeof(FilteringEventHandler), h, name, data, dataSize, contentFmt);
+        callback(sizeof(FilteringEventHandler), oldHandlers[i], name, data, dataSize, contentFmt);
     }
 
     handled = true;

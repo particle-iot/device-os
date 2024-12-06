@@ -50,6 +50,7 @@ bool isValidCoapMethod(int method) {
 }
 
 int removeConnectionHandlerImpl(coap_connection_callback cb) {
+    // TODO: Use a mutex instead
     SYSTEM_THREAD_CONTEXT_SYNC(removeConnectionHandlerImpl(cb));
 
     CoapChannel::instance()->removeConnectionHandler(cb);
@@ -100,7 +101,7 @@ int coap_add_request_handler(const char* path, int method, int flags, coap_reque
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), cb, arg, flags));
+    CHECK(CoapChannel::instance()->addRequestHandler(path, static_cast<coap_method>(method), flags, cb, arg));
     return 0;
 }
 
