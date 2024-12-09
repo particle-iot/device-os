@@ -171,7 +171,7 @@ int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_
         coap_error_callback errorCb, void* arg, void* reserved) {
     // TODO: coap_*_block() functions operate with the shared message buffer and thus cannot be
     // safely used in an application or user thread
-    if (!system_thread_current(nullptr /* reserved */)) {
+    if (!SYSTEM_THREAD_CURRENT()) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
@@ -181,7 +181,7 @@ int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_
 
 int coap_read_block(coap_message* apiMsg, char* data, size_t* size, coap_block_callback blockCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
-    if (!system_thread_current(nullptr /* reserved */)) {
+    if (!SYSTEM_THREAD_CURRENT()) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
@@ -190,7 +190,7 @@ int coap_read_block(coap_message* apiMsg, char* data, size_t* size, coap_block_c
 }
 
 int coap_peek_block(coap_message* apiMsg, char* data, size_t size, void* reserved) {
-    if (!system_thread_current(nullptr /* reserved */)) {
+    if (!SYSTEM_THREAD_CURRENT()) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));

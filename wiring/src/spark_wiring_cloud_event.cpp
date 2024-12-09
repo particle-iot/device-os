@@ -30,6 +30,7 @@
 
 #include "system_cloud.h" // For MAX_EVENT_NAME_LENGTH
 #include "system_task.h"
+#include "concurrent_hal.h"
 
 #include "coap_defs.h"
 #include "coap_util.h"
