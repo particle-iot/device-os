@@ -50,7 +50,6 @@ bool isValidCoapMethod(int method) {
 }
 
 int removeConnectionHandlerImpl(coap_connection_callback cb) {
-    // TODO: Use a mutex instead
     SYSTEM_THREAD_CONTEXT_SYNC(removeConnectionHandlerImpl(cb));
 
     CoapChannel::instance()->removeConnectionHandler(cb);
@@ -124,6 +123,9 @@ int coap_begin_request(coap_message** apiMsg, const char* path, int method, int 
 
 int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_ack_callback ackCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
+    // TODO: Use a mutex and a separate queue instead of the threading macros in all the CoAP API
+    // functions to avoid blocking the application thread even if the operation cannot be performed
+    // immediately
     SYSTEM_THREAD_CONTEXT_SYNC(coap_end_request(apiMsg, respCb, ackCb, errorCb, arg, reserved));
 
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
@@ -167,8 +169,11 @@ void coap_cancel_request(int reqId, void* reserved) {
 
 int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_block_callback blockCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_write_block(apiMsg, data, size, blockCb, errorCb, arg, reserved));
-
+    // TODO: coap_*_block() functions operate with the shared message buffer and thus cannot be
+    // safely used in an application or user thread
+    if (!system_thread_current(nullptr /* reserved */)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CHECK(CoapChannel::instance()->writeBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
@@ -176,16 +181,18 @@ int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_
 
 int coap_read_block(coap_message* apiMsg, char* data, size_t* size, coap_block_callback blockCb,
         coap_error_callback errorCb, void* arg, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_read_block(apiMsg, data, size, blockCb, errorCb, arg, reserved));
-
+    if (!system_thread_current(nullptr /* reserved */)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CHECK(CoapChannel::instance()->readBlock(msg, data, *size, blockCb, errorCb, arg));
     return r; // 0 or COAP_RESULT_WAIT_BLOCK
 }
 
 int coap_peek_block(coap_message* apiMsg, char* data, size_t size, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_peek_block(apiMsg, data, size, reserved));
-
+    if (!system_thread_current(nullptr /* reserved */)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
     RefCountPtr<CoapMessage> msg(reinterpret_cast<CoapMessage*>(apiMsg));
     size_t n = CHECK(CoapChannel::instance()->peekBlock(msg, data, size));
     return n;

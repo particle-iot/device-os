@@ -359,9 +359,9 @@ struct CoapChannel::EncodingContext {
     const Message* message;
     bool hasMoreBlocks;
 
-    explicit EncodingContext(CoapMessageEncoder& encoder) :
+    EncodingContext(CoapMessageEncoder& encoder, const Message* msg) :
             encoder(encoder),
-            message(nullptr),
+            message(msg),
             hasMoreBlocks(false) {
     }
 };
@@ -1156,11 +1156,6 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
 
     if (hasBlockOpt) {
         // Received a blockwise request
-        if ((hasMore && d.payloadSize() != COAP_BLOCK_SIZE) || (!hasMore && (!d.hasPayload() || d.payloadSize() > COAP_BLOCK_SIZE))) {
-            LOG(WARN, "Received blockwise request with unexpected size of payload data");
-            errStatus = CoapCode::BAD_REQUEST;
-            return Result::HANDLED;
-        }
         if (reqTag.isEmpty()) {
             // Blockwise requests are required to have a Request-Tag option even though it's not
             // mandatory as per the spec
@@ -1172,7 +1167,9 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
             return req->tag == reqTag;
         });
         if (req) {
-            assert(req->state == MessageState::WAIT_BLOCK && req->blockIndex.has_value());
+            assert(req->state == MessageState::WAIT_BLOCK);
+            removeRefFromList(recvBlockReqs_, req);
+            assert(req->blockIndex.has_value());
             if (blockIndex != req->blockIndex.value()) {
                 LOG(WARN, "Received blockwise request with unexpected block number");
                 errStatus = CoapCode::REQUEST_ENTITY_INCOMPLETE;
@@ -1184,10 +1181,14 @@ int CoapChannel::handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus) {
                 errStatus = CoapCode::REQUEST_ENTITY_TOO_LARGE;
                 return Result::HANDLED;
             }
-            removeRefFromList(recvBlockReqs_, req);
         } else if (blockIndex != 0) {
             LOG(WARN, "Received blockwise request with unexpected block number");
             errStatus = CoapCode::REQUEST_ENTITY_INCOMPLETE;
+            return Result::HANDLED;
+        }
+        if ((hasMore && d.payloadSize() != COAP_BLOCK_SIZE) || (!hasMore && (!d.hasPayload() || d.payloadSize() > COAP_BLOCK_SIZE))) {
+            LOG(WARN, "Received blockwise request with unexpected size of payload data");
+            errStatus = CoapCode::BAD_REQUEST;
             return Result::HANDLED;
         }
     }
@@ -1328,7 +1329,6 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         }
         return r; // 0 or Result::HANDLED
     }
-    // TODO: What happens when a response arrives for a request with a No-Reponse option set?
     assert(req->state == MessageState::WAIT_RESPONSE);
     removeRefFromList(sentReqs_, req);
     req->state = MessageState::DONE;
@@ -1410,7 +1410,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             if (req->payload) {
                 req->payloadPos += COAP_BLOCK_SIZE;
                 req->transmitCount = 0;
-                CHECK(sendPayloadBlock(req)); // TODO: Any additional error handling?
+                CHECK(sendPayloadBlock(req));
             } else {
                 // Invoke the block handler
                 assert(req->blockCallback);
@@ -1558,8 +1558,7 @@ int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
     }
     e.token(msg->token.data(), msg->token.size());
 
-    EncodingContext ctx(e);
-    ctx.message = msg.get();
+    EncodingContext ctx(e, msg.get());
     ctx.hasMoreBlocks = msg->hasMore.value_or(false);
 
     if (isRequest) {
@@ -1714,13 +1713,11 @@ void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
 }
 
 int CoapChannel::sendResponseAck(CoapCode code) {
-    assert(msgBuf_.has_id());
     CHECK(protocol::sendResponseAck(protocol_->get_channel(), msgBuf_, code));
     return 0;
 }
 
 int CoapChannel::sendEmptyAck() {
-    assert(msgBuf_.has_id());
     CHECK(protocol::sendEmptyAck(protocol_->get_channel(), msgBuf_));
     return 0;
 }
