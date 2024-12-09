@@ -24,16 +24,7 @@
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
 
-#include "platforms.h"
-
 /* For new platforms the configuration file resides in hal */
-#if PLATFORM_ID == PLATFORM_NEWHAL
-#include "mbedtls_config_default.h"
-#else
 #include "mbedtls_config_platform.h"
-#endif /* PLATFORM_ID == PLATFORM_NEWHAL */
-
-#if defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE
-#endif /* defined(MODULAR_FIRMWARE) && MODULAR_FIRMWARE */
 
 #endif /* MBEDTLS_CONFIG_H */
