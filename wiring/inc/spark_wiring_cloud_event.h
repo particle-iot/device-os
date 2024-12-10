@@ -148,7 +148,7 @@ public:
      *
      * Events containing up to 16384 bytes of data are supported.
      */
-    static const size_t MAX_SIZE = COAP_MAX_PAYLOAD_SIZE;
+    static constexpr size_t MAX_SIZE = COAP_MAX_PAYLOAD_SIZE;
 
     /**
      * Default constructor.
@@ -242,6 +242,17 @@ public:
     CloudEvent& data(const char* data, size_t size, ContentType type) {
         this->data(data, size);
         contentType(type);
+        return *this;
+    }
+
+    /**
+     * Set the event data.
+     *
+     * @param data Event data.
+     * @return This event instance.
+     */
+    CloudEvent& data(const String& data) {
+        this->data(data.c_str(), data.length());
         return *this;
     }
 
@@ -347,7 +358,8 @@ public:
      * Set the current position in the event data.
      *
      * @param pos New position.
-     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     * @return On success, the current position in the event data. Otherwise, an error code defined
+     *         by `Error::Type`.
      */
     int seek(size_t pos);
 
@@ -412,7 +424,7 @@ public:
      *
      * @return `true` if the event is being sent to the Cloud, otherwise `false`.
      */
-    bool isSending() {
+    bool isSending() const {
         return status() == Status::SENDING;
     }
 
@@ -462,11 +474,21 @@ public:
     int error() const;
 
     /**
+     * Reset the status of the event.
+     *
+     * This method resets the status of the event back to `NEW` if the current status is `SENT` or
+     * `FAILED`. Otherwise, it has no effect.
+     *
+     * It is normally not necessary to call this method before publishing a failed event again.
+     */
+    void resetStatus();
+
+    /**
      * Cancel sending the event.
      *
      * This method has no effect if the event is not currently being sent to the Cloud.
      *
-     * A cancelled event cannot be published again.
+     * A cancelled event is invalidated and cannot be published again.
      */
     void cancel();
 
@@ -477,11 +499,11 @@ public:
      *
      * ```cpp
      * // These two statements are equivalent
-     * event.reset();
+     * event.clear();
      * event = CloudEvent();
      * ```
      */
-    void reset();
+    void clear();
 
     /**
      * Methods reimplemented from base `Stream` class.

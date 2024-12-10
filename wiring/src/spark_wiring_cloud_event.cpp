@@ -581,6 +581,14 @@ int CloudEvent::error() const {
     return d_->error;
 }
 
+void CloudEvent::resetStatus() {
+    if (!d_ || (d_->status != Status::SENT && d_->status != Status::FAILED)) {
+        return;
+    }
+    d_->error = 0;
+    d_->status = Status::NEW;
+}
+
 void CloudEvent::cancel() {
     if (!d_ || d_->status != Status::SENDING) {
         return;
@@ -594,7 +602,7 @@ void CloudEvent::cancel() {
     setInvalid(Error::CANCELLED);
 }
 
-void CloudEvent::reset() {
+void CloudEvent::clear() {
     d_ = makeRefCountPtr<Data>();
 }
 
