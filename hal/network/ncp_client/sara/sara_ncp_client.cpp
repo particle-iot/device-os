@@ -106,6 +106,9 @@ const auto UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED = 0; // disables muxer keep alive
 const auto UBLOX_NCP_KEEPALIVE_PERIOD_R510 = UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED;
 const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
 
+// const uint32_t UBLOX_NCP_BANDMASK_01_64_R510 = 0x0B0E189F;  // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,28 [all default enabled]
+const uint8_t UBLOX_NCP_BANDMASK_65_128_R510 = 0x40;        // Band 66,85 enabled, 71 disabled [used as a mask]
+
 // FIXME: for now using a very large buffer
 const auto UBLOX_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
 const auto UBLOX_NCP_PPP_CHANNEL_RX_BUFFER_SIZE = 256;
@@ -1202,22 +1205,43 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             disableLowPowerModes = true;
         } else if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_EUROPE ||
                 static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_GLOBAL)) {
-            // Log bandmask, and change bandmask for R410 if necessary
+            // Log bandmask, and change bandmask if necessary
             auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
-            uint64_t ubandUint64 = 0;
-            char ubandStr[24] = {};
-            auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,]", ubandStr));
+            uint64_t uint64Uband01_64Current = 0;
+            uint64_t uint64Uband65_128Current = 0;
+            // uint64_t uint64Uband01_64Desired = 0;
+            uint64_t uint64Uband65_128Desired = 0;
+            char uband01_64Str[24] = {};
+            char uband65_128Str[24] = {};
+            // R510: +UBANDMASK: 0,185473183,1048642 <RAT>,<CAT-M1-1-64>,<CAT-M1-65-128>
+            // R410: +UBANDMASK: 0,524420,1,524420 <RAT>,<CAT-M1>,<RAT>,<CAT-NB> ... CAT-NB not supported by SARA-R410M-01B
+            // Technically the following scanf is only correct for R510, but since we ignore uband65_128Str for R410 it works fine
+            auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,],%23[^,]", uband01_64Str,uband65_128Str));
             CHECK_PARSER_OK(respBand.readResult());
-            if (retBand == 1 && netConf_.netProv() == CellularNetworkProvider::TWILIO && ncpId() == PLATFORM_NCP_SARA_R410) {
-                char* pEnd = &ubandStr[0];
-                ubandUint64 = strtoull(ubandStr, &pEnd, 10);
-                // Only update if Twilio Super SIM and not set to correct bands
-                if (pEnd - ubandStr > 0 && ubandUint64 != 6170) {
-                    // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
-                    parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
-                    // Not checking for error since we will reset either way
-                    reset = true;
-                    disableLowPowerModes = false;
+            char* pEnd1 = &uband01_64Str[0];
+            char* pEnd2 = &uband65_128Str[0];
+            uint64Uband01_64Current = strtoull(uband01_64Str, &pEnd1, 10);
+            uint64Uband65_128Current = strtoull(uband65_128Str, &pEnd2, 10);
+            if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 2) {
+                // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
+                if (ncpId() == PLATFORM_NCP_SARA_R410) {
+                    if (pEnd1 - uband01_64Str > 0 && uint64Uband01_64Current != 6170) {
+                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
+                        // Not checking for error since we will reset either way
+                        reset = true;
+                        disableLowPowerModes = false;
+                    }
+                }
+                // When modem is initially set to UMNOPROF=90, all bands will be enabled
+                // Allow any combination of Cat-M1 bands, but disable band 71
+                else if (ncpId() == PLATFORM_NCP_SARA_R510) {
+                    uint64Uband65_128Desired = uint64Uband65_128Current & ~UBLOX_NCP_BANDMASK_65_128_R510;
+                    if (pEnd2 - uband65_128Str > 0 && uint64Uband65_128Current != uint64Uband65_128Desired) {
+                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,%lu,%lu",(uint32_t)uint64Uband01_64Current,(uint32_t)uint64Uband65_128Desired);
+                        // Not checking for error since we will reset either way
+                        reset = true;
+                        disableLowPowerModes = false;
+                    }
                 }
             }
         }
