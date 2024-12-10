@@ -21,6 +21,21 @@
 
 namespace particle {
 
+Buffer Buffer::slice(size_t pos, size_t size) const {
+    if (pos > (size_t)d_.size()) {
+        pos = d_.size();
+    }
+    if (pos + size > (size_t)d_.size()) {
+        size = d_.size() - pos;
+    }
+    Buffer buf;
+    if (!buf.resize(size)) {
+        return Buffer();
+    }
+    std::memcpy(buf.d_.data(), d_.data(), size);
+    return buf;
+}
+
 String Buffer::toHex() const {
     String s;
     if (!s.resize(d_.size() * 2)) {

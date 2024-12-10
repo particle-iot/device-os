@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <limits>
 #include <cstring>
 #include <cstdint>
 
@@ -129,6 +130,15 @@ public:
     bool trimToSize() {
         return d_.trimToSize();
     }
+
+    /**
+     * Copy a portion of the buffer to a new buffer.
+     *
+     * @param pos Offset of the data to copy.
+     * @param size Size of the data to copy.
+     * @return New buffer.
+     */
+    Buffer slice(size_t pos, size_t size = std::numeric_limits<size_t>::max()) const;
 
     /**
      * Convert the contents of the buffer to a hex-encoded string.
