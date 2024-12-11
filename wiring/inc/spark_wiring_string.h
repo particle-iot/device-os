@@ -160,7 +160,8 @@ public:
 
     // comparison (only works w/ Strings and "strings")
     operator StringIfHelperType() const { return buffer ? &String::StringIfHelper : 0; }
-    int compareTo(const String &s) const;
+    int compareTo(const String &s) const { return compareTo(s.buffer); }
+    int compareTo(const char* cstr) const;
     unsigned char equals(const String &s) const;
     unsigned char equals(const char *cstr) const;
     unsigned char operator == (const String &rhs) const {return equals(rhs);}
@@ -168,9 +169,13 @@ public:
     unsigned char operator != (const String &rhs) const {return !equals(rhs);}
     unsigned char operator != (const char *cstr) const {return !equals(cstr);}
     unsigned char operator <  (const String &rhs) const;
+    unsigned char operator <  (const char* cstr) const { return compareTo(cstr) < 0; }
     unsigned char operator >  (const String &rhs) const;
+    unsigned char operator >  (const char* cstr) const { return compareTo(cstr) > 0; }
     unsigned char operator <= (const String &rhs) const;
+    unsigned char operator <= (const char* cstr) const { return compareTo(cstr) <= 0; }
     unsigned char operator >= (const String &rhs) const;
+    unsigned char operator >= (const char* cstr) const { return compareTo(cstr) >= 0; }
     unsigned char equalsIgnoreCase(const String &s) const;
     unsigned char startsWith( const String &prefix) const;
     unsigned char startsWith(const String &prefix, unsigned int offset) const;
@@ -248,6 +253,30 @@ public:
     StringSumHelper(long long num) : String(num) {}
     StringSumHelper(unsigned long long num) : String(num) {}
 };
+
+inline bool operator==(const char* str1, const String& str2) {
+    return str2.equals(str1);
+}
+
+inline bool operator!=(const char* str1, const String& str2) {
+    return !str2.equals(str1);
+}
+
+inline bool operator<(const char* str1, const String& str2) {
+    return str2.compareTo(str1) > 0;
+}
+
+inline bool operator<=(const char* str1, const String& str2) {
+    return str2.compareTo(str1) >= 0;
+}
+
+inline bool operator>(const char* str1, const String& str2) {
+    return str2.compareTo(str1) < 0;
+}
+
+inline bool operator>=(const char* str1, const String& str2) {
+    return str2.compareTo(str1) <= 0;
+}
 
 #endif  // __cplusplus
 #endif  // String_class_h
