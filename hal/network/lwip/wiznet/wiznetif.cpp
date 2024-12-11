@@ -149,8 +149,10 @@ WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_p
     };
     hal_gpio_configure(reset_, &conf, nullptr);
     hal_gpio_configure(cs_, &conf, nullptr);
-    /* There is an external 10k pull-up */
-    hal_gpio_mode(interrupt_, INPUT);
+    /* There should be an external 10k pull-up, but if there isn't one activate internal one
+     * to prevent interrupt line from floating. Worst case it's (13k + 10k) on Gen 3 and (50k + 10k) on Gen 4.
+     */
+    hal_gpio_mode(interrupt_, INPUT_PULLUP);
 
     SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
 
