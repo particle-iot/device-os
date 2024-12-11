@@ -398,14 +398,27 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
                 client->parseDisconnectReason(buf, (size_t)bufLen);
             }, (void*)this);
 
-            LOG(INFO, "Try to connect to ssid: %s", ssid);
-            rtlError = wifi_connect((char*)ssid,
-                                    wifiSecurityToRtlSecurity(sec),
-                                    (char*)cred.password(),
-                                    ssid ? strlen(ssid) : 0,
-                                    cred.password() ? strlen(cred.password()) : 0,
-                                    -1,
-                                    nullptr);
+            char bssidStr[MAC_ADDRESS_STRING_SIZE + 1] = {};
+            macAddressToString(bssid, bssidStr, sizeof(bssidStr));
+            LOG(INFO, "Try to connect to ssid: %s (%s)", ssid, bssidStr);
+            if (bssid != INVALID_ZERO_MAC_ADDRESS && bssid != INVALID_MAC_ADDRESS) {
+                rtlError = wifi_connect_bssid((unsigned char*)bssid.data, (char*)ssid,
+                                        wifiSecurityToRtlSecurity(sec),
+                                        (char*)cred.password(),
+                                        MAC_ADDRESS_SIZE,
+                                        ssid ? strlen(ssid) : 0,
+                                        cred.password() ? strlen(cred.password()) : 0,
+                                        -1,
+                                        nullptr);
+            } else {
+                rtlError = wifi_connect((char*)ssid,
+                                        wifiSecurityToRtlSecurity(sec),
+                                        (char*)cred.password(),
+                                        ssid ? strlen(ssid) : 0,
+                                        cred.password() ? strlen(cred.password()) : 0,
+                                        -1,
+                                        nullptr);
+            }
             if (rtlError == RTW_SUCCESS) {
                 connectionState(NcpConnectionState::CONNECTED);
                 return rtl_error_to_system(rtlError);
