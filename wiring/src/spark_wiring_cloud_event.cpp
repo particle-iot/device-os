@@ -298,8 +298,7 @@ CloudEvent& CloudEvent::data(const EventData& data) {
         }
         return *this;
     }
-    size_t size = r;
-    r = coap_set_payload_size(payload, size, nullptr /* reserved */);
+    r = coap_set_payload_size(payload, d_->pos, nullptr /* reserved */);
     if (r < 0) {
         LOG(ERROR, "coap_set_payload_size() failed: %d", r);
         setInvalid(r);
@@ -482,6 +481,9 @@ int CloudEvent::setSize(size_t size) {
         if (err < 0) {
             return err;
         }
+        if (status() == Status::SENDING) {
+            return Error::BUSY;
+        }
         return Error::INVALID_STATE;
     }
     auto payload = getValidPayload();
@@ -649,6 +651,9 @@ int CloudEvent::write(const char* data, size_t size) {
         int err = error();
         if (err < 0) {
             return err;
+        }
+        if (status() == Status::SENDING) {
+            return Error::BUSY;
         }
         return Error::INVALID_STATE;
     }

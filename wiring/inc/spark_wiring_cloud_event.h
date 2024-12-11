@@ -351,7 +351,7 @@ public:
      * @return `true` if the event data is empty, otherwise `false`.
      */
     bool isEmpty() const {
-        return size() > 0;
+        return !size();
     }
 
     /**
