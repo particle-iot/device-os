@@ -1,3 +1,28 @@
+## 6.2.1
+
+### FEATURES
+
+- Expose ICCID to Modem Manager when tethering [#2838](https://github.com/particle-iot/device-os/pull/2838)
+- [Cellular] BG95-S5 support [#2842](https://github.com/particle-iot/device-os/pull/2842)
+- [BLE] `BLE.setAdvertisingScheme()` API [#2837](https://github.com/particle-iot/device-os/pull/2837)
+
+### ENHANCEMENTS
+
+- [Gen 4] Optimize QSPI flash writes (to use highest clock speed and IO mode) and erasures (use 32K and 64K blocks when possible) [#2841](https://github.com/particle-iot/device-os/pull/2841)
+- [Ethernet] Minor performance optimizations [#2846](https://github.com/particle-iot/device-os/pull/2846)
+- [Ethernet] Enable internal pull-up on interrupt line in case external one is not populated to prevent it from floating [684047d7](https://github.com/particle-iot/device-os/commit/684047d7a26f20a002f9c51886421870b5c94f63)
+- [Gen 4] WiFi: Always perform a scan before connect and use both SSID + BSSID to initiate the connection [#2849](https://github.com/particle-iot/device-os/pull/2849)
+- [Cellular] [R510] Extend EHS (Emergency Hardware Shutdown) sequence timing due to reduced clock rate while in (UPSV=1) Power Saving mode [#2850](https://github.com/particle-iot/device-os/pull/2850)
+
+### BUGFIXES
+
+- [Gen 3] Fix DMA issue when writing from internal flash to external flash [#2843](https://github.com/particle-iot/device-os/pull/2841)
+- [Ethernet] Fix default pin configuration/validation [#2846](https://github.com/particle-iot/device-os/pull/2846)
+- [Cellular] [R510] Device OS 6.2.0 unmasked all bands on R510; however LTE Cat-M1 band 71 shall be re-disabled. See our [Technical Advisory Note](https://docs.particle.io/reference/technical-advisory-notices/tan014/) for more info [#2845](https://github.com/particle-iot/device-os/pull/2845)
+- [Gen 4] BLE: Fix a deadlock between `BLE.connect()` and `BLE.peerCentral()` calls in different threads [#2836](https://github.com/particle-iot/device-os/pull/2836)
+- [Gen 4] BLE: Fix connection issues operating in peripheral/central roles concurrently [#2839](https://github.com/particle-iot/device-os/pull/2839)
+
+
 ## 6.2.0
 
 ### BREAKING CHANGES
