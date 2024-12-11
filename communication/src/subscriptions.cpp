@@ -112,13 +112,15 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
         if (nameLen < filterLen || std::memcmp(eventHandler.filter, name, filterLen) != 0) {
             continue; // Event name mismatch
         }
+        if ((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) {
+            continue; // Encoding mismatch
+        }
         if (eventHandler.flags & SubscriptionFlag::LARGE_EVENT) {
             newHandlerFound = true;
             break; // The request will be handled by the new CoAP implementation
         }
-        if (((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) ||
-                (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt))) {
-            continue; // Encoding mismatch
+        if (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt)) {
+            continue; // Encoding mismatch (old event API)
         }
         oldHandlers[oldHandlerCount++] = &eventHandler;
     }

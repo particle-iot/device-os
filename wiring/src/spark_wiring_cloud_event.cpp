@@ -840,8 +840,11 @@ int CloudEvent::receiveRequestApp(CoapMessagePtr msg) {
         if (!d->name) {
             return Error::NO_MEMORY;
         }
-        d->contentType = (ContentType)contentFmt; // ContentType values are the CoAP's content format IDs
-
+        if (contentFmt == COAP_FORMAT_CBOR) {
+            d->contentType = ContentType::STRUCTURED;
+        } else {
+            d->contentType = (ContentType)contentFmt; // ContentType values are the CoAP's content format IDs
+        }
         // Payload objects are reference counted. If there are multiple matching subscription handlers,
         // all created event instances will reference the same payload object
         CHECK(coap_get_payload(msg.get(), &d->payload, nullptr /* reserved */));

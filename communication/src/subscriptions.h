@@ -121,13 +121,22 @@ public:
 	/**
 	 * Determines if the given handler exists.
 	 */
-	bool event_handler_exists(const char *event_name, EventHandler handler, void *handler_data)
+	bool event_handler_exists(const char *event_name, EventHandler handler, void *handler_data, int flags)
 	{
 		const int NUM_HANDLERS = sizeof(event_handlers)
 				/ sizeof(FilteringEventHandler);
 		for (int i = 0; i < NUM_HANDLERS; i++)
 		{
-			if (event_handlers[i].handler == handler && event_handlers[i].handler_data == handler_data)
+			// XXX: For a subscription registered via the new event API, simply look for a full name
+			// match. The existing logic for the classic API doesn't look intentional but let's keep
+			// it for backward compatibility
+			if (flags & SubscriptionFlag::LARGE_EVENT)
+			{
+				if (strncmp(event_name, event_handlers[i].filter, sizeof(event_handlers[i].filter)) == 0) {
+					return true;
+				}
+			}
+			else if (event_handlers[i].handler == handler && event_handlers[i].handler_data == handler_data)
 			{
 				const size_t MAX_FILTER_LEN = sizeof(event_handlers[i].filter);
 				const size_t FILTER_LEN = strnlen(event_name, MAX_FILTER_LEN);
@@ -145,7 +154,7 @@ public:
 	 */
 	ProtocolError add_event_handler(const char *event_name, EventHandler handler, void *handler_data, int flags)
 	{
-		if (event_handler_exists(event_name, handler, handler_data))
+		if (event_handler_exists(event_name, handler, handler_data, flags))
 			return NO_ERROR;
 
 		const int NUM_HANDLERS = sizeof(event_handlers) / sizeof(FilteringEventHandler);
