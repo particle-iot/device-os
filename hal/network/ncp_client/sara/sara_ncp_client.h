@@ -122,6 +122,7 @@ private:
     int lastFirmwareInstallRespCodeR510_ = 0;
     int waitReadyRetries_ = 0;
     bool sleepNoPPPWrite_ = false;
+    bool ehsExtendedTiming_ = false;
 
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
