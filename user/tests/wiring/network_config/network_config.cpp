@@ -588,7 +588,7 @@ test(NETWORK_CONFIG_ETH_09_dhcp_with_no_gw) {
     assertEqual(addr.profile, ethConfig.profile);
 }
 
-test(NETWORK_CONFIG_ETH_96_restore) {
+test(NETWORK_CONFIG_ETH_94_restore) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -603,7 +603,7 @@ test(NETWORK_CONFIG_ETH_96_restore) {
     assertTrue(networkInterfaceConfigMatches(conf, storedConf));
 }
 
-test(NETWORK_CONFIG_ETH_97_connect) {
+test(NETWORK_CONFIG_ETH_95_connect) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -616,7 +616,7 @@ test(NETWORK_CONFIG_ETH_97_connect) {
     assertTrue(waitFor(Particle.connected, 60000));
 }
 
-test(NETWORK_CONFIG_ETH_98_ping_gw_latency) {
+test(NETWORK_CONFIG_ETH_96_ping_gw_latency) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -634,6 +634,52 @@ test(NETWORK_CONFIG_ETH_98_ping_gw_latency) {
     for (int i = 0; i < 10; i++) {
         auto t0 = millis();
         int r = services::ping(Ethernet.gatewayIP().toString().c_str(), 1, 1000, Ethernet, AF_INET);
+        auto t1 = millis();
+        if (r == 1) {
+            latency += t1 - t0;
+            goodCount++;
+        }
+    }
+    latency /= goodCount;
+    assertMoreOrEqual(goodCount, 1);
+    assertLessOrEqual(latency, 10);
+}
+
+test(NETWORK_CONFIG_ETH_97_reset_cache) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    // This will reset ethernet pin config to default settings if any were there before
+    unlink("/sys/cache.dat");
+
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    System.reset();
+}
+
+test(NETWORK_CONFIG_ETH_98_ping_gw_latency_default_config) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    Ethernet.on();
+    Ethernet.connect();
+    assertTrue(waitFor(Ethernet.ready, 60000));
+
+    // Tests for poor SPI/Wiznet network driver performance
+    // ICMP echo to the gateway should normally be 2ms roundtrip
+    // If performance is affected this will be over 10ms
+    assertTrue(Ethernet.ready());
+    assertTrue((bool)Ethernet.localIP());
+    assertTrue((bool)Ethernet.gatewayIP());
+
+    system_tick_t latency = 0;
+    size_t goodCount = 0;
+    for (int i = 0; i < 100; i++) {
+        auto t0 = millis();
+        int r = services::ping(Ethernet.gatewayIP().toString().c_str(), 1, 20, Ethernet, AF_INET);
         auto t1 = millis();
         if (r == 1) {
             latency += t1 - t0;
