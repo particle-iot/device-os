@@ -46,6 +46,7 @@ LOG_SOURCE_CATEGORY("net.en")
 
 #include "platform_config.h"
 #include "spi_lock.h"
+#include "check.h"
 
 #ifndef WIZNET_SPI_MODE
 #define WIZNET_SPI_MODE SPI_MODE3
@@ -116,7 +117,7 @@ const hal_spi_info_t WIZNET_DEFAULT_CONFIG = {
 };
 
 const int WIZNET_DEFAULT_TIMEOUT = 500;
-const int WIZNET_DEFAULT_TIMEOUT_POLL = 250;
+const int WIZNET_DEFAULT_TIMEOUT_POLL = 100;
 /* FIXME */
 const unsigned int WIZNET_INRECV_NEXT_BACKOFF = 50;
 const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
@@ -125,34 +126,15 @@ const unsigned int WIZNET_DEFAULT_RX_FRAMES_PER_ITERATION = PBUF_POOL_SIZE / 2;
 
 WizNetif* WizNetif::instance_ = nullptr;
 
-WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6], bool postpone)
+WizNetif::WizNetif(hal_spi_interface_t spi, const uint8_t mac[6])
         : BaseNetif(),
           spi_(spi),
-          cs_(cs),
-          reset_(reset),
-          interrupt_(interrupt),
-          postpone_(postpone),
           pwrState_(IF_POWER_STATE_NONE),
           spiLock_(spi, WIZNET_DEFAULT_CONFIG) {
 
     LOG(INFO, "Creating Wiznet LwIP interface");
 
     instance_ = this;
-
-    hal_gpio_config_t conf = {
-        .size = sizeof(conf),
-        .version = HAL_GPIO_VERSION,
-        .mode = OUTPUT,
-        .set_value = true,
-        .value = 1,
-        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
-    };
-    hal_gpio_configure(reset_, &conf, nullptr);
-    hal_gpio_configure(cs_, &conf, nullptr);
-    /* There should be an external 10k pull-up, but if there isn't one activate internal one
-     * to prevent interrupt line from floating. Worst case it's (13k + 10k) on Gen 3 and (50k + 10k) on Gen 4.
-     */
-    hal_gpio_mode(interrupt_, INPUT_PULLUP);
 
     SPARK_ASSERT(os_semaphore_create(&spiSem_, 1, 0) == 0);
 
@@ -227,15 +209,17 @@ WizNetif::WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_p
     if (!netifapi_netif_add(interface(), nullptr, nullptr, nullptr, this, initCb, ethernet_input)) {
         SPARK_ASSERT(os_queue_create(&queue_, sizeof(void*), 256, nullptr) == 0);
         registerHandlers();
-        SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
     }
 }
 
 WizNetif::~WizNetif() {
     exit_ = true;
-    if (thread_ && queue_) {
+    if (queue_) {
         const void* dummy = nullptr;
         os_queue_put(queue_, &dummy, 1000, nullptr);
+    }
+
+    if (thread_) {
         os_thread_join(thread_);
         os_queue_destroy(queue_, nullptr);
     }
@@ -284,33 +268,59 @@ err_t WizNetif::initInterface() {
     }
     netif_set_hostname(&netif_, hostname_.get());
 
+    return ERR_OK;
+}
+
+void WizNetif::hwReset() {
+    if (reset_ != PIN_INVALID) {
+        hal_gpio_write(reset_, 0);
+        HAL_Delay_Milliseconds(1);
+        hal_gpio_write(reset_, 1);
+        HAL_Delay_Milliseconds(1);
+    }
+}
+
+void WizNetif::swReset() {
+    wizchip_sw_reset();
+}
+
+int WizNetif::init(const WizNetifConfigData& config) {
+    if (thread_) {
+        // Just in case
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    interrupt_ = config.int_pin;
+    reset_ = config.reset_pin;
+    cs_ = config.cs_pin;
+
+    hal_gpio_config_t conf = {
+        .size = sizeof(conf),
+        .version = HAL_GPIO_VERSION,
+        .mode = OUTPUT,
+        .set_value = true,
+        .value = 1,
+        .drive_strength = HAL_GPIO_DRIVE_DEFAULT
+    };
+    hal_gpio_configure(reset_, &conf, nullptr);
+    hal_gpio_configure(cs_, &conf, nullptr);
+    /* There should be an external 10k pull-up, but if there isn't one activate internal one
+     * to prevent interrupt line from floating. Worst case it's (13k + 10k) on Gen 3 and (50k + 10k) on Gen 4.
+     */
+    hal_gpio_mode(interrupt_, INPUT_PULLUP);
+
     hwReset();
-    if (!isPresent()) {
+    if (!isPresent(true)) {
         pwrState_ = IF_POWER_STATE_DOWN;
-        if (postpone_) {
-            // Note: We don't need to perform soft-reset when the chip is detected later on,
-            // since the other time the chip is probably powered cycled.
-            return ERR_OK;
-        }
-        return ERR_IF;
+        return SYSTEM_ERROR_NOT_FOUND;
     }
     if (reset_ == PIN_INVALID) {
         swReset();
     }
     pwrState_ = IF_POWER_STATE_UP;
 
-    return ERR_OK;
-}
+    SPARK_ASSERT(os_thread_create(&thread_, "wiz", OS_THREAD_PRIORITY_NETWORK, &WizNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
 
-void WizNetif::hwReset() {
-    hal_gpio_write(reset_, 0);
-    HAL_Delay_Milliseconds(1);
-    hal_gpio_write(reset_, 1);
-    HAL_Delay_Milliseconds(1);
-}
-
-void WizNetif::swReset() {
-    wizchip_sw_reset();
+    return 0;
 }
 
 bool WizNetif::isPresent(bool retry) {
@@ -320,7 +330,7 @@ bool WizNetif::isPresent(bool retry) {
         cv = getVERSIONR();
         /* VERSIONR always indicates the W5500 version as 0x04 */
         if (cv != 0x04 && retry) {
-            HAL_Delay_Milliseconds(50);
+            HAL_Delay_Milliseconds(10);
             continue;
         }
         break;
@@ -377,6 +387,9 @@ void WizNetif::loop(void* arg) {
 
 int WizNetif::up() {
     LwipTcpIpCoreLock lk;
+
+    // We are not yet properly initialized!
+    CHECK_TRUE(thread_, SYSTEM_ERROR_INVALID_STATE);
 
     uint8_t bufSizes[_WIZCHIP_SOCK_NUM_] = {16};
     wizchip_init(bufSizes, bufSizes);

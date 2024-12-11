@@ -27,6 +27,7 @@
 #include <lwip/pbuf.h>
 #include <memory>
 #include "spi_lock.h"
+#include "wiznetif_config.h"
 
 #ifdef __cplusplus
 
@@ -35,7 +36,7 @@ namespace particle { namespace net {
 class WizNetif : public BaseNetif {
 public:
     WizNetif() = delete;
-    WizNetif(hal_spi_interface_t spi, hal_pin_t cs, hal_pin_t reset, hal_pin_t interrupt, const uint8_t mac[6], bool postpone = false);
+    WizNetif(hal_spi_interface_t spi, const uint8_t mac[6]);
     virtual ~WizNetif();
 
     virtual int powerUp() override;
@@ -50,6 +51,8 @@ public:
     }
 
     int request(if_req_driver_specific* req, size_t size) override;
+
+    int init(const WizNetifConfigData& conf);
 
 protected:
     virtual void ifEventHandler(const if_event* ev) override;
@@ -83,10 +86,9 @@ private:
 
 private:
     hal_spi_interface_t spi_;
-    hal_pin_t cs_;
-    hal_pin_t reset_;
-    hal_pin_t interrupt_;
-    bool postpone_;
+    hal_pin_t cs_ = PIN_INVALID;
+    hal_pin_t reset_ = PIN_INVALID;
+    hal_pin_t interrupt_ = PIN_INVALID;
 
     std::atomic<if_power_state_t> pwrState_;
 
