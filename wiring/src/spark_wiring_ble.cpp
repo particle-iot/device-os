@@ -2255,6 +2255,21 @@ ssize_t BleLocalDevice::getScanResponseData(BleAdvertisingData& scanResponse) co
     return getScanResponseData(&scanResponse);
 }
 
+int BleLocalDevice::setAdvertisingScheme(BleAdvertisingScheme scheme) const {
+    return hal_ble_gap_set_auto_advertise((hal_ble_auto_adv_cfg_t)scheme, nullptr);
+}
+
+int BleLocalDevice::getAdvertisingScheme(BleAdvertisingScheme* scheme) const {
+    hal_ble_auto_adv_cfg_t config;
+    int ret = hal_ble_gap_get_auto_advertise(&config, nullptr);
+    *scheme = (BleAdvertisingScheme)config;
+    return ret;
+}
+
+int BleLocalDevice::getAdvertisingScheme(BleAdvertisingScheme& scheme) const {
+    return getAdvertisingScheme(&scheme);
+}
+
 int BleLocalDevice::advertise() const {
     return hal_ble_gap_start_advertising(nullptr);
 }
