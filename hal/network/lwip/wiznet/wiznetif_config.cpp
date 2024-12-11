@@ -15,10 +15,10 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "wiznetif_config.h"
-
 #include "logging.h"
 #define WIZNETIF_CONFIG_LOG_CATEGORY "net.en.cfg"
+
+#include "wiznetif_config.h"
 
 #include "system_error.h"
 #include <algorithm>
@@ -67,9 +67,9 @@ int WizNetifConfig::initializeWizNetifConfigData(WizNetifConfigData& configData)
     memset(&configData, 0, sizeof(wizNetifConfigData_));
     configData.size = sizeof(WizNetifConfigData);
     configData.version = WIZNETIF_CONFIG_DATA_VERSION;
-    configData.cs_pin = PIN_INVALID;
-    configData.reset_pin = PIN_INVALID;
-    configData.int_pin = PIN_INVALID;
+    configData.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
+    configData.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
+    configData.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -138,30 +138,23 @@ int WizNetifConfig::getConfigData(WizNetifConfigData* configData) {
     CHECK_TRUE(configData, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(configData->size != 0, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    recallWizNetifConfigData();
+    // If we are already initialized we should already have a valid config in wizNetifConfigData_
 
     memcpy(configData, &wizNetifConfigData_, std::min(configData->size, wizNetifConfigData_.size));
-    if (configData->cs_pin == PIN_INVALID) {
-        configData->cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
-    }
     logWizNetifConfigData(wizNetifConfigData_);
 
     return SYSTEM_ERROR_NONE;
 }
 
 bool WizNetifConfig::isPinValid(uint16_t pin) {
-    if (pin >= TOTAL_PINS && pin != PIN_INVALID) {
-        return false;
-    }
-
-    return true;
+    return pin < TOTAL_PINS;
 }
 
 int WizNetifConfig::validateWizNetifConfigData(const WizNetifConfigData* configData) {
     // XXX: If we add a new version in the future this will need to handle that
     if (configData->size != sizeof(WizNetifConfigData) ||
             configData->version != WIZNETIF_CONFIG_DATA_VERSION ||
-            !isPinValid(configData->cs_pin)) {
+            !isPinValid(configData->cs_pin)) { // CS pin must not be PIN_INVALID!
         LOG(ERROR, "configData not valid! size:%u ver:%u cs_pin:%u reset_pin:%u int_pin:%u",
                 configData->size,
                 configData->version,

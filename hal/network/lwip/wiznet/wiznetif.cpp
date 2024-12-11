@@ -551,10 +551,11 @@ int WizNetif::input() {
 
         if (pktSize >= 1522 /* IEEE 802.3ac max size */) {
             // Attempt to recover
+            LOG_DEBUG(WARN, "invalid packet size %u, attempting to recover the RX buffer", pktSize);
             wiz_recv_ignore(0, pktSize + 2);
             closeRaw();
             openRaw();
-            return r;
+            break;
         }
 
 #if ETH_PAD_SIZE
@@ -580,11 +581,12 @@ int WizNetif::input() {
             /* reclaim the padding word */
             pbuf_add_header(p, ETH_PAD_SIZE);
 #endif /* ETH_PAD_SIZE */
-
-            LwipTcpIpCoreLock lk;
-            if (netif_.input(p, &netif_) != ERR_OK) {
-                LOG(ERROR, "Error inputing packet");
-                pbuf_free(p);
+            {
+                LwipTcpIpCoreLock lk;
+                if (netif_.input(p, &netif_) != ERR_OK) {
+                    LOG(ERROR, "Error inputing packet");
+                    pbuf_free(p);
+                }
             }
         } else {
             LOG(ERROR, "Failed to allocate pbuf");
@@ -601,9 +603,14 @@ int WizNetif::input() {
         ++count;
     }
 
-    if (getSn_RX_RSR(0) == 0 || getSn_RX_RSR(0) == 0xffff) {
+    auto rxr = getSn_RX_RSR(0);
+
+    if (rxr == 0 || rxr == 0xffff) {
         inRecv_ = false;
         setSn_IR(0, Sn_IR_RECV);
+    } else {
+        // back-off
+        r = 1;
     }
 
     return r;
@@ -621,7 +628,7 @@ err_t WizNetif::linkOutput(pbuf* p) {
     }
 
     if (os_queue_put(queue_, &q, 0, nullptr)) {
-        LOG(ERROR, "Dropping packet %x, not enough space in event queue", q);
+        LOG_DEBUG(ERROR, "Dropping packet %x, not enough space in event queue", q);
         pbuf_free(q);
         return ERR_MEM;
     }

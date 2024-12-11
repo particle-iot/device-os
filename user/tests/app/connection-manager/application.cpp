@@ -131,9 +131,9 @@ void setup() {
         if_wiznet_pin_remap remap = {};
         remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
 
-        remap.cs_pin = PIN_INVALID; // default
-        remap.reset_pin = PIN_INVALID; // default
-        remap.int_pin = PIN_INVALID; // default
+        remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT; // default
+        remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT; // default
+        remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT; // default
 
         // remap.cs_pin = D8; // MSoM Eval Board
         // remap.reset_pin = A7;
