@@ -29,7 +29,7 @@ namespace particle::protocol::v2 {
  */
 class CoapTag {
 public:
-    static const size_t MAX_SIZE = 8;
+    static constexpr size_t MAX_SIZE = 8;
 
     CoapTag() :
             size_(0) {

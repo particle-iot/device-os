@@ -20,9 +20,13 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/protocol_util.cpp
   ${DEVICE_OS_DIR}/communication/src/protocol_defs.cpp
   ${DEVICE_OS_DIR}/communication/src/v2/coap_channel.cpp
+  ${DEVICE_OS_DIR}/communication/src/v2/coap_payload.cpp
+  ${DEVICE_OS_DIR}/communication/src/v2/coap_options.cpp
+  ${DEVICE_OS_DIR}/communication/src/v2/coap_tag.cpp
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
+  ${TEST_DIR}/stub/filesystem.cpp
   util/coap_message.cpp
   util/coap_message_channel.cpp
   util/protocol_callbacks.cpp
