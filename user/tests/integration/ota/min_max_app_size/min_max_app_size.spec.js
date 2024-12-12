@@ -2,6 +2,8 @@ suite('Minimum and maximum app size OTA');
 
 platform('gen3', 'gen4');
 systemThread('enabled');
+const flashTimeoutMinutes = 40;
+timeout(flashTimeoutMinutes * 60 * 1000);
 
 const { HalModuleParser, ModuleInfo, compressModule, updateModuleCrc32, updateModulePrefix, updateModuleSuffix, updateModuleSha256 } = require('binary-version-reader');
 const tempy = require('tempy');
@@ -16,7 +18,6 @@ let deviceId = null;
 let origAppData = null;
 let maxAppData = null;
 let maxAppSize = 0;
-const flashTimeoutMinutes = 40;
 
 async function flash(ctx, data, name, { timeout = flashTimeoutMinutes * 60 * 1000, retry = 5 } = {}) {
 	let ok = false;
