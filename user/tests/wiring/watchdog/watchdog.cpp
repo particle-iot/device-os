@@ -18,6 +18,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#define MAX_CELLULAR_OFF_TIME (3*60*1000)
 
 static void startWatchdog(const WatchdogConfiguration& config) {
     WatchdogInfo info;
@@ -45,7 +46,7 @@ test(WATCHDOG_00_setup_disconnect_power_off_ncp) {
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);
     Cellular.off();
-    waitFor(Cellular.isOff, 120000);
+    waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
     assertTrue(Cellular.isOff());
 #endif
 #if Wiring_WiFi

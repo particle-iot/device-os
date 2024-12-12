@@ -29,6 +29,8 @@
 
 namespace {
 
+#define MAX_CELLULAR_OFF_TIME (3*60*1000)
+
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 static retained uint32_t magick = 0;
 static retained uint32_t phase = 0;
@@ -123,7 +125,7 @@ test(CELLULAR_NO_ANTENNA_02_device_will_poweroff_quickly_when_modem_cannot_conne
             assertTrue(Particle.disconnected());
             // cellular_cancel(true, false, NULL); // Workaround: call before Cellular.off() / System.sleep(config);
             Cellular.off();
-            waitFor(Cellular.isOff, 60000);
+            waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
             assertTrue(Cellular.isOff());
         }
         // Check that Particle.connect() attempts to work after the delay

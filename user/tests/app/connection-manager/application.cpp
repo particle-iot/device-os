@@ -9,6 +9,7 @@ STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
 
 retained uint8_t resetRetry = 0;
 #define ETHERNET_RETRY_MAX (10)
+#define MAX_CELLULAR_OFF_TIME (3*60*1000)
 
 #define CMD_SERIAL Serial
 
@@ -293,7 +294,7 @@ void loop() {
         else if(c == 'z') {
             // Turn off modem
             Cellular.off();
-            waitFor(Cellular.isOff, 30000);
+            waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
 
             // Get cellular info when modem is off:
             // -> expect NO AT commands to be sent

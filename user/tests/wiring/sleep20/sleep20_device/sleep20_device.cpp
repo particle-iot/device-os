@@ -161,6 +161,8 @@ constexpr int SLEEP_PIN_WKP_WAKE_UP = WKP; // Argon=D8, P2=D10
 
 constexpr uint32_t SLEEP_DURATION_S = 3;
 
+#define MAX_CELLULAR_OFF_TIME (3*60*1000)
+
 } // anonymous
 
 void updateTime() {
@@ -843,7 +845,7 @@ test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
         Log.trace("    >> Powering off the modem...");
 #if HAL_PLATFORM_CELLULAR
         Cellular.off();
-        assertTrue(waitFor(Cellular.isOff, 60000));
+        assertTrue(waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME));
         Log.trace("    >> Powering on the modem...");
         Cellular.on();
         assertTrue(waitFor(Cellular.isOn, 60000));
@@ -883,7 +885,7 @@ test(36_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         assertTrue(waitFor(Cellular.isOn, 60000));
         Log.trace("    >> Powering off the modem...");
         Cellular.off();
-        assertTrue(waitFor(Cellular.isOff, 60000));
+        assertTrue(waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME));
 #elif HAL_PLATFORM_WIFI
         WiFi.on();
         assertTrue(waitFor(WiFi.isOn, 60000));

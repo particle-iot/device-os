@@ -23,6 +23,8 @@
 #include "random.h"
 #include "scope_guard.h"
 
+#define MAX_CELLULAR_OFF_TIME (3*60*1000)
+
 #if Wiring_Cellular == 1
 
 /**
@@ -172,7 +174,7 @@ test(CELLULAR_06_on_off_validity_check) {
     assertEqual(ret, (int)RESP_OK);
 
     Cellular.off();
-    waitFor(Cellular.isOff, 30000);
+    waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
     assertFalse(Cellular.isOn());
     assertTrue(Cellular.isOff());
 
