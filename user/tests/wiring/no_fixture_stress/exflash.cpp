@@ -204,6 +204,73 @@ test(EXFLASH_02_rtl872x_validate_mode) {
     assertEqual((uint32_t)SPIC->fbaudr, (uint32_t)1);
     assertEqual((uint32_t)SPIC->baudr, (uint32_t)1);
 }
+
+test(EXFLASH_03_rtl872x_validate_mode_after_stop_sleep_and_read_write) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(10s));
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+
+    RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+#if PLATFORM_ID == PLATFORM_P2
+    // P2/Photon 2 in Dual IO mode
+    assertEqual((uint32_t)RRAM->FLASH_ReadMode, (uint32_t)ReadDualIOMode);
+#else
+    // M SoM in Quad IO mode
+    assertEqual((uint32_t)RRAM->FLASH_ReadMode, (uint32_t)ReadQuadIOMode);
+#endif // PLATFORM_ID == PLATFORM_P2
+    // Highest clock speed (clkdiv=1)
+    assertEqual((uint32_t)SPIC->fbaudr, (uint32_t)1);
+    assertEqual((uint32_t)SPIC->baudr, (uint32_t)1);
+
+    auto duration = 10 * 1000;
+
+    for (system_tick_t now = millis(), begin = now; now < begin + duration; now = millis()) {
+        uint32_t val = rand();
+        uint32_t tmp;
+        EEPROM.get(0, tmp);
+
+        val = val ^ tmp;
+        EEPROM.put(0, val);
+        EEPROM.get(0, tmp);
+        assertEqual(tmp, val);
+    }
+}
+
+test(EXFLASH_04_rtl872x_validate_mode_after_hibernate_sleep_and_read_write) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).duration(10s));
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+}
+
+test(EXFLASH_05_rtl872x_validate_mode_after_hibernate_sleep_and_read_write) {
+    assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
+
+    auto duration = 10 * 1000;
+
+    for (system_tick_t now = millis(), begin = now; now < begin + duration; now = millis()) {
+        uint32_t val = rand();
+        uint32_t tmp;
+        EEPROM.get(0, tmp);
+
+        val = val ^ tmp;
+        EEPROM.put(0, val);
+        EEPROM.get(0, tmp);
+        assertEqual(tmp, val);
+    }
+
+    RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+#if PLATFORM_ID == PLATFORM_P2
+    // P2/Photon 2 in Dual IO mode
+    assertEqual((uint32_t)RRAM->FLASH_ReadMode, (uint32_t)ReadDualIOMode);
+#else
+    // M SoM in Quad IO mode
+    assertEqual((uint32_t)RRAM->FLASH_ReadMode, (uint32_t)ReadQuadIOMode);
+#endif // PLATFORM_ID == PLATFORM_P2
+    // Highest clock speed (clkdiv=1)
+    assertEqual((uint32_t)SPIC->fbaudr, (uint32_t)1);
+    assertEqual((uint32_t)SPIC->baudr, (uint32_t)1);
+}
+
 #endif // HAL_PLATFORM_RTL872X
 
 test(EXFLASH_03_aligned_and_unaligned_writes_from_internal_flash_work) {

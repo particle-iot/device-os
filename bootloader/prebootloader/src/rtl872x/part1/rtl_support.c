@@ -463,6 +463,10 @@ void rtlPowerOnBigCore() {
 
     if (SOCPS_DsleepWakeStatusGet() == FALSE) {
         km4_flash_highspeed_init();
+    } else {
+        // There is deep sleep check in the function below, so it will only perform GPIO configuration
+        // but not full calibration in case of wake-up from deep sleep.
+        flash_operation_config();
     }
 
     /* Disable RSIP if it is enabled. Not needed after KM0 boot */
