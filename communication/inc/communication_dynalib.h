@@ -92,7 +92,7 @@ DYNALIB_FN(BASE_IDX2 + 14, communication, coap_end_request, int(coap_message*, c
 DYNALIB_FN(BASE_IDX2 + 15, communication, coap_begin_response, int(coap_message**, int, int, int, void*))
 DYNALIB_FN(BASE_IDX2 + 16, communication, coap_end_response, int(coap_message*, coap_ack_callback, coap_error_callback, void*, void*))
 DYNALIB_FN(BASE_IDX2 + 17, communication, coap_destroy_message, void(coap_message*, void*))
-DYNALIB_FN(BASE_IDX2 + 18, communication, coap_cancel_request, void(int, void*))
+DYNALIB_FN(BASE_IDX2 + 18, communication, coap_cancel_request, int(int, void*))
 DYNALIB_FN(BASE_IDX2 + 19, communication, coap_write_block, int(coap_message*, const char*, size_t*, coap_block_callback, coap_error_callback, void*, void*))
 DYNALIB_FN(BASE_IDX2 + 20, communication, coap_read_block, int(coap_message*, char*, size_t*, coap_block_callback, coap_error_callback, void*, void*))
 DYNALIB_FN(BASE_IDX2 + 21, communication, coap_peek_block, int(coap_message*, char*, size_t, void*))

@@ -94,7 +94,7 @@ public:
     int getOption(const RefCountPtr<CoapMessage>& msg, unsigned num, const CoapOptionEntry*& opt);
     int getFirstOption(const RefCountPtr<CoapMessage>& msg, const CoapOptionEntry*& opt);
 
-    void cancelRequest(int reqId);
+    int cancelRequest(int reqId);
 
     void disposeMessage(const RefCountPtr<CoapMessage>& msg);
 

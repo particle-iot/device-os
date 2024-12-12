@@ -74,13 +74,6 @@ int destroyMessageImpl(coap_message* apiMsg) {
     return 0;
 }
 
-int cancelRequestImpl(int reqId) {
-    SYSTEM_THREAD_CONTEXT_SYNC(cancelRequestImpl(reqId));
-
-    CoapChannel::instance()->cancelRequest(reqId);
-    return 0;
-}
-
 } // namespace
 
 int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved) {
@@ -163,8 +156,11 @@ void coap_destroy_message(coap_message* apiMsg, void* reserved) {
     destroyMessageImpl(apiMsg);
 }
 
-void coap_cancel_request(int reqId, void* reserved) {
-    cancelRequestImpl(reqId);
+int coap_cancel_request(int reqId, void* reserved) {
+    SYSTEM_THREAD_CONTEXT_SYNC(coap_cancel_request(reqId, reserved));
+
+    int r = CHECK(CoapChannel::instance()->cancelRequest(reqId));
+    return r; // 0 or COAP_RESULT_CANCELLED
 }
 
 int coap_write_block(coap_message* apiMsg, const char* data, size_t* size, coap_block_callback blockCb,

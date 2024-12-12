@@ -229,7 +229,8 @@ typedef enum coap_message_flag {
  * Result code.
  */
 typedef enum coap_result {
-    COAP_RESULT_WAIT_BLOCK = 1 ///< Waiting for the next block of the message to be sent or received.
+    COAP_RESULT_WAIT_BLOCK = 1, ///< Waiting for the next block of the message to be sent or received.
+    COAP_RESULT_CANCELLED = 2 ///< Request was cancelled.
 } coap_result;
 
 #ifdef __cplusplus
@@ -363,8 +364,9 @@ void coap_destroy_message(coap_message* msg, void* reserved);
  *
  * @param req_id ID of the request that started the message exchange.
  * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return `COAP_RESULT_CANCELLED` if the request was found and cancelled, otherwise 0.
  */
-void coap_cancel_request(int req_id, void* reserved);
+int coap_cancel_request(int req_id, void* reserved);
 
 /**
  * Write payload data to the current block of a message.

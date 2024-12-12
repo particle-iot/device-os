@@ -595,9 +595,12 @@ void CloudEvent::cancel() {
     if (!d_ || d_->status != Status::SENDING) {
         return;
     }
-    coap_cancel_request(d_->requestId, nullptr /* reserved */);
+    int r = coap_cancel_request(d_->requestId, nullptr /* reserved */);
+    if (r == COAP_RESULT_CANCELLED) {
+        d_->release(); // Release the reference added in send()
+        RateLimiter::instance().give(this->size());
+    }
     d_->requestId = COAP_INVALID_REQUEST_ID;
-    RateLimiter::instance().give(this->size());
     // TODO: For now, transition to an invalid state as an event in a failed state can be sent again
     // and that would create a race condition between cancellation and normal completion of the event
     // in sendComplete()

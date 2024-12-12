@@ -723,9 +723,9 @@ int CoapChannel::getFirstOption(const RefCountPtr<CoapMessage>& coapMsg, const C
     return 0;
 }
 
-void CoapChannel::cancelRequest(int reqId) {
+int CoapChannel::cancelRequest(int reqId) {
     if (reqId <= 0) {
-        return;
+        return 0;
     }
     // Search among the messages for which a user callback may still need to be invoked
     RefCountPtr<Message> msg = findRefInList(sentReqs_, [=](auto req) {
@@ -741,9 +741,11 @@ void CoapChannel::cancelRequest(int reqId) {
             });
         }
     }
-    if (msg) {
-        clearMessage(msg);
+    if (!msg) {
+        return 0;
     }
+    clearMessage(msg);
+    return COAP_RESULT_CANCELLED;
 }
 
 void CoapChannel::disposeMessage(const RefCountPtr<CoapMessage>& coapMsg) {
