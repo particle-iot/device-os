@@ -115,7 +115,7 @@ test('18_receive_multiple_large_events', async function() {
 });
 
 test('19_init_new_api_subscription_is_preferred', async function() {
-  const name1 = 'ab';
+  const name1 = 'abc';
   const name2 = 'abc1';
   const data1 = 'rl1HxbPn3GL87Qiz9l8t2or5pYWLt2BfjPgqJuWUwYgXKJuGpBfO5BVyPUHKvQeC0XyOT3qzjfcORoLwatDZb1SxwpMVjjw4oGFn';
   const data2 = 'exhbRKvZmw2SUyrri7NYqu77jZkcpoxbNyv3SuROtKwn8Nwv09GxhZMsaSaz5OLWh4ccoat2zQ2arZhdrOKrpIT5ktdAwzpIEFl2';

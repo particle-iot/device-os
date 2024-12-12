@@ -555,7 +555,7 @@ test(20_new_api_subscription_is_preferred) {
     }, 30000));
     auto oldEv = oldEvents.takeFirst();
     assertTrue(oldEvents.isEmpty());
-    assertTrue(oldEv.first == scopedEventName("ab"));
+    assertTrue(oldEv.first == scopedEventName("abc"));
     assertTrue(oldEv.second == "rl1HxbPn3GL87Qiz9l8t2or5pYWLt2BfjPgqJuWUwYgXKJuGpBfO5BVyPUHKvQeC0XyOT3qzjfcORoLwatDZb1SxwpMVjjw4oGFn"); // 100 bytes
     // For the second event, there are two subscriptions that match the event name but only the handler
     // registered via the new API must be called
