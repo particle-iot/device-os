@@ -434,7 +434,7 @@ int CloudEvent::saveData(const char* path) {
     if (!isReadable()) {
         return error();
     }
-    int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY);
+    int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     if (fd < 0) {
         LOG(ERROR, "open() failed: %d", errno);
         return Error::FILE;
