@@ -73,10 +73,12 @@ ProtocolError Protocol::send_empty_ack(Message& message, message_id_t msg_id)
 ProtocolError Protocol::handle_received_message(Message& message,
 		CoAPMessageType::Enum& message_type)
 {
+	message_type = CoAPMessageType::UNKNOWN;
+
 	last_message_millis = callbacks.millis();
 	pinger.message_received();
+
 	uint8_t* queue = message.buf();
-	message_type = Messages::decodeType(queue, message.length());
 	// todo - not all requests/responses have tokens. These device requests do not use tokens:
 	// Update Done, ChunkMissed, event, ping, hello
 	token_t token = 0;
@@ -88,34 +90,39 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	// The passthrough flag is set for a received ACK for which a previously sent CON was not found
-	if (!message.passthrough() && (type == CoAPType::ACK || type == CoAPType::RESET)) {
-		// todo - this is a little too simple in the case of an empty ACK for a separate response
-		// the message should then be bound to the token. see CH19037
-		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
-			LOG(TRACE, "Reset received, setting error code to internal server error.");
-			code = CoAPCode::INTERNAL_SERVER_ERROR;
-		}
-		notify_message_complete(msg_id, code);
-		bool handled = false;
-		ProtocolError error = handle_app_state_reply(message, &handled);
-		if (error != ProtocolError::NO_ERROR) {
-			return error;
-		}
-		if (handled) {
-			return ProtocolError::NO_ERROR;
-		}
-#if HAL_PLATFORM_OTA_PROTOCOL_V3
-		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			error = firmwareUpdate.responseAck(&message, &handled);
+
+	// The passthrough flag is set for messages that are not intended for the old protocol
+	// implementation
+	if (!message.passthrough()) {
+		message_type = Messages::decodeType(queue, message.length());
+		if (type == CoAPType::ACK || type == CoAPType::RESET) {
+			// todo - this is a little too simple in the case of an empty ACK for a separate response
+			// the message should then be bound to the token. see CH19037
+			if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
+				LOG(TRACE, "Reset received, setting error code to internal server error.");
+				code = CoAPCode::INTERNAL_SERVER_ERROR;
+			}
+			notify_message_complete(msg_id, code);
+			bool handled = false;
+			ProtocolError error = handle_app_state_reply(message, &handled);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
 			}
 			if (handled) {
 				return ProtocolError::NO_ERROR;
 			}
-		}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+			if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+				error = firmwareUpdate.responseAck(&message, &handled);
+				if (error != ProtocolError::NO_ERROR) {
+					return error;
+				}
+				if (handled) {
+					return ProtocolError::NO_ERROR;
+				}
+			}
 #endif
+		}
 	}
 
 	ProtocolError error = NO_ERROR;
