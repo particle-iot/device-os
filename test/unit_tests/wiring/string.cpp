@@ -237,3 +237,73 @@ TEST_CASE("String resize") {
         CHECK(std::memcmp(s.c_str(), "\0", 1) == 0);
     }
 }
+
+TEST_CASE("Comparison operators") {
+    SECTION("operator==") {
+        CHECK(String("") == String(""));
+        CHECK(String("") == "");
+        CHECK("" == String(""));
+        CHECK(String("abc") == String("abc"));
+        CHECK(String("abc") == "abc");
+        CHECK("abc" == String("abc"));
+        CHECK(!(String("abc") == String("Abc")));
+    }
+
+    SECTION("operator!=") {
+        CHECK(String("") != String("Abc"));
+        CHECK(String("") != "Abc");
+        CHECK("" != String("Abc"));
+        CHECK(String("abc") != String("Abc"));
+        CHECK(String("abc") != "Abc");
+        CHECK("abc" != String("Abc"));
+        CHECK(!(String("abc") != String("abc")));
+    }
+
+    SECTION("operator<") {
+        CHECK(String("") < String("abc"));
+        CHECK(String("") < "abc");
+        CHECK("" < String("abc"));
+        CHECK(String("abc") < String("bbc"));
+        CHECK(String("abc") < "bbc");
+        CHECK("abc" < String("bbc"));
+        CHECK(!(String("") < String("")));
+        CHECK(!(String("abc") < String("abc")));
+        CHECK(!(String("bbc") < String("abc")));
+    }
+
+    SECTION("operator<=") {
+        CHECK(String("") <= String(""));
+        CHECK(String("") <= String("abc"));
+        CHECK(String("") <= "abc");
+        CHECK("" <= String("abc"));
+        CHECK(String("abc") <= String("abc"));
+        CHECK(String("abc") <= String("bbc"));
+        CHECK(String("abc") <= "bbc");
+        CHECK("abc" <= String("bbc"));
+        CHECK(!(String("bbc") <= String("abc")));
+    }
+
+    SECTION("operator>") {
+        CHECK(String("abc") > String(""));
+        CHECK("abc" > String(""));
+        CHECK(String("abc") > "");
+        CHECK(String("bbc") > String("abc"));
+        CHECK("bbc" > String("abc"));
+        CHECK(String("bbc") > "abc");
+        CHECK(!(String("") > String("")));
+        CHECK(!(String("abc") > String("abc")));
+        CHECK(!(String("abc") > String("bbc")));
+    }
+
+    SECTION("operator>=") {
+        CHECK(String("") >= String(""));
+        CHECK(String("abc") >= String(""));
+        CHECK("abc" >= String(""));
+        CHECK(String("abc") >= "");
+        CHECK(String("abc") >= String("abc"));
+        CHECK(String("bbc") >= String("abc"));
+        CHECK("bbc" >= String("abc"));
+        CHECK(String("bbc") >= "abc");
+        CHECK(!(String("abc") >= String("bbc")));
+    }
+}
