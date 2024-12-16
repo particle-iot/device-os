@@ -90,6 +90,13 @@ int __wrap_printf(const char* fmt, ...) {
     return -1;
 }
 
+int __cxa_atexit(void (*f)(void *), void *p, void *d) {
+    return 0;
+}
+
+void __register_exitproc(int type, void (*fn)(void), void* arg, void* d) {
+}
+
 } /* extern "C" */
 
 

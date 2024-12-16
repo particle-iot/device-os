@@ -115,6 +115,13 @@ int __cxa_guard_acquire(__guard *g) {return !*(char *)(g);};
 void __cxa_guard_release (__guard *g) {*(char *)g = 1;};
 void __cxa_guard_abort (__guard *) {};
 
+int __cxa_atexit(void (*f)(void *), void *p, void *d) {
+    return 0;
+}
+
+void __register_exitproc(int type, void (*fn)(void), void* arg, void* d) {
+}
+
 }
 
 namespace __gnu_cxx {
