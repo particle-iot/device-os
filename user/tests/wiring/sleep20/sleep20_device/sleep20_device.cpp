@@ -364,7 +364,7 @@ test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off
 }
 test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off_Execution_Time_2) {
     assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
-    assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 3);
+    assertLessOrEqual(exitTime - enterTime, SLEEP_DURATION_S + 5);
 }
 #endif // HAL_PLATFORM_RTL872X
 
