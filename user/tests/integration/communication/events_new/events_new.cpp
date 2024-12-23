@@ -358,6 +358,43 @@ test(04_resize_event_data) {
         assertTrue(checkData(ev, buf.slice(0, newSize)));
         assertTrue(checkStatus(ev, CloudEvent::NEW));
     }
+    // Extending the data
+    {
+        // RAM only
+        CloudEvent ev;
+        assertEqual(ev.setSize(100), 0);
+        assertEqual(ev.size(), 100);
+        assertEqual(ev.pos(), 0);
+        Buffer zeroBuf;
+        assertTrue(zeroBuf.resize(100));
+        assertTrue(checkData(ev, zeroBuf));
+        assertEqual(ev.seek(100), 100);
+        Buffer randBuf;
+        assertTrue(genRandomData(randBuf, 20));
+        assertEqual(ev.write(randBuf.data(), randBuf.size()), randBuf.size());
+        assertEqual(ev.size(), 120);
+        assertEqual(ev.setSize(200), 0);
+        assertTrue(checkData(ev, zeroBuf.concat(randBuf).concat(zeroBuf.slice(0, 80))));
+    }
+    {
+        // RAM + file
+        CloudEvent ev;
+        size_t ramSize = ev.maxDataInRam();
+        assertEqual(ramSize, 1024);
+        assertEqual(ev.setSize(ramSize + 100), 0);
+        assertEqual(ev.size(), ramSize + 100);
+        assertEqual(ev.pos(), 0);
+        Buffer zeroBuf;
+        assertTrue(zeroBuf.resize(ramSize + 100));
+        assertTrue(checkData(ev, zeroBuf));
+        assertEqual(ev.seek(ramSize + 100), ramSize + 100);
+        Buffer randBuf;
+        assertTrue(genRandomData(randBuf, 20));
+        assertEqual(ev.write(randBuf.data(), randBuf.size()), randBuf.size());
+        assertEqual(ev.size(), ramSize + 120);
+        assertEqual(ev.setSize(ramSize + 200), 0);
+        assertTrue(checkData(ev, zeroBuf.concat(randBuf).concat(zeroBuf.slice(0, 80))));
+    }
 }
 
 test(05_save_load_event_data) {
@@ -574,8 +611,8 @@ test(11_publish_at_max_rate) {
     }
     auto t2 = millis();
 
-    assertTrue(publishLimitReached);
     assertTrue(CloudEvent::canPublish(maxBlocksInFlight * blockSize));
+    assertTrue(publishLimitReached);
 
     delay(1000);
     auto freeHeapAfter = System.freeMemory();

@@ -162,7 +162,7 @@ int CoapPayload::setSize(size_t size) {
         return SYSTEM_ERROR_COAP_TOO_LARGE_PAYLOAD;
     }
     size_t bytesInRam = std::min(size, maxHeapSize_);
-    if (!buf_.resize(bytesInRam)) { // The uninitialized data is zero-filled as necessary
+    if (!buf_.resize(bytesInRam)) { // The newly allocated data is zero-initialized as necessary
         return SYSTEM_ERROR_NO_MEMORY;
     }
     if (size > maxHeapSize_ && !file_) {
