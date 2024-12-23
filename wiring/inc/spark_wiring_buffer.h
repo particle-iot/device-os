@@ -141,6 +141,17 @@ public:
     Buffer slice(size_t pos, size_t size = std::numeric_limits<size_t>::max()) const;
 
     /**
+     * Concatenate this buffer with another buffer.
+     *
+     * The contents of the buffer `buf` is appended to the contents of this buffer. The result is
+     * returned in a new buffer.
+     *
+     * @param buf Buffer to concatenate with.
+     * @return Concatenated buffer.
+     */
+    Buffer concat(const Buffer& buf) const;
+
+    /**
      * Convert the contents of the buffer to a hex-encoded string.
      *
      * @return Hex-encoded string.

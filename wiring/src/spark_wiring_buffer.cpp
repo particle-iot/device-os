@@ -36,6 +36,16 @@ Buffer Buffer::slice(size_t pos, size_t size) const {
     return buf;
 }
 
+Buffer Buffer::concat(const Buffer& buf) const {
+    Buffer b;
+    if (!b.resize(d_.size() + buf.d_.size())) {
+        return Buffer();
+    }
+    std::memcpy(b.d_.data(), d_.data(), d_.size());
+    std::memcpy(b.d_.data() + d_.size(), buf.d_.data(), buf.d_.size());
+    return b;
+}
+
 String Buffer::toHex() const {
     String s;
     if (!s.resize(d_.size() * 2)) {

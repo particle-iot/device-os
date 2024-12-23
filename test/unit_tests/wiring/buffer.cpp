@@ -190,6 +190,18 @@ TEST_CASE("Buffer") {
         }
     }
 
+    SECTION("concat()") {
+        SECTION("concatenates the buffer with another buffer") {
+            Buffer b;
+            b = b.concat(Buffer("a", 1));
+            CHECK(b == Buffer("a", 1));
+            b = b.concat(Buffer());
+            CHECK(b == Buffer("a", 1));
+            b = b.concat(Buffer("bcd", 3));
+            CHECK(b == Buffer("abcd", 4));
+        }
+    }
+
     SECTION("toHex()") {
         SECTION("converts the buffer data to a hex-encoded string") {
             {
