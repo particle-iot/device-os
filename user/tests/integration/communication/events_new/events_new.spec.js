@@ -61,15 +61,17 @@ test('11_publish_at_max_rate', async function() {
   const msg = device.mailBox[0].d;
   const stats = msg.split(';').reduce((stats, nameVal) => {
     const [name, val] = nameVal.split('=');
-    stats[name] = val;
+    const num = Number(val);
+    stats[name] = !Number.isNaN(num) ? num : val;
     return stats;
   }, {});
-  console.log(`Time elapsed: ${Math.round(stats.time / 100) / 10}s
+  console.log(`Time elapsed: ${Math.round(stats.time * 10 / 1000) / 10}s
 Events sent: ${stats.events}
 Max. events in flight: ${stats.max_flight}
-Total event data sent: ${stats.total_data}B
-Avg. data per event: ${Math.round(stats.total_data / stats.events / 102.4) / 10}KB
-Data rate: ${Math.round(stats.total_data / (stats.time / 1000) / 102.4) / 10}KB/s`);
+Total event data sent: ${Math.round(stats.total_data * 10 / 1024) / 10}KB
+Avg. data per event: ${Math.round(stats.total_data * 10 / 1024 / stats.events) / 10}KB
+Data rate: ${Math.round(stats.total_data * 10 / 1024 / (stats.time / 1000)) / 10}KB/s
+Heap usage: ${Math.round(stats.heap_usage * 10 / 1024) / 10}KB`);
 });
 
 test('12_init_receive_text_event', async function() {

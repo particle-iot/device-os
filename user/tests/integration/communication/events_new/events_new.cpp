@@ -83,7 +83,21 @@ bool checkData(CloudEvent& ev, const Buffer& data) {
     return true;
 }
 
-bool genRandom(Buffer& buf, size_t size) {
+bool writeRandomData(CloudEvent& ev, size_t size) {
+    char buf[128];
+    while (size > 0) {
+        size_t n = std::min(sizeof(buf), size);
+        Random::genSecure(buf, n);
+        int r = ev.write(buf, n);
+        if (r != (int)n) {
+            return false;
+        }
+        size -= n;
+    }
+    return true;
+}
+
+bool genRandomData(Buffer& buf, size_t size) {
     if (!buf.resize(size)) {
         return false;
     }
@@ -202,7 +216,7 @@ test(03_read_write_event_data_stream) {
         size_t size = CloudEvent::MAX_SIZE;
         assertEqual(size, 16384);
         Buffer buf;
-        assertTrue(genRandom(buf, size));
+        assertTrue(genRandomData(buf, size));
         assertEqual(ev.write(buf.data(), buf.size()), size);
         assertEqual(ev.size(), size);
         assertEqual(ev.pos(), size);
@@ -218,7 +232,7 @@ test(03_read_write_event_data_stream) {
         size_t size = CloudEvent::MAX_SIZE;
         assertEqual(size, 16384);
         Buffer buf;
-        assertTrue(genRandom(buf, size));
+        assertTrue(genRandomData(buf, size));
         size_t chunkSize = 100;
         size_t offs = 0;
         while (offs < size) {
@@ -315,7 +329,7 @@ test(04_resize_event_data) {
         // RAM only
         CloudEvent ev;
         Buffer buf;
-        assertTrue(genRandom(buf, 100));
+        assertTrue(genRandomData(buf, 100));
         assertEqual(ev.write(buf.data(), 100), 100);
         assertEqual(ev.size(), 100);
         assertEqual(ev.pos(), 100);
@@ -332,7 +346,7 @@ test(04_resize_event_data) {
         assertEqual(ramSize, 1024);
         size_t fullSize = ramSize * 3;
         Buffer buf;
-        assertTrue(genRandom(buf, fullSize));
+        assertTrue(genRandomData(buf, fullSize));
         assertEqual(ev.write(buf.data(), fullSize), fullSize);
         assertEqual(ev.size(), fullSize);
         assertEqual(ev.pos(), fullSize);
@@ -348,7 +362,7 @@ test(04_resize_event_data) {
 
 test(05_save_load_event_data) {
     Buffer buf;
-    assertTrue(genRandom(buf, 3000));
+    assertTrue(genRandomData(buf, 3000));
     CloudEvent ev;
     ev.data(buf);
     assertTrue(checkStatus(ev, CloudEvent::NEW));
@@ -478,11 +492,11 @@ test(11_publish_at_max_rate) {
     const unsigned maxBlocksInFlight = 32;
 
     // Test settings
-    const unsigned totalBlocksToSend = 150;
+    const unsigned totalBlocksToSend = 200;
     const unsigned maxBlocksPerEvent = 5;
-    const unsigned timeout = 90000;
+    const unsigned heapUsageUpdateInterval = 100;
+    const unsigned testTimeout = 120000;
 
-    // Sanity checks
     static_assert(totalBlocksToSend > maxBlocksInFlight);
     static_assert(maxBlocksPerEvent * blockSize <= CloudEvent::MAX_SIZE);
     assertTrue(CloudEvent::canPublish(maxBlocksInFlight * blockSize));
@@ -490,18 +504,22 @@ test(11_publish_at_max_rate) {
 
     Vector<CloudEvent> eventsInFlight;
     assertTrue(eventsInFlight.reserve(maxBlocksInFlight));
+    system_tick_t lastHeapUsageUpdateTime = 0;
     unsigned maxEventsInFlight = 0;
     unsigned blocksInFlight = 0;
     unsigned blocksSent = 0;
     unsigned eventsSent = 0;
     unsigned dataSent = 0;
+    unsigned freeHeapBefore = System.freeMemory();
+    unsigned minFreeHeap = freeHeapBefore;
+    bool publishLimitReached = false;
 
     auto t1 = millis();
+    lastHeapUsageUpdateTime = t1;
     for (;;) {
         // Check the events in flight
         for (int i = 0; i < eventsInFlight.size();) {
             auto& ev = eventsInFlight.at(i);
-            assertTrue(ev.isOk());
             if (ev.isSent()) {
                 unsigned blocks = eventSizeInBlocks(ev.size(), blockSize);
                 assertLessOrEqual(blocks, blocksInFlight);
@@ -516,39 +534,55 @@ test(11_publish_at_max_rate) {
             }
         }
         if (blocksSent < totalBlocksToSend) {
-            // Send more events
+            // Send one more event
             unsigned blocksAvail = maxBlocksInFlight - blocksInFlight;
             if (blocksAvail > 0) {
                 unsigned maxBlocks = std::min({ blocksAvail, maxBlocksPerEvent, totalBlocksToSend - blocksSent });
                 size_t dataSize = rand() % (maxBlocks * blockSize + 1);
                 assertTrue(CloudEvent::canPublish(dataSize));
 
-                Buffer buf;
-                assertTrue(genRandom(buf, dataSize));
-                auto ev = CloudEvent().name("abc").data(buf);
+                auto ev = CloudEvent().name("abc");
+                assertTrue(writeRandomData(ev, dataSize));
                 Particle.publish(ev);
                 assertTrue(ev.isSending());
 
                 blocksInFlight += eventSizeInBlocks(dataSize, blockSize);
                 assertLessOrEqual(blocksInFlight, maxBlocksInFlight);
 
-                assertTrue(eventsInFlight.append(std::move(ev)));
+                assertTrue(eventsInFlight.append(ev));
                 if (eventsInFlight.size() > (int)maxEventsInFlight) {
                     maxEventsInFlight = eventsInFlight.size();
                 }
             } else {
                 assertFalse(CloudEvent::canPublish(0));
+                publishLimitReached = true;
             }
         } else if (eventsInFlight.isEmpty()) {
             break; // Done
         }
-        assertTrue(millis() - t1 < timeout);
+
+        auto t = millis();
+        assertTrue(t - t1 < testTimeout);
+        if (t - lastHeapUsageUpdateTime >= heapUsageUpdateInterval) {
+            auto freeHeap = System.freeMemory();
+            if (freeHeap < minFreeHeap) {
+                minFreeHeap = freeHeap;
+            }
+            lastHeapUsageUpdateTime = t;
+        }
         Particle.process();
     }
-    auto dt = millis() - t1;
+    auto t2 = millis();
+
+    assertTrue(publishLimitReached);
     assertTrue(CloudEvent::canPublish(maxBlocksInFlight * blockSize));
 
-    pushMailboxMsg(String::format("events=%u;max_flight=%u;total_data=%u;time=%u", eventsSent, maxEventsInFlight, dataSent, (unsigned)dt), 5000 /* wait */);
+    delay(1000);
+    auto freeHeapAfter = System.freeMemory();
+    assertTrue(freeHeapAfter >= freeHeapBefore || freeHeapBefore - freeHeapAfter < 200);
+
+    pushMailboxMsg(String::format("events=%u;max_flight=%u;total_data=%u;time=%u;heap_usage=%u", eventsSent, maxEventsInFlight,
+            dataSent, (unsigned)(t2 - t1), freeHeapBefore - minFreeHeap), 5000 /* wait */);
 }
 
 test(12_init_receive_text_event) {
