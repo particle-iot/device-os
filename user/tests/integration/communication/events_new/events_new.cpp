@@ -556,13 +556,10 @@ test(11_publish_at_max_rate) {
             return false;
         }
         unsigned blocks = eventSizeInBlocks(ev.size(), blockSize);
-        if (blocks > blocksInFlight) {
+        if (blocks > blocksInFlight || !eventsInFlight) { // Sanity check
             return false;
         }
         blocksInFlight -= blocks;
-        if (!eventsInFlight) {
-            return false;
-        }
         --eventsInFlight;
         return true;
     };
