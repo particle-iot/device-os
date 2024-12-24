@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <cstring>
+#include <cstdint>
 
 #include "coap_defs.h"
 
@@ -35,17 +36,6 @@ class CoapOptionEntry {
 public:
     CoapOptionEntry(const CoapOptionEntry&) = delete; // Non-copyable
 
-    CoapOptionEntry(CoapOptionEntry&& opt) :
-            CoapOptionEntry() {
-        swap(*this, opt);
-    }
-
-    ~CoapOptionEntry() {
-        if (size_ > sizeof(char*)) {
-            delete[] dataPtr_;
-        }
-    }
-
     /**
      * Get the option number.
      *
@@ -61,7 +51,7 @@ public:
      * @return Option data.
      */
     const char* data() const {
-        return (size_ <= sizeof(char*)) ? data_ : dataPtr_;
+        return data_;
     }
 
     /**
@@ -91,35 +81,37 @@ public:
 
     CoapOptionEntry& operator=(const CoapOptionEntry&) = delete; // Non-copyable
 
-    CoapOptionEntry& operator=(CoapOptionEntry&& opt) {
-        swap(*this, opt);
-        return *this;
-    }
-
 protected:
-    CoapOptionEntry() :
-            dataPtr_(nullptr),
-            next_(nullptr),
-            size_(0),
-            num_(0) {
-    }
+    struct Deleter {
+        void operator()(CoapOptionEntry* entry) {
+            CoapOptionEntry::destroy(entry);
+        }
+    };
 
-    int init(unsigned num, const char* data, size_t size); // Called by CoapOptions
+    // Methods called by CoapOptions
 
-    void next(const CoapOptionEntry* next) { // ditto
+    void next(const CoapOptionEntry* next) {
         next_ = next;
     }
 
-private:
-    union {
-        char* dataPtr_;
-        char data_[sizeof(char*)]; // Small object optimization
-    };
-    const CoapOptionEntry* next_;
-    size_t size_;
-    unsigned num_;
+    static std::unique_ptr<CoapOptionEntry, Deleter> create(unsigned num, const char* data, size_t size);
 
-    friend void swap(CoapOptionEntry& opt1, CoapOptionEntry& opt2);
+private:
+    // Keep this structure as small as possible
+    const CoapOptionEntry* next_;
+    uint16_t num_;
+    uint16_t size_;
+    char data_[]; // Option data is allocated at the end of this structure
+
+    CoapOptionEntry(unsigned num, size_t size) :
+            next_(nullptr),
+            num_(num),
+            size_(size) {
+    }
+
+    ~CoapOptionEntry() = default;
+
+    static void destroy(CoapOptionEntry* entry);
 
     friend class v2::CoapOptions;
 };
@@ -232,7 +224,7 @@ public:
     }
 
 private:
-    Vector<std::unique_ptr<Entry>> opts_; // TODO: Use a pool
+    Vector<std::unique_ptr<Entry, Entry::Deleter>> opts_; // TODO: Use a pool
 };
 
 } // namespace particle::protocol::v2

@@ -16,6 +16,7 @@
  */
 
 #include <algorithm>
+#include <limits>
 
 #include "coap_options.h"
 #include "coap_message_encoder.h"
@@ -27,50 +28,39 @@ namespace particle::protocol::v2 {
 
 unsigned CoapOptionEntry::toUint() const {
     unsigned v = 0;
-    auto d = (size_ <= sizeof(char*)) ? data_ : dataPtr_;
-    CoapMessageDecoder::decodeUintOptionValue(d, size_, v); // Ignore error
+    CoapMessageDecoder::decodeUintOptionValue(data_, size_, v); // Ignore error
     return v;
 }
 
-int CoapOptionEntry::init(unsigned num, const char* data, size_t size) {
-    char* d = data_;
-    if (size > sizeof(char*)) {
-        d = new(std::nothrow) char[size];
-        if (!d) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        dataPtr_ = d;
+std::unique_ptr<CoapOptionEntry, CoapOptionEntry::Deleter> CoapOptionEntry::create(unsigned num, const char* data, size_t size) {
+    auto p = (CoapOptionEntry*)std::malloc(sizeof(CoapOptionEntry) + size);
+    if (!p) {
+        return nullptr;
     }
-    std::memcpy(d, data, size);
-    size_ = size;
-    num_ = num;
-    return 0;
+    new(p) CoapOptionEntry(num, size);
+    std::memcpy((char*)p + sizeof(CoapOptionEntry), data, size);
+    return std::unique_ptr<CoapOptionEntry, Deleter>(p);
 }
 
-void swap(CoapOptionEntry& opt1, CoapOptionEntry& opt2) {
-    // Instances of this class are trivially swappable despite not being copy-assignable
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-    char tmp[sizeof(CoapOptionEntry)];
-    std::memcpy(tmp, &opt1, sizeof(CoapOptionEntry));
-    std::memcpy(&opt1, &opt2, sizeof(CoapOptionEntry));
-    std::memcpy(&opt2, tmp, sizeof(CoapOptionEntry));
-#pragma GCC diagnostic pop
+void CoapOptionEntry::destroy(CoapOptionEntry* entry) {
+    if (entry) {
+        entry->~CoapOptionEntry();
+        std::free(entry);
+    }
 }
 
 int CoapOptions::add(unsigned num, unsigned val) {
     char d[CoapMessageEncoder::MAX_UINT_OPTION_VALUE_SIZE] = {};
-    size_t n = CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val);
+    size_t n = CHECK(CoapMessageEncoder::encodeUintOptionValue(d, sizeof(d), val));
     CHECK(add(num, d, n));
     return 0;
 }
 
 int CoapOptions::add(unsigned num, const char* data, size_t size) {
-    std::unique_ptr<Entry> opt(new(std::nothrow) Entry());
+    auto opt = Entry::create(num, data, size);
     if (!opt) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(opt->init(num, data, size));
     auto it = std::upper_bound(opts_.begin(), opts_.end(), num, [](unsigned num, const auto& opt) {
         return num < opt->number();
     });
