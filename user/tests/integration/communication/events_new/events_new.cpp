@@ -552,6 +552,9 @@ test(11_publish_at_max_rate) {
     bool testFailed = false;
 
     auto onStatusChange = [&](const CloudEvent& ev) {
+        if (ev.isSending()) {
+            return true;
+        }
         if (!ev.isSent()) {
             return false;
         }
@@ -581,14 +584,14 @@ test(11_publish_at_max_rate) {
 
             auto ev = CloudEvent().name("abc");
             assertTrue(writeRandomData(ev, dataSize));
-
-            Particle.publish(ev);
             ev.onStatusChange([&](CloudEvent ev) {
                 bool ok = onStatusChange(ev);
                 if (!ok) {
                     testFailed = true;
                 }
             });
+
+            Particle.publish(ev);
             assertTrue(ev.isSending());
 
             auto blocks = eventSizeInBlocks(dataSize, blockSize);
