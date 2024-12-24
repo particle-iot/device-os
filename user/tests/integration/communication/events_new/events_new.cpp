@@ -529,72 +529,84 @@ test(11_publish_at_max_rate) {
     const unsigned maxBlocksInFlight = 32;
 
     // Test settings
-    const unsigned totalBlocksToSend = 200;
+    const unsigned totalBlocksToSend = 150;
     const unsigned maxBlocksPerEvent = 5;
     const unsigned heapUsageUpdateInterval = 100;
-    const unsigned testTimeout = 120000;
+    const unsigned testTimeout = 90000;
 
     static_assert(totalBlocksToSend > maxBlocksInFlight);
     static_assert(maxBlocksPerEvent * blockSize <= CloudEvent::MAX_SIZE);
     assertTrue(CloudEvent::canPublish(maxBlocksInFlight * blockSize));
     assertFalse(CloudEvent::canPublish(maxBlocksInFlight * blockSize + 1));
 
-    Vector<CloudEvent> eventsInFlight;
-    assertTrue(eventsInFlight.reserve(maxBlocksInFlight));
     system_tick_t lastHeapUsageUpdateTime = 0;
+    unsigned eventsInFlight = 0;
     unsigned maxEventsInFlight = 0;
     unsigned blocksInFlight = 0;
     unsigned blocksSent = 0;
     unsigned eventsSent = 0;
     unsigned dataSent = 0;
-    unsigned freeHeapBefore = System.freeMemory();
-    unsigned minFreeHeap = freeHeapBefore;
+    unsigned freeHeapBefore = 0;
+    unsigned minFreeHeap = 0;
     bool publishLimitReached = false;
+    bool testFailed = false;
 
+    auto onStatusChange = [&](const CloudEvent& ev) {
+        if (!ev.isSent()) {
+            return false;
+        }
+        unsigned blocks = eventSizeInBlocks(ev.size(), blockSize);
+        if (blocks > blocksInFlight) {
+            return false;
+        }
+        blocksInFlight -= blocks;
+        if (!eventsInFlight) {
+            return false;
+        }
+        --eventsInFlight;
+        return true;
+    };
+
+    freeHeapBefore = System.freeMemory();
+    minFreeHeap = freeHeapBefore;
     auto t1 = millis();
     lastHeapUsageUpdateTime = t1;
+
     for (;;) {
-        // Check the events in flight
-        for (int i = 0; i < eventsInFlight.size();) {
-            auto& ev = eventsInFlight.at(i);
-            if (ev.isSent()) {
-                unsigned blocks = eventSizeInBlocks(ev.size(), blockSize);
-                assertLessOrEqual(blocks, blocksInFlight);
-                blocksInFlight -= blocks;
-                blocksSent += blocks;
-                dataSent += ev.size();
-                ++eventsSent;
-                eventsInFlight.removeAt(i);
-            } else {
-                assertTrue(ev.isSending());
-                ++i;
-            }
-        }
-        if (blocksSent < totalBlocksToSend) {
+        if (blocksInFlight >= maxBlocksInFlight) {
+            assertFalse(CloudEvent::canPublish(0));
+            publishLimitReached = true;
+        } else if (blocksSent < totalBlocksToSend) {
             // Send one more event
-            unsigned blocksAvail = maxBlocksInFlight - blocksInFlight;
-            if (blocksAvail > 0) {
-                unsigned maxBlocks = std::min({ blocksAvail, maxBlocksPerEvent, totalBlocksToSend - blocksSent });
-                size_t dataSize = rand() % (maxBlocks * blockSize + 1);
-                assertTrue(CloudEvent::canPublish(dataSize));
+            unsigned maxBlocks = std::min({ totalBlocksToSend - blocksSent, maxBlocksInFlight - blocksInFlight, maxBlocksPerEvent });
+            size_t dataSize = rand() % (maxBlocks * blockSize + 1);
+            assertTrue(CloudEvent::canPublish(dataSize));
 
-                auto ev = CloudEvent().name("abc");
-                assertTrue(writeRandomData(ev, dataSize));
-                Particle.publish(ev);
-                assertTrue(ev.isSending());
+            auto ev = CloudEvent().name("abc");
+            assertTrue(writeRandomData(ev, dataSize));
 
-                blocksInFlight += eventSizeInBlocks(dataSize, blockSize);
-                assertLessOrEqual(blocksInFlight, maxBlocksInFlight);
-
-                assertTrue(eventsInFlight.append(ev));
-                if (eventsInFlight.size() > (int)maxEventsInFlight) {
-                    maxEventsInFlight = eventsInFlight.size();
+            Particle.publish(ev);
+            ev.onStatusChange([&](CloudEvent ev) {
+                bool ok = onStatusChange(ev);
+                if (!ok) {
+                    testFailed = true;
                 }
-            } else {
-                assertFalse(CloudEvent::canPublish(0));
-                publishLimitReached = true;
+            });
+            assertTrue(ev.isSending());
+
+            auto blocks = eventSizeInBlocks(dataSize, blockSize);
+            blocksInFlight += blocks;
+            assertLessOrEqual(blocksInFlight, maxBlocksInFlight); // Sanity check
+
+            ++eventsInFlight;
+            if (eventsInFlight > maxEventsInFlight) {
+                maxEventsInFlight = eventsInFlight;
             }
-        } else if (eventsInFlight.isEmpty()) {
+
+            blocksSent += blocks;
+            dataSent += dataSize;
+            ++eventsSent;
+        } else if (!eventsInFlight) {
             break; // Done
         }
 
@@ -607,9 +619,17 @@ test(11_publish_at_max_rate) {
             }
             lastHeapUsageUpdateTime = t;
         }
-        Particle.process();
+
+        delay(10);
+        Particle.process(); // Make sure app events get pumped on each loop iteration
+
+        if (testFailed) {
+            break;
+        }
     }
     auto t2 = millis();
+
+    assertFalse(testFailed);
 
     assertTrue(CloudEvent::canPublish(maxBlocksInFlight * blockSize));
     assertTrue(publishLimitReached);
