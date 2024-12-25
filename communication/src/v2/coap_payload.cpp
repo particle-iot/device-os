@@ -35,9 +35,6 @@ using fs::FsLock;
 
 namespace {
 
-// Initial amount of the heap memory allocated for storing payload data
-const size_t INITIAL_BUFFER_CAPACITY = 128;
-
 // Maximum expected length of a filesystem path
 const size_t MAX_PATH_LEN = 127;
 
@@ -128,7 +125,16 @@ int CoapPayload::write(const char* data, size_t size, size_t pos) {
         auto newSize = buf_.size() + n;
         if (newSize > buf_.capacity()) {
             // TODO: Use a pool of fixed-size chainable buffers
-            auto newCapacity = std::min(std::max(std::max(buf_.capacity() * 3 / 2, newSize), INITIAL_BUFFER_CAPACITY), maxHeapSize_);
+            size_t newCapacity = 0;
+            if (buf_.capacity() > 0) {
+                newCapacity = std::max<size_t>({ newSize, buf_.capacity() * 3 / 2, 128 });
+            } else {
+                // Do not allocate too much extra space on the first write
+                newCapacity = std::max<size_t>(newSize, 8);
+            }
+            if (newCapacity > maxHeapSize_) {
+                newCapacity = maxHeapSize_;
+            }
             if (!buf_.reserve(newCapacity)) {
                 return SYSTEM_ERROR_NO_MEMORY;
             }
