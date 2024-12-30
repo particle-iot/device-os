@@ -221,3 +221,8 @@ ASSERT (
     (link_stack_end % 8 == 0),
     "Stack should be 8-byte aligned!"
 );
+
+ASSERT (
+    (platform_monolithic_firmware_stack_size == __STACKSIZE__),
+    "platform_monolithic_firmware_stack_size does not match __STACKSIZE__"
+);

@@ -52,7 +52,7 @@ LDFLAGS += --specs=$(NEWLIB_TWEAK_SPECS)
 LDFLAGS += -T$(LINKER_FILE)
 # Minimum main stack size with S140 softdevice is 1536 bytes
 # __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
-MAIN_STACK_SIZE = 2048
+MAIN_STACK_SIZE = 4096
 LDFLAGS += -Wl,--defsym,__STACKSIZE__=$(MAIN_STACK_SIZE)
 LDFLAGS += -Wl,--defsym,__STACK_SIZE=$(MAIN_STACK_SIZE)
 

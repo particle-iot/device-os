@@ -256,3 +256,13 @@ PROVIDE (link_dynalib_start = link_dynalib_flash_start);
 PROVIDE (link_dynalib_end = link_dynalib_start);
 
 INCLUDE linker_rtl872x_rom_ns.ld
+
+ASSERT (
+    (platform_monolithic_firmware_stack_size == __STACKSIZE__),
+    "platform_monolithic_firmware_stack_size does not match __STACKSIZE__"
+);
+
+ASSERT (
+    (platform_monolithic_firmware_secure_stack_size == __STACKSIZE__),
+    "platform_monolithic_firmware_secure_stack_size does not match __STACKSIZE__"
+);

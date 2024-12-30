@@ -294,3 +294,8 @@ ASSERT (
     (link_global_retained_system_flags < link_global_retained_system_flags_end),
     "System flags not linked!"
 );
+
+ASSERT (
+    (platform_modular_firmware_stack_size == __STACKSIZE__),
+    "platform_modular_firmware_stack_size does not match __STACKSIZE__"
+);

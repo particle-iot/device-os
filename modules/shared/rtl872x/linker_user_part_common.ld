@@ -198,3 +198,14 @@ ASSERT (
 );
 
 INCLUDE linker_rtl872x_rom_ns.ld
+
+ASSERT (
+    (platform_modular_firmware_stack_size == __STACKSIZE__),
+    "platform_modular_firmware_stack_size does not match __STACKSIZE__"
+);
+
+ASSERT (
+    (platform_modular_firmware_secure_stack_size == __STACKSIZE__),
+    "platform_modular_firmware_secure_stack_size does not match __STACKSIZE__"
+);
+

@@ -20,6 +20,9 @@
 #include "service_debug.h"
 #include "static_recursive_mutex.h"
 #include "interrupts_hal.h"
+#include "static_event_group.h"
+#include "concurrent_hal.h"
+#include <mutex>
 
 /* __guard type is already defined in cxxabi_tweaks.h for each architecture */
 using __cxxabiv1::__guard;
@@ -28,9 +31,25 @@ namespace {
 
 /* Using a global recursive mutex, should be enough for our use-cases */
 StaticRecursiveMutex s_mutex;
+StaticEventGroup s_event_group;
 
 struct __attribute__((packed)) guard_t {
+    /* Normally this is:
+    *  Guard Object Layout:
+    * ---------------------------------------------------------------------------
+    * | a+0: guard byte | a+1: init byte | a+2: unused ... | a+4: thread-id ... |
+    * ---------------------------------------------------------------------------
+    * On ARM this is just 4 bytes
+    * */
     uint8_t done;
+    uint8_t init;
+
+    enum GuardFlags : uint8_t {
+        NONE = 0,
+        COMPLETE = 0x01,
+        PENDING = 0x02,
+        WAITING = 0x04
+    };
 };
 
 } /* anonymous */
@@ -45,28 +64,48 @@ int __cxa_guard_acquire(__guard* g) {
     SPARK_ASSERT(!hal_interrupt_is_isr());
 
     /* Acquire mutex */
-    SPARK_ASSERT(s_mutex.lock());
-    if (!guard->done) {
-        /* If there was no other thread doing the initialization, keep the lock and return 1.
-         * Mutex will be released in __cxa_guard_release()
-         */
-        return 1;
+    std::unique_lock<StaticRecursiveMutex> lk(s_mutex);
+
+    while (true) {
+        // Nothing to do here, already initialized
+        if (guard->done) {
+            return 0;
+        }
+
+        if (guard->init & guard_t::PENDING) {
+            // Pending initialization
+            // We need to wait for initialization to complete
+            // Scheduler MUST be running
+            auto scheduler = os_scheduler_get_state(nullptr);
+            SPARK_ASSERT(scheduler == OS_SCHEDULER_STATE_RUNNING);
+
+            guard->init |= guard_t::WAITING;
+            lk.unlock();
+            s_event_group.wait(guard_t::COMPLETE, StaticEventGroup::Flag::CLEAR_ON_EXIT);
+            lk.lock();
+        } else {
+            // Set pending flag continue with initialization
+            guard->init |= guard_t::PENDING;
+            return 1;
+        }
     }
-
-    /* If we were waiting for some other thread to finish initialization,
-     * immediately unlock the mutex here and return 0 */
-    s_mutex.unlock();
-
     return 0;
 }
 
 void __cxa_guard_release(__guard* g) {
     guard_t* guard = reinterpret_cast<guard_t*>(g);
     SPARK_ASSERT(!hal_interrupt_is_isr());
-    SPARK_ASSERT(!guard->done);
-    /* We were doing the initialization, so unlock the mutex */
-    guard->done = 1;
-    SPARK_ASSERT(s_mutex.unlock());
+
+    std::unique_lock<StaticRecursiveMutex> lk(s_mutex);
+    guard->init &= ~(guard_t::PENDING);
+    guard->done = guard_t::COMPLETE;
+    guard->init |= guard_t::COMPLETE;
+    if (guard->init & guard_t::WAITING) {
+        // This will wake all threads waiting on initialization completion
+        s_event_group.set(guard_t::COMPLETE);
+    }
+
+    return;
 }
 
 void __cxa_guard_abort (__guard*) {

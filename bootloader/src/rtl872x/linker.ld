@@ -265,3 +265,8 @@ link_stack_location = platform_bootloader_stack_start;
 link_stack_end      = platform_bootloader_stack_end;
 
 INCLUDE linker_rtl872x_rom_s.ld
+
+ASSERT (
+    (platform_bootloader_stack_size == __STACKSIZE__),
+    "platform_bootloader_stack_size does not match __STACKSIZE__"
+);

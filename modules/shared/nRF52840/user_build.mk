@@ -65,8 +65,8 @@ LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=$(USER_FIRMWARE_IMAGE_SIZE)
 LDFLAGS += -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=$(USER_FIRMWARE_IMAGE_LOCATION)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
 # __STACKSIZE__ is referenced by build/arm/linker/nrf52840/platform_ram.ld
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=2048
-LDFLAGS += -Wl,--defsym,__STACK_SIZE=2048
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=4096
+LDFLAGS += -Wl,--defsym,__STACK_SIZE=4096
 
 # used the -v flag to get gcc to output the commands it passes to the linker when --specs=nano.specs is provided
 # LDFLAGS += -lstdc++$(NANO_SUFFIX) -lm -Wl,--start-group -lgcc -Wl,--end-group -Wl,--start-group -lgcc  $(LIBG_TWEAK) -Wl,--end-group
