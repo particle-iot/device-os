@@ -60,6 +60,11 @@ public:
         return xEventGroupSetBits(handle_, bits);
     }
 
+    uint32_t sync(uint32_t setBits, uint32_t waitBits, system_tick_t wait = portMAX_DELAY) {
+        SPARK_ASSERT(!hal_interrupt_is_isr());
+        return xEventGroupSync(handle_, setBits, waitBits, wait);
+    }
+
 private:
     EventGroupHandle_t handle_;
     StaticEventGroup_t eventGroupBuffer_;

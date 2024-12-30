@@ -43,7 +43,7 @@ struct __attribute__((packed)) guard_t {
     * */
     uint8_t done;
     uint8_t init;
-    uint8_t waiting;
+    uint8_t wait_count;
 
     enum GuardFlags : uint8_t {
         NONE = 0,
@@ -83,12 +83,12 @@ int __cxa_guard_acquire(__guard* g) {
             SPARK_ASSERT(scheduler == OS_SCHEDULER_STATE_RUNNING);
 
             guard->init |= guard_t::WAITING;
-            guard->waiting++;
+            guard->wait_count++;
             lk.unlock();
             s_event_group.wait(guard_t::COMPLETE, StaticEventGroup::Flag::CLEAR_ON_EXIT);
             lk.lock();
-            guard->waiting--;
-            if (guard->waiting == 0) {
+            guard->wait_count--;
+            if (guard->wait_count == 0) {
                 s_event_group.set(guard_t::WAITING);
             }
         } else {
@@ -108,18 +108,22 @@ void __cxa_guard_release(__guard* g) {
     guard->init &= ~(guard_t::PENDING);
     guard->done = guard_t::COMPLETE;
     guard->init |= guard_t::COMPLETE;
-    if ((guard->init & guard_t::WAITING) && guard->waiting > 0) {
+    if ((guard->init & guard_t::WAITING) && guard->wait_count > 0) {
         // This will wake all threads waiting on initialization completion
         s_event_group.set(guard_t::COMPLETE);
     } else {
         return;
     }
 
-    do {
+    while (guard->wait_count > 0) {
         lk.unlock();
-        s_event_group.wait(guard_t::WAITING, StaticEventGroup::Flag::CLEAR_ON_EXIT);
+        // FIXME: not ideal, but we'll spin with 10ms delay
+        auto ev = s_event_group.sync(guard_t::COMPLETE, guard_t::WAITING, 10);
         lk.lock();
-    } while (guard->waiting > 0);
+        if (ev & guard_t::WAITING) {
+            s_event_group.clear(guard_t::WAITING);
+        }
+    }
 }
 
 void __cxa_guard_abort (__guard*) {
