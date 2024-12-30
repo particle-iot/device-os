@@ -109,8 +109,8 @@ platform_monolithic_firmware_secure_stack_end   = platform_secure_ram_end;
 platform_monolithic_firmware_secure_stack_start = platform_monolithic_firmware_secure_stack_end - platform_monolithic_firmware_secure_stack_size;
 
 /* Bootloader main stack
- * platform_bootloader_stack_size is equal to 4K, which is defined in bootloader/src/rtl872x/include.mk. */
-platform_bootloader_stack_size  = 4K;
+ * platform_bootloader_stack_size is equal to 8K, which is defined in bootloader/src/rtl872x/include.mk. */
+platform_bootloader_stack_size  = 8K;
 platform_bootloader_stack_end   = platform_secure_ram_end;
 platform_bootloader_stack_start = platform_bootloader_stack_end - platform_bootloader_stack_size;
 

@@ -43,6 +43,7 @@ struct __attribute__((packed)) guard_t {
     * */
     uint8_t done;
     uint8_t init;
+    uint8_t waiting;
 
     enum GuardFlags : uint8_t {
         NONE = 0,
@@ -51,6 +52,8 @@ struct __attribute__((packed)) guard_t {
         WAITING = 0x04
     };
 };
+
+static_assert(sizeof(guard_t) <= sizeof(__guard), "guard is too large");
 
 } /* anonymous */
 
@@ -80,9 +83,14 @@ int __cxa_guard_acquire(__guard* g) {
             SPARK_ASSERT(scheduler == OS_SCHEDULER_STATE_RUNNING);
 
             guard->init |= guard_t::WAITING;
+            guard->waiting++;
             lk.unlock();
             s_event_group.wait(guard_t::COMPLETE, StaticEventGroup::Flag::CLEAR_ON_EXIT);
             lk.lock();
+            guard->waiting--;
+            if (guard->waiting == 0) {
+                s_event_group.set(guard_t::WAITING);
+            }
         } else {
             // Set pending flag continue with initialization
             guard->init |= guard_t::PENDING;
@@ -100,12 +108,18 @@ void __cxa_guard_release(__guard* g) {
     guard->init &= ~(guard_t::PENDING);
     guard->done = guard_t::COMPLETE;
     guard->init |= guard_t::COMPLETE;
-    if (guard->init & guard_t::WAITING) {
+    if ((guard->init & guard_t::WAITING) && guard->waiting > 0) {
         // This will wake all threads waiting on initialization completion
         s_event_group.set(guard_t::COMPLETE);
+    } else {
+        return;
     }
 
-    return;
+    do {
+        lk.unlock();
+        s_event_group.wait(guard_t::WAITING, StaticEventGroup::Flag::CLEAR_ON_EXIT);
+        lk.lock();
+    } while (guard->waiting > 0);
 }
 
 void __cxa_guard_abort (__guard*) {

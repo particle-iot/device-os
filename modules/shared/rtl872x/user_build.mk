@@ -62,8 +62,8 @@ LDFLAGS += -L$(TARGET_BASE_DIR)
 LDFLAGS += -L$(SHARED_MODULAR)
 LDFLAGS += -T$(LINKER_FILE)
 LDFLAGS += -Wl,-Map,$(TARGET_BASE).map
-LDFLAGS += -Wl,--defsym,__STACKSIZE__=4096
-LDFLAGS += -Wl,--defsym,__STACK_SIZE=4096
+LDFLAGS += -Wl,--defsym,__STACKSIZE__=8192
+LDFLAGS += -Wl,--defsym,__STACK_SIZE=8192
 
 # used the -v flag to get gcc to output the commands it passes to the linker when --specs=nano.specs is provided
 # LDFLAGS += -lstdc++$(NANO_SUFFIX) -lm -Wl,--start-group -lgcc -Wl,--end-group -Wl,--start-group -lgcc  $(LIBG_TWEAK) -Wl,--end-group
