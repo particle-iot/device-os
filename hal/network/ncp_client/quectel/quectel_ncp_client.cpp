@@ -373,13 +373,16 @@ int QuectelNcpClient::off() {
     muxer_.stop();
     serial_->enabled(true);
 
+    // Disable voltage translator
+    modemSetUartState(false);
+
     if (!r) {
-        LOG(TRACE, "Soft power off modem successfully");
+        LOG(TRACE, "Soft power off modem success");
         // WARN: We assume that the modem can turn off itself reliably.
     } else {
         // Power down using hardware
         if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to turn off the modem.");
+            LOG(ERROR, "Failed to turn off");
         }
         // FIXME: There is power leakage still if powering off the modem failed.
     }
@@ -917,6 +920,12 @@ int QuectelNcpClient::waitReady(bool powerOn) {
 
     ModemState modemState = ModemState::Unknown;
 
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
+    // Just in case make sure that the voltage translator is on
+    CHECK(modemSetUartState(true));
+    HAL_Delay_Milliseconds(100);
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
+
     if (powerOn) {
         LOG_DEBUG(TRACE, "Waiting for modem to be ready from power on");
         muxer_.stop();
@@ -967,6 +976,9 @@ int QuectelNcpClient::waitReady(bool powerOn) {
     }
 
     if (!ready_) {
+        // Disable voltage translator
+        modemSetUartState(false);
+
         // Hard reset the modem
         modemHardReset(true);
         ncpState(NcpState::OFF);
@@ -2022,8 +2034,8 @@ int QuectelNcpClient::modemInit() const {
     }
 
 #if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
-    // Configure BUFEN as Push-Pull Output and default to 0 (enabled)
-    conf.value = 0;
+    // Configure BUFEN as Push-Pull Output and default to 1 (disabled)
+    conf.value = 1;
     CHECK(hal_gpio_configure(BUFEN, &conf, nullptr));
 #endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
 
@@ -2094,6 +2106,9 @@ int QuectelNcpClient::modemPowerOff() {
         ncpPowerState(NcpPowerState::TRANSIENT_OFF);
 
         LOG(TRACE, "Powering modem off");
+
+        // Disable voltage translator
+        modemSetUartState(false);
 
         // Power off, power off pulse >= 650ms
         // NOTE: The BGRST pin is inverted
@@ -2222,6 +2237,14 @@ bool QuectelNcpClient::modemPowerState() const {
 #else
     return hal_gpio_read(BGVINT);
 #endif
+}
+
+int QuectelNcpClient::modemSetUartState(bool state) const {
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
+    LOG_DEBUG(TRACE, "Setting UART voltage translator state %d", state);
+    hal_gpio_write(BUFEN, state ? 0 : 1);
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
+    return SYSTEM_ERROR_NONE;
 }
 
 uint32_t QuectelNcpClient::getDefaultSerialConfig() const {

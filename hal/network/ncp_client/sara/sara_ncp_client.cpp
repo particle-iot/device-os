@@ -1007,12 +1007,14 @@ int SaraNcpClient::waitReady(bool powerOn) {
 
     ModemState modemState = ModemState::Unknown;
 
+#if HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
     // Just in case make sure that the voltage translator is on
     CHECK(modemSetUartState(true));
     HAL_Delay_Milliseconds(100);
     CHECK(modemSetUartState(false));
     HAL_Delay_Milliseconds(100);
     CHECK(modemSetUartState(true));
+#endif // HAL_PLATFORM_CELLULAR_MODEM_VOLTAGE_TRANSLATOR
 
     #define WAITING_STR "Waiting to be ready"
     if (powerOn) {
