@@ -315,10 +315,9 @@ int filesystem_mount(filesystem_t* fs) {
             // Make sure /usr and /tmp folders exist
             int r = lfs_mkdir(&fs->instance, "/usr");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
-            particle::rmrf("/tmp");
             r = lfs_mkdir(&fs->instance, "/tmp");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
-            // FIXME: recursively cleanup /tmp
+            particle::clearDir("/tmp");
         }
 #endif // MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     }

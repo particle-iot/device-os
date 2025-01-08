@@ -33,4 +33,12 @@ int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void*
 int rmrf(const char* path);
 int mkdirp(const char* path);
 
+/**
+ * Remove the contents of a directory recursively without deleting the directory itself.
+ *
+ * @param path Directory path.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+int clearDir(const char* path);
+
 } // particle
