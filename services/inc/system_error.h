@@ -58,6 +58,7 @@
         (COAP_TIMEOUT, "CoAP timeout", -1003), \
         (COAP_REQUEST_NOT_FOUND, "Request not found", -1004), \
         (COAP_REQUEST_CANCELLED, "Request was cancelled", -1005), \
+        (COAP_TOO_LARGE_PAYLOAD, "Message payload is too large", -1006), \
         (COAP_4XX, "CoAP: 4xx", -1100), \
         (COAP_5XX, "CoAP: 5xx", -1132), \
         (AT_NOT_OK, "AT command failure", -1200), /* -1299 ... -1200: AT command errors */ \

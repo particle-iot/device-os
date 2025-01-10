@@ -31,7 +31,7 @@ LOG_SOURCE_CATEGORY("comm.protocol")
 #include "chunked_transfer.h"
 #include "subscriptions.h"
 #include "functions.h"
-#include "coap_channel_new.h"
+#include "v2/coap_channel.h"
 #include "coap_message_decoder.h"
 #include "coap_message_encoder.h"
 
@@ -73,10 +73,12 @@ ProtocolError Protocol::send_empty_ack(Message& message, message_id_t msg_id)
 ProtocolError Protocol::handle_received_message(Message& message,
 		CoAPMessageType::Enum& message_type)
 {
+	message_type = CoAPMessageType::UNKNOWN;
+
 	last_message_millis = callbacks.millis();
 	pinger.message_received();
+
 	uint8_t* queue = message.buf();
-	message_type = Messages::decodeType(queue, message.length());
 	// todo - not all requests/responses have tokens. These device requests do not use tokens:
 	// Update Done, ChunkMissed, event, ping, hello
 	token_t token = 0;
@@ -88,33 +90,39 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	message_id_t msg_id = CoAP::message_id(queue);
 	CoAPCode::Enum code = CoAP::code(queue);
 	CoAPType::Enum type = CoAP::type(queue);
-	if (type == CoAPType::ACK || type == CoAPType::RESET) {
-		// todo - this is a little too simple in the case of an empty ACK for a separate response
-		// the message should then be bound to the token. see CH19037
-		if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
-			LOG(TRACE, "Reset received, setting error code to internal server error.");
-			code = CoAPCode::INTERNAL_SERVER_ERROR;
-		}
-		notify_message_complete(msg_id, code);
-		bool handled = false;
-		ProtocolError error = handle_app_state_reply(message, &handled);
-		if (error != ProtocolError::NO_ERROR) {
-			return error;
-		}
-		if (handled) {
-			return ProtocolError::NO_ERROR;
-		}
-#if HAL_PLATFORM_OTA_PROTOCOL_V3
-		if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
-			error = firmwareUpdate.responseAck(&message, &handled);
+
+	// The passthrough flag is set for messages that are not intended for the old protocol
+	// implementation
+	if (!message.passthrough()) {
+		message_type = Messages::decodeType(queue, message.length());
+		if (type == CoAPType::ACK || type == CoAPType::RESET) {
+			// todo - this is a little too simple in the case of an empty ACK for a separate response
+			// the message should then be bound to the token. see CH19037
+			if (type == CoAPType::RESET) { // RST is sent with an empty code. It's like an unspecified error
+				LOG(TRACE, "Reset received, setting error code to internal server error.");
+				code = CoAPCode::INTERNAL_SERVER_ERROR;
+			}
+			notify_message_complete(msg_id, code);
+			bool handled = false;
+			ProtocolError error = handle_app_state_reply(message, &handled);
 			if (error != ProtocolError::NO_ERROR) {
 				return error;
 			}
 			if (handled) {
 				return ProtocolError::NO_ERROR;
 			}
-		}
+#if HAL_PLATFORM_OTA_PROTOCOL_V3
+			if (type == CoAPType::ACK && firmwareUpdate.isRunning()) {
+				error = firmwareUpdate.responseAck(&message, &handled);
+				if (error != ProtocolError::NO_ERROR) {
+					return error;
+				}
+				if (handled) {
+					return ProtocolError::NO_ERROR;
+				}
+			}
 #endif
+		}
 	}
 
 	ProtocolError error = NO_ERROR;
@@ -176,9 +184,6 @@ ProtocolError Protocol::handle_received_message(Message& message,
 	case CoAPMessageType::UPDATE_DONE:
 		return chunkedTransfer.handle_update_done(token, message, channel);
 #endif // !HAL_PLATFORM_OTA_PROTOCOL_V3
-	case CoAPMessageType::EVENT:
-		return subscriptions.handle_event(message, descriptor.call_event_handler, channel);
-
 	case CoAPMessageType::KEY_CHANGE:
 		return handle_key_change(message);
 
@@ -217,14 +222,25 @@ ProtocolError Protocol::handle_received_message(Message& message,
 		return handle_server_moved_request(message);
 		break;
 
-	case CoAPMessageType::UNKNOWN:
-	case CoAPMessageType::EMPTY_ACK: {
-		// Forward the message to the new CoAP implementation
+	case CoAPMessageType::EVENT:
+	case CoAPMessageType::EMPTY_ACK:
+	case CoAPMessageType::UNKNOWN: {
 		int r = 0;
 		if (type == CoAPType::CON) {
-			r = experimental::CoapChannel::instance()->handleCon(message);
+			bool eventHandled = false;
+			if (message_type == CoAPMessageType::EVENT) {
+				// Event requests can be handled by both the new and old CoAP implementations
+				auto err = subscriptions.handle_event(message, descriptor.call_event_handler, channel, eventHandled);
+				if (err != ProtocolError::NO_ERROR) {
+					return err;
+				}
+			}
+			if (!eventHandled) {
+				// Forward the message to the new CoAP implementation
+				r = v2::CoapChannel::instance()->handleCon(message);
+			}
 		} else if (type == CoAPType::ACK) {
-			r = experimental::CoapChannel::instance()->handleAck(message);
+			r = v2::CoapChannel::instance()->handleAck(message);
 		}
 		if (r < 0) {
 			return ProtocolError::COAP_ERROR;
@@ -559,7 +575,7 @@ void Protocol::reset() {
 	ack_handlers.clear();
 	channel.reset();
 	subscription_msg_ids.clear();
-	experimental::CoapChannel::instance()->close();
+	v2::CoapChannel::instance()->close();
 }
 
 /**

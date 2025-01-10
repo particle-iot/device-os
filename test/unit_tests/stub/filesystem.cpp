@@ -17,6 +17,14 @@
 
 #include "filesystem.h"
 
+namespace particle {
+
+int mkdirp(const char* path) {
+    return -1;
+}
+
+} // namespace particle
+
 filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved) {
     static filesystem_t fs;
     return &fs;
@@ -68,4 +76,8 @@ int lfs_file_sync(lfs_t* lfs, lfs_file_t* file) {
 
 int lfs_remove(lfs_t* lfs, const char* path) {
     return 0;
+}
+
+int filesystem_to_system_error(int error) {
+    return error;
 }

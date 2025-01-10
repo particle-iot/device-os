@@ -53,9 +53,9 @@ public:
     bool hasOption(unsigned opt) const;
     bool hasOptions() const;
 
-    // TODO: Add convenience methods for decoding URI path and query options
-
     int decode(const char* data, size_t size);
+
+    static int decodeUintOptionValue(const char* data, size_t size, unsigned& val);
 
 private:
     // We want all fields that identify the message, such as the ID and token, to remain valid

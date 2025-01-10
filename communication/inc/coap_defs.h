@@ -31,6 +31,11 @@ const size_t MIN_COAP_MESSAGE_SIZE = 4;
 
 const size_t MAX_COAP_TOKEN_SIZE = 8;
 
+const size_t MAX_COAP_ETAG_OPTION_SIZE = 8;
+const size_t MAX_COAP_REQUEST_TAG_OPTION_SIZE = 8;
+
+const unsigned MAX_COAP_OPTION_NUMBER = 65535;
+
 constexpr unsigned coapCode(unsigned cls, unsigned detail) {
     return ((cls & 0x07) << 5) | (detail & 0x1f);
 }
@@ -101,6 +106,8 @@ enum class CoapOption {
     BLOCK2 = 23,
     BLOCK1 = 27,
     SIZE2 = 28,
+    // RFC 7967
+    NO_RESPONSE = 258,
     // RFC 9175, 3.2. The Request-Tag Option
     REQUEST_TAG = 292
 };
@@ -120,7 +127,7 @@ enum class CoapContentFormat {
     IMAGE_PNG = 23,
     APPLICATION_CBOR = 60,
     // Vendor-specific formats
-    PARTICLE_JSON_AS_CBOR = 65001 // application/vnd.particle.json+cbor
+    PARTICLE_STRUCTURED = 65001 // application/vnd.particle.json+cbor
 };
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CoapContentFormat)

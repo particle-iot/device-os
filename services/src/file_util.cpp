@@ -297,6 +297,25 @@ int mkdirp(const char* path) {
     return 0;
 }
 
+int clearDir(const char* path) {
+    FsLock fs;
+    char pathBuf[MAX_PATH_LEN + 1] = {};
+    size_t pathLen = strlcpy(pathBuf, path, sizeof(pathBuf));
+    if (pathLen >= sizeof(pathBuf)) {
+        return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    for (;;) {
+        bool found = false;
+        CHECK(findLeafEntry(fs.instance(), pathBuf, sizeof(pathBuf), pathLen, &found));
+        if (!found) {
+            break;
+        }
+        CHECK_FS(lfs_remove(fs.instance(), pathBuf));
+        pathBuf[pathLen] = '\0'; // Reset to the base path
+    }
+    return 0;
+}
+
 } // particle
 
 #endif // HAL_PLATFORM_FILESYSTEM

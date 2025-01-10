@@ -19,7 +19,7 @@
 
 #include "filesystem.h"
 
-#include <pb.h>
+typedef struct pb_msgdesc_s pb_msgdesc_t;
 
 namespace particle {
 
@@ -29,7 +29,16 @@ int dumpFile(const char* path);
 int decodeProtobufFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg, int size = -1);
 int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg);
 
+// TODO: Move these to filesystem.h
 int rmrf(const char* path);
 int mkdirp(const char* path);
+
+/**
+ * Remove the contents of a directory recursively without deleting the directory itself.
+ *
+ * @param path Directory path.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+int clearDir(const char* path);
 
 } // particle

@@ -49,7 +49,7 @@ void mbedtls_ssl_update_out_pointers(mbedtls_ssl_context *ssl, mbedtls_ssl_trans
 #include <string.h>
 #include "dtls_session_persist.h"
 #include "coap_channel.h"
-#include "coap_channel_new.h"
+#include "v2/coap_channel.h"
 #include "coap_util.h"
 #include "platforms.h"
 
@@ -291,7 +291,7 @@ inline int DTLSMessageChannel::send(const uint8_t* data, size_t len)
 
 void DTLSMessageChannel::reset_session()
 {
-	experimental::CoapChannel::instance()->close();
+	v2::CoapChannel::instance()->close();
 	cancel_move_session();
 	mbedtls_ssl_session_reset(&ssl_context);
 	sessionPersist.clear(callbacks.save);

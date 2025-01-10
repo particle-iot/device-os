@@ -37,12 +37,15 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     e.code(CoapCode::GET);
     e.id(0); // Will be assigned and serialized by the message channel
     // Subscription messages have an empty token
-    e.option(CoapOption::URI_PATH, "e"); // 11
-    e.option(CoapOption::URI_PATH, filter, filterLen); // 11
-    if (flags & SubscriptionFlag::CBOR_DATA) {
-        e.option(CoapOption::URI_QUERY, "c"); // 15
+    e.option(CoapOption::URI_PATH /* 11 */, "e");
+    e.option(CoapOption::URI_PATH /* 11 */, filter, filterLen);
+    if (flags & SubscriptionFlag::CBOR_DATA) { // Mutually exclusive with BINARY_DATA
+        e.option(CoapOption::URI_QUERY /* 15 */, "c");
     } else if (flags & SubscriptionFlag::BINARY_DATA) {
-        e.option(CoapOption::URI_QUERY, "b"); // 15
+        e.option(CoapOption::URI_QUERY /* 15 */, "b");
+    }
+    if (flags & SubscriptionFlag::LARGE_EVENT) {
+        e.option(CoapOption::URI_QUERY /* 15 */, "l");
     }
     int r = e.encode();
     if (r < 0) {
@@ -62,19 +65,11 @@ ProtocolError Subscriptions::send_subscription_impl(MessageChannel& channel, con
     return ProtocolError::NO_ERROR;
 }
 
-ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel) {
+ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEventHandlerCallback callback, MessageChannel& channel, bool& handled) {
     CoapMessageDecoder d;
     int r = d.decode((const char*)msg.buf(), msg.length());
     if (r < 0) {
         return ProtocolError::MALFORMED_MESSAGE;
-    }
-
-    if (d.type() == CoapType::CON && channel.is_unreliable()) {
-        int r = sendEmptyAckOrRst(channel, msg, CoapType::ACK);
-        if (r < 0) {
-            LOG(ERROR, "Failed to send ACK: %d", r);
-            return ProtocolError::COAP_ERROR;
-        }
     }
 
     char name[MAX_EVENT_NAME_LENGTH + 1];
@@ -103,37 +98,70 @@ ProtocolError Subscriptions::handle_event(Message& msg, SparkDescriptor::CallEve
             break;
         }
     }
-    if (!nameLen) {
-        return ProtocolError::NO_ERROR; // Ignore an event without a name
-    }
+
+    FilteringEventHandler* oldHandlers[MAX_SUBSCRIPTIONS] = {}; // Legacy subscription handlers found for the event
+    size_t oldHandlerCount = 0; // Number of legacy subscription handlers found
+    bool newHandlerFound = false; // Whether a new subscription handler is found
 
     for (size_t i = 0; i < MAX_SUBSCRIPTIONS; ++i) {
         auto& eventHandler = event_handlers[i];
-        if (!eventHandler.handler) {
-            break;
+        if (!eventHandler.handler && !(eventHandler.flags & SubscriptionFlag::LARGE_EVENT)) {
+            break; // End of the handlers list
         }
         size_t filterLen = strnlen(eventHandler.filter, sizeof(eventHandler.filter));
         if (nameLen < filterLen || std::memcmp(eventHandler.filter, name, filterLen) != 0) {
             continue; // Event name mismatch
         }
-        if (((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) ||
-                (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt))) {
+        if ((eventHandler.flags & SubscriptionFlag::CBOR_DATA) && contentFmt != CoapContentFormat::APPLICATION_CBOR) {
             continue; // Encoding mismatch
         }
-        char* data = nullptr;
-        size_t dataSize = d.payloadSize();
-        if (dataSize > 0) {
-            data = const_cast<char*>(d.payload());
-            // Historically, the event handler callback expected a null-terminated string. Keeping that
-            // behavior for now
-            if (msg.length() >= msg.capacity()) {
-                std::memmove(data - 1, data, dataSize); // Overwrites the payload marker
-                --data;
-            }
-            data[dataSize] = '\0';
+        if (eventHandler.flags & SubscriptionFlag::LARGE_EVENT) {
+            newHandlerFound = true;
+            break; // The request will be handled by the new CoAP implementation
         }
-        callback(sizeof(FilteringEventHandler), &eventHandler, name, data, dataSize, contentFmt);
+        if (!(eventHandler.flags & (SubscriptionFlag::BINARY_DATA | SubscriptionFlag::CBOR_DATA)) && !isCoapTextContentFormat(contentFmt)) {
+            continue; // Encoding mismatch (old event API)
+        }
+        oldHandlers[oldHandlerCount++] = &eventHandler;
     }
+
+    if (newHandlerFound) {
+        handled = false;
+        return ProtocolError::NO_ERROR;
+    }
+
+    // Acknowledge the request
+    if (d.type() == CoapType::CON && channel.is_unreliable()) {
+        int r = sendEmptyAck(channel, msg);
+        if (r < 0) {
+            LOG(ERROR, "Failed to send ACK: %d", r);
+            return ProtocolError::COAP_ERROR;
+        }
+    }
+
+    if (!oldHandlerCount) {
+        handled = false;
+        return ProtocolError::NO_ERROR;
+    }
+
+    char* data = nullptr;
+    size_t dataSize = d.payloadSize();
+    if (dataSize > 0) {
+        data = const_cast<char*>(d.payload());
+        // Historically, the event handler callback expected a null-terminated string. Keeping that
+        // behavior for now
+        if (msg.length() >= msg.capacity()) {
+            std::memmove(data - 1, data, dataSize); // Overwrites the payload marker
+            --data;
+        }
+        data[dataSize] = '\0';
+    }
+
+    for (size_t i = 0; i < oldHandlerCount; ++i) {
+        callback(sizeof(FilteringEventHandler), oldHandlers[i], name, data, dataSize, contentFmt);
+    }
+
+    handled = true;
     return ProtocolError::NO_ERROR;
 }
 

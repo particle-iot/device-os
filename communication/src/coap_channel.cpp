@@ -20,7 +20,7 @@
 #undef LOG_COMPILE_TIME_LEVEL
 
 #include "coap_channel.h"
-#include "coap_channel_new.h"
+#include "v2/coap_channel.h"
 #include "service_debug.h"
 #include "messages.h"
 #include "communication_diagnostic.h"
@@ -54,7 +54,7 @@ bool CoAPMessageStore::retransmit(CoAPMessage* msg, Channel& channel, system_tic
 	if (retransmit)
 	{
 		LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %d of %d", (int)msg->get_id(),
-				(int)msg->get_transmit_count() - 1, (int)CoAPMessage::MAX_RETRANSMIT);
+				(int)msg->get_transmit_count() - 1, (int)MAX_RETRANSMIT);
 		send_message(msg, channel);
 	}
 	return retransmit;
@@ -68,7 +68,7 @@ void CoAPMessageStore::message_timeout(CoAPMessage& msg, Channel& channel)
 		g_unacknowledgedMessageCounter++;
 		// XXX: This will cancel _all_ messages with a timeout error, not just the timed out one.
 		// That's not ideal but should be okay while we're transitioning to the new CoAP API
-		experimental::CoapChannel::instance()->close(SYSTEM_ERROR_COAP_TIMEOUT);
+		v2::CoapChannel::instance()->close(SYSTEM_ERROR_COAP_TIMEOUT);
 		channel.command(MessageChannel::CLOSE);
 	}
 }
@@ -123,7 +123,7 @@ ProtocolError CoAPMessageStore::send(Message& msg, system_tick_t time)
 		}
 		else
 		{
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + MAX_TRANSMIT_SPAN);
 		}
 		add(*coapmsg);
 	}
@@ -146,7 +146,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 		}
 		if (msgtype==CoAPType::RESET) {
 			LOG(WARN, "Received RST message; discarding session");
-			experimental::CoapChannel::instance()->handleRst(msg);
+			v2::CoapChannel::instance()->handleRst(msg);
 			if (coap_msg) {
 				coap_msg->notify_delivered_nak();
 			}
@@ -156,7 +156,8 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 			channel.command(Channel::DISCARD_SESSION, nullptr);
 		}
 		if (!clear_message(id)) {		// message didn't exist, means it's already been acknoweldged or is unknown.
-			msg.set_length(0);
+			// This might be an ACK for a message sent by the new CoAP implementation
+			msg.passthrough(true);
 		}
 	}
 	else if (msgtype==CoAPType::CON)
@@ -179,7 +180,7 @@ ProtocolError CoAPMessageStore::receive(Message& msg, Channel& channel, system_t
 				return INSUFFICIENT_STORAGE;
 			// the timeout here is ideally purely academic since the application will respond immediately with an ACK/RESET
 			// which will be stored in place of this message, with it's own timeout.
-			coapmsg->set_expiration(time+CoAPMessage::MAX_TRANSMIT_SPAN);
+			coapmsg->set_expiration(time + MAX_TRANSMIT_SPAN);
 			add(*coapmsg);
 		}
 	}

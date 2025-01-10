@@ -64,7 +64,8 @@ namespace SubscriptionFlag {
     MY_DEVICES = 0x00, // Deprecated
     FIREHOSE = 0x01, // Deprecated
     BINARY_DATA = 0x02, // The subscription handler accepts binary data
-    CBOR_DATA = 0x04 // The subscription handler accepts CBOR data
+    CBOR_DATA = 0x04, // The subscription handler accepts CBOR data
+    LARGE_EVENT = 0x08 // The subscription handler supports large events
   };
 }
 

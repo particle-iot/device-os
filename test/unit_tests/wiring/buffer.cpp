@@ -172,6 +172,36 @@ TEST_CASE("Buffer") {
         }
     }
 
+    SECTION("slice()") {
+        SECTION("returns a copy of a portion of the buffer") {
+            Buffer b("abcd", 4);
+            CHECK(b.slice(0, 0) == Buffer());
+            CHECK(b.slice(0, 1) == Buffer("a", 1));
+            CHECK(b.slice(0, 2) == Buffer("ab", 2));
+            CHECK(b.slice(0) == Buffer("abcd", 4));
+            CHECK(b.slice(1, 0) == Buffer());
+            CHECK(b.slice(1, 1) == Buffer("b", 1));
+            CHECK(b.slice(1, 2) == Buffer("bc", 2));
+            CHECK(b.slice(1) == Buffer("bcd", 3));
+            CHECK(b.slice(3, 0) == Buffer());
+            CHECK(b.slice(3, 1) == Buffer("d", 1));
+            CHECK(b.slice(3, 2) == Buffer("d", 1));
+            CHECK(b.slice(3) == Buffer("d", 1));
+        }
+    }
+
+    SECTION("concat()") {
+        SECTION("concatenates the buffer with another buffer") {
+            Buffer b;
+            b = b.concat(Buffer("a", 1));
+            CHECK(b == Buffer("a", 1));
+            b = b.concat(Buffer());
+            CHECK(b == Buffer("a", 1));
+            b = b.concat(Buffer("bcd", 3));
+            CHECK(b == Buffer("abcd", 4));
+        }
+    }
+
     SECTION("toHex()") {
         SECTION("converts the buffer data to a hex-encoded string") {
             {

@@ -307,8 +307,8 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 			{
 				CoAPMessage* cm = store.from_id(id);
 				REQUIRE(cm!=nullptr);
-				REQUIRE(cm->get_timeout()<CoAPMessage::ACK_TIMEOUT*CoAPMessage::ACK_RANDOM_FACTOR/CoAPMessage::ACK_RANDOM_DIVISOR);
-				REQUIRE(cm->get_timeout()>=CoAPMessage::ACK_TIMEOUT*1);
+				REQUIRE(cm->get_timeout() < ACK_TIMEOUT * ACK_RANDOM_FACTOR / ACK_RANDOM_DIVISOR);
+				REQUIRE(cm->get_timeout() >= ACK_TIMEOUT);
 
 				// the send() function should be invoked with a message corresponding to the coap message
 				auto verify_message = [cm](Message& msg)->ProtocolError {
@@ -322,7 +322,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 				AND_WHEN("the message times out MAX_RETRANSMIT times")
 				{
 					system_tick_t last_timeout = 0;
-					for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
+					for (int i = 0; i < MAX_RETRANSMIT; i++)
 					{
 						CoAPMessage* m = store.from_id(id);
 						REQUIRE(m->get_timeout()>last_timeout);
@@ -334,7 +334,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 
 					THEN("the message has been sent MAX_RETRANSMIT times")
 					{
-						Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT);
+						Verify(Method(mock,send)).Exactly(MAX_RETRANSMIT);
 
 						AND_WHEN("process is invoked once more")
 						{
@@ -343,7 +343,7 @@ SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exp
 
 							AND_THEN("send is not called again and the message the message is no longer pending")
 							{
-								Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT);
+								Verify(Method(mock,send)).Exactly(MAX_RETRANSMIT);
 								REQUIRE(store.from_id(id)==nullptr);
 							}
 						}
@@ -549,7 +549,7 @@ SCENARIO("a Confirmable message is pending until acknowledged, reset or timeout"
 						}
 						AND_THEN("the message is not made available to the application")
 						{
-							REQUIRE(m.length()==0);
+							REQUIRE(m.passthrough() == true);
 						}
 					}
 				}
@@ -592,13 +592,13 @@ SCENARIO("Rollover timestamps can be used to determine a timeout")
 
 SCENARIO("retransmit delay is exponential with randomness")
 {
-	for (int i=0; i<CoAPMessage::MAX_RETRANSMIT; i++)
+	for (int i = 0; i < MAX_RETRANSMIT; i++)
 	{
 		system_tick_t gmin = INT_MAX;
 		system_tick_t gmax = 0;
 		for (unsigned u = 0; u<500; u++)
 		{
-			system_tick_t timeout = CoAPMessage::transmit_timeout(i);
+			system_tick_t timeout = transmit_timeout(i);
 			system_tick_t min = 4000 << i;
 			system_tick_t max = min * 1.5;
 			if (timeout<min)
@@ -978,7 +978,7 @@ SCENARIO("receiving a message first retrieves from the channel and then passes t
 				Verify(Method(mock,receive)).Exactly(1);
 				CoAPMessage* cm = channel.server_messages().from_id(0x1234);
 				REQUIRE(cm!=nullptr);
-				REQUIRE(cm->get_timeout()==CoAPMessage::MAX_TRANSMIT_SPAN + 234);
+				REQUIRE(cm->get_timeout() == MAX_TRANSMIT_SPAN + 234);
 			}
 		}
 	}
@@ -1121,12 +1121,12 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 			ProtocolError error = channel.send(m);
 			AND_WHEN("the request has timed out")
 			{
-				CHECK(ticks>=CoAPMessage::MAX_TRANSMIT_SPAN+0);
+				CHECK(ticks >= MAX_TRANSMIT_SPAN);
 			}
 			THEN("an error response is returned")
 			{
 				REQUIRE(error==MESSAGE_TIMEOUT);
-				Verify(Method(mock,send)).Exactly(CoAPMessage::MAX_RETRANSMIT+1);
+				Verify(Method(mock,send)).Exactly(MAX_RETRANSMIT + 1);
 			}
 		}
 
@@ -1240,7 +1240,7 @@ SCENARIO("notify_client_messages_processed() is invoked when all client messages
 					return NO_ERROR;
 				});
 
-				for (auto i = 0; i < CoAPMessage::MAX_RETRANSMIT + 1; ++i) {
+				for (auto i = 0; i < MAX_RETRANSMIT + 1; ++i) {
 					REQUIRE(channel.receive(msg1) == NO_ERROR);
 				}
 

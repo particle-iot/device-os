@@ -582,18 +582,18 @@ StringSumHelper & operator + (const StringSumHelper &lhs, double num)
 /*  Comparison                               */
 /*********************************************/
 
-int String::compareTo(const String &s) const
+int String::compareTo(const char* cstr) const
 {
-    if (!buffer || !s.buffer) {
-        if (s.buffer && s.len > 0) {
-            return 0 - *(unsigned char *)s.buffer;
+    if (!buffer || !cstr) {
+        if (cstr && cstr[0] != '\0') {
+            return 0 - (unsigned char)cstr[0];
         }
         if (buffer && len > 0) {
-            return *(unsigned char *)buffer;
+            return (unsigned char)buffer[0];
         }
         return 0;
     }
-    return strcmp(buffer, s.buffer);
+    return strcmp(buffer, cstr);
 }
 
 unsigned char String::equals(const String &s2) const

@@ -199,7 +199,8 @@ typedef enum {
  */
 typedef enum {
     SUBSCRIBE_FLAG_BINARY_DATA = 0x01, ///< The subscription handler accepts binary data.
-    SUBSCRIBE_FLAG_CBOR_DATA = 0x02 ///< The subscription handler accepts CBOR data.
+    SUBSCRIBE_FLAG_CBOR_DATA = 0x02, ///< The subscription handler accepts CBOR data.
+    SUBSCRIBE_FLAG_LARGE_EVENT = 0x04 ///< The subscription handler supports large events.
 } spark_subscribe_flag;
 
 typedef int (*cloud_function_t)(void* data, const char* param, void* reserved);

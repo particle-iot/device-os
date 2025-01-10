@@ -70,7 +70,10 @@ ProtocolError Publisher::send_event(MessageChannel& channel, const char* event_n
     }
     if (data_size > 0) {
         auto max_data_size = std::min(e.maxPayloadSize(), protocol->get_max_event_data_size());
-        data_size = std::min(data_size, max_data_size);
+        if (data_size > max_data_size) {
+            LOG(WARN, "Event data size exceeds limit of %d bytes", (int)max_data_size);
+            data_size = max_data_size;
+        }
         e.payload(data, data_size);
     }
     int r = e.encode();

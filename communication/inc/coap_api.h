@@ -20,6 +20,16 @@
 #include <stdint.h>
 
 /**
+ * Maximum supported length of an URI path.
+ */
+#define COAP_MAX_URI_PATH_LENGTH 127
+
+/**
+ * Maximum supported size of payload data.
+ */
+#define COAP_MAX_PAYLOAD_SIZE 16384
+
+/**
  * Maximum size of payload data that can be sent or received without splitting the request or
  * response message into multiple CoAP messages.
  */
@@ -45,6 +55,11 @@
 typedef struct coap_message coap_message;
 
 /**
+ * Payload data.
+ */
+typedef struct coap_payload coap_payload;
+
+/**
  * Message option.
  */
 typedef struct coap_option coap_option;
@@ -67,13 +82,13 @@ typedef int (*coap_connection_callback)(int error, int status, void* arg);
  * needed.
  *
  * @param msg Request message.
- * @param uri Request URI.
+ * @param path URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param req_id Request ID.
  * @param arg User argument.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-typedef int (*coap_request_callback)(coap_message* msg, const char* uri, int method, int req_id, void* arg);
+typedef int (*coap_request_callback)(coap_message* msg, const char* path, int method, int req_id, void* arg);
 
 /**
  * Callback invoked when a response message is received.
@@ -175,7 +190,8 @@ typedef enum coap_option_number {
     COAP_OPTION_LOCATION_QUERY = 20, ///< Location-Query.
     COAP_OPTION_PROXY_URI = 35, ///< Proxy-Uri.
     COAP_OPTION_PROXY_SCHEME = 39, ///< Proxy-Scheme.
-    COAP_OPTION_SIZE1 = 60 ///< Size1.
+    COAP_OPTION_SIZE1 = 60, ///< Size1.
+    COAP_OPTION_NO_RESPONSE = 258 ///< No-Response (RFC 7967).
 } coap_option_number;
 
 /**
@@ -199,10 +215,22 @@ typedef enum coap_connection_status {
 } coap_connection_status;
 
 /**
+ * Message option flags.
+ */
+typedef enum coap_message_flag {
+    /**
+     * Store the entire payload data of the message prior to notifying the user that an incoming
+     * message has been received.
+     */
+    COAP_MESSAGE_FULL = 0x01
+} coap_message_flag;
+
+/**
  * Result code.
  */
 typedef enum coap_result {
-    COAP_RESULT_WAIT_BLOCK = 1 ///< Waiting for the next block of the message to be sent or received.
+    COAP_RESULT_WAIT_BLOCK = 1, ///< Waiting for the next block of the message to be sent or received.
+    COAP_RESULT_CANCELLED = 2 ///< Request was cancelled.
 } coap_result;
 
 #ifdef __cplusplus
@@ -230,40 +258,43 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
 /**
  * Register a handler for incoming requests.
  *
- * If a handler is already registered for the given combination of URI prefix and method code, it
+ * If a handler is already registered for the given combination of base URI path and method code, it
  * will be replaced.
  *
- * @param uri URI prefix.
+ * @param path Base URI path. If `NULL` or empty, the handler will be invoked for any request that
+ *        does not match any of the handlers with a non-empty URI path.
  * @param method Method code as defined by the `coap_method` enum.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param cb Handler callback.
  * @param arg User argument to pass to the callback.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_add_request_handler(const char* uri, int method, int flags, coap_request_callback cb, void* arg, void* reserved);
+int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved);
 
 /**
  * Unregister a handler for incoming requests.
  *
- * @param uri URI prefix.
+ * @param path Base URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void coap_remove_request_handler(const char* uri, int method, void* reserved);
+void coap_remove_request_handler(const char* path, int method, void* reserved);
 
 /**
  * Begin sending a request message.
  *
  * @param[out] msg Request message.
- * @param uri Request URI.
+ * @param path URI path.
  * @param method Method code as defined by the `coap_method` enum.
  * @param timeout Request timeout in milliseconds. If 0, the default timeout is used.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return ID of the request on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_begin_request(coap_message** msg, const char* uri, int method, int timeout, int flags, void* reserved);
+int coap_begin_request(coap_message** msg, const char* path, int method, int timeout, int flags, void* reserved);
 
 /**
  * Finish sending a request message.
@@ -288,7 +319,8 @@ int coap_end_request(coap_message* msg, coap_response_callback resp_cb, coap_ack
  * @param[out] msg Response message.
  * @param status Response code as defined by the `coap_status` enum.
  * @param req_id ID of the request which this response is meant for.
- * @param flags Reserved argument. Must be set to 0.
+ * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
+ *        - `COAP_MESSAGE_FULL`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
@@ -332,11 +364,12 @@ void coap_destroy_message(coap_message* msg, void* reserved);
  *
  * @param req_id ID of the request that started the message exchange.
  * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return `COAP_RESULT_CANCELLED` if the request was found and cancelled, otherwise 0.
  */
-void coap_cancel_request(int req_id, void* reserved);
+int coap_cancel_request(int req_id, void* reserved);
 
 /**
- * Write the payload data of a message.
+ * Write payload data to the current block of a message.
  *
  * If the data can't be sent in one message block, the function will return `COAP_RESULT_WAIT_BLOCK`.
  * When that happens, the caller must stop writing the payload data until the `block_cb` callback is
@@ -356,11 +389,11 @@ void coap_cancel_request(int req_id, void* reserved);
  * @return 0 or `COAP_RESULT_WAIT_BLOCK` on success, otherwise an error code defined by the
  *        `system_error_t` enum.
  */
-int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
+int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read the payload data of a message.
+ * Read payload data from the current block of a message.
  *
  * If the end of the current message block is reached and more blocks are expected to be received for
  * this message, the function will return `COAP_RESULT_WAIT_BLOCK`. The `block_cb` callback will be
@@ -378,11 +411,11 @@ int coap_write_payload(coap_message* msg, const char* data, size_t* size, coap_b
  * @return 0 or `COAP_RESULT_WAIT_BLOCK` on success, otherwise an error code defined by the
  *        `system_error_t` enum.
  */
-int coap_read_payload(coap_message* msg, char* data, size_t *size, coap_block_callback block_cb,
+int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
         coap_error_callback error_cb, void* arg, void* reserved);
 
 /**
- * Read the payload data of the current message block without changing the reading position in it.
+ * Read payload data from the current block of a message without changing the reading position in it.
  *
  * @param msg Request or response message.
  * @param[out] data Output buffer. Can be `NULL`.
@@ -390,51 +423,129 @@ int coap_read_payload(coap_message* msg, char* data, size_t *size, coap_block_ca
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return Number of bytes read or an error code defined by the `system_error_t` enum.
  */
-int coap_peek_payload(coap_message* msg, char* data, size_t size, void* reserved);
+int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved);
 
 /**
- * Get a message option.
+ * Create a payload instance.
  *
- * @param[out] opt Message option. If the option with the given number cannot be found, the argument
- *        is set to `NULL`.
- * @param num Option number.
- * @param msg Request or response message.
+ * @param[out] payload Payload instance.
+ * @param max_heap_size Maximum amount of payload data that can be stored on the heap. The data
+ *        exceeding the specified size will be stored in a temporary file.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_option(coap_option** opt, int num, coap_message* msg, void* reserved);
+int coap_create_payload(coap_payload** payload, size_t max_heap_size, void* reserved);
+
+/**
+ * Destroy a payload instance.
+ *
+ * @param payload Payload instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void coap_destroy_payload(coap_payload* payload, void* reserved);
+
+/**
+ * Write the payload data.
+ *
+ * @param payload Payload instance.
+ * @param data Input buffer.
+ * @param size Number of bytes to write.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the number of bytes written. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
+int coap_write_payload(coap_payload* payload, const char* data, size_t size, size_t pos, void* reserved);
+
+/**
+ * Read the payload data.
+ *
+ * @param payload Payload instance.
+ * @param data Output buffer.
+ * @param size Number of bytes to read.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the number of bytes read. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
+int coap_read_payload(coap_payload* payload, char* data, size_t size, size_t pos, void* reserved);
+
+/**
+ * Set the size of the payload data.
+ *
+ * @param payload Payload instance.
+ * @param size New data size.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
+int coap_set_payload_size(coap_payload* payload, size_t size, void* reserved);
+
+/**
+ * Get the size of the payload data.
+ *
+ * @param payload Payload instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the size of the payload data. Otherwise, an error code defined by the
+ *     `system_error_t` enum.
+ */
+int coap_get_payload_size(coap_payload* payload, void* reserved);
+
+/**
+ * Set the payload data of a message.
+ *
+ * The caller is still responsible for destroying its reference to the payload instance via
+ * `coap_destroy_payload()` after calling this function.
+ *
+ * @param msg Request or response message.
+ * @param payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
+int coap_set_payload(coap_message* msg, coap_payload* payload, void* reserved);
+
+/**
+ * Get the payload data of a message.
+ *
+ * The obtained reference to the payload instance needs to be destroyed via `coap_destroy_payload()`
+ * when it's no longer needed.
+ *
+ * @param msg Request or response message.
+ * @param[out] payload Payload data instance.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise, an error code defined by the `system_error_t` enum.
+ */
+int coap_get_payload(coap_message* msg, coap_payload** payload, void* reserved);
+
+/**
+ * Get the first message option with a given number.
+ *
+ * @param msg Request or response message.
+ * @param[out] opt Message option. If the option cannot be found, the argument is set to `NULL`.
+ * @param num Option number.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int coap_get_option(coap_message* msg, coap_option** opt, int num, void* reserved);
 
 /**
  * Get the next message option.
  *
+ * @param msg Request or response message.
  * @param[in,out] opt **in:** Current option. If `NULL`, the first option of the message is returned.
  *        **out:** Next option. If `NULL`, the option provided is the last option of the message.
  * @param[out] num Option number.
- * @param msg Request or response message.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_next_option(coap_option** opt, int* num, coap_message* msg, void* reserved);
+int coap_get_next_option(coap_message* msg, coap_option** opt, int* num, void* reserved);
 
 /**
- * Get the value of an `uint` option.
+ * Get the value of a `uint` option.
  *
  * @param opt Message option.
  * @param[out] val Option value.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int coap_get_uint_option_value(const coap_option* opt, unsigned* val, void* reserved);
-
-/**
- * Get the value of an `uint` option as a 64-bit integer.
- *
- * @param opt Message option.
- * @param[out] val Option value.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int coap_get_uint64_option_value(const coap_option* opt, uint64_t* val, void* reserved);
+int coap_get_uint_option_value(coap_option* opt, unsigned* val, void* reserved);
 
 /**
  * Get the value of a string option.
@@ -448,7 +559,7 @@ int coap_get_uint64_option_value(const coap_option* opt, uint64_t* val, void* re
  * @return On success, the actual size of the option value not including the terminating null (can
  *        be greater than `size`). Otherwise, an error code defined by the `system_error_t` enum.
  */
-int coap_get_string_option_value(const coap_option* opt, char* data, size_t size, void* reserved);
+int coap_get_string_option_value(coap_option* opt, char* data, size_t size, void* reserved);
 
 /**
  * Get the value of an opaque option.
@@ -460,7 +571,7 @@ int coap_get_string_option_value(const coap_option* opt, char* data, size_t size
  * @return On success, the actual size of the option value (can be greater than `size`). Otherwise,
  *        an error code defined by the `system_error_t` enum.
  */
-int coap_get_opaque_option_value(const coap_option* opt, char* data, size_t size, void* reserved);
+int coap_get_opaque_option_value(coap_option* opt, char* data, size_t size, void* reserved);
 
 /**
  * Add an empty option to a message.
@@ -482,17 +593,6 @@ int coap_add_empty_option(coap_message* msg, int num, void* reserved);
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
 int coap_add_uint_option(coap_message* msg, int num, unsigned val, void* reserved);
-
-/**
- * Add a `uint` option to a message as a 64-bit integer.
- *
- * @param msg Request of response message.
- * @param num Option number.
- * @param val Option value.
- * @param reserved Reserved argument. Must be set to `NULL`.
- * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
- */
-int coap_add_uint64_option(coap_message* msg, int num, uint64_t val, void* reserved);
 
 /**
  * Add a string option to a message.

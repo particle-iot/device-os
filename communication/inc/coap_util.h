@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "spark_wiring_stream.h"
+
 #include "coap_api.h"
 #include "coap_defs.h"
 #include "logging.h"
@@ -62,6 +64,11 @@ public:
         msg_ = msg;
     }
 
+    coap_message** operator&() {
+        coap_destroy_message(msg_, nullptr);
+        return &msg_;
+    }
+
     CoapMessagePtr& operator=(const CoapMessagePtr&) = delete;
 
     CoapMessagePtr& operator=(CoapMessagePtr&& ptr) {
@@ -85,6 +92,133 @@ private:
     coap_message* msg_;
 };
 
+/**
+ * Smart pointer for CoAP payload instances.
+ */
+class CoapPayloadPtr {
+public:
+    CoapPayloadPtr() :
+            p_(nullptr) {
+    }
+
+    explicit CoapPayloadPtr(coap_payload* payload) :
+            p_(payload) {
+    }
+
+    CoapPayloadPtr(const CoapPayloadPtr&) = delete;
+
+    CoapPayloadPtr(CoapPayloadPtr&& ptr) :
+            p_(ptr.p_) {
+        ptr.p_ = nullptr;
+    }
+
+    ~CoapPayloadPtr() {
+        coap_destroy_payload(p_, nullptr);
+    }
+
+    coap_payload* get() const {
+        return p_;
+    }
+
+    coap_payload* release() {
+        auto p = p_;
+        p_ = nullptr;
+        return p;
+    }
+
+    void reset(coap_payload* payload = nullptr) {
+        coap_destroy_payload(p_, nullptr);
+        p_ = payload;
+    }
+
+    coap_payload** operator&() {
+        coap_destroy_payload(p_, nullptr);
+        return &p_;
+    }
+
+    CoapPayloadPtr& operator=(const CoapPayloadPtr&) = delete;
+
+    CoapPayloadPtr& operator=(CoapPayloadPtr&& ptr) {
+        coap_destroy_payload(p_, nullptr);
+        p_ = ptr.p_;
+        ptr.p_ = nullptr;
+        return *this;
+    }
+
+    explicit operator bool() const {
+        return p_;
+    }
+
+    friend void swap(CoapPayloadPtr& ptr1, CoapPayloadPtr& ptr2) {
+        auto p = ptr1.p_;
+        ptr1.p_ = ptr2.p_;
+        ptr2.p_ = p;
+    }
+
+private:
+    coap_payload* p_;
+};
+
+/**
+ * An input stream adapter for CoAP payload data.
+ */
+class CoapPayloadInputStream: public Stream {
+public:
+    explicit CoapPayloadInputStream(coap_payload* payload) :
+            payload_(payload),
+            pos_(0) {
+    }
+
+    int read() override {
+        char c;
+        if (readBytes(&c, 1) != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
+    size_t readBytes(char* data, size_t size) override {
+        int n = coap_read_payload(payload_, data, size, pos_, nullptr /* reserved */);
+        if (n < 0) {
+            return 0;
+        }
+        pos_ += n;
+        return n;
+    }
+
+    int peek() override {
+        char c;
+        int n = coap_read_payload(payload_, &c, 1, pos_, nullptr /* reserved */);
+        if (n != 1) {
+            return -1;
+        }
+        return (unsigned char)c;
+    }
+
+    int available() override {
+        int size = coap_get_payload_size(payload_, nullptr /* reserved */);
+        if (size < 0) {
+            return 0;
+        }
+        return size - pos_;
+    }
+
+    size_t write(uint8_t b) override {
+        return 0; // Not supported
+    }
+
+    size_t write(const uint8_t* data, size_t size) override {
+        return 0; // Not supported
+    }
+
+    void flush() override {
+    }
+
+private:
+    coap_payload* payload_;
+    size_t pos_;
+};
+
 namespace protocol {
 
 class Message;
@@ -92,14 +226,34 @@ class MessageChannel;
 class CoapOptionIterator;
 
 /**
- * Send an empty ACK or RST message.
+ * Send a response ACK.
  *
  * @param channel Message channel.
- * @param msg Received message.
- * @param type Type of the message to send.
+ * @param msg CON request message.
+ * @param code Status code.
+ * @param payload Payload data.
+ * @param payloadSize Payload size.
  * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
  */
-int sendEmptyAckOrRst(MessageChannel& channel, Message& msg, CoapType type);
+int sendResponseAck(MessageChannel& channel, Message& msg, CoapCode code, const char* payload = nullptr, size_t payloadSize = 0);
+
+/**
+ * Send an empty ACK.
+ *
+ * @param channel Message channel.
+ * @param msg CON message.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int sendEmptyAck(MessageChannel& channel, Message& msg);
+
+/**
+ * Send an RST.
+ *
+ * @param channel Message channel.
+ * @param msg CON or NON message.
+ * @return 0 on success, otherwise an error code defined by the `system_error_t` enum.
+ */
+int sendRst(MessageChannel& channel, Message& msg);
 
 /**
  * Append an URI path entry to a string.

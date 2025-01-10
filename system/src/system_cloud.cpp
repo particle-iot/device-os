@@ -118,6 +118,9 @@ bool spark_subscribe(const char* event_name, EventHandler handler, void* handler
         if (param->flags & SUBSCRIBE_FLAG_BINARY_DATA) {
             flags |= SubscriptionFlag::BINARY_DATA;
         }
+        if (param->flags & SUBSCRIBE_FLAG_LARGE_EVENT) {
+            flags |= SubscriptionFlag::LARGE_EVENT;
+        }
     }
     bool ok = spark_protocol_add_event_handler(sp, event_name, handler, flags, nullptr /* device_id_deprecated */, handler_data);
     if (ok && spark_cloud_flag_connected() && (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE)) {

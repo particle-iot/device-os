@@ -55,7 +55,7 @@ static bool read_file_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
 
 static bool read_coap_message_callback(pb_istream_t* strm, uint8_t* data, size_t size) {
     size_t n = size;
-    int r = coap_read_payload((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
+    int r = coap_read_block((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
             NULL /* arg */, NULL /* reserved */);
     if (r != 0 || n != size) { // COAP_RESULT_WAIT_BLOCK is treated as an error
         return false;
@@ -65,7 +65,7 @@ static bool read_coap_message_callback(pb_istream_t* strm, uint8_t* data, size_t
 
 static bool write_coap_message_callback(pb_ostream_t* strm, const uint8_t* data, size_t size) {
     size_t n = size;
-    int r = coap_write_payload((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
+    int r = coap_write_block((coap_message*)strm->state, data, &n, NULL /* block_cb */, NULL /* error_cb */,
             NULL /* arg */, NULL /* reserved */);
     if (r != 0 || n != size) { // COAP_RESULT_WAIT_BLOCK is treated as an error
         return false;
@@ -165,7 +165,7 @@ int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void*
 #endif // HAL_PLATFORM_FILESYSTEM
 
 int pb_istream_from_coap_message(pb_istream_t* stream, coap_message* msg, void* reserved) {
-    int size = coap_peek_payload(msg, NULL /* data */, SIZE_MAX, NULL /* reserved */);
+    int size = coap_peek_block(msg, NULL /* data */, SIZE_MAX, NULL /* reserved */);
     if (size < 0) {
         return size;
     }
