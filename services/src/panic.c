@@ -89,7 +89,6 @@ static void panic_internal(const ePanicCode code, const void* extraInfo)
     LED_SetRGBColor(RGB_COLOR_RED);
     LED_SetBrightness(DEFAULT_LED_RGB_BRIGHTNESS);
     LED_Signaling_Stop();
-    LOG_PRINT(TRACE, "!");
     LED_Off(PARTICLE_LED_RGB);
     LED_SetRGBColor(PANIC_LED_COLOR);
 

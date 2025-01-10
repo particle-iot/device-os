@@ -165,3 +165,8 @@ ASSERT (
     (link_static_ram_end - link_static_ram_start <= platform_user_part_static_ram_size),
     "Insufficient room for .data and .bss sections!"
 );
+
+ASSERT (
+    (platform_modular_firmware_stack_size == __STACKSIZE__),
+    "platform_modular_firmware_stack_size does not match __STACKSIZE__"
+);

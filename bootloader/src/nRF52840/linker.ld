@@ -196,3 +196,7 @@ ASSERT (
     "Stack should be 8-byte aligned!"
 );
 
+ASSERT (
+    (platform_bootloader_stack_size == __STACKSIZE__),
+    "platform_bootloader_stack_size does not match __STACKSIZE__"
+);

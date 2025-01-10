@@ -89,28 +89,28 @@ platform_system_retention_ram_end = platform_system_retention_ram_start + platfo
 /* Modular firmware main stack
  * platform_modular_firmware_stack_size is equal to 8K, which is defined in part1_build.mk and user_build.mk under modules/shared/rtl872x.
  * platform_modular_firmware_stack_start is the lowest address of the stack. */
-platform_modular_firmware_stack_size  = __STACKSIZE__;
+platform_modular_firmware_stack_size  = 8K;
 platform_modular_firmware_stack_end   = platform_ram_start;
 platform_modular_firmware_stack_start = platform_modular_firmware_stack_end - platform_modular_firmware_stack_size;
 
-platform_modular_firmware_secure_stack_size  = __STACKSIZE__;
+platform_modular_firmware_secure_stack_size  = 8K;
 platform_modular_firmware_secure_stack_end   = platform_secure_ram_end;
 platform_modular_firmware_secure_stack_start = platform_modular_firmware_secure_stack_end - platform_modular_firmware_secure_stack_size;
 
 /* Monolithic firmware main stack
- * platform_monolithic_firmware_stack_size is equal to 4K, which is defined in include.mk under hal/src/rtl872x.
+ * platform_monolithic_firmware_stack_size is equal to 8K, which is defined in include.mk under hal/src/rtl872x.
  * platform_monolithic_firmware_stack_start is the lowest address of the stack. */
-platform_monolithic_firmware_stack_size  = __STACKSIZE__;
+platform_monolithic_firmware_stack_size  = 8K;
 platform_monolithic_firmware_stack_end   = platform_ram_start;
 platform_monolithic_firmware_stack_start = platform_monolithic_firmware_stack_end - platform_monolithic_firmware_stack_size;
 
-platform_monolithic_firmware_secure_stack_size  = __STACKSIZE__;
+platform_monolithic_firmware_secure_stack_size  = 8K;
 platform_monolithic_firmware_secure_stack_end   = platform_secure_ram_end;
 platform_monolithic_firmware_secure_stack_start = platform_monolithic_firmware_secure_stack_end - platform_monolithic_firmware_secure_stack_size;
 
 /* Bootloader main stack
- * platform_bootloader_stack_size is equal to 4K, which is defined in bootloader/src/rtl872x/include.mk. */
-platform_bootloader_stack_size  = __STACKSIZE__;
+ * platform_bootloader_stack_size is equal to 8K, which is defined in bootloader/src/rtl872x/include.mk. */
+platform_bootloader_stack_size  = 8K;
 platform_bootloader_stack_end   = platform_secure_ram_end;
 platform_bootloader_stack_start = platform_bootloader_stack_end - platform_bootloader_stack_size;
 

@@ -101,6 +101,9 @@ int __cxa_atexit(void (*f)(void *), void *p, void *d) {
     return 0;
 }
 
+void __register_exitproc(int type, void (*fn)(void), void* arg, void* d) {
+}
+
 int _write(int file, char *ptr, int len) { return 0; }
 int _read(int file, char *ptr, int len) { return 0; }
 int _close(int file) { return 0; }
