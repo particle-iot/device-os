@@ -1,6 +1,6 @@
 suite('Factory Reset');
 
-platform('argon','boron','bsom','b5som','tracker','esomx');
+platform('argon','boron','bsom','b5som','tracker','esomx','electron2');
 systemThread('enabled');
 
 const { HalModuleParser, ModuleInfo, updateModulePrefix, updateModuleSuffix, updateModuleCrc32 } = require('binary-version-reader');

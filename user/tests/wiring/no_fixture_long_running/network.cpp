@@ -180,7 +180,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         delay(millis() - start);
     }
     assertFalse((bool)networkState.disconnected);
-#if PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM
+#if PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
     assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
 #else
     // We've reduced MTU on LTE Boron and B SoMs with R410 running modem firwmare <= 02.03
@@ -189,7 +189,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     } else {
         assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
     }
-#endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM
+#endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR

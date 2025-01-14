@@ -249,10 +249,13 @@ void Reset_System(void) {
     // event handler hasn't been registered.
     // Surprisingly the event that triggers the interrupt is EVENTS_LFCLKSTARTED,
     // despite the fact that we are specifically waiting for LFCLK to start in Set_System()
+    //
+    // NOTE: Add new platforms along with ESOMX and ELECTRON2
 
-#if !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || \
-        PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || \
-        PLATFORM_ID == PLATFORM_ESOMX || MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || \
+        PLATFORM_ID == PLATFORM_ESOMX || \
+        PLATFORM_ID == PLATFORM_ELECTRON2 || \
+        MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     NVIC_DisableIRQ(POWER_CLOCK_IRQn);
 #else
     // In order to remove the intermediate dependency in the bootloader on 1.1.0 where
@@ -286,8 +289,7 @@ void Reset_System(void) {
     NVIC_ClearPendingIRQ(POWER_CLOCK_IRQn);
     NVIC_SetPriority(POWER_CLOCK_IRQn, NRFX_POWER_CLOCK_CONFIG_IRQ_PRIORITY_SD);
 
-#endif // !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON ||
-       //   PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM)
+#endif // !(PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ASOM || PLATFORM_ID == PLATFORM_BSOM) || \ ...
 
     __DSB();
 }

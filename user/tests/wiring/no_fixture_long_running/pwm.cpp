@@ -28,7 +28,7 @@ const PinMapping pwm_pins[] = {
 # endif // PLATFORM_ID != PLATFORM_BSOM || !HAL_PLATFORM_POWER_MANAGEMENT
 #elif (PLATFORM_ID == PLATFORM_TRACKER)
         PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
-#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_ELECTRON2)
         // NOTE: D7 is disabled on Argon and Boron because it shares the PWM peripheral
         // with RGB pins and testing it in a wide range of frequencies/settings will
         // cause problems if the RGB led is enabled.

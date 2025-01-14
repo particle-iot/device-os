@@ -127,11 +127,11 @@ static void twis1Handler(nrfx_twis_evt_t const * p_event);
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 nrf5x_i2c_info_t i2cMap[HAL_PLATFORM_I2C_NUM] = {
     {&m_twim0, &m_twis0, twis0Handler, SCL, SDA}
-#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX
+#if PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_ELECTRON2
    ,{&m_twim1, &m_twis1, twis1Handler, PMIC_SCL, PMIC_SDA}
 #else
    ,{&m_twim1, &m_twis1, twis1Handler, D3, D2}
-#endif // PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER
+#endif // PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_TRACKER || PLATFORM_ID == PLATFORM_ESOMX || PLATFORM_ID == PLATFORM_ELECTRON2
 #if PLATFORM_ID == PLATFORM_TRACKER
    ,{&m_twim0, &m_twis0, twis0Handler, D8, D9}, // Shared with UART TX/RX
 #endif // PLATFORM_ID == PLATFORM_TRACKER

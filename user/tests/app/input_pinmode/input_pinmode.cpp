@@ -16,7 +16,7 @@ InterruptMode intType = CHANGE;
 //
 #if (PLATFORM_ID == PLATFORM_P2) || (PLATFORM_ID == PLATFORM_TRACKERM)
     const int PIN_MAX = D6; // TEST: D0 ~ D6 (however all will work on P2)
-#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON)
+#elif (PLATFORM_ID == PLATFORM_ARGON) || (PLATFORM_ID == PLATFORM_BORON) || (PLATFORM_ID == PLATFORM_ELECTRON2)
     const int PIN_MAX = D6; // TEST: D0 ~ D6
 #elif (PLATFORM_ID == PLATFORM_B5SOM)
     const int PIN_MAX = D6;// TEST: D0 ~ D6
