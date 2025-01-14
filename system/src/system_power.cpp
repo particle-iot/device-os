@@ -61,6 +61,8 @@ int system_power_management_get_config(hal_power_config* conf, void* reserved) {
 #else /* !HAL_PLATFORM_POWER_MANAGEMENT */
 
 void system_power_management_init() {
+    // Generate the event anyway to start postponed stuff
+    system_notify_event(aux_power_state, 0);
 }
 
 void system_power_management_sleep(bool fuelGaugeSleep) {
