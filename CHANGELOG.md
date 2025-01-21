@@ -1,3 +1,28 @@
+## 6.3.0
+
+### FEATURES
+
+- New cloud event API that supports sending and receiving up to 16K of data in an event [#2840](https://github.com/particle-iot/device-os/pull/2840)
+- Electron 2 platform support [#2844](https://github.com/particle-iot/device-os/pull/2844)
+- [wiring] Enable `Cellular`/`WiFi`/`Ethernet` `.ping()` for Gen 3 and Gen 4 platforms [#2856](https://github.com/particle-iot/device-os/pull/2856)
+
+### ENHANCEMENTS
+- [wiring] Generate an error when using `EEPROM` with `String` objects as `String` contains dynamically allocated data on heap [#2855](https://github.com/particle-iot/device-os/pull/2855)
+- [network] Postpone `Ethernet` interface initialization to allow STARTUP() call to override pin configuration without a reset  [#2848](https://github.com/particle-iot/device-os/pull/2848)
+
+### BUGFIXES
+
+- Prevent low-level WiFI network buffer overflow [#2853](https://github.com/particle-iot/device-os/pull/2853)
+- [Gen 3] Increase main stack size from 2K to 4K [#2851](https://github.com/particle-iot/device-os/pull/2851)
+- Thread-safe `__cxa_guard_acquire`/`__cxa_guard_release` implementation [#2851](https://github.com/particle-iot/device-os/pull/2851)
+- [build] Fix section size calculations for paths containing section-like names [#2852](https://github.com/particle-iot/device-os/pull/2852)
+
+### INTERNAL
+- [test] wiring/no_fixture_long_running: update network tests to stress test large packets up to MTU size once max MTU is figured out [#2855](https://github.com/particle-iot/device-os/pull/2855)
+- [test] communication/long_publish: adds a long running publish test [#2854](https://github.com/particle-iot/device-os/pull/2854)
+- [build] Add asserts to linker files to make sure that stack sizes match the expected values [#2851](https://github.com/particle-iot/device-os/pull/2851)
+- Stub `atexit` to free up flash space used by global object destructors [#2851](https://github.com/particle-iot/device-os/pull/2851)
+
 ## 6.2.1
 
 ### FEATURES
