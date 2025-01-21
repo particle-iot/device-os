@@ -324,13 +324,16 @@ int WizNetif::init(const WizNetifConfigData& config) {
 }
 
 bool WizNetif::isPresent(bool retry) {
-    uint8_t retries = retry ? 10 : 1;
+    const auto RETRY_DELAY = 10;
+    // It takes about 250ms for W5500 to startup usually
+    const auto MAX_STARTUP_TIME = 300;
+    uint8_t retries = retry ? MAX_STARTUP_TIME / RETRY_DELAY : 1;
     uint8_t cv = 0;
     for (uint8_t i = 0; i < retries; i++) {
         cv = getVERSIONR();
         /* VERSIONR always indicates the W5500 version as 0x04 */
         if (cv != 0x04 && retry) {
-            HAL_Delay_Milliseconds(10);
+            HAL_Delay_Milliseconds(RETRY_DELAY);
             continue;
         }
         break;
