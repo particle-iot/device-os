@@ -31,6 +31,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "eeprom_hal.h"
+#include <type_traits>
+#include "spark_wiring_string.h"
 
 /***
     EERef class.
@@ -142,12 +144,14 @@ struct EEPROMClass{
     //Functionality to 'get' and 'put' objects to and from EEPROM.
     template <typename T> T &get( int idx, T &t )
     {
+        static_assert(!std::is_base_of_v<String, T>, "String class cannot be used with EEPROM, use char[] array");
         HAL_EEPROM_Get(idx, &t, sizeof(T));
         return t;
     }
 
     template <typename T> const T &put( int idx, const T &t )
     {
+        static_assert(!std::is_base_of_v<String, T>, "String class cannot be used with EEPROM, use char[] array");
         HAL_EEPROM_Put(idx, &t, sizeof(T));
         return t;
     }

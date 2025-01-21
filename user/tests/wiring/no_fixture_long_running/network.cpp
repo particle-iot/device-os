@@ -51,9 +51,18 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
     while (retries-- > 0) {
         auto snd = udp->sendPacket(sendBuf, len, ip, port);
         if (snd == (int)len) {
-            auto recvd = udp->parsePacket(timeout);
-            if (recvd == (int)len) {
-                return !memcmp(udp->buffer(), sendBuf, len);
+            while (true) {
+                auto recvd = udp->parsePacket(timeout);
+                if (recvd == (int)len) {
+                    auto same = !memcmp(udp->buffer(), sendBuf, len);
+                    if (same) {
+                        return true;
+                    }
+                }
+                if (recvd == 0 && timeout == 0) {
+                    break;
+                }
+                timeout = 0;
             }
             // Failed to receive reply, retry
         } else {
@@ -190,6 +199,40 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
     }
 #endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
+
+    int replies = 0;
+    for (int i = 0; i < 100; i++) {
+        const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
+        rand.gen((char*)sendBuffer.get(), payloadSize);
+        int sent = 0;
+        int recvd = 0;
+        for (int j = 0; j < 10; j++) {
+            // Burst of 10 packets
+            if (udp->sendPacket(sendBuffer.get(), payloadSize, udpEchoIp, UDP_ECHO_PORT) == payloadSize) {
+                sent++;
+            }
+        }
+        assertMoreOrEqual(sent, 1);
+        if (sent > 0) {
+            for (auto start = millis(); millis() - start <= 5000;) {
+                auto len = udp->parsePacket(10);
+                if (len == payloadSize) {
+                    if (!memcmp(udp->buffer(), sendBuffer.get(), payloadSize)) {
+                        recvd++;
+                        replies++;
+                    }
+                }
+                if (recvd >= sent) {
+                    break;
+                }
+            }
+        }
+    }
+
+    Serial.printlnf("Recvd %d replies", replies);
+
+    assertMoreOrEqual(replies, 100 * 10 / 2);
+    assertFalse((bool)networkState.disconnected);
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR
