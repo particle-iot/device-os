@@ -24,9 +24,9 @@
 #include "hal_platform.h"
 #if HAL_USE_INET_HAL_POSIX
 #include <netdb.h>
+#include "icmp_echo.h"
 #endif // HAL_USE_INET_HAL_POSIX
 #include "check.h"
-#include "icmp_echo.h"
 
 using namespace particle;
 
