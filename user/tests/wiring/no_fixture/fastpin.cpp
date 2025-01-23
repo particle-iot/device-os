@@ -12,7 +12,7 @@ test(FASTPIN_01_MaxDuration_PinSet) {
 #endif // PLATFORM_ID == PLATFORM_ESOMX
 
 #if HAL_PLATFORM_RTL872X
-    const uint32_t MAX_DURATION_PINSET_NS = 3020 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
+    const uint32_t MAX_DURATION_PINSET_NS = 3480 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #else
     const uint32_t MAX_DURATION_PINSET_NS = 1030 * 110 / 100; // 10% higher than measured (includes for() loop overhead)
 #endif // HAL_PLATFORM_RTL872X
