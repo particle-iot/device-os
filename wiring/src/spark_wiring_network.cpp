@@ -24,6 +24,7 @@
 #include "hal_platform.h"
 #if HAL_USE_INET_HAL_POSIX
 #include <netdb.h>
+#include "icmp_echo.h"
 #endif // HAL_USE_INET_HAL_POSIX
 #include "check.h"
 
@@ -172,6 +173,31 @@ IPAddress NetworkClass::resolve(const char* name) {
 }
 
 #if HAL_USE_SOCKET_HAL_POSIX
+
+int NetworkClass::ping(IPAddress remoteIP, unsigned nTries, unsigned timeoutMs) {
+    return services::ping(remoteIP.toString().c_str(), nTries, timeoutMs, iface_);
+}
+
+int NetworkClass::ping(String hostname, unsigned nTries, unsigned timeoutMs) {
+    auto addr = this->resolve(hostname.c_str());
+    if (addr) {
+        return ping(addr, nTries, timeoutMs);
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int NetworkClass::ping(IPAddress remoteIP, std::chrono::milliseconds timeout, unsigned nTries) {
+    return ping(remoteIP, nTries, timeout.count());
+}
+
+int NetworkClass::ping(String hostname, std::chrono::milliseconds timeout, unsigned nTries) {
+    auto addr = this->resolve(hostname.c_str());
+    if (addr) {
+        return ping(addr, timeout, nTries);
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
 int NetworkClass::setConfig(const NetworkInterfaceConfig& conf) {
     network_configuration_t c = {};
     c.size = sizeof(c);

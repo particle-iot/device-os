@@ -175,13 +175,6 @@ public:
     }
 
     WiFiSignal RSSI();
-    uint32_t ping(IPAddress remoteIP) {
-        return ping(remoteIP, 5);
-    }
-
-    uint32_t ping(IPAddress remoteIP, uint8_t nTries) {
-        return inet_ping(&remoteIP.raw(), *this, nTries, NULL);
-    }
 
     void connect(unsigned flags=0) {
         network_connect(*this, flags, 0, NULL);

@@ -154,4 +154,15 @@ test(api_cellular_registration_timeout_set) {
     API_COMPILE(cellular_registration_timeout_set(60 * 60 * 1000, nullptr)); // 60 minutes
 }
 
+test(api_cellular_ping) {
+    String hostname;
+    IPAddress addr;
+    API_COMPILE(Cellular.ping(addr));
+    API_COMPILE(Cellular.ping(hostname));
+    API_COMPILE(Cellular.ping(addr, 10));
+    API_COMPILE(Cellular.ping(hostname, 10));
+    API_COMPILE(Cellular.ping(addr, 10s, 10));
+    API_COMPILE(Cellular.ping(hostname, 10s, 10));
+}
+
 #endif
