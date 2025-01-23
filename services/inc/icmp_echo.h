@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "socket_hal_posix.h"
 #include "netdb_hal.h"
 #include "inet_hal_posix.h"
