@@ -42,7 +42,7 @@ namespace detail {
 /*
  * RFC 1071 - http://tools.ietf.org/html/rfc1071
  */
-static uint16_t ipChecksum(const uint8_t *buf, size_t size) {
+inline uint16_t ipChecksum(const uint8_t *buf, size_t size) {
     size_t i;
     uint64_t sum = 0;
 
@@ -77,7 +77,7 @@ inline bool validatePingData(const uint8_t* buffer, size_t bufferSize) {
     return true;
 }
 
-int createIcmpPacket(int af, uint16_t id, uint16_t seq, uint8_t* buffer, size_t bufferSize) {
+inline int createIcmpPacket(int af, uint16_t id, uint16_t seq, uint8_t* buffer, size_t bufferSize) {
     if (af == AF_INET) {
         CHECK_TRUE(bufferSize >= sizeof(icmp_echo_hdr), SYSTEM_ERROR_INVALID_ARGUMENT);
         auto hdr = reinterpret_cast<icmp_echo_hdr*>(buffer);
@@ -106,7 +106,7 @@ int createIcmpPacket(int af, uint16_t id, uint16_t seq, uint8_t* buffer, size_t 
     return SYSTEM_ERROR_INVALID_ARGUMENT;
 }
 
-bool validateIcmpPacket(int af, uint16_t id, uint16_t seq, const uint8_t* buffer, int bufferSize, size_t expected,
+inline bool validateIcmpPacket(int af, uint16_t id, uint16_t seq, const uint8_t* buffer, int bufferSize, size_t expected,
         const char* host, const struct sockaddr* from, system_tick_t elapsed) {
 
     char fromAddress[INET6_ADDRSTRLEN] = {};
@@ -149,7 +149,7 @@ bool validateIcmpPacket(int af, uint16_t id, uint16_t seq, const uint8_t* buffer
 
 } // detail
 
-int ping(const char* host, unsigned count = 1, system_tick_t timeoutMs = 1000, network_interface_t pingIface = NETWORK_INTERFACE_ALL, int addressFamily = AF_UNSPEC) {
+inline int ping(const char* host, unsigned count = 1, system_tick_t timeoutMs = 1000, network_interface_t pingIface = NETWORK_INTERFACE_ALL, int addressFamily = AF_UNSPEC) {
     static const constexpr size_t packetSize = 64;
 
     struct addrinfo* ais = nullptr;
