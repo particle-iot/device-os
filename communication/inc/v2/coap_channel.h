@@ -175,7 +175,7 @@ private:
     int handleResponse(CoapMessageDecoder& d);
     int handleAck(CoapMessageDecoder& d);
 
-    int prepareMessage(const RefCountPtr<Message>& msg);
+    int prepareMessage(const RefCountPtr<Message>& msg, bool retransmit = false);
     int updateMessage(const RefCountPtr<Message>& msg);
     int sendMessage(RefCountPtr<Message> msg, bool retransmit = false, bool passthrough = false);
     int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);

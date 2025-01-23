@@ -1531,10 +1531,10 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
     return Result::HANDLED;
 }
 
-int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg) {
+int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg, bool retransmit) {
     assert(!curMsgId_);
     CHECK_PROTOCOL(protocol_->get_channel().create(msgBuf_));
-    if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
+    if (!retransmit && (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST)) {
         msg->token = tokenFrom(protocol_->get_next_token()); // TODO: Use longer tokens with outgoing requests
     }
     msg->prefixSize = 0;
@@ -1643,7 +1643,7 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransm
         msg->blockIndex = msg->payloadPos / COAP_BLOCK_SIZE;
         msg->hasMore = msg->payloadPos + bytesToSend < msg->payload->size();
     }
-    CHECK(prepareMessage(msg));
+    CHECK(prepareMessage(msg, retransmit));
     if (bytesToSend > 0) {
         *msg->pos++ = 0xff; // Payload marker
         msg->pos += CHECK(msg->payload->read(msg->pos, bytesToSend, msg->payloadPos));
