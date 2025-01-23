@@ -28,6 +28,7 @@
 
 #include "spark_wiring_ipaddress.h"
 #include "system_network.h"
+#include <chrono>
 
 namespace spark {
 
@@ -71,8 +72,13 @@ public:
     IPAddress gatewayIP() __attribute__((deprecated("Please use WiFi.gatewayIP() instead")));
     char* SSID() __attribute__((deprecated("Please use WiFi.SSID() instead")));
     int8_t RSSI() __attribute__((deprecated("Please use WiFi.RSSI() instead")));
-    uint32_t ping(IPAddress remoteIP) __attribute__((deprecated("Please use WiFi.ping() instead")));
-    uint32_t ping(IPAddress remoteIP, uint8_t nTries) __attribute__((deprecated("Please use WiFi.ping() instead")));
+
+    static constexpr auto DEFAULT_PING_TIMEOUT = 4000;
+
+    int ping(IPAddress remoteIP, unsigned nTries = 1, unsigned timeoutMs = DEFAULT_PING_TIMEOUT);
+    int ping(String hostname, unsigned nTries = 1, unsigned timeoutMs = DEFAULT_PING_TIMEOUT);
+    int ping(IPAddress remoteIP, std::chrono::milliseconds timeout, unsigned nTries = 1);
+    int ping(String hostname, std::chrono::milliseconds timeout, unsigned nTries = 1);
 
     virtual void connect(unsigned flags = 0);
     virtual void disconnect();

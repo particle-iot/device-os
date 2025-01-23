@@ -96,6 +96,20 @@ test(CELLULAR_03_resolve) {
     assertEqual(addr, 0);
 }
 
+test(CELLULAR_04_ping) {
+    assertTrue(Cellular.ready());
+    IPAddress addr;
+    for (int i = 0; i < 5; i++) {
+        addr = Cellular.resolve("dns.google");
+        if (addr) {
+            break;
+        }
+    }
+    assertTrue((bool)addr);
+    assertMoreOrEqual(Cellular.ping(addr, 5), 2);
+    assertMoreOrEqual(Cellular.ping("dns.google", 5), 2);
+}
+
 // Collects cellular signal strength and quality and validates Accesstechnology (RAT)
 test(CELLULAR_05_sigstr_is_valid) {
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);

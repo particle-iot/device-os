@@ -588,7 +588,7 @@ test(NETWORK_CONFIG_ETH_09_dhcp_with_no_gw) {
     assertEqual(addr.profile, ethConfig.profile);
 }
 
-test(NETWORK_CONFIG_ETH_94_restore) {
+test(NETWORK_CONFIG_ETH_93_restore) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -603,7 +603,7 @@ test(NETWORK_CONFIG_ETH_94_restore) {
     assertTrue(networkInterfaceConfigMatches(conf, storedConf));
 }
 
-test(NETWORK_CONFIG_ETH_95_connect) {
+test(NETWORK_CONFIG_ETH_94_connect) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -616,7 +616,7 @@ test(NETWORK_CONFIG_ETH_95_connect) {
     assertTrue(waitFor(Particle.connected, 60000));
 }
 
-test(NETWORK_CONFIG_ETH_96_ping_gw_latency) {
+test(NETWORK_CONFIG_ETH_95_ping_gw_latency) {
     if (!isEthernetPresent()) {
         skip();
         return;
@@ -643,6 +643,25 @@ test(NETWORK_CONFIG_ETH_96_ping_gw_latency) {
     latency /= goodCount;
     assertMoreOrEqual(goodCount, 1);
     assertLessOrEqual(latency, 10);
+}
+
+test(NETWORK_CONFIG_ETH_96_ping) {
+    if (!isEthernetPresent()) {
+        skip();
+        return;
+    }
+
+    assertTrue(Ethernet.ready());
+    IPAddress addr;
+    for (int i = 0; i < 5; i++) {
+        addr = Ethernet.resolve("dns.google");
+        if (addr) {
+            break;
+        }
+    }
+    assertTrue((bool)addr);
+    assertMoreOrEqual(Ethernet.ping(addr, 5), 2);
+    assertMoreOrEqual(Ethernet.ping("dns.google", 5), 2);
 }
 
 test(NETWORK_CONFIG_ETH_97_reset_cache) {

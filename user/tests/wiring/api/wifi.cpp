@@ -256,4 +256,15 @@ test(api_wifi_hostname)
 #endif // !HAL_PLATFORM_NCP
 #endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
+test(api_wifi_ping) {
+    String hostname;
+    IPAddress addr;
+    API_COMPILE(WiFi.ping(addr));
+    API_COMPILE(WiFi.ping(hostname));
+    API_COMPILE(WiFi.ping(addr, 10));
+    API_COMPILE(WiFi.ping(hostname, 10));
+    API_COMPILE(WiFi.ping(addr, 10s, 10));
+    API_COMPILE(WiFi.ping(hostname, 10s, 10));
+}
+
 #endif
