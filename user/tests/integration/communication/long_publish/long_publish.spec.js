@@ -23,8 +23,7 @@ async function runPingPongTest(ctx, inEvent, outEvent) {
     // Receive back an event with the same number
     let inNum;
     do {
-      const timeout = Math.min(EVENT_TIMEOUT, Math.max(TEST_DURATION - (Date.now() - t1), 0));
-      const data = await ctx.receiveEvent(inEvent, { timeout });
+      const data = await ctx.receiveEvent(inEvent, { timeout: EVENT_TIMEOUT });
       if (!data || data.length != EVENT_DATA_SIZE) {
         throw new Error('Unexpected event size');
       }

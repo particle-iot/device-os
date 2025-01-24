@@ -226,6 +226,6 @@ test(sleep_4_system_sleep_sleep_mode_wlan_works_correctly)
     System.sleep(10);
     waitFor(Particle.disconnected, 60000);
     waitFor(NotReady, 60000);
-    waitFor(Particle.connected, 120000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
 }

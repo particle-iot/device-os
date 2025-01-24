@@ -41,7 +41,7 @@ test(01_init_ledgers) {
     assertTrue(ledger2.isWritable()); // Actual sync direction is unknown initially so the ledger is writable
 
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     // Let the system request the ledger info
     delay(10000);

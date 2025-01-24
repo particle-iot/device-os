@@ -447,7 +447,7 @@ test(06_connect_and_subscribe) {
     Particle.subscribe(scopedEventName("abc3"), structEventHandler, SubscribeOptions().structured(true));
     Particle.subscribe(scopedEventName("abc"), oldEventHandler);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(07_publish_text_event_with_polling_and_callback) {
@@ -503,6 +503,7 @@ test(10_publish_multiple_large_events) {
     unsigned timeout = 60000;
     bool allSent = false;
     auto t1 = millis();
+    int error = 0;
     for (;;) {
         allSent = true;
         bool failed = false;
@@ -510,6 +511,7 @@ test(10_publish_multiple_large_events) {
             if (!ev.isSent()) {
                 allSent = false;
                 if (!ev.isSending()) {
+                    error = ev.error();
                     failed = true;
                     break;
                 }
@@ -519,6 +521,9 @@ test(10_publish_multiple_large_events) {
             break;
         }
         Particle.process();
+    }
+    if (!allSent) {
+        out->printlnf("allSent=%d timeout=%d error=%d", allSent, millis() - t1 >= timeout, error);
     }
     assertTrue(allSent);
 }
@@ -582,7 +587,7 @@ test(11_publish_at_max_rate) {
             size_t dataSize = rand() % (maxBlocks * blockSize + 1);
             assertTrue(CloudEvent::canPublish(dataSize));
 
-            auto ev = CloudEvent().name("abc");
+            auto ev = CloudEvent().name("abc").contentType(ContentType::BINARY);
             assertTrue(writeRandomData(ev, dataSize));
             ev.onStatusChange([&](CloudEvent ev) {
                 bool ok = onStatusChange(ev);
@@ -592,7 +597,10 @@ test(11_publish_at_max_rate) {
             });
 
             Particle.publish(ev);
-            assertTrue(ev.isSending());
+            if (!ev.isSending()) {
+                out->printlnf("event error=%d", ev.error());
+                assertTrue(ev.isSending());
+            }
 
             auto blocks = eventSizeInBlocks(dataSize, blockSize);
             blocksInFlight += blocks;

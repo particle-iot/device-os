@@ -3,6 +3,8 @@
 #include "application.h"
 #include "test.h"
 
+#include "scope_guard.h"
+
 namespace {
 
 /*
@@ -13,11 +15,17 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_WARN, {
 */
 
 const size_t EVENT_DATA_SIZE = 1024;
+const unsigned RETRY_DELAY = 1000;
 
 char inEventData[EVENT_DATA_SIZE + 1] = {};
 char outEventData[EVENT_DATA_SIZE + 1] = {};
+bool retrying = false;
 
 void oldEventHandler(const char* name, const char* data) {
+    if (retrying) {
+        Log.warn("Unexpected event");
+        return;
+    }
     if (!data) {
         Log.error("Unexpected event size");
         return;
@@ -35,13 +43,24 @@ void oldEventHandler(const char* name, const char* data) {
     }
     Log.trace("recv %.*s", (int)prefixLen, data);
     std::memcpy(outEventData, data, prefixLen + 1);
+    SCOPE_GUARD({
+        std::memset(outEventData, 'b', prefixLen + 1); // Restore the fill bytes
+    });
     bool ok = Particle.publish("devout1", outEventData);
-    std::memset(outEventData, 'b', prefixLen + 1); // Restore the fill bytes
     if (!ok) {
-        Log.error("Failed to publish event");
-        return;
+        Log.warn("Failed to publish event, retrying in %ums", RETRY_DELAY);
+        retrying = true;
+        SCOPE_GUARD({
+            retrying = false;
+        });
+        delay(RETRY_DELAY);
+        ok = Particle.publish("devout1", outEventData);
+        if (!ok) {
+            Log.error("Failed to publish event");
+            return;
+        }
     }
-    Log.trace("send %.*s", (int)prefixLen, data);
+    Log.trace("send %.*s", (int)prefixLen, outEventData);
 }
 
 void newEventHandler(CloudEvent ev) {
@@ -85,7 +104,7 @@ test(01_connect_and_subscribe) {
     Particle.subscribe(scopedEventName("devin1"), oldEventHandler);
     Particle.subscribe(scopedEventName("devin2"), newEventHandler);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(02_ping_pong_old_api) {
