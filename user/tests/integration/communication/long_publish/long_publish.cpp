@@ -43,6 +43,9 @@ void oldEventHandler(const char* name, const char* data) {
     }
     Log.trace("recv %.*s", (int)prefixLen, data);
     std::memcpy(outEventData, data, prefixLen + 1);
+    SCOPE_GUARD({
+        std::memset(outEventData, 'b', prefixLen + 1); // Restore the fill bytes
+    });
     bool ok = Particle.publish("devout1", outEventData);
     if (!ok) {
         Log.warn("Failed to publish event, retrying in %ums", RETRY_DELAY);
