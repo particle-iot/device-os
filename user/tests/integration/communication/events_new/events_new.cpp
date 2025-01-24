@@ -587,7 +587,7 @@ test(11_publish_at_max_rate) {
             size_t dataSize = rand() % (maxBlocks * blockSize + 1);
             assertTrue(CloudEvent::canPublish(dataSize));
 
-            auto ev = CloudEvent().name("abc");
+            auto ev = CloudEvent().name("abc").contentType(ContentType::BINARY);
             assertTrue(writeRandomData(ev, dataSize));
             ev.onStatusChange([&](CloudEvent ev) {
                 bool ok = onStatusChange(ev);
