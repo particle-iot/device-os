@@ -176,7 +176,7 @@ test(NETWORK_CONFIG_WIFI_03_static_config_matching_dhcp) {
     WiFi.connect();
     assertTrue(waitFor(WiFi.ready, 60000));
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     assertFalse((bool)WiFi.dhcpServerIP());
     
@@ -331,7 +331,7 @@ test(NETWORK_CONFIG_WIFI_99_connect) {
     assertTrue(waitFor(WiFi.ready, 60000));
     assertTrue((bool)WiFi.dhcpServerIP());
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 #endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
@@ -444,7 +444,7 @@ test(NETWORK_CONFIG_ETH_06_static_config_matching_dhcp) {
     Ethernet.connect();
     assertTrue(waitFor(Ethernet.ready, 60000));
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     // FIXME
     // assertFalse((bool)Ethernet.dhcpServerIP());
@@ -613,7 +613,7 @@ test(NETWORK_CONFIG_ETH_94_connect) {
     assertTrue(waitFor(Ethernet.ready, 60000));
     assertTrue((bool)Ethernet.localIP());
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(NETWORK_CONFIG_ETH_95_ping_gw_latency) {

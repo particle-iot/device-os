@@ -104,7 +104,7 @@ test(01_connect_and_subscribe) {
     Particle.subscribe(scopedEventName("devin1"), oldEventHandler);
     Particle.subscribe(scopedEventName("devin2"), newEventHandler);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 5 * 60000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(02_ping_pong_old_api) {

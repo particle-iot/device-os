@@ -273,7 +273,7 @@ test(TIME_16_TimeChangedEvent) {
 test(TIME_17_RtcAlarmFiresCorrectly) {
     SCOPE_GUARD ({
             Particle.connect();
-            waitFor(Particle.connected, 60000);
+            waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
         });
     Particle.disconnect();
     waitFor(Particle.disconnected, 60000);
@@ -317,7 +317,7 @@ test(TIME_17_RtcAlarmFiresCorrectly) {
 test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
     SCOPE_GUARD ({
             Particle.connect();
-            waitFor(Particle.connected, 60000);
+            waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
         });
     Particle.disconnect();
     waitFor(Particle.disconnected, 60000);
@@ -354,7 +354,7 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
     assertTrue((bool)client);
 
     Particle.connect();
-    waitFor(Particle.connected, 60000);
+    waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Particle.connected());
     Particle.syncTime();
     waitFor(Particle.syncTimeDone, 60000);
