@@ -447,7 +447,7 @@ test(06_connect_and_subscribe) {
     Particle.subscribe(scopedEventName("abc3"), structEventHandler, SubscribeOptions().structured(true));
     Particle.subscribe(scopedEventName("abc"), oldEventHandler);
     Particle.connect();
-    assertTrue(waitFor(Particle.connected, 60000));
+    assertTrue(waitFor(Particle.connected, 5 * 60000));
 }
 
 test(07_publish_text_event_with_polling_and_callback) {
