@@ -15,30 +15,37 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_WARN, {
 */
 
 const size_t EVENT_DATA_SIZE = 1024;
-const unsigned RETRY_DELAY = 1000;
+const unsigned RETRY_DELAY = 3000;
 
 char inEventData[EVENT_DATA_SIZE + 1] = {};
 char outEventData[EVENT_DATA_SIZE + 1] = {};
 bool retrying = false;
+bool sCloudDisconnected = false;
+bool sPublishFailed = false;
+bool sEventNotHandled = false;
+
 
 void oldEventHandler(const char* name, const char* data) {
+    NAMED_SCOPE_GUARD(sg, {
+        sEventNotHandled = true;
+    });
     if (retrying) {
-        Log.warn("Unexpected event");
+        Test::out->printlnf("Unexpected event");
         return;
     }
     if (!data) {
-        Log.error("Unexpected event size");
+        Test::out->printlnf("Unexpected event size");
         return;
     }
     auto d = std::strchr(data, ' ');
     if (!d) {
-        Log.error("Invalid event format");
+        Test::out->printlnf("Invalid event format");
         return;
     }
     size_t prefixLen = d - data;
     size_t dataLen = std::strlen(d) + prefixLen;
     if (dataLen != EVENT_DATA_SIZE) {
-        Log.error("Unexpected event size");
+        Test::out->printlnf("Unexpected event size");
         return;
     }
     Log.trace("recv %.*s", (int)prefixLen, data);
@@ -48,7 +55,7 @@ void oldEventHandler(const char* name, const char* data) {
     });
     bool ok = Particle.publish("devout1", outEventData);
     if (!ok) {
-        Log.warn("Failed to publish event, retrying in %ums", RETRY_DELAY);
+        Test::out->printlnf("Failed to publish event, retrying in %ums", RETRY_DELAY);
         retrying = true;
         SCOPE_GUARD({
             retrying = false;
@@ -56,25 +63,30 @@ void oldEventHandler(const char* name, const char* data) {
         delay(RETRY_DELAY);
         ok = Particle.publish("devout1", outEventData);
         if (!ok) {
-            Log.error("Failed to publish event");
+            sPublishFailed = true;
+            Test::out->printlnf("Failed to publish event");
             return;
         }
     }
     Log.trace("send %.*s", (int)prefixLen, outEventData);
+    sg.dismiss();
 }
 
 void newEventHandler(CloudEvent ev) {
+    NAMED_SCOPE_GUARD(sg, {
+        sEventNotHandled = true;
+    });
     if (ev.size() != EVENT_DATA_SIZE) {
-        Log.error("Unexpected event size");
+        Test::out->printlnf("Unexpected event size");
         return;
     }
     int r = ev.read(inEventData, EVENT_DATA_SIZE);
     if (r != (int)EVENT_DATA_SIZE) {
-        Log.error("Failed to read event");
+        Test::out->printlnf("Failed to read event");
     }
     auto d = std::strchr(inEventData, ' ');
     if (!d) {
-        Log.error("Invalid event format");
+        Test::out->printlnf("Invalid event format");
         return;
     }
     size_t prefixLen = d - inEventData;
@@ -84,10 +96,12 @@ void newEventHandler(CloudEvent ev) {
     ev2.write(outEventData, EVENT_DATA_SIZE - prefixLen - 1); // Write the fill bytes
     Particle.publish(ev2);
     if (!ev2.isOk()) {
-        Log.error("Failed to publish event");
+        Test::out->printlnf("Failed to publish event");
+        sPublishFailed = true;
         return;
     }
     Log.trace("send %.*s", (int)prefixLen, inEventData);
+    sg.dismiss();
 }
 
 inline String scopedEventName(const char* name) {
@@ -105,10 +119,29 @@ test(01_connect_and_subscribe) {
     Particle.subscribe(scopedEventName("devin2"), newEventHandler);
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    System.on(cloud_status, +[](system_event_t ev, int info) {
+        if (info == cloud_status_disconnected) {
+            sCloudDisconnected = true;
+        }
+    });
 }
 
 test(02_ping_pong_old_api) {
 }
 
 test(03_ping_pong_new_api) {
+    SCOPE_GUARD({
+        sCloudDisconnected = false;
+        sPublishFailed = false;
+        sEventNotHandled = false;
+    });
+    assertFalse(sPublishFailed);
+    assertFalse(sEventNotHandled);
+    assertFalse(sCloudDisconnected);
+}
+
+test(04_ping_pong_done) {
+    assertFalse(sPublishFailed);
+    assertFalse(sEventNotHandled);
+    assertFalse(sCloudDisconnected);
 }

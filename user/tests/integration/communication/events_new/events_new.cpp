@@ -577,6 +577,8 @@ test(11_publish_at_max_rate) {
     auto t1 = millis();
     lastHeapUsageUpdateTime = t1;
 
+    int error = 0;
+
     for (;;) {
         if (blocksInFlight >= maxBlocksInFlight) {
             assertFalse(CloudEvent::canPublish(0));
@@ -592,6 +594,7 @@ test(11_publish_at_max_rate) {
             ev.onStatusChange([&](CloudEvent ev) {
                 bool ok = onStatusChange(ev);
                 if (!ok) {
+                    error = ev.error();
                     testFailed = true;
                 }
             });
@@ -636,6 +639,10 @@ test(11_publish_at_max_rate) {
         }
     }
     auto t2 = millis();
+
+    if (testFailed) {
+        out->printlnf("error=%d", error);
+    }
 
     assertFalse(testFailed);
 
