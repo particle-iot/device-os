@@ -875,7 +875,7 @@ const char* NetworkManager::powerStateToName(if_power_state_t state) const {
     return stateNames[::particle::to_underlying(state)];
 }
 
-void NetworkManager::populateInterfaceRuntimeState(bool st) {
+void NetworkManager::populateInterfaceRuntimeState(EnableState st) {
     for_each_iface([&](if_t iface, unsigned int flags) {
         auto state = getInterfaceRuntimeState(iface);
         if (!state) {
@@ -886,13 +886,15 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
             }
         }
         if (state) {
-            state->enabled = st;
+            if (state->enabled != EnableState::BLOCKED) {
+                state->enabled = st;
+            }
             unsigned int curFlags = 0;
             if (if_get_flags(iface, &curFlags)) {
                 return;
             }
             if (curFlags & IFF_DEBUG) {
-                state->enabled = false;
+                state->enabled = EnableState::DISABLED;
             }
             if_power_state_t pwr = IF_POWER_STATE_NONE;
             if (if_get_power_state(iface, &pwr) != SYSTEM_ERROR_NONE) {
@@ -911,11 +913,13 @@ void NetworkManager::populateInterfaceRuntimeState(bool st) {
 int NetworkManager::enableInterface(if_t iface) {
     // Special case - enable all
     if (iface == nullptr) {
-        populateInterfaceRuntimeState(true);
+        populateInterfaceRuntimeState(EnableState::ENABLED);
     } else {
         auto state = getInterfaceRuntimeState(iface);
         CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
-        state->enabled = true;
+        if (state->enabled != EnableState::BLOCKED) {
+            state->enabled = EnableState::ENABLED;
+        }
     }
     return 0;
 }
@@ -929,11 +933,25 @@ int NetworkManager::disableInterface(if_t iface, network_disconnect_reason reaso
     NetworkDiagnostics::instance()->disconnectionReason(reason);
     // Special case - disable all
     if (iface == nullptr) {
-        populateInterfaceRuntimeState(false);
+        populateInterfaceRuntimeState(EnableState::DISABLED);
     } else {
         auto state = getInterfaceRuntimeState(iface);
         CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
-        state->enabled = false;
+        if (state->enabled != EnableState::BLOCKED) {
+            state->enabled = EnableState::DISABLED;
+        }
+    }
+    return 0;
+}
+
+int NetworkManager::blockInterface(if_t iface, bool block) {
+    CHECK_TRUE(iface, SYSTEM_ERROR_INVALID_ARGUMENT);
+    auto state = getInterfaceRuntimeState(iface);
+    CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
+    if (block) {
+        state->enabled = EnableState::BLOCKED;
+    } else if (state->enabled == EnableState::BLOCKED) {
+        state->enabled = EnableState::DISABLED;
     }
     return 0;
 }
@@ -947,9 +965,9 @@ int NetworkManager::syncInterfaceStates(if_t forceIface) {
 
             auto state = getInterfaceRuntimeState(iface);
             if (state) {
-                if (state->enabled && !(flags & IFF_UP)) {
+                if ((state->enabled == EnableState::ENABLED) && !(flags & IFF_UP)) {
                     CHECKV(if_set_flags(iface, IFF_UP));
-                } else if (!state->enabled && (flags & IFF_UP)) {
+                } else if ((state->enabled != EnableState::ENABLED) && (flags & IFF_UP)) {
                     CHECKV(if_clear_flags(iface, IFF_UP));
                 }
             }
@@ -1029,7 +1047,7 @@ bool NetworkManager::isInterfaceOff(if_t iface) const {
 bool NetworkManager::isInterfaceEnabled(if_t iface) const {
     auto state = getInterfaceRuntimeState(iface);
     if (state) {
-        return state->enabled;
+        return state->enabled == EnableState::ENABLED;
     }
     return false;
 }
@@ -1037,7 +1055,7 @@ bool NetworkManager::isInterfaceEnabled(if_t iface) const {
 int NetworkManager::countEnabledInterfaces() {
     int count = 0;
     for (auto item = runState_.front(); item != nullptr; item = item->next) {
-        if (item->enabled && haveLowerLayerConfiguration(item->iface)) {
+        if (item->enabled == EnableState::ENABLED && haveLowerLayerConfiguration(item->iface)) {
             ++count;
         }
     }

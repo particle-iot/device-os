@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include "spark_wiring_network.h"
 #include "request_handler.h"
 
 #include "system_mode.h"
@@ -49,10 +50,14 @@ public:
     TestSuiteConfig& clearBackupMemory(bool enabled);
     bool clearBackupMemory() const;
 
+    TestSuiteConfig& forceNetwork(network_interface_t network);
+    network_interface_t forceNetwork() const;
+
 private:
     System_Mode_TypeDef systemMode_;
     bool systemThreadEnabled_;
     bool clearBackupMemory_;
+    network_interface_t network_;
 };
 
 class TestSuite {
@@ -61,6 +66,8 @@ public:
 
     int init();
     void destroy();
+
+    void setup();
 
     RequestHandler* requestHandler();
 
@@ -78,7 +85,8 @@ private:
 inline TestSuiteConfig::TestSuiteConfig() :
         systemMode_(DEFAULT_SYSTEM_MODE),
         systemThreadEnabled_(DEFAULT_SYSTEM_THREAD_ENABLED),
-        clearBackupMemory_(false) {
+        clearBackupMemory_(false),
+        network_(NETWORK_INTERFACE_ALL) {
 }
 
 inline TestSuiteConfig& TestSuiteConfig::systemMode(System_Mode_TypeDef mode) {
@@ -106,6 +114,15 @@ inline TestSuiteConfig& TestSuiteConfig::clearBackupMemory(bool enabled) {
 
 inline bool TestSuiteConfig::clearBackupMemory() const {
     return clearBackupMemory_;
+}
+
+inline TestSuiteConfig& TestSuiteConfig::forceNetwork(network_interface_t network) {
+    network_ = network;
+    return *this;
+}
+
+inline network_interface_t TestSuiteConfig::forceNetwork() const {
+    return network_;
 }
 
 inline RequestHandler* TestSuite::requestHandler() {

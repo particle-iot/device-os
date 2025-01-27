@@ -28,6 +28,7 @@ void testAppInit() {
 }
 
 void testAppSetup() {
+    TestSuite::instance()->setup();
     TestRunner::instance()->setup();
 }
 

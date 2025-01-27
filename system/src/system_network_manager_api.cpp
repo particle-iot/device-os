@@ -265,6 +265,9 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
+                if (param & NETWORK_STATE_PARAM_UNBLOCK) {
+                    NetworkManager::instance()->blockInterface(iface, false);
+                }
                 NetworkManager::instance()->powerInterface(iface, true);
             }
         }
@@ -328,6 +331,9 @@ void network_off(network_handle_t network, uint32_t flags, uint32_t param, void*
             network_disconnect(network, NETWORK_DISCONNECT_REASON_NETWORK_OFF, nullptr);
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
+                if (param & NETWORK_STATE_PARAM_BLOCK) {
+                    NetworkManager::instance()->blockInterface(iface, true);
+                }
                 NetworkManager::instance()->powerInterface(iface, false);
             }
         }

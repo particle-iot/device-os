@@ -74,6 +74,7 @@ public:
 
     int enableInterface(if_t iface = nullptr);
     int disableInterface(if_t iface = nullptr, network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN);
+    int blockInterface(if_t iface, bool block);
     bool isInterfaceEnabled(if_t iface) const;
     int countEnabledInterfaces();
     int syncInterfaceStates(if_t forceIface = nullptr);
@@ -131,6 +132,12 @@ private:
         NETWORK_STATUS_DISCONNECTED
     };
 
+    enum class EnableState {
+        DISABLED = 0,
+        ENABLED = 1,
+        BLOCKED = 2
+    };
+
     struct InterfaceRuntimeState {
         InterfaceRuntimeState()
                 : ip4State(ProtocolState::UNCONFIGURED),
@@ -138,7 +145,7 @@ private:
                   pwrState(IF_POWER_STATE_NONE) {
         }
         InterfaceRuntimeState* next = nullptr;
-        bool enabled = false;
+        EnableState enabled = EnableState::DISABLED;
         if_t iface = nullptr;
         std::atomic<ProtocolState> ip4State;
         std::atomic<ProtocolState> ip6State;
@@ -170,7 +177,7 @@ private:
     void resolvEventHandler(const void* data);
 
     InterfaceRuntimeState* getInterfaceRuntimeState(if_t iface) const;
-    void populateInterfaceRuntimeState(bool enabled);
+    void populateInterfaceRuntimeState(EnableState enabled);
     bool isDisabled(if_t iface);
     void resetInterfaceProtocolState(if_t iface = nullptr);
 
