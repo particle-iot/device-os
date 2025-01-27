@@ -24,6 +24,8 @@
 
 #include "unit-test/unit-test.h"
 
+#include "application.h"
+
 void system_initialize_user_backup_ram(); // Defined in user.cpp
 
 namespace particle {
@@ -37,6 +39,7 @@ struct CurrentConfig {
     uint32_t magicNumber;
     System_Mode_TypeDef systemMode;
     bool systemThreadEnabled;
+    network_interface_t network;
 };
 
 retained CurrentConfig g_config;
@@ -60,6 +63,7 @@ int TestSuite::init() {
         g_config.magicNumber = MAGIC_NUMBER;
         g_config.systemMode = TestSuiteConfig::DEFAULT_SYSTEM_MODE;
         g_config.systemThreadEnabled = TestSuiteConfig::DEFAULT_SYSTEM_THREAD_ENABLED;
+        g_config.network = NETWORK_INTERFACE_ALL;
     }
     set_system_mode(g_config.systemMode);
     system_thread_set_state(g_config.systemThreadEnabled ? spark::feature::ENABLED : spark::feature::DISABLED, nullptr);
@@ -82,12 +86,33 @@ void TestSuite::destroy() {
     inited_ = false;
 }
 
+void TestSuite::setup() {
+    if (g_config.network != NETWORK_INTERFACE_ALL) {
+#if Wiring_WiFi
+        if (g_config.network != WiFi) {
+            network_off(WiFi, 0, NETWORK_STATE_PARAM_BLOCK, nullptr);
+        }
+#endif // Wiring_WiFi
+#if Wiring_Cellular
+        if (g_config.network != Cellular) {
+            network_off(Cellular, 0, NETWORK_STATE_PARAM_BLOCK, nullptr);
+        }
+#endif // Wiring_Cellular
+#if Wiring_Ethernet
+        if (g_config.network != Ethernet) {
+            network_off(Ethernet, 0, NETWORK_STATE_PARAM_BLOCK, nullptr);
+        }
+#endif // Wiring_Ethernet
+    }
+}
+
 int TestSuite::config(const TestSuiteConfig& config) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
     int result = 0;
-    if (g_config.systemMode != config.systemMode() || g_config.systemThreadEnabled != config.systemThreadEnabled()) {
+    if (g_config.systemMode != config.systemMode() || g_config.systemThreadEnabled != config.systemThreadEnabled() || g_config.network != config.forceNetwork()) {
         g_config.systemMode = config.systemMode();
         g_config.systemThreadEnabled = config.systemThreadEnabled();
+        g_config.network = config.forceNetwork();
         result = Result::RESET_PENDING;
     }
     if (config.clearBackupMemory()) {

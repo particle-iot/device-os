@@ -26,6 +26,8 @@
 
 #include "unit-test/unit-test.h"
 
+#include "application.h"
+
 namespace particle {
 
 namespace {
@@ -207,6 +209,24 @@ int RequestHandler::initSuite(Request* req) {
     if (req->has("b")) { // Clear backup memory
         const bool val = req->get("b").toInt();
         conf.clearBackupMemory(val);
+    }
+    if (req->has("n")) { // Force use of only specific network
+        auto val = req->get("n").toString();
+#if Wiring_WiFi
+        if (val == "w") {
+            conf.forceNetwork(WiFi);
+        }
+#endif // Wiring_WiFi
+#if Wiring_Cellular
+        if (val == "c") {
+            conf.forceNetwork(Cellular);
+        }
+#endif // Wiring_Cellular
+#if Wiring_Ethernet
+        if (val == "e") {
+            conf.forceNetwork(Ethernet);
+        }
+#endif // Wiring_Ethernet
     }
     return TestSuite::instance()->config(conf);
 }

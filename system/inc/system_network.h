@@ -51,6 +51,12 @@ typedef enum network_connect_flag {
     NETWORK_CONNECT_FLAG_FORCE = 1
 } network_connect_flag;
 
+typedef enum network_state_param {
+    NETWORK_STATE_PARAM_NONE = 0,
+    NETWORK_STATE_PARAM_BLOCK = 1,
+    NETWORK_STATE_PARAM_UNBLOCK = 2,
+} network_state_param;
+
 /**
  * This is a bridge from the wiring layer to the system layer.
  * @return
