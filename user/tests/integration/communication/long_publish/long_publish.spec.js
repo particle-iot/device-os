@@ -16,8 +16,12 @@ async function delay(ms) {
 }
 
 async function runPingPongTest(ctx, inEvent, outEvent) {
+  let lastPubTime = 0;
   for (let outNum = 1; outNum <= EVENT_COUNT; ++outNum) {
-    await delay(EVENT_INTERVAL);
+    let dt = Date.now() - lastPubTime;
+    if (dt < EVENT_INTERVAL) {
+      await delay(EVENT_INTERVAL - dt);
+    }
     // Publish an event
     const data = (outNum.toString() + ' ').padEnd(EVENT_SIZE, 'a');
     await ctx.apiClient.instance.publishEvent({
@@ -25,6 +29,7 @@ async function runPingPongTest(ctx, inEvent, outEvent) {
       data,
       auth: ctx.apiClient.token
     });
+    lastPubTime = Date.now();
     // Receive back an event with the same number
     let inNum;
     do {
