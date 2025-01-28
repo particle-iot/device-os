@@ -40,6 +40,7 @@ LOG_SOURCE_CATEGORY("comm.coap")
 #include "coap_util.h"
 #include "protocol.h"
 #include "spark_protocol_functions.h"
+#include "communication_diagnostic.h"
 
 #include "c_string.h"
 #include "endian_util.h"
@@ -1059,6 +1060,7 @@ int CoapChannel::run() {
         auto req = staticPtrCast<RequestMessage>(msg);
         if (req->transmitCount >= MAX_RETRANSMIT + 1) {
             LOG(ERROR, "CoAP message timeout; ID: %d", req->coapId);
+            ++g_unacknowledgedMessageCounter;
             clearMessage(req);
             if (req->errorCallback) {
                 req->errorCallback(SYSTEM_ERROR_COAP_TIMEOUT, req->requestId, req->callbackArg);
@@ -1497,6 +1499,12 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
         return 0;
     }
     assert(msg->state == MessageState::WAIT_ACK);
+    if (msg->type == MessageType::REQUEST && msg->payload) {
+        // Messages with a payload object bypass the old CoAP implementation so the related diagnostics
+        // need to be updated separately
+        auto req = staticPtrCast<RequestMessage>(msg);
+        g_coapRoundTripMSec = millis() - req->transmitTime;
+    }
     // For a blockwise request, the ACK callback is invoked when the last message block is acknowledged
     if (msg->ackCallback && ((msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) ||
             msg->type == MessageType::RESPONSE)) {
@@ -1655,6 +1663,13 @@ int CoapChannel::sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransm
     req->transmitTime = millis();
     req->transmitTimeout = transmitTimeout(req->transmitCount);
     ++req->transmitCount;
+    // Messages with a payload object bypass the old CoAP implementation so the related diagnostics
+    // need to be updated separately
+    if (retransmit) {
+        ++g_retransmittedMessageCounter;
+    } else {
+        ++g_trasmittedMessageCounter;
+    }
     return 0;
 }
 
