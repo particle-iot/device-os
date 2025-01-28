@@ -12,13 +12,16 @@ async function delayMs(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum = 0, retries = 10, delay = 1000 } = {}) {
+async function getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum = 0, retries = 30, delay = 1000 } = {}) {
 	let lastError;
+	let lastFuncs;
 	for (let i = 0; i < retries; i++) {
+		lastFuncs = undefined;
 		try {
 			const resp = await api.getDevice({ deviceId, auth });
 			const funcs = resp.body.functions;
 			if (expectedFuncNum > 0 && funcs.length !== expectedFuncNum) {
+				lastFuncs = funcs;
 				throw new Error('Number of functions returned from device does not match expected');
 			}
 			return resp;
@@ -28,6 +31,9 @@ async function getDeviceFunctionsWithRetries({ deviceId, auth, expectedFuncNum =
 		await delayMs(i * delay);
 	}
 	if (lastError) {
+		if (lastFuncs) {
+			console.log(lastFuncs);
+		}
 		throw lastError;
 	}
 	throw new Error('Error fetching functions from device');
