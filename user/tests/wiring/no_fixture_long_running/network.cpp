@@ -216,7 +216,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
             }
         }
         if (sent < 1) {
-            out->printlnf("sent=%d err=%d errno=%d mtu=%d payloadSize=%d Network.ready()=%d", sent, err, errno, mtu, payloadSize, Network.ready());
+            out->printlnf("sent=%d err=%d errno=%d mtu=%d payloadSize=%d Network.ready()=%d disconnected=%d", sent, err, errno, mtu, payloadSize, Network.ready(), networkState.disconnected);
         }
         assertMoreOrEqual(sent, 1);
         if (sent > 0) {
