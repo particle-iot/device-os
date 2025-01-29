@@ -36,8 +36,8 @@ before(function() {
 async function distributePeerInfo() {
     if (centralDevice.peerInfo && peripheralDevice.peerInfo) {
         console.log('Exchanging peer info');
-        await api.publishEvent({ name: BASE_EVENT_NAME + centralDevice.id, data: peripheralDevice.peerInfo, auth: auth });
-        await api.publishEvent({ name: BASE_EVENT_NAME + peripheralDevice.id, data: centralDevice.peerInfo, auth: auth });
+        await this.particle.publishEvent({ name: BASE_EVENT_NAME + centralDevice.id, data: peripheralDevice.peerInfo, auth: auth });
+        await this.particle.publishEvent({ name: BASE_EVENT_NAME + peripheralDevice.id, data: centralDevice.peerInfo, auth: auth });
     }
 }
 
