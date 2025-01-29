@@ -22,3 +22,9 @@ test('DELAY_02_accuracy_is_within_tolerance', async () => {
 
 test('DELAY_03_app_events_are_processed_at_expected_rate_in_threaded_mode', async () => {
 });
+
+test('NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu', async() => {
+  expect(device.mailBox).to.not.be.empty;
+  const msg = JSON.parse(device.mailBox[0].d);
+  console.log(`MTU: ${msg.mtu}`);
+});
