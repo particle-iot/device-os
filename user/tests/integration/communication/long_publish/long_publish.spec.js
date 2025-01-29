@@ -24,11 +24,7 @@ async function runPingPongTest(ctx, inEvent, outEvent) {
     }
     // Publish an event
     const data = (outNum.toString() + ' ').padEnd(EVENT_SIZE, 'a');
-    await ctx.apiClient.instance.publishEvent({
-      name: `${deviceId}/${outEvent}`,
-      data,
-      auth: ctx.apiClient.token
-    });
+    await ctx.publishEvent(`${deviceId}/${outEvent}`, data, { retries: 3 });
     lastPubTime = Date.now();
     // Receive back an event with the same number
     let inNum;
