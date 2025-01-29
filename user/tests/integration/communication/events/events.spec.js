@@ -72,7 +72,7 @@ test('publish_device_to_cloud_event_as_variant', async function() {
 
 test('publish_cloud_to_device_event_with_content_type', async function() {
 	const data = Buffer.from('cbdf4383008631728baf35c2aaae5d2e777691b131a5f1051d7fc147a81f2a90e575309ddc2890688bb86e6e85140d95c064fdf3ce3dfb45a3a7fe3dcf94d869cb21392c9ac9bb5bcb2dd943b5be21dd3be18c876468004d981e6ae02a42e805b989efcd', 'hex');
-	await this.particle.apiClient.instance.publishEvent({
+	await this.particle.publishEvent({
 		name: `${deviceId}/my_event1`,
 		data: `data:application/octet-stream;base64,${data.toString('base64')}`,
 		auth: this.particle.apiClient.token
@@ -85,7 +85,7 @@ test('validate_cloud_to_device_event_with_content_type', async function() {
 
 test('publish_cloud_to_device_event_with_cbor_data', async function() {
 	const data = Buffer.from('a261631901c861644a921bff008d91814e789b', 'hex');
-	await this.particle.apiClient.instance.publishEvent({
+	await this.particle.publishEvent({
 		name: `${deviceId}/my_event2`,
 		data: `data:application/cbor;base64,${data.toString('base64')}`,
 		auth: this.particle.apiClient.token
