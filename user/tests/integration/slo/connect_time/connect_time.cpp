@@ -46,24 +46,10 @@ bool loopCalled = false;
 system_tick_t testAppInitDuration = 0;
 system_tick_t testAppSetupDuration = 0;
 
-inline auto& network() {
+inline NetworkClass& network() {
 #ifdef PARTICLE_TEST_RUNNER
-    if (TestSuite::instance().network() != NETWORK_INTERFACE_ALL) {
-#if Wiring_Cellular
-        if (TestSuite::instance().network() == NETWORK_INTERFACE_CELLULAR) {
-            return Cellular;
-        }
-#endif
-#if Wiring_WiFi
-        if (TestSuite::instance().network() == NETWORK_INTERFACE_WIFI_STA) {
-            return WiFi;
-        }
-#endif
-#if Wiring_Ethernet
-        if (TestSuite::instance().network() == NETWORK_INTERFACE_ETHERNET) {
-            return Ethernet;
-        }
-#endif
+    if (TestSuite::instance()->network() != NETWORK_INTERFACE_ALL) {
+        return NetworkClass::from(TestSuite::instance()->network());
     }
 #endif // PARTICLE_TEST_RUNNER
 #if Wiring_Cellular
@@ -211,22 +197,35 @@ bool testCloudConnectTimeFromColdBoot() {
     }
     const auto t2 = millis();
     // This will not be entirely accurate as we are capturing signal data after connection is made
-    auto signal = network().RSSI();
+    particle::Signal* signal = nullptr;
 #if Wiring_Cellular
-    if (!signal.isValid()) {
-        // FIXME: some platforms only provide signal data after 5-6 seconds
-        CellularDevice devInfo = {};
-        devInfo.size = sizeof(devInfo);
-        if (cellular_device_info(&devInfo, nullptr)) {
-            TestRunner::instance()->pushMailboxMsg("Failed to retreive cellular_device_info!");
-            return false;
+    CellularSignal celSig;
+    if (network() == Cellular) {
+        celSig = Cellular.RSSI();
+        signal = &celSig;
+        if (!celSig.isValid()) {
+            // FIXME: some platforms only provide signal data after 5-6 seconds
+            CellularDevice devInfo = {};
+            devInfo.size = sizeof(devInfo);
+            if (cellular_device_info(&devInfo, nullptr)) {
+                TestRunner::instance()->pushMailboxMsg("Failed to retreive cellular_device_info!");
+                return false;
+            }
+            if (isQuectelRadio(devInfo.dev)) {
+                delay(6000);
+            }
+            celSig = Cellular.RSSI();
         }
-        if (isQuectelRadio(devInfo.dev)) {
-            delay(6000);
-        }
-        signal = network().RSSI();
     }
-#endif // Wiring_Cellular
+#endif
+#if Wiring_WiFi
+    WiFiSignal wifiSig;
+    if (network() == WiFi) {
+        wifiSig = WiFi.RSSI();
+        signal = &wifiSig;
+    }
+#endif
+
     const auto t3 = millis();
     Particle.connect();
     waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT)); // Do not exceed max test time
@@ -239,11 +238,11 @@ bool testCloudConnectTimeFromColdBoot() {
     stats.networkColdConnectDuration[n] = t2 - t1;
     stats.cloudFullHandshakeDuration[n] = t4 - t3;
     stats.coldConnectSignal[n] = {
-        .rat = signal.getAccessTechnology(),
-        .strengthPerc = signal.getStrength(),
-        .strengthValue = signal.getStrengthValue(),
-        .qualityPerc = signal.getQuality(),
-        .qualityValue = signal.getQualityValue()
+        .rat = signal ? signal->getAccessTechnology() : NET_ACCESS_TECHNOLOGY_UNKNOWN,
+        .strengthPerc = signal ? signal->getStrength() : 0,
+        .strengthValue = signal ? signal->getStrengthValue() : 0,
+        .qualityPerc = signal ? signal->getQuality() : 0,
+        .qualityValue = signal ? signal->getQualityValue() : 0
     };
     delay(DELAY_AFTER_TEST);
     return true;
@@ -271,7 +270,21 @@ bool testCloudConnectTimeFromWarmBoot() {
     }
     const auto t2 = millis();
     // This will not be entirely accurate as we are capturing signal data after connection is made
-    const auto signal = network().RSSI();
+    particle::Signal* signal = nullptr;
+#if Wiring_Cellular
+    CellularSignal celSig;
+    if (network() == Cellular) {
+        celSig = Cellular.RSSI();
+        signal = &celSig;
+    }
+#endif
+#if Wiring_WiFi
+    WiFiSignal wifiSig;
+    if (network() == WiFi) {
+        wifiSig = WiFi.RSSI();
+        signal = &wifiSig;
+    }
+#endif
     const auto t3 = millis();
     Particle.connect();
     waitFor(Particle.connected, TEST_MAX_TIMEOUT - std::min(millis() - t0, TEST_MAX_TIMEOUT));
@@ -284,11 +297,11 @@ bool testCloudConnectTimeFromWarmBoot() {
     stats.networkWarmConnectDuration[n] = t2 - t1;
     stats.cloudSessionResumeDuration[n] = t4 - t3;
     stats.warmConnectSignal[n] = {
-        .rat = signal.getAccessTechnology(),
-        .strengthPerc = signal.getStrength(),
-        .strengthValue = signal.getStrengthValue(),
-        .qualityPerc = signal.getQuality(),
-        .qualityValue = signal.getQualityValue()
+        .rat = signal ? signal->getAccessTechnology() : NET_ACCESS_TECHNOLOGY_UNKNOWN,
+        .strengthPerc = signal ? signal->getStrength() : 0,
+        .strengthValue = signal ? signal->getStrengthValue() : 0,
+        .qualityPerc = signal ? signal->getQuality() : 0,
+        .qualityValue = signal ? signal->getQualityValue() : 0
     };
     delay(DELAY_AFTER_TEST);
     return true;
