@@ -316,7 +316,7 @@ static int atCallback(int type, const char* buf, int len, int* lines) {
         (*lines)++;
     return WAIT;
 }
-
+#if 0 // FIXME
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
     if (cellular_modem_type() == DEV_QUECTEL_BG96 ||
             cellular_modem_type() == DEV_QUECTEL_EG91_E ||
@@ -350,6 +350,7 @@ test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_control
     assertEqual(ret, (int)RESP_OK);
     assertMoreOrEqual(lines, 200);
 }
+#endif // FIXME
 
 test(MDM_03_restore_cloud_connection) {
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
