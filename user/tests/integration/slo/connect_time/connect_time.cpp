@@ -218,7 +218,7 @@ bool testCloudConnectTimeFromColdBoot() {
         }
     }
 #endif
-#if Wiring_WiFi
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY // FIXME
     WiFiSignal wifiSig;
     if (network() == WiFi) {
         wifiSig = WiFi.RSSI();
@@ -278,7 +278,7 @@ bool testCloudConnectTimeFromWarmBoot() {
         signal = &celSig;
     }
 #endif
-#if Wiring_WiFi
+#if Wiring_WiFi && !HAL_PLATFORM_WIFI_SCAN_ONLY // FIXME
     WiFiSignal wifiSig;
     if (network() == WiFi) {
         wifiSig = WiFi.RSSI();
