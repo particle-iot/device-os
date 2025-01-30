@@ -200,7 +200,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
 #endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
 
-    pushMailboxMsg(String::format("{\"mtu\": %d}", mtu), 5000 /* wait */);
+    assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d}", mtu), 30000 /* wait */));
 
     int replies = 0;
     for (int i = 0; i < 100; i++) {

@@ -1,3 +1,3 @@
 suite('No fixture cellular');
 
-platform('cellular');
+platform('cellular', 'msom');
