@@ -1,5 +1,6 @@
 #include "application.h"
 #include "test.h"
+#include "test_suite.h"
 
 namespace {
 
@@ -46,6 +47,25 @@ system_tick_t testAppInitDuration = 0;
 system_tick_t testAppSetupDuration = 0;
 
 inline auto& network() {
+#ifdef PARTICLE_TEST_RUNNER
+    if (TestSuite::instance().network() != NETWORK_INTERFACE_ALL) {
+#if Wiring_Cellular
+        if (TestSuite::instance().network() == NETWORK_INTERFACE_CELLULAR) {
+            return Cellular;
+        }
+#endif
+#if Wiring_WiFi
+        if (TestSuite::instance().network() == NETWORK_INTERFACE_WIFI_STA) {
+            return WiFi;
+        }
+#endif
+#if Wiring_Ethernet
+        if (TestSuite::instance().network() == NETWORK_INTERFACE_ETHERNET) {
+            return Ethernet;
+        }
+#endif
+    }
+#endif // PARTICLE_TEST_RUNNER
 #if Wiring_Cellular
     return Cellular;
 #elif Wiring_WiFi

@@ -75,6 +75,8 @@ public:
 
     static TestSuite* instance();
 
+    network_interface_t network() const;
+
 private:
     TestSuite();
 

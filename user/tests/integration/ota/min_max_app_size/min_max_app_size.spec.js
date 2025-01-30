@@ -21,15 +21,31 @@ let maxAppSize = 0;
 
 async function flash(ctx, data, name, { timeout = flashTimeoutMinutes * 60 * 1000, retry = 5 } = {}) {
 	let ok = false;
-	for (let i = 0; i < retry; i++) {
+	const timeoutAt = Date.now() + timeout;
+	for (let i = 0; i < retry && !ok; i++) {
 		await delayMs(i * 5000);
 		try {
+			console.log(`Flashing ${i}/${retry}`);
 			await api.flashDevice({ deviceId, files: { [name]: data }, auth });
-			ok = await waitFlashStatusEvent(ctx, timeout);
-			if (ok) {
-				return ok;
-			} else {
-				continue;
+			let seenStarted = false;
+			while (true) {
+				const t = timeoutAt - Date.now();
+				if (t <= 0) {
+					i = retry;
+					throw new Error('Flashing timeout exceeded');
+				}
+				let status = await waitFlashStatusEvent(ctx, seenStarted ? t : 60000);
+				console.log(`Flash status event: ${status}`);
+				if (status === 'started') {
+					seenStarted = true;
+				} else if (status === 'success') {
+					ok = true;
+					break;
+				} else if (status === 'failed') {
+					break;
+				} else if (!seenStarted) {
+					break;
+				}
 			}
 		} catch (err) {
 			console.log(err.message);
@@ -62,13 +78,19 @@ async function waitFlashStatusEvent(ctx, timeout) {
 		if (data) {
 			ctx.particle.log.verbose('(spark/runner)/flash/status:', data);
 			if (data.startsWith('success')) {
-				return true;
+				return 'success';
 			}
 			if (data.startsWith('failed')) {
-				return false;
+				return 'failed';
 			}
-			if (data.startsWith('offline') || data.startsWith('online')) {
-				return false;
+			if (data.startsWith('offline')) {
+				return 'offline';
+			}
+			if (data.startsWith('online')) {
+				return 'online';
+			}
+			if (data.startsWith('started')) {
+				return 'started';
 			}
 		}
 	}

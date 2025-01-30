@@ -94,11 +94,15 @@ const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     // If server not defined, skip test
     if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+        assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d, \"skipped\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
         Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
         skip();
         return;
     }
     Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+    NAMED_SCOPE_GUARD(sg, {
+        assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": 0, \"error\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
+    });
 
     // 15 min gives the device time to go through a 10 min timeout & power cycle
     const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
@@ -200,8 +204,6 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
 #endif // PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
 
-    assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d}", mtu), 30000 /* wait */));
-
     int replies = 0;
     for (int i = 0; i < 100; i++) {
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
@@ -239,6 +241,10 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     assertMoreOrEqual(replies, 100 * 10 / 2);
     assertFalse((bool)networkState.disconnected);
+
+    sg.dismiss();
+
+    assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d}", mtu), 30000 /* wait */));
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR

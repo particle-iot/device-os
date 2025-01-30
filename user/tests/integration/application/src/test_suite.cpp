@@ -106,6 +106,10 @@ void TestSuite::setup() {
     }
 }
 
+network_interface_t TestSuite::network() const {
+    return g_config.network;
+}
+
 int TestSuite::config(const TestSuiteConfig& config) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
     int result = 0;
