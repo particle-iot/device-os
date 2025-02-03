@@ -368,14 +368,16 @@ DEFINE_WARM_BOOT_TEST(08)
 
 test(publish_and_validate_stats) {
 #if Wiring_Cellular
-    Cellular.on();
-    assertTrue(waitFor(network().isOn, TEST_MAX_TIMEOUT));
-    // Exclude 2G and non-production devices from the SLO validation
-    CellularDevice devInfo = {};
-    devInfo.size = sizeof(devInfo);
-    assertEqual(cellular_device_info(&devInfo, nullptr), 0);
-    if (devInfo.dev == DEV_SARA_G350 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
-        stats.excludeFromSloValidation = true;
+    if (network() == Cellular) {
+        Cellular.on();
+        assertTrue(waitFor(network().isOn, TEST_MAX_TIMEOUT));
+        // Exclude 2G and non-production devices from the SLO validation
+        CellularDevice devInfo = {};
+        devInfo.size = sizeof(devInfo);
+        assertEqual(cellular_device_info(&devInfo, nullptr), 0);
+        if (devInfo.dev == DEV_SARA_G350 || devInfo.dev == DEV_QUECTEL_EG91_NA) {
+            stats.excludeFromSloValidation = true;
+        }
     }
 #endif // Wiring_Cellular
     const size_t n = serializeStatsAsJson(nullptr /* buf */, 0 /* size */);
