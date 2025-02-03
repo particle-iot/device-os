@@ -155,6 +155,9 @@ public:
 	void clear_use_count() { use_counter = 0; }
 	int use_count() { return use_counter; }
 	bool has_expired() { return use_counter >= MAXIMUM_SESSION_USES; }
+	void set_use_count_once() {
+		use_counter = MAXIMUM_SESSION_USES;
+	}
 
 	static const int MAXIMUM_SESSION_USES = 3;
 };
