@@ -115,6 +115,13 @@ public:
 			}
 			return r;
 		}
+		case ProtocolCommands::MOVE_CONNECTION: {
+			LOG(INFO, "Moving connection (session move + ping)");
+			if (!channel.command(Channel::MOVE_SESSION)) {
+				return this->command(ProtocolCommands::PING, 0, nullptr);
+			}
+			return ProtocolError::UNKNOWN;
+		}
 		default:
 			return ProtocolError::UNKNOWN;
 		}

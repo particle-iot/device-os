@@ -361,3 +361,22 @@ int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
 
     return 0;
 }
+
+int system_cloud_move_connection(network_handle_t network) {
+    if (system_cloud_is_connected(nullptr)) { // XXX: this is not a bool!
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    LOG(INFO, "Attempting to move cloud connection to interface %u", network);
+
+    int r = system_cloud_rebind(network);
+    if (r) {
+        LOG(WARN, "Cloud connection rebind to %u failed err=%d", network, r);
+        return r;
+    }
+    r = spark_protocol_command(spark_protocol_instance(), ProtocolCommands::MOVE_CONNECTION);
+    if (r) {
+        LOG(WARN, "Protocol connection move failed err=%d", r);
+    }
+    return r;
+}

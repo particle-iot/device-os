@@ -328,5 +328,8 @@ sock_handle_t system_cloud_get_socket_handle()
     return s_state.socket;
 }
 
+int system_cloud_rebind(network_handle_t network) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
 
 #endif /* !HAL_USE_SOCKET_HAL_POSIX && HAL_USE_SOCKET_HAL_COMPAT */
