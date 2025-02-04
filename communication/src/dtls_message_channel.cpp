@@ -575,10 +575,17 @@ ProtocolError DTLSMessageChannel::command(Command command, void* arg)
 		reset_session();
 		return IO_ERROR_DISCARD_SESSION; //force re-establish
 
-	case MOVE_SESSION:
+	case MOVE_SESSION: {
+		bool once = false;
+		if (arg && *((bool*)arg)) {
+			once = true;
+		}
 		move_session = true;
+		if (once) {
+			sessionPersist.set_use_count_once();
+		}
 		break;
-
+	}
 	case LOAD_SESSION:
 		sessionPersist.restore(callbacks.restore);
 		break;

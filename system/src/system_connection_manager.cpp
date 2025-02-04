@@ -319,6 +319,15 @@ int ConnectionManager::checkCloudConnectionNetwork() {
     }
     // If best candidate doesn't match current network interface - reconnect
     LOG(TRACE, "Best network interface for cloud connection changed (to %s) - move the cloud session", netifToName(best));
+    if (best != NETWORK_INTERFACE_ALL) {
+        int r = system_cloud_move_connection(best);
+        if (!r) {
+            return 0;
+        } else {
+            LOG(WARN, "Failed to move connection err=%d, fallback to reconnect", r);
+        }
+    }
+    // Fallback to disconnect/connect
     auto options = CloudDisconnectOptions().reconnect(true);
     auto systemOptions = options.toSystemOptions();
     spark_cloud_disconnect(&systemOptions, nullptr);

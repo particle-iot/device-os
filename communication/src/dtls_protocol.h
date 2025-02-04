@@ -115,6 +115,15 @@ public:
 			}
 			return r;
 		}
+		case ProtocolCommands::MOVE_CONNECTION: {
+			LOG(INFO, "Moving connection (session move + ping)");
+			int r = ProtocolError::NO_ERROR;
+			bool once = true; // Use session only once, if migration fails it will be invalidated immediately
+			if (!(r = channel.command(Channel::MOVE_SESSION, &once))) {
+				return this->command(ProtocolCommands::PING, 0, nullptr);
+			}
+			return r;
+		}
 		default:
 			return ProtocolError::UNKNOWN;
 		}

@@ -382,4 +382,27 @@ sock_handle_t system_cloud_get_socket_handle()
     return s_state.socket;
 }
 
+int system_cloud_rebind(network_handle_t network) {
+    if (s_state.socket < 0) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    if (network == NETWORK_INTERFACE_ALL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    // Bind to specific netif
+    struct ifreq ifr = {};
+    if_index_to_name(network, ifr.ifr_name);
+
+    auto sockOptRet = sock_setsockopt(s_state.socket, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr));
+    if (sockOptRet) {
+        LOG(WARN, "Failed to bind cloud socket to interface %u error: %d", network, sockOptRet);
+    } else {
+        LOG(INFO, "Re-bound cloud socket to iface %u (\"%s\")", network, ifr.ifr_name);
+    }
+
+    return !sockOptRet ? SYSTEM_ERROR_NONE : SYSTEM_ERROR_NETWORK;
+}
+
 #endif /* HAL_USE_SOCKET_HAL_POSIX */

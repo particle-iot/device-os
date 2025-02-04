@@ -248,7 +248,8 @@ namespace ProtocolCommands {
     WAKE = 1, // Deprecated, use PING instead
     DISCONNECT = 2,
     TERMINATE = 3,
-    PING = 4
+    PING = 4,
+    MOVE_CONNECTION = 5
   };
 };
 
