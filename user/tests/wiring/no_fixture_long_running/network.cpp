@@ -101,7 +101,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
     Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
     NAMED_SCOPE_GUARD(sg, {
-        assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": 0, \"error\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
+        assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d, \"error\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
     });
 
     // 15 min gives the device time to go through a 10 min timeout & power cycle
@@ -173,6 +173,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     size_t minMtu = MIN_MTU;
     size_t maxMtu = MAX_MTU;
     while (mtu > IPV4_PLUS_UDP_HEADER_LENGTH) {
+        Particle.process();
         // Fille send buffer with random data
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
@@ -188,11 +189,6 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     Serial.printlnf("Resolved MTU: %u", mtu);
 
-    // The test should be running for at least a minute, just in case
-    if (millis() - start < MINIMUM_TEST_TIME) {
-        delay(millis() - start);
-    }
-    assertFalse((bool)networkState.disconnected);
 #if PLATFORM_ID != PLATFORM_BORON && PLATFORM_ID != PLATFORM_BSOM && PLATFORM_ID != PLATFORM_ELECTRON2
     assertMoreOrEqual((mtu - IPV4_PLUS_UDP_HEADER_LENGTH), MBEDTLS_SSL_MAX_CONTENT_LEN);
 #else
@@ -206,6 +202,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
 
     int replies = 0;
     for (int i = 0; i < 100; i++) {
+        Particle.process();
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
         int sent = 0;
@@ -223,6 +220,7 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
         assertMoreOrEqual(sent, 1);
         if (sent > 0) {
             for (auto start = millis(); millis() - start <= 5000;) {
+                Particle.process();
                 auto len = udp->parsePacket(10);
                 if (len == payloadSize) {
                     if (!memcmp(udp->buffer(), sendBuffer.get(), payloadSize)) {
@@ -238,6 +236,14 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
 
     Serial.printlnf("Recvd %d replies", replies);
+
+    // The test should be running for at least a minute, just in case
+    const auto end = start + MINIMUM_TEST_TIME;
+    const auto now = millis();
+    if (now < end) {
+        delay(end - now);
+    }
+    assertFalse((bool)networkState.disconnected);
 
     assertMoreOrEqual(replies, 100 * 10 / 2);
     assertFalse((bool)networkState.disconnected);
