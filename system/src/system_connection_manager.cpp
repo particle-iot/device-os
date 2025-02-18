@@ -70,15 +70,17 @@ bool isValidScore(uint32_t score) {
     return std::numeric_limits<uint32_t>::max() != score;
 }
 
-static int getCloudHostnameAndPort(addrinfo** info, CloudServerAddressType* type, bool allowCached = false) {
+static int getCloudHostnameAndPort(addrinfo** info, CloudServerAddressType* type, bool allowCached = false, network_interface_t interface = NETWORK_INTERFACE_ALL) {
     ServerAddress server_addr = {};
     HAL_FLASH_Read_ServerAddress(&server_addr);
     if (server_addr.port == 0 || server_addr.port == 0xFFFF) {
         server_addr.port = spark_cloud_udp_port_get();
     }
 
-    return system_cloud_resolv_address(IPPROTO_UDP, &server_addr, allowCached ? (sockaddr*)&g_system_cloud_session_data.address : nullptr, info, type, false /* useCachedAddrInfo */);
+    return system_cloud_resolv_address(IPPROTO_UDP, &server_addr, allowCached ? (sockaddr*)&g_system_cloud_session_data.address : nullptr, info, type, false /* useCachedAddrInfo */, interface, !allowCached /* flushDnsCache*/);
 }
+
+size_t ConnectionTester::roundRobinInterfaceForDns_ = 0;
 
 ConnectionManager::ConnectionManager()
     : preferredNetwork_(NETWORK_INTERFACE_ALL) {
@@ -183,7 +185,7 @@ int ConnectionManager::testConnections(bool background) {
 
         LOG_DEBUG(INFO, "Full reachability test started");
         ConnectionTester tester;
-        CHECK(tester.prepare(true /* full test */));
+        CHECK(tester.prepare(true /* full test */, lastTestFailed_));
         // Blocking call
         r = tester.runTest();
         LOG_DEBUG(INFO, "Full reachability test finished (%d)", r);
@@ -208,12 +210,20 @@ int ConnectionManager::testConnections(bool background) {
     }
     if (r == 0) {
         bestNetworks_.clear();
+        bool hasValidScore = false;
         for (auto& i: metrics) {
             bestNetworks_.append(std::make_pair(i.interface, i.resultingScore));
+            if (isValidScore(i.resultingScore)) {
+                hasValidScore = true;
+            }
         }
         if (background) {
             // Disable this for now
             // testResultsActual_ = true;
+        } else {
+            if (!hasValidScore) {
+                lastTestFailed_ = true;
+            }
         }
     }
     return r;
@@ -539,12 +549,27 @@ int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
 // 3) Add these created+connected sockets to a pollfd structure. Allocate buffers for the reachability test messages.
 // 4) Poll all the sockets. Polling sends a reachability test message and waits for the response. The test continues for the test duration
 // 5) After polling completes, free the allocated buffers, reset diagnostics and calculate updated metrics. 
-int ConnectionTester::prepare(bool fullTest) {
+int ConnectionTester::prepare(bool fullTest, bool lastTestFailed) {
     struct addrinfo* info = nullptr;
     CloudServerAddressType type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
 
     // Step 1: Retrieve the server hostname and port. Resolve the hostname to an addrinfo list (ie IP addresses of server)
-    CHECK(getCloudHostnameAndPort(&info, &type, !fullTest));
+    network_handle_t iface = NETWORK_INTERFACE_ALL;
+    if (lastTestFailed) {
+        for (int i = 0; i < metrics_.size(); i++) {
+            int idx = roundRobinInterfaceForDns_ % metrics_.size();
+            if (network_ready(metrics_[idx].interface, 0, nullptr)) {
+                iface = metrics_[idx].interface;
+                struct ifreq ifr = {};
+                if_index_to_name(iface, ifr.ifr_name);
+                LOG(TRACE, "Last rechability test failed, using interface %s for DNS queries explicitly", ifr.ifr_name);
+                roundRobinInterfaceForDns_++;
+                break;
+            }
+            roundRobinInterfaceForDns_++;
+        }
+    }
+    CHECK(getCloudHostnameAndPort(&info, &type, !fullTest, iface));
 
     SCOPE_GUARD({
         netdb_freeaddrinfo(info);
@@ -559,6 +584,24 @@ int ConnectionTester::prepare(bool fullTest) {
     // Step 2: Create, bind, and connect sockets for each network interface to test
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
         bool ok = true;
+
+        switch (a->ai_family) {
+            case AF_INET: {
+                if (!network_ready(NETWORK_INTERFACE_ALL, NETWORK_READY_TYPE_IPV4, nullptr)) {
+                    LOG_DEBUG(WARN, "skipping resolved AF_INET address, as ipv4 networking is not ready");
+                    continue;
+                }
+                break;
+            }
+            case AF_INET6: {
+                if (!network_ready(NETWORK_INTERFACE_ALL, NETWORK_READY_TYPE_IPV6, nullptr)) {
+                    LOG_DEBUG(WARN, "skipping resolved AF_INET6 address, as ipv6 networking is not ready");
+                    continue;
+                }
+                break;
+            }
+        }
+
         // For each network interface to test, create + open a socket with the retrieved server address
         // If any of the sockets fail to be created + opened with this server address, return an error
         for (auto& connectionMetrics: metrics_) {

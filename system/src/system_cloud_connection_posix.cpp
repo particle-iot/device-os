@@ -47,7 +47,7 @@ const unsigned CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT = 5000;
 
 } /* anonymous */
 
-int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo) {
+int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo, network_handle_t interface, bool flushDnsCache) {
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     *type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
@@ -117,8 +117,15 @@ int system_cloud_resolv_address(int protocol, const ServerAddress* address, sock
                 /* FIXME: this should probably be moved into system_cloud_internal */
                 system_string_interpolate(address->domain, tmphost, sizeof(tmphost), system_interpolate_cloud_server_hostname);
                 snprintf(tmpserv, sizeof(tmpserv), "%u", address->port);
-                LOG(TRACE, "Resolving %s#%s", tmphost, tmpserv);
-                netdb_getaddrinfo(tmphost, tmpserv, &hints, info);
+                if (flushDnsCache) {
+                    hints.ai_flags |= AI_FLUSHCACHE;
+                }
+                if_t iface = nullptr;
+                if (interface != NETWORK_INTERFACE_ALL) {
+                    if_get_by_index(interface, &iface);
+                }
+                LOG(TRACE, "Resolving %s#%s cache=%d iface=%d", tmphost, tmpserv, !flushDnsCache, interface);
+                netdb_getaddrinfo_ex(tmphost, tmpserv, &hints, info, iface);
                 *type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 break;
             }
@@ -139,7 +146,9 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
     CloudServerAddressType type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
     bool clean = true;
 
-    system_cloud_resolv_address(protocol, address, saddrCache, &info, &type, true /* useCachedAddrInfo */);
+    network_interface_t cloudInterface = particle::system::ConnectionManager::instance()->selectCloudConnectionNetwork();
+
+    system_cloud_resolv_address(protocol, address, saddrCache, &info, &type, true /* useCachedAddrInfo */, cloudInterface);
 
     int r = SYSTEM_ERROR_NETWORK;
 
@@ -147,6 +156,21 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
     for (struct addrinfo* a = info; a != nullptr; a = a->ai_next) {
         /* Iterate over all the addresses and attempt to connect */
+
+        switch (a->ai_family) {
+            case AF_INET: {
+                if (!network_ready(cloudInterface, NETWORK_READY_TYPE_IPV4, nullptr)) {
+                    continue;
+                }
+                break;
+            }
+            case AF_INET6: {
+                if (!network_ready(cloudInterface, NETWORK_READY_TYPE_IPV6, nullptr)) {
+                    continue;
+                }
+                break;
+            }
+        }
 
         int s = sock_socket(a->ai_family, a->ai_socktype, a->ai_protocol);
         if (s < 0) {
@@ -203,8 +227,6 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
                 continue;
             }
         }
-
-        network_interface_t cloudInterface = particle::system::ConnectionManager::instance()->selectCloudConnectionNetwork();
 
         LOG(INFO, "Cloud socket=%d, connecting to %s#%u using if %d", s, serverHost, serverPort, cloudInterface);
 

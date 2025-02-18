@@ -26,6 +26,7 @@
 #include <lwip/sockets.h>
 #include <errno.h>
 #include <algorithm>
+#include "resolvapi.h"
 
 struct hostent* netdb_gethostbyname(const char *name) {
     return lwip_gethostbyname(name);
@@ -42,26 +43,39 @@ void netdb_freeaddrinfo(struct addrinfo* ai) {
 
 int netdb_getaddrinfo(const char* hostname, const char* servname,
                       const struct addrinfo* hints, struct addrinfo** res) {
-    /* Change the behavior when AF_UNSPEC is used */
-    if (hints && hints->ai_family == AF_UNSPEC) {
-        struct addrinfo h = *hints;
+    return netdb_getaddrinfo_ex(hostname, servname, hints, res, nullptr);
+}
 
-        /* First perform a lookup with AF_INET6 */
-        h.ai_family = AF_INET6;
-        int rinet6 = lwip_getaddrinfo(hostname, servname, &h, res);
-
-        /* Next perform a lookup with AF_INET */
-        h.ai_family = AF_INET;
-        /* FIXME: expects that there is either 1 or 0 results from the previous call */
-        int rinet = lwip_getaddrinfo(hostname, servname, &h, rinet6 == 0 && *res ? &((*res)->ai_next) : res);
-
-        if (rinet6 == 0 || rinet == 0) {
-            return 0;
-        }
-
-        return std::max(rinet, rinet6);
+int netdb_getaddrinfo_ex(const char* hostname, const char* servname,
+                         const struct addrinfo* hints, struct addrinfo** res, if_t iface) {
+    uint8_t ifaceIndex = 0;
+    if (iface) {
+        if_get_index(iface, &ifaceIndex);
     }
-    return lwip_getaddrinfo(hostname, servname, hints, res);
+    if (hints && hints->ai_family == AF_UNSPEC /* && hints->ai_flags & AI_ADDRCONFIG ?*/) {
+        // For now defaulting as if AI_ADDRCONFIG is always set in case of AF_UNSPEC, simplifies things
+        if_protocol_state state = {};
+        if_get_protocol_state(iface, &state, nullptr);
+        if (state.ipv6 != IF_PROTOCOL_STATE_UNCONFIGURED) {
+            struct addrinfo h = *hints;
+
+            /* First perform a lookup with AF_INET6 */
+            h.ai_family = AF_INET6;
+            int rinet6 = lwip_getaddrinfo_ex(hostname, servname, &h, res, ifaceIndex);
+
+            /* Next perform a lookup with AF_INET */
+            h.ai_family = AF_INET;
+            /* FIXME: expects that there is either 1 or 0 results from the previous call */
+            int rinet = lwip_getaddrinfo_ex(hostname, servname, &h, rinet6 == 0 && *res ? &((*res)->ai_next) : res, ifaceIndex);
+
+            if (rinet6 == 0 || rinet == 0) {
+                return 0;
+            }
+
+            return std::max(rinet, rinet6);
+        }
+    }
+    return lwip_getaddrinfo_ex(hostname, servname, hints, res, ifaceIndex);
 }
 
 int netdb_getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host,

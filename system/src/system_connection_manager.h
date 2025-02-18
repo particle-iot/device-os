@@ -82,6 +82,7 @@ private:
     std::unique_ptr<ConnectionTester> backgroundTester_;
     static constexpr system_tick_t PERIODIC_CHECK_PERIOD_MS = 5 * 60 * 1000;
     system_tick_t nextPeriodicCheck_ = 0;
+    bool lastTestFailed_ = false;
 };
 
 class ConnectionTester {
@@ -89,7 +90,7 @@ public:
     ConnectionTester();
     ~ConnectionTester();
 
-    int prepare(bool fullTest = true);
+    int prepare(bool fullTest = true, bool lastTestFailed = false);
     int runTest(system_tick_t maxBlockTime = 0xffffffff);
 
     const Vector<ConnectionMetrics> getConnectionMetrics();
@@ -115,6 +116,7 @@ private:
     system_tick_t endTime_ = 0;
     bool finished_ = false;
     size_t socketCount_ = 0;
+    static size_t roundRobinInterfaceForDns_;
 };
 
 } } /* particle::system */

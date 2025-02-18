@@ -260,6 +260,17 @@ typedef enum if_req_t {
     IF_REQ_DHCP_SETTINGS = 4,
 } if_req_t;
 
+typedef enum if_protocol_state_t {
+    IF_PROTOCOL_STATE_UNCONFIGURED = 0,
+    IF_PROTOCOL_STATE_LINK_LOCAL = 1,
+    IF_PROTOCOL_STATE_CONFIGURED = 2
+} if_protocol_state_t;
+
+typedef struct if_protocol_state {
+    if_protocol_state_t ipv4;
+    if_protocol_state_t ipv6;
+} if_protocol_state;
+
 int if_init(void);
 int if_init_platform(void*);
 int if_init_platform_postpone(void*);
@@ -314,6 +325,8 @@ void if_notify_event(if_t iface, const struct if_event* evt, void* reserved);
 int if_get_power_state(if_t iface, if_power_state_t* state);
 
 int if_get_profile(if_t iface, char* profile, size_t length);
+
+int if_get_protocol_state(if_t iface, if_protocol_state* state, void* reserved);
 
 #ifdef __cplusplus
 }
