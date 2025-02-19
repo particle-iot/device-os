@@ -456,12 +456,8 @@ public:
 
     int lock(system_tick_t timeout = 0) {
         CHECK_TRUE(hal_interrupt_is_isr() == false, SYSTEM_ERROR_INVALID_STATE);
-        // FIXME: os_mutex_recursive_lock doesn't take any arguments, using trylock for now
-        if (timeout) {
-            return os_mutex_recursive_lock(mutex_);
-        }
-
-        return os_mutex_recursive_trylock(mutex_);
+        // FIXME: os_mutex_recursive_lock doesn't take any arguments
+        return os_mutex_recursive_lock(mutex_);
     }
 
     int unlock() {
