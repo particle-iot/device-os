@@ -1007,7 +1007,8 @@ int QuectelNcpClient::checkNetConfForImsi() {
             // if max retries are exhausted
             return SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED;
         } else if (r != AtResponse::OK && ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
-            // Ignore CIMI errors on BG95_S5, this means eSIM profile is not loaded
+            // Ignore CIMI errors on BG95_S5, this likely means eSIM profile is not loaded
+            // TODO: remove platform check when eSIM management is implemented
             return SYSTEM_ERROR_NONE;
         }
         ++imsiCount;
