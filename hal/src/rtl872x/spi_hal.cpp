@@ -454,10 +454,13 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
-    int lock(system_tick_t timeout = 0) {
+    int lock(system_tick_t timeout = 1) {
         CHECK_TRUE(hal_interrupt_is_isr() == false, SYSTEM_ERROR_INVALID_STATE);
-        // FIXME: os_mutex_recursive_lock doesn't take any arguments
-        return os_mutex_recursive_lock(mutex_);
+        // FIXME: os_mutex_recursive_lock doesn't take any arguments, using trylock for now
+        if (timeout != 0) {
+            return os_mutex_recursive_lock(mutex_);
+        }
+        return os_mutex_recursive_trylock(mutex_);
     }
 
     int unlock() {
@@ -1215,6 +1218,9 @@ int hal_spi_sleep(hal_spi_interface_t spi, bool sleep, void* reserved) {
 
 int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t* conf) {
     auto spiInstance = CHECK_TRUE_RETURN(getInstance(spi), SYSTEM_ERROR_NOT_FOUND);
+    if (conf && conf->timeout == 0) {
+        return spiInstance->lock(0);
+    }
     return spiInstance->lock();
 }
 

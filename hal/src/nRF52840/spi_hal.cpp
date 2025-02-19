@@ -672,8 +672,12 @@ int32_t hal_spi_acquire(hal_spi_interface_t spi, const hal_spi_acquire_config_t*
     if (!hal_interrupt_is_isr()) {
         os_mutex_recursive_t mutex = spiMap[spi].mutex;
         if (mutex) {
-            // FIXME: os_mutex_recursive_lock doesn't take any arguments
-            return os_mutex_recursive_lock(mutex);
+            // FIXME: os_mutex_recursive_lock doesn't take any arguments, using trylock for now
+            if (!conf || conf->timeout != 0) {
+                return os_mutex_recursive_lock(mutex);
+            } else {
+                return os_mutex_recursive_trylock(mutex);
+            }
         }
     }
     return -1;
