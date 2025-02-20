@@ -170,7 +170,7 @@ int RtlUsbDriver::attach() {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     SCOPE_GUARD({
         if (!thread_) {
-            os_thread_create(&thread_, "usbd_watch", RTL_USBD_ISR_PRIORITY, &RtlUsbDriver::loop, this, OS_THREAD_STACK_SIZE_DEFAULT);
+            os_thread_create(&thread_, "usbd_watch", rtl::RTL_USBD_ISR_PROCESSING_THREAD_PRIORITY, &RtlUsbDriver::loop, this, OS_THREAD_STACK_SIZE_DEFAULT);
             SPARK_ASSERT(thread_);
         }
     });

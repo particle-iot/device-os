@@ -24,6 +24,9 @@
 #include <mutex>
 #include "usb_settings.h"
 #include "usbd_hid.h"
+// FIXME: not ideal, directly using freertos task APIs
+#include "FreeRTOS.h"
+#include "task.h"
 
 using namespace particle::usbd;
 
@@ -220,16 +223,24 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
     if ((__get_PRIMASK() & 1) || (__get_BASEPRI() != 0)) {
         return -1;
     }
-    int32_t available = -1;
-    do {
-        available = HAL_USB_USART_Available_Data_For_Write(serial);
-        if (available > 0) {
-            break;
+    int32_t available = HAL_USB_USART_Available_Data_For_Write(serial);
+    if (available == 0) {
+        bool needToYield = false;
+        auto prio = uxTaskPriorityGet(nullptr);
+        if (prio >= rtl::RTL_USBD_ISR_PROCESSING_THREAD_PRIORITY) {
+            needToYield = true;
         }
-        // TODO: check thread priorities here and delay only conditionally?
-        HAL_Delay_Milliseconds(1);
-    } while (available < 1 && available != -1);
-    if (HAL_USB_USART_Is_Connected(serial) && available > 0) {
+        while (true) {
+            available = HAL_USB_USART_Available_Data_For_Write(serial);
+            if (available > 0 || available < 0) {
+                break;
+            }
+            if (needToYield) {
+                HAL_Delay_Milliseconds(1);
+            }
+        }
+    }
+    if (available > 0 && HAL_USB_USART_Is_Connected(serial)) {
         return getCdcClassDriver().write(&data, sizeof(data));
     }
     return -1;
