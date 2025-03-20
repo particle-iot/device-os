@@ -42,6 +42,8 @@ static void flash_init(void) {
     FLASH_StructInit(&flash_init_para);
     FLASH_Init(SpicOneBitMode);
 
+    hal_flash_init();
+    
     uint8_t flashId[3];
     FLASH_RxCmd(flash_init_para.FLASH_cmd_rd_id, 3, flashId);
     if (flashId[0] == 0x20) {

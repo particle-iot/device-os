@@ -44,6 +44,8 @@ extern "C" {
 extern uintptr_t platform_system_part1_flash_start;
 extern uintptr_t platform_flash_end;
 
+static bool isKM0 = false;
+
 typedef enum {
     MXIC_FLASH_CMD_WRSCUR           = 0x2F,
     MXIC_FLASH_CMD_ENSO             = 0xB1,
@@ -226,7 +228,6 @@ static uint32_t rtkSpiFlashGetDataReg(uint32_t index, enum RtkSpicFlashDataWidth
     return data;
 }
 
-// // FIXME: This should no longer be necessary as we are using FLASH_RxCmd(GENERIC_FLASH_CMD_RDSR, 1, &status)?
 static uint8_t rtkSpiFlashReadSR() {
     /* Disable SPI_FLASH */
     SPIC->ssienr = 0;
@@ -251,7 +252,10 @@ static void rtkSpiFlashEnableCsWriteErase() {
     /* Check flash is in write progress or not */
     for (;;) {
         uint8_t status = rtkSpiFlashReadSR();
-        // FLASH_RxCmd(GENERIC_FLASH_CMD_RDSR, 1, &status);
+        if (isKM0 && status == 6) {
+            status = status >> 1;
+        }
+
         if (!(status & 0x1)) {
             break;
         }
@@ -554,6 +558,10 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
 int hal_exflash_init(void) {
     // ExFlashLock lk;
     // FLASH_ClockSwitch(BIT_SHIFT_FLASH_CLK_XTAL, _FALSE);
+    uint32_t CPUID = (SCB->CPUID & SCB_CPUID_PARTNO_Msk) >> SCB_CPUID_PARTNO_Pos;
+    if (CPUID == 0xD20 ) {
+        isKM0 = true;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
