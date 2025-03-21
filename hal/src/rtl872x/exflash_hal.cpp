@@ -44,8 +44,6 @@ extern "C" {
 extern uintptr_t platform_system_part1_flash_start;
 extern uintptr_t platform_flash_end;
 
-static bool isKM0 = false;
-
 typedef enum {
     MXIC_FLASH_CMD_WRSCUR           = 0x2F,
     MXIC_FLASH_CMD_ENSO             = 0xB1,
@@ -246,12 +244,17 @@ static uint8_t rtkSpiFlashReadSR() {
 }
 
 static void rtkSpiFlashEnableCsWriteErase() {
+    bool isKM0 = ((SCB->CPUID & SCB_CPUID_PARTNO_Msk) >> SCB_CPUID_PARTNO_Pos) == 0xD20 ? true : false;
+
     /* Enable SPI_FLASH */
     SPIC->ssienr = 1;
     rtkSpiFlashWaitBusy();
     /* Check flash is in write progress or not */
     for (;;) {
         uint8_t status = rtkSpiFlashReadSR();
+    
+        // HACK: SPIC on KM0 reports seemingly invalid status register bits. 
+        // 6 should not be a status in the context of MBR, assume it is a 1 bit left shifted 4, and correct it
         if (isKM0 && status == 6) {
             status = status >> 1;
         }
@@ -558,10 +561,6 @@ static int perform_write(uintptr_t addr, const uint8_t* data, size_t size) {
 int hal_exflash_init(void) {
     // ExFlashLock lk;
     // FLASH_ClockSwitch(BIT_SHIFT_FLASH_CLK_XTAL, _FALSE);
-    uint32_t CPUID = (SCB->CPUID & SCB_CPUID_PARTNO_Msk) >> SCB_CPUID_PARTNO_Pos;
-    if (CPUID == 0xD20 ) {
-        isKM0 = true;
-    }
     return SYSTEM_ERROR_NONE;
 }
 

@@ -26,7 +26,7 @@
 #include "rtl8721d.h"
 
 int hal_flash_init(void) {
-    return hal_exflash_init();
+    return 0;
 }
 
 int hal_flash_write(uintptr_t addr, const uint8_t* data_buf, size_t data_size) {
