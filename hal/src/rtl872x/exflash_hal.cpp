@@ -244,20 +244,20 @@ static uint8_t rtkSpiFlashReadSR() {
 }
 
 static void rtkSpiFlashEnableCsWriteErase() {
-    bool isKM0 = ((SCB->CPUID & SCB_CPUID_PARTNO_Msk) >> SCB_CPUID_PARTNO_Pos) == 0xD20 ? true : false;
-
     /* Enable SPI_FLASH */
     SPIC->ssienr = 1;
     rtkSpiFlashWaitBusy();
     /* Check flash is in write progress or not */
     for (;;) {
         uint8_t status = rtkSpiFlashReadSR();
-    
+
+#ifdef ARM_CPU_CORTEX_M23
         // HACK: SPIC on KM0 reports seemingly invalid status register bits. 
         // 6 should not be a status in the context of MBR, assume it is a 1 bit left shifted 4, and correct it
-        if (isKM0 && status == 6) {
+        if (status == 6) {
             status = status >> 1;
         }
+#endif
 
         if (!(status & 0x1)) {
             break;
