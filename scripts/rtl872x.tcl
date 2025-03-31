@@ -133,8 +133,8 @@ proc openocd_print_memory {address length} {
             echo -n "[format {%08X} [expr {$address + $i}]]| "
         }
 
-        echo -n "[format %02X $value($i)] "
-        if {[expr $i > 0 && ($i+1) % 16 == 0] || [expr $i == $length - 1]} {
+        echo -n "[format {%02X} [lindex $value $i]] "
+        if {[expr {$i > 0 && ($i+1) % 16 == 0}] || [expr {$i == $length - 1}]} {
             echo ""
         }
     }
@@ -240,7 +240,7 @@ proc rtl872x_flash_dump {address length} {
     global FLASH_MMU_START_ADDR
     rtl872x_init
     set address [rtl872x_fixup_address $address]
-    set address [expr $address + $FLASH_MMU_START_ADDR]
+    set address [expr { $address + $FLASH_MMU_START_ADDR } ]
     openocd_print_memory $address $length
 }
 

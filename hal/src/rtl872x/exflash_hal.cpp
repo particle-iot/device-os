@@ -205,6 +205,7 @@ static void rtkSpiFlashWaitBusy() {
     }
 }
 
+#ifdef ARM_CPU_CORTEX_M33
 static void rtkSpiSetRxMode() {
     SPIC->ctrlr0 = (SPIC->ctrlr0 | 0x0300);
     SPIC->ctrlr0 = (SPIC->ctrlr0 & 0xfff0ffff);
@@ -226,7 +227,6 @@ static uint32_t rtkSpiFlashGetDataReg(uint32_t index, enum RtkSpicFlashDataWidth
     return data;
 }
 
-// // FIXME: This should no longer be necessary as we are using FLASH_RxCmd(GENERIC_FLASH_CMD_RDSR, 1, &status)?
 static uint8_t rtkSpiFlashReadSR() {
     /* Disable SPI_FLASH */
     SPIC->ssienr = 0;
@@ -243,6 +243,7 @@ static uint8_t rtkSpiFlashReadSR() {
     rtkSpiFlashWaitBusy();
     return rtkSpiFlashGetDataReg(0, RTK_SPIC_DATA_BYTE);
 }
+#endif // ARM_CPU_CORTEX_M33
 
 static void rtkSpiFlashEnableCsWriteErase() {
     /* Enable SPI_FLASH */
@@ -250,8 +251,14 @@ static void rtkSpiFlashEnableCsWriteErase() {
     rtkSpiFlashWaitBusy();
     /* Check flash is in write progress or not */
     for (;;) {
-        uint8_t status = rtkSpiFlashReadSR();
-        // FLASH_RxCmd(GENERIC_FLASH_CMD_RDSR, 1, &status);
+        uint8_t status = 0;
+#ifdef ARM_CPU_CORTEX_M23
+        // WORKAROUND: SPIC on KM0 reports invalid status register bits. ROM function does not
+        FLASH_RxCmd(GENERIC_FLASH_CMD_RDSR, 1, &status);
+#else 
+        status = rtkSpiFlashReadSR();
+#endif // ARM_CPU_CORTEX_M23
+
         if (!(status & 0x1)) {
             break;
         }
