@@ -202,6 +202,7 @@
 | 3101 | 6300 | 6.3.0-rc.1    |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 3101 | 6301 | 6.3.0-rc.2    |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 | 3101 | 6302 | 6.3.0         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
+| 3101 | 6303 | 6.3.1         |      Argon, Boron, B SoM, B5 SoM, Tracker, Tracker M, E Som X, M SoM, P2 |
 
 [1] For 0.8.0-rc.1, The v101 bootloader was also released in the Github releases as v200. Thus the next released bootloader in the 0.8.x line should be v201. As of 4/5/2018: 22 device had v200 bootloaders.
 
