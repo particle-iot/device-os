@@ -1,3 +1,21 @@
+## 6.3.2
+
+### ENHANCEMENTS
+
+- [network] interface-aware DNS lookups [#2864](https://github.com/particle-iot/device-os/pull/2864)
+
+### BUGFIXES
+
+- [gen4] core: fix PSRAM heap size while in safe mode [#2871](https://github.com/particle-iot/device-os/pull/2871)
+- [hal] SPI: fixes threading safety issue [#2865](https://github.com/particle-iot/device-os/pull/2865)
+- [gen4] hal: get rid of unnecessary constant delay(1) in HAL_USB_USART_Send_Data() [#2867](https://github.com/particle-iot/device-os/pull/2867)
+- [gen4] Work around a race condition in the new event API [#2869](https://github.com/particle-iot/device-os/pull/2869)
+
+### INTERNAL
+- [gen4] Fix MBR flash_copy due to incorrect status register WIP bit detection [#2868](https://github.com/particle-iot/device-os/pull/2868)
+- [msom] Ignore CIMI errors on bg95s5 with no esim profile loaded [#2866](https://github.com/particle-iot/device-os/pull/2866)
+- [cellular] Support new Twilio Super SIM ICCID prefix 8910392
+
 ## 6.3.0
 
 ### FEATURES
