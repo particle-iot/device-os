@@ -27,6 +27,7 @@
 #if HAL_PLATFORM_IFAPI
 #include "netdb_hal.h"
 #endif // HAL_PLATFORM_IFAPI
+#include "system_network.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +56,7 @@ int system_cloud_get_inet_family_keepalive(int af, unsigned int* value);
 sock_handle_t system_cloud_get_socket_handle();
 
 #if HAL_PLATFORM_IFAPI
-int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo);
+int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo, network_handle_t interface = NETWORK_INTERFACE_ALL, bool flushDnsCache = false);
 #endif // HAL_PLATFORM_IFAPI
 
 #ifdef __cplusplus

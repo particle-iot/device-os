@@ -38,6 +38,7 @@ DYNALIB_FN(1, hal_netdb, netdb_gethostbyname_r, int(const char*, struct hostent*
 DYNALIB_FN(2, hal_netdb, netdb_freeaddrinfo, void(struct addrinfo*))
 DYNALIB_FN(3, hal_netdb, netdb_getaddrinfo, int(const char*, const char*, const struct addrinfo*, struct addrinfo**))
 DYNALIB_FN(4, hal_netdb, netdb_getnameinfo, int(const struct sockaddr*, socklen_t, char*, socklen_t, char*, socklen_t, int))
+DYNALIB_FN(5, hal_netdb, netdb_getaddrinfo_ex, int(const char*, const char*, const struct addrinfo*, struct addrinfo**, if_t))
 
 DYNALIB_END(hal_netdb)
 

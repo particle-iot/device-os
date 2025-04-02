@@ -26,6 +26,8 @@
 
 #include "netdb_hal_impl.h"
 
+#include "ifapi.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -90,6 +92,9 @@ void netdb_freeaddrinfo(struct addrinfo* ai);
  */
 int netdb_getaddrinfo(const char* hostname, const char* servname,
                       const struct addrinfo* hints, struct addrinfo** res);
+
+int netdb_getaddrinfo_ex(const char* hostname, const char* servname,
+                      const struct addrinfo* hints, struct addrinfo** res, if_t iface);
 
 /**
  * Converts a sockaddr structure to a pair of host name and service strings.

@@ -116,14 +116,21 @@ bool NetworkClass::isPreferred() {
     return network_is_preferred(*this, nullptr);
 }
 
-IPAddress NetworkClass::resolve(const char* name) {
+IPAddress NetworkClass::resolve(const char* name, bool flushCache) {
     IPAddress addr;
 #if HAL_USE_INET_HAL_POSIX
     struct addrinfo *ai = nullptr;
     struct addrinfo hints = {};
     hints.ai_flags = AI_ADDRCONFIG;
+    if (flushCache) {
+        hints.ai_flags |= AI_FLUSHCACHE;
+    }
     hints.ai_family = AF_UNSPEC;
-    const int r = getaddrinfo(name, nullptr, &hints, &ai);
+    if_t iface = nullptr;
+    if ((network_interface_t)*this != NETWORK_INTERFACE_ALL) {
+        if_get_by_index((network_interface_t)*this, &iface);
+    }
+    const int r = netdb_getaddrinfo_ex(name, nullptr, &hints, &ai, iface);
     if (!r) {
         bool ok = false;
         // This is not really needed if AI_ADDRCONFIG is properly supported

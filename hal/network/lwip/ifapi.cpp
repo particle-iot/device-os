@@ -37,6 +37,7 @@ extern "C" {
 #include "check.h"
 
 #include "wiznet/wiznetif_config.h"
+#include "scope_guard.h"
 
 using namespace particle::net;
 
@@ -1309,4 +1310,75 @@ int if_get_profile(if_t iface, char* profile, size_t length) {
         memcpy(profile, p.data(), std::min<size_t>(p.size(), length));
     }
     return p.size();
+}
+
+// FIXME: duplicate of refreshIpState() in NetworkManager
+int if_get_protocol_state(if_t iface, if_protocol_state* state, void* reserved) {
+    CHECK_TRUE(state, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if_addrs* addrs = nullptr;
+    CHECK(if_get_if_addrs(&addrs));
+    SCOPE_GUARD({
+        if_free_if_addrs(addrs);
+    });
+
+    uint8_t idx = 0;
+    if (iface) {
+        CHECK(if_get_index(iface, &idx));
+    }
+
+    state->ipv4 = IF_PROTOCOL_STATE_UNCONFIGURED;
+    state->ipv6 = IF_PROTOCOL_STATE_UNCONFIGURED;
+
+    for (auto addr = addrs; addr != nullptr; addr = addr->next) {
+        if (iface && addr->ifindex != idx) {
+            continue;
+        }
+
+        /* Skip loopback interface */
+        if (addr->ifflags & IFF_LOOPBACK) {
+            continue;
+        }
+
+        if (addr->ifflags & IFF_DEBUG) {
+            continue;
+        }
+
+        /* Skip non-UP and non-LINK_UP interfaces */
+        if ((addr->ifflags & (IFF_UP | IFF_LOWER_UP)) != (IFF_UP | IFF_LOWER_UP)) {
+            continue;
+        }
+
+        auto a = addr->if_addr;
+        if (!a || !a->addr) {
+            continue;
+        }
+
+        if (a->addr->sa_family == AF_INET) {
+            if (a->prefixlen > 0 && /* FIXME */ a->gw && ((sockaddr_in*)a->gw)->sin_addr.s_addr != INADDR_ANY) {
+                state->ipv4 = IF_PROTOCOL_STATE_CONFIGURED;
+            }
+        } else if (a->addr->sa_family == AF_INET6) {
+            sockaddr_in6* sin6 = (sockaddr_in6*)a->addr;
+            auto ip6_addr_data = a->ip6_addr_data;
+
+            /* NOTE: we say that IPv6 is configured if there is at least
+             * one IPv6 address on an interface without scope and in a VALID state,
+             * which is in fact either PREFERRED or DEPRECATED.
+             */
+            if (sin6->sin6_scope_id == 0 && a->prefixlen > 0 &&
+                    ip6_addr_data && (ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID)) {
+                state->ipv6 = IF_PROTOCOL_STATE_CONFIGURED;
+            } else if (sin6->sin6_scope_id != 0 && a->prefixlen > 0 &&
+                    ip6_addr_data && (ip6_addr_data->state & IF_IP6_ADDR_STATE_VALID)) {
+                // Otherwise report link-local
+                if (state->ipv6 != IF_PROTOCOL_STATE_CONFIGURED) {
+                    state->ipv6 = IF_PROTOCOL_STATE_LINK_LOCAL;
+                }
+            }
+        } else {
+            /* Unknown family */
+        }
+    }
+
+    return 0;
 }
