@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <atomic>
 #include <cstring>
 #include <cstdio>
 #include <cerrno>
@@ -158,7 +159,7 @@ struct CloudEvent::Data: public RefCount {
     CString name;
     CoapPayloadPtr payload;
     std::function<OnStatusChange> onStatusChange;
-    Status status;
+    std::atomic<Status> status;
     ContentType contentType;
     size_t maxHeapSize;
     size_t pos;
@@ -588,6 +589,7 @@ void CloudEvent::resetStatus() {
         return;
     }
     d_->error = 0;
+    // Update the status without invoking the status change callback
     d_->status = Status::NEW;
 }
 
@@ -595,16 +597,20 @@ void CloudEvent::cancel() {
     if (!d_ || d_->status != Status::SENDING) {
         return;
     }
+    size_t size = this->size();
     int r = coap_cancel_request(d_->requestId, nullptr /* reserved */);
     if (r == COAP_RESULT_CANCELLED) {
-        d_->release(); // Release the reference added in send()
-        RateLimiter::instance().give(this->size());
+        // The request was found and cancelled. Release the reference added in send() as the
+        // completion callback will no longer be called for this request
+        d_->release();
     }
-    d_->requestId = COAP_INVALID_REQUEST_ID;
     // TODO: For now, transition to an invalid state as an event in a failed state can be sent again
     // and that would create a race condition between cancellation and normal completion of the event
     // in sendComplete()
-    setInvalid(Error::CANCELLED);
+    if (testAndSetStatus(Status::SENDING, Status::INVALID, Error::CANCELLED)) {
+        // The completion callback has either not been scheduled or not yet called in the app thread
+        RateLimiter::instance().give(size);
+    }
 }
 
 void CloudEvent::clear() {
@@ -796,18 +802,29 @@ coap_payload* CloudEvent::getValidPayload() {
 }
 
 void CloudEvent::setStatus(Status status, int err) {
-    if (!d_ || d_->status == status) {
+    if (!d_) {
         return;
     }
+    testAndSetStatus(d_->status, status, err);
+}
+
+bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int err) {
+    if (!d_) {
+        return false;
+    }
+    bool changed = d_->status.compare_exchange_strong(expectedStatus, newStatus);
+    if (!changed || newStatus == expectedStatus) {
+        return false;
+    }
     d_->error = err;
-    d_->status = status;
     if (d_->onStatusChange) {
         d_->onStatusChange(*this);
     }
-    if (status == Status::INVALID) {
+    if (newStatus == Status::INVALID) {
         d_->payload.reset();
         d_->onStatusChange = nullptr;
     }
+    return true;
 }
 
 int CloudEvent::receiveRequestApp(CoapMessagePtr msg) {
@@ -884,17 +901,16 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
     // Run a callback in the application thread to update the status of the event
     int r = application_thread_invoke([](void* arg) {
         CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
-        if (event.d_->status != Status::SENDING) {
+        auto newStatus = Status::SENT;
+        int err = event.d_->sendResult;
+        if (err < 0) {
+            LOG(ERROR, "Failed to send event: %d", err);
+            newStatus = Status::FAILED;
+        }
+        if (!event.testAndSetStatus(Status::SENDING, newStatus, err)) {
             return; // The event was cancelled
         }
-        event.d_->requestId = COAP_INVALID_REQUEST_ID;
         RateLimiter::instance().give(event.size());
-        if (event.d_->sendResult < 0) {
-            LOG(ERROR, "Failed to send event: %d", event.d_->sendResult);
-            event.setFailed(event.d_->sendResult);
-        } else {
-            event.setStatus(Status::SENT);
-        }
     }, d.get(), nullptr /* reserved */);
     // FIXME: application_thread_invoke() doesn't really handle errors as of now
     if (r == 0) {
