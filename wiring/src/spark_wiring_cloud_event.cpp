@@ -907,10 +907,11 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
             LOG(ERROR, "Failed to send event: %d", err);
             newStatus = Status::FAILED;
         }
+        size_t size = event.size();
         if (!event.testAndSetStatus(Status::SENDING, newStatus, err)) {
             return; // The event was cancelled
         }
-        RateLimiter::instance().give(event.size());
+        RateLimiter::instance().give(size);
     }, d.get(), nullptr /* reserved */);
     // FIXME: application_thread_invoke() doesn't really handle errors as of now
     if (r == 0) {
