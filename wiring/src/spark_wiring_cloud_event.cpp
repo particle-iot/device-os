@@ -821,7 +821,9 @@ bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int e
         d_->onStatusChange(*this);
     }
     if (newStatus == Status::INVALID) {
-        d_->payload.reset();
+        // TODO: Do not free the payload object for now as it might be accessed in the completion
+        // callback in another thread
+        // d_->payload.reset();
         d_->onStatusChange = nullptr;
     }
     return true;
