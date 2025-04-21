@@ -76,6 +76,7 @@ extern uintptr_t platform_system_backup_ram_start;
 
 extern uintptr_t link_heap_location, link_heap_location_end;
 extern uintptr_t link_heap_location_alt, link_heap_location_end_alt;
+extern uintptr_t platform_psram_end;
 
 extern int hal_exflash_disable_xip(void);
 
@@ -356,6 +357,8 @@ void HAL_Core_Config(void) {
             malloc_heap_regions[HAL_PLATFORM_HEAP_REGION_PSRAM].end = (void*)dyn->dynalib_start_address;
         } else {
             module_ota.end_address = module_ota.start_address + module_ota.maximum_size;
+            // Expand PSRAM heap, let the system use full PSRAM in safe mode
+            malloc_heap_regions[HAL_PLATFORM_HEAP_REGION_PSRAM].end = (void*)&platform_psram_end;
         }
     }
 #endif

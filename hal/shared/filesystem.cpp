@@ -428,6 +428,10 @@ int filesystem_dump_info(filesystem_t* fs) {
 }
 
 int filesystem_to_system_error(int error) {
+    // Just in case
+    if (error >= 0) {
+        return error;
+    }
     switch (error) {
     case LFS_ERR_OK: return SYSTEM_ERROR_NONE;
     case LFS_ERR_IO: return SYSTEM_ERROR_FILESYSTEM_IO;
