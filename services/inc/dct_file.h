@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include "check.h"
 
 namespace particle {
 namespace dct {
@@ -42,27 +43,23 @@ public:
 
     ssize_t read(size_t offset, uint8_t* buffer, size_t size) {
         FsLock lk(fs_);
-        open(LFS_O_RDONLY);
-        ssize_t r = seek(offset);
-        if (r < 0) {
+        CHECK_FS(open(LFS_O_RDONLY));
+        SCOPE_GUARD({
             close();
-            return r;
-        }
-        r = lfs_file_read(lfs(), &file_, buffer, size);
-        close();
-        return r;
+        });
+        CHECK_FS(seek(offset));
+        return lfs_file_read(lfs(), &file_, buffer, size);
     }
 
     ssize_t write(size_t offset, const uint8_t* buffer, size_t size) {
         FsLock lk(fs_);
 
-        open(LFS_O_WRONLY);
-
-        ssize_t r = seek(offset);
-        if (r < 0) {
+        CHECK_FS(open(LFS_O_WRONLY));
+        SCOPE_GUARD({
             close();
-            return r;
-        }
+        });
+
+        ssize_t r = CHECK_FS(seek(offset));
 
         r = lfs_file_write(lfs(), &file_, buffer, size);
         if (r < 0) {
@@ -70,14 +67,12 @@ public:
             LOG_DEBUG(ERROR, "Failed to write to DCT: %d", r);
         }
 
-        close();
-
         return r;
     }
 
     bool clear() {
         FsLock lk(fs_);
-        if (!open(LFS_O_WRONLY)) {
+        if (open(LFS_O_WRONLY) < 0) {
             return false;
         }
         SCOPE_GUARD({
@@ -104,17 +99,18 @@ public:
 
 private:
 
-    bool open(int flags) {
-        open_ = lfs_file_open(lfs(), &file_, path_, flags) == 0;
-        return open_;
+    int open(int flags) {
+        int r = lfs_file_open(lfs(), &file_, path_, flags);
+        open_ = (r == 0);
+        return r;
     }
 
-    bool close() {
+    int close() {
         if (!open_) {
             return false;
         }
         open_ = false;
-        return lfs_file_close(lfs(), &file_) == 0;
+        return lfs_file_close(lfs(), &file_);
     }
 
     ssize_t seek(size_t offset) {
@@ -144,7 +140,7 @@ private:
             flags |= LFS_O_CREAT;
         }
 
-        SPARK_ASSERT(open(flags));
+        SPARK_ASSERT(open(flags) == 0);
 
         if (flags & LFS_O_CREAT) {
             LOG_DEBUG(INFO, "Initializing empty DCT");
@@ -157,7 +153,7 @@ private:
             }
         }
 
-        SPARK_ASSERT(close());
+        SPARK_ASSERT(close() == 0);
     }
 
     void deinit() {
