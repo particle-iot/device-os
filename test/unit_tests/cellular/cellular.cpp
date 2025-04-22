@@ -79,6 +79,11 @@ TEST_CASE("Gen 3 cellular credentials") {
         auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
         REQUIRE(creds.netProv() == CellularNetworkProvider::TWILIO);
     }
+    SECTION("Twilio with iccid prefix 3") {
+        const char iccid[] = "89103924500011906351";
+        auto creds = networkConfigForIccid(iccid, sizeof(iccid) - 1);
+        REQUIRE(creds.netProv() == CellularNetworkProvider::TWILIO);
+    }
     SECTION("Telefonica") {
         const char imsi[] = "214075555555555";
         auto creds = networkConfigForImsi(imsi, sizeof(imsi) - 1);

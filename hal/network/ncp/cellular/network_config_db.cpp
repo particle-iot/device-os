@@ -43,6 +43,7 @@ const NetworkConfig NETWORK_CONFIG[] = {
     { CellularNetworkProvider::KORE_ATT, "310", "030", "", "10569.mcs", "", "" }, // Kore/AT&T SIMs with a prefix of 89010 with MCC + MNC: 310 030
     { CellularNetworkProvider::TWILIO, "", "", "8988323", "super", "", "" }, // Twilio Super SIM
     { CellularNetworkProvider::TWILIO, "", "", "8988307", "super", "", "" }, // Twilio Super SIM
+    { CellularNetworkProvider::TWILIO, "", "", "8910392", "super", "", "" }, // Twilio Super SIM
 };
 
 const size_t NETWORK_CONFIG_SIZE = sizeof(NETWORK_CONFIG) / sizeof(NETWORK_CONFIG[0]);
