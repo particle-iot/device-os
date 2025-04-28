@@ -207,6 +207,12 @@ void rtwCoexSetWifiConnectedState(bool state) {
     }
     s_wifiConnectionState = state;
 
+    // XXX XXX
+    // Disabling this for now, for some reason calling rltk_coex_set_wlan_slot_preempting()
+    // while BLE is already in a scanning state (at the very least) breaks coexistence.
+    // There is a call rltk_coex_set_wlan_slot_preempting() when we enable WiFi, so
+    // it should be sufficient.
+#if 0
     if (state) {
         hal_ble_lock(nullptr);
 
@@ -222,6 +228,7 @@ void rtwCoexSetWifiConnectedState(bool state) {
 
         hal_ble_unlock(nullptr);
     }
+#endif
 }
 
 bool rtwCoexWifiConnectedState() {

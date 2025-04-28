@@ -22,11 +22,22 @@ let maxAppSize = 0;
 async function flash(ctx, data, name, { timeout = flashTimeoutMinutes * 60 * 1000, retry = 5 } = {}) {
 	let ok = false;
 	const timeoutAt = Date.now() + timeout;
+	let noDelay = false;
 	for (let i = 0; i < retry && !ok; i++) {
-		await delayMs(i * 5000);
+		if (!noDelay) {
+			await delayMs(i * 5000);
+		}
+		noDelay = false;
 		try {
 			console.log(`Flashing ${i}/${retry}`);
-			await api.flashDevice({ deviceId, files: { [name]: data }, auth });
+			const resp = await api.flashDevice({ deviceId, files: { [name]: data }, auth });
+			if (resp.body.ok === false) {
+				console.log('Error from API', resp);
+				if (resp.body.errors && resp.body.errors.indexOf('Update failed - Another update is in progress') > -1) {
+					// Retry
+					i = Math.max(0, i - 1);
+				}
+			}
 			let seenStarted = false;
 			while (true) {
 				const t = timeoutAt - Date.now();
@@ -44,6 +55,9 @@ async function flash(ctx, data, name, { timeout = flashTimeoutMinutes * 60 * 100
 				} else if (status === 'failed') {
 					break;
 				} else if (!seenStarted) {
+					break;
+				} else if (status === 'online' && seenStarted) {
+					noDelay = true;
 					break;
 				}
 			}

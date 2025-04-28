@@ -95,12 +95,11 @@ void wifiScanResultCallBack(WiFiAccessPoint* wap, void* context) {
 
 void wifiScanThread() {
     unsigned int wifiSeconds = 0;
-    const int WIFI_SCAN_INTERVAL_SECONDS = 30;
+    const int WIFI_SCAN_INTERVAL_SECONDS = 10;
 
     while (1) {
 #if HAL_PLATFORM_WIFI
         if(System.uptime() >= wifiSeconds) {
-            wifiSeconds = System.uptime() + WIFI_SCAN_INTERVAL_SECONDS;
             apList.clear();
 
             Log.info("WiFi scan start");
@@ -114,6 +113,7 @@ void wifiScanThread() {
             if (apList.size() == 0) {
                 Log.info("WiFi scan failed: %d", wifiResult);
             }
+            wifiSeconds = System.uptime() + WIFI_SCAN_INTERVAL_SECONDS;
         }
 #endif
         delay(100);
@@ -145,6 +145,10 @@ void bleScanThread() {
 }
 
 void enableBusyMode() {
+    if (busyMode) {
+        // Already enabled
+        return;
+    }
 #if HAL_PLATFORM_BLE
     BLE.on();
 #endif
