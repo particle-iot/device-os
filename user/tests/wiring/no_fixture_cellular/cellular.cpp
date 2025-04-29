@@ -213,9 +213,13 @@ test(CELLULAR_07_urcs) {
     assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
 
     assertEqual(cellular_urcs(false, nullptr), (int)SYSTEM_ERROR_NONE);
+    // cellular_urcs() is async and may take a while, delay just in case
+    delay(100);
     assertNotEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
 
     assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
+    // cellular_urcs() is async and may take a while, delay just in case
+    delay(100);
     assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
 #else
 #error "Unsupported platform"
