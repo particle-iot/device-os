@@ -40,13 +40,17 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     SCOPE_GUARD({
         System.off(cloud_status, evHandler);
     });
+
+    const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
+
     // Pull the rug, this should cause a socket error on recv/send
 #if HAL_PLATFORM_NCP_AT
     // CFUN=0 is the same as CFUN=0,0 for R410.  Done this way because R510 errors with CFUN=0,0
-    assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=0\r\n"));
+    assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0\r\n"));
     // Force a publish just in case
     (void)Particle.publish("test", "test");
-    assertEqual((int)RESP_OK, Cellular.command("AT+CFUN=1,0\r\n"));
+    assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0\r\n"));
 #else
     CellularDevice devInfo = {};
     devInfo.size = sizeof(devInfo);
@@ -55,15 +59,15 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     // and perform a reset. Deactivating internal context or disconnecting (COPS=2) seems
     // to work better.
     if (devInfo.dev == DEV_SARA_R410) {
-        assertEqual((int)RESP_OK, Cellular.command("AT+COPS=2,0\r\n"));
+        assertEqual((int)RESP_OK, Cellular.command(UBLOX_COPS_TIMEOUT, "AT+COPS=2,0\r\n"));
         // Force a publish just in case
         (void)Particle.publish("test", "test");
-        assertEqual((int)RESP_OK, Cellular.command("AT+COPS=0,0\r\n"));
+        assertEqual((int)RESP_OK, Cellular.command(UBLOX_COPS_TIMEOUT, "AT+COPS=0,0\r\n"));
     } else {
-        assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,4\r\n"));
+        assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+UPSDA=0,4\r\n"));
         // Force a publish just in case
         (void)Particle.publish("test", "test");
-        assertEqual((int)RESP_OK, Cellular.command("AT+UPSDA=0,3\r\n"));
+        assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+UPSDA=0,3\r\n"));
     }
 #endif // HAL_PLATFORM_NCP_AT
     assertTrue(waitFor(handshakeState, 120000));
