@@ -67,6 +67,13 @@
 #define DIAG_NAME_SYSTEM_TOTAL_RAM "sys:tram"
 #define DIAG_NAME_SYSTEM_USED_RAM "sys:uram"
 #define DIAG_NAME_SYSTEM_PROTECTED_STATE "sys:protected"
+#define DIAG_NAME_SYSTEM_VERSION "sys:version"
+#define DIAG_NAME_SYSTEM_SYSTEM_PART_HASH "sys:sysphash"
+#define DIAG_NAME_SYSTEM_USER_PART_HASH "sys:userphash"
+#define DIAG_NAME_SYSTEM_PANIC_CODE "sys:panic:code"
+#define DIAG_NAME_SYSTEM_PANIC_PC "sys:panic:pc"
+#define DIAG_NAME_SYSTEM_PANIC_LR "sys:panic:lr"
+#define DIAG_NAME_SYSTEM_PANIC_ASSERTION_STRING "sys:panic:assert"
 
 #ifdef __cplusplus
 extern "C" {
@@ -121,6 +128,13 @@ typedef enum diag_id {
     DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY = 47, // net:alt:sigqual
     DIAG_ID_ALT_NETWORK_SIGNAL_QUALITY_VALUE = 48, // net:alt:sigqualv
     DIAG_ID_ALT_NETWORK_ACCESS_TECNHOLOGY = 49, // net:alt:at
+    DIAG_ID_SYSTEM_VERSION = 61, // sys:version
+    DIAG_ID_SYSTEM_SYSTEM_PART_HASH = 62, // sys:sysphash
+    DIAG_ID_SYSTEM_USER_PART_HASH = 63, // sys:userphash
+    DIAG_ID_SYSTEM_PANIC_CODE = 64, // sys:panic:code
+    DIAG_ID_SYSTEM_PANIC_PC = 65, // sys:panic:pc
+    DIAG_ID_SYSTEM_PANIC_LR = 66, // sys:panic:lr
+    DIAG_ID_SYSTEM_PANIC_ASSERTION_STRING = 67, // sys:panic:assert
     DIAG_ID_USER = 32768 // Base value for application-specific source IDs
 } diag_id;
 

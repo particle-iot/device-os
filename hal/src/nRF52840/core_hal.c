@@ -58,6 +58,7 @@
 #include "concurrent_hal.h"
 #include "user_hal.h"
 #include "nrfx_wdt.h"
+#include "program_regs.h"
 
 #define BACKUP_REGISTER_NUM        10
 static int32_t backup_register[BACKUP_REGISTER_NUM] __attribute__((section(".backup_registers")));
@@ -68,7 +69,7 @@ static struct Last_Reset_Info {
     uint32_t data;
 } last_reset_info = { RESET_REASON_NONE, 0 };
 
-void HardFault_Handler( void ) __attribute__( ( naked ) );
+void CommonFault_Handler( void ) __attribute__( ( naked ) );
 
 void HardFault_Handler(void);
 void MemManage_Handler(void);
@@ -104,7 +105,7 @@ __attribute__((used, section(".isr_vector_legacy"))) static uintptr_t* legacy_ve
 };
 
 
-__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress ) {
+__attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pulFaultStackAddress, uint32_t panicCode ) {
     /* These are volatile to try and prevent the compiler/linker optimising them
     away as the variables never actually get used.  If the debugger won't show the
     values of the variables, make them global my moving their declaration outside
@@ -135,26 +136,61 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
 
     if (SCB->CFSR & (1<<25) /* DIVBYZERO */) {
         // stay consistent with the core and cause 5 flashes
-        UsageFault_Handler();
-    } else {
-        PANIC(HardFault,"HardFault");
+        panicCode = UsageFault;
+    }
 
-        /* Go to infinite loop when Hard Fault exception occurs */
-        while (1) {
-            ;
+    PanicData data = {};
+    data.size = sizeof(data);
+    data.code = panicCode;
+    data.pc = (uintptr_t)pc;
+    data.lr = (uintptr_t)lr;
+    data.registers[0] = (uintptr_t)r0;
+    data.registers[1] = (uintptr_t)r1;
+    data.registers[2] = (uintptr_t)r2;
+    data.registers[3] = (uintptr_t)r3;
+    data.registers[4] = (uintptr_t)r12;
+    data.registers[5] = (uintptr_t)psr;
+
+    switch (panicCode) {
+        case HardFault: {
+            data.text = "HardFault";
+            break;
         }
+        case MemManage: {
+            data.text = "MemManage";
+            break;
+        }
+        case BusFault: {
+            data.text = "BusFault";
+            break;
+        }
+        case UsageFault: {
+            data.text = "UsageFault";
+            break;
+        }
+        default: {
+            // Shouldn't enter this case
+            data.text = "Unknown";
+            break;
+        }
+    }
+    PANIC_EXT(&data);
+
+    /* Go to infinite loop when Hard Fault exception occurs */
+    while (1) {
+        ;
     }
 }
 
 
-void HardFault_Handler(void) {
+void CommondFault_Handler(uint32_t code) {
     __asm volatile
     (
+        " mov r1, r0                                                \n"
         " tst lr, #4                                                \n"
         " ite eq                                                    \n"
         " mrseq r0, msp                                             \n"
         " mrsne r0, psp                                             \n"
-        " ldr r1, [r0, #24]                                         \n"
         " ldr r2, handler2_address_const                            \n"
         " bx r2                                                     \n"
         " .balign 4                                                 \n"
@@ -163,18 +199,28 @@ void HardFault_Handler(void) {
 }
 
 void app_error_fault_handler(uint32_t _id, uint32_t _pc, uint32_t _info) {
-    volatile uint32_t id = _id;
-    volatile uint32_t pc = _pc;
-    volatile uint32_t info = _info;
-    (void)id; (void)pc; (void)info;
-    PANIC(HardFault,"HardFault");
+    PanicData data = {};
+    data.size = sizeof(data);
+    data.code = HardFault; // FIXME, this should have a dedicated fault code
+    data.text = __FUNCTION__;
+    data.pc = (uintptr_t)_pc;
+    data.extra_code = (uintptr_t)_id;
+    data.registers[0] = (uintptr_t)_info;
+    PANIC_EXT(&data);
     while(1) {
         ;
     }
 }
 
 void app_error_handler_bare(uint32_t error_code) {
-    PANIC(HardFault,"HardFault");
+    PanicData data = {};
+    data.size = sizeof(data);
+    data.code = HardFault; // FIXME, this should have a dedicated fault code
+    data.text = __FUNCTION__;
+    data.lr = (uintptr_t)__builtin_return_address(0);
+    data.pc = __get_PC();
+    data.extra_code = (uintptr_t)error_code;
+    PANIC_EXT(&data);
     while(1) {
         ;
     }
@@ -182,33 +228,33 @@ void app_error_handler_bare(uint32_t error_code) {
 
 void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name)
 {
-    PANIC(HardFault,"HardFault");
+    PanicData data = {};
+    data.size = sizeof(data);
+    data.code = HardFault; // FIXME, this should have a dedicated fault code
+    data.lr = (uintptr_t)__builtin_return_address(0);
+    data.pc = __get_PC();
+    data.text = (const char*)p_file_name;
+    data.extra_code = (uintptr_t)error_code;
+    data.registers[0] = (uintptr_t)line_num;
+    PANIC_EXT(&data);
     while(1) {
     }
 }
 
+void HardFault_Handler(void) {
+    CommondFault_Handler(HardFault);
+}
+
 void MemManage_Handler(void) {
-    /* Go to infinite loop when Memory Manage exception occurs */
-    PANIC(MemManage,"MemManage");
-    while (1) {
-        ;
-    }
+    CommondFault_Handler(MemManage);
 }
 
 void BusFault_Handler(void) {
-    /* Go to infinite loop when Bus Fault exception occurs */
-    PANIC(BusFault,"BusFault");
-    while (1) {
-        ;
-    }
+    CommondFault_Handler(BusFault);
 }
 
 void UsageFault_Handler(void) {
-    /* Go to infinite loop when Usage Fault exception occurs */
-    PANIC(UsageFault,"UsageFault");
-    while (1) {
-        ;
-    }
+    CommondFault_Handler(UsageFault);
 }
 
 void SysTickOverride(void) {

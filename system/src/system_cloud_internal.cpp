@@ -684,6 +684,9 @@ void clientMessagesProcessed(void* reserved) {
         SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 1;
         SPARK_CLOUD_HANDSHAKE_PENDING = 0;
         LOG(INFO, "All handshake messages have been processed");
+
+        // Send vitals with last panic data only once
+        panic_set_last_panic_data_handled(nullptr);
     }
 }
 
@@ -709,6 +712,14 @@ void publishResetReasonIfNeeded() {
             LOG(INFO,"Send spark/device/last_reset event");
             publishEvent("spark/device/last_reset", buf);
         }
+    }
+}
+
+void publishVitalsIfHavePanicData() {
+    PanicData panic = {};
+    panic.size = sizeof(panic);
+    if (!panic_get_last_panic_data(&panic, nullptr) && !(panic.flags & PANIC_DATA_FLAG_HANDLED)) {
+        spark_protocol_post_description(spark_protocol_instance(), particle::protocol::DESCRIBE_METRICS, nullptr);
     }
 }
 
@@ -1292,6 +1303,13 @@ int Spark_Handshake(bool presence_announce)
     publishSafeModeEventIfNeeded();
     publishResetReasonIfNeeded();
     Send_Firmware_Update_Flags();
+
+    if (session_resumed) {
+        // Vitals are requested by DS only when full handshake is performed
+        // When resuming the session (which would be normal after a panic)
+        // they are not sent. Force send if we have panic data.
+        publishVitalsIfHavePanicData();
+    }
 
     if (system_mode() != AUTOMATIC || APPLICATION_SETUP_DONE) {
         err = sendApplicationDescription();

@@ -152,3 +152,5 @@
 #define HAL_PLATFORM_PROHIBIT_XIP (1)
 
 #define HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES __attribute__((section(".ram.text"), noinline))
+
+#define HAL_PLATFORM_PANIC_REGISTERS_COUNT (6)

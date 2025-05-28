@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "platform_headers.h"
 #define INTERRUPTS_HAL_EXCLUDE_PLATFORM_HEADERS
 #include <stdint.h>
 #include "spark_macros.h"
@@ -27,14 +28,22 @@
 #include "hal_platform.h"
 #include "core_hal.h"
 #include "delay_hal.h"
+#include "check.h"
 
 #define PANIC_LED_COLOR RGB_COLOR_RED
 
 LOG_SOURCE_CATEGORY("panic");
 
-static void panic_internal(const ePanicCode code, const void* extraInfo);
+static void panic_internal(const ePanicCode code, const char* text);
 
 static PanicHook panicHook = NULL;
+
+#define PANIC_DATA_MARKER (0xb33fc0ff)
+
+retained_system struct {
+    uint32_t marker;
+    PanicData data;
+} g_retainedPanicData;
 
 /****************************************************************************
 * Public Functions
@@ -46,7 +55,11 @@ void panic_set_hook(const PanicHook panicHookFunction, void* reserved)
     panicHook = panicHookFunction;
 }
 
-void panic_(const ePanicCode code, void* extraInfo, void(*unnamed)(uint32_t))
+void panic_(const ePanicCode code, const char* text, void* unused) {
+    PANIC_COMPAT(code, text);
+}
+
+void panic_ext(const PanicData* data, void* reserved)
 {
     #if HAL_PLATFORM_CORE_ENTER_PANIC_MODE
         HAL_Core_Enter_Panic_Mode(NULL);
@@ -54,19 +67,34 @@ void panic_(const ePanicCode code, void* extraInfo, void(*unnamed)(uint32_t))
         HAL_disable_irq();
     #endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
 
+    memset(&g_retainedPanicData, 0, sizeof(g_retainedPanicData));
+    g_retainedPanicData.marker = PANIC_DATA_MARKER;
+    memcpy(&g_retainedPanicData.data, data, sizeof(PanicData));
+
     //run the panic hook (if present)! this func doens't have to
     //return and can handle the system state / exit method on its own if required
     if( panicHook ) {
-        panicHook(code, extraInfo);
+        panicHook(data->code, data->text);
     }
 
     //always run the internal function if the user func returns
     //this flashes the LEDs in the fixed panic pattern
-    panic_internal(code, extraInfo);
+    panic_internal(data->code, data->text);
 
     #if defined(RELEASE_BUILD) || PANIC_BUT_KEEP_CALM == 1
-        HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, code, NULL);
+        HAL_Core_System_Reset_Ex(RESET_REASON_PANIC, data->code, NULL);
     #endif
+}
+
+int panic_get_last_panic_data(PanicData* panic, void* reserved) {
+    CHECK_TRUE(panic, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(g_retainedPanicData.marker == PANIC_DATA_MARKER && g_retainedPanicData.data.size > 0, SYSTEM_ERROR_NOT_FOUND);
+    memcpy(panic, &g_retainedPanicData.data, panic->size <= g_retainedPanicData.data.size ? panic->size : g_retainedPanicData.data.size);
+    return 0;
+}
+
+void panic_set_last_panic_data_handled(void* reserved) {
+    g_retainedPanicData.data.flags |= PANIC_DATA_FLAG_HANDLED;
 }
 
 /****************************************************************************
@@ -84,7 +112,7 @@ static void panic_led_flash(const uint32_t loopCount, const uint32_t onMS, const
     HAL_Delay_Microseconds(pauseMS);
 }
 
-static void panic_internal(const ePanicCode code, const void* extraInfo)
+static void panic_internal(const ePanicCode code, const char* text)
 {
     LED_SetRGBColor(RGB_COLOR_RED);
     LED_SetBrightness(DEFAULT_LED_RGB_BRIGHTNESS);

@@ -142,3 +142,5 @@
 #endif
 
 #define HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES __attribute__((weak))
+
+#define HAL_PLATFORM_PANIC_REGISTERS_COUNT (6)

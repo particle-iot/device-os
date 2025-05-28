@@ -2458,7 +2458,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             if (connecting_ && connection.info.role == BLE_ROLE_CENTRAL) {
                 connecting_ = false;
                 // See: handleMtuUpdated()
-                // os_semaphore_give(connectSemaphore_, false);
+                os_semaphore_give(connectSemaphore_, false);
             }
             break;
         }
@@ -2482,10 +2482,10 @@ void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     // FIXME: when device initiates the connection establishment,
     // it will perform the ATT MTU exchange automatically on connected. This may result in
     // service discovery failure when the peer device is of other Gen3 platform.
-    if (connection->info.role == BLE_ROLE_CENTRAL) {
-        connecting_ = false;
-        os_semaphore_give(connectSemaphore_, false);
-    }
+    // if (connection->info.role == BLE_ROLE_CENTRAL) {
+    //     connecting_ = false;
+    //     os_semaphore_give(connectSemaphore_, false);
+    // }
     connection->info.att_mtu = mtuSize;
     hal_ble_link_evt_t evt = {};
     evt.type = BLE_EVT_ATT_MTU_UPDATED;
