@@ -249,7 +249,7 @@ define build_C_file
 	$(call echo,'Building c file: $<')
 	$(call echo,'Invoking: ARM GCC C Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CCACHE) $(CC) $(CFLAGS) $(CONLYFLAGS) -c -o $@ $<
+	$(VERBOSE)$(CCACHE) $(CC) $(CFLAGS) $(CONLYFLAGS) -D__FILE_NAME__=\"$(notdir $<)\" -c -o $@ $<
 	$(call echo,)
 endef
 
@@ -257,7 +257,7 @@ define build_CPP_file
 	$(call echo,'Building cpp file: $<')
 	$(call echo,'Invoking: ARM GCC CPP Compiler')
 	$(VERBOSE)$(MKDIR) $(dir $@)
-	$(VERBOSE)$(CCACHE) $(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+	$(VERBOSE)$(CCACHE) $(CC) $(CFLAGS) $(CPPFLAGS) -D__FILE_NAME__=\"$(notdir $<)\" -c -o $@ $<
 	$(call echo,)
 endef
 
