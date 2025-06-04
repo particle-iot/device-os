@@ -82,7 +82,7 @@ int FreeRunnable::enqueue(void* ptr) {
 
     // Using FromISR variant here as it's not that safe to call normal FreeRTOS APIs
     // under a critical section/disabled interrupts.
-    int r = xQueueSendFromISR((QueueHandle_t)queue_, ptr, nullptr);
+    int r = xQueueSendFromISR((QueueHandle_t)queue_, &ptr, nullptr);
     if (r != pdPASS) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
