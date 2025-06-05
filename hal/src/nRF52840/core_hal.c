@@ -183,7 +183,7 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack( uint32_t *pul
 }
 
 
-void CommondFault_Handler(uint32_t code) {
+void CommonFault_Handler(uint32_t code) {
     __asm volatile
     (
         " mov r1, r0                                                \n"
@@ -242,19 +242,19 @@ void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p
 }
 
 void HardFault_Handler(void) {
-    CommondFault_Handler(HardFault);
+    CommonFault_Handler(HardFault);
 }
 
 void MemManage_Handler(void) {
-    CommondFault_Handler(MemManage);
+    CommonFault_Handler(MemManage);
 }
 
 void BusFault_Handler(void) {
-    CommondFault_Handler(BusFault);
+    CommonFault_Handler(BusFault);
 }
 
 void UsageFault_Handler(void) {
-    CommondFault_Handler(UsageFault);
+    CommonFault_Handler(UsageFault);
 }
 
 void SysTickOverride(void) {
