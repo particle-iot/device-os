@@ -68,8 +68,8 @@ void panic_ext(const PanicData* data, void* reserved)
     #endif // HAL_PLATFORM_CORE_ENTER_PANIC_MODE
 
     memset(&g_retainedPanicData, 0, sizeof(g_retainedPanicData));
-    g_retainedPanicData.marker = PANIC_DATA_MARKER;
     memcpy(&g_retainedPanicData.data, data, sizeof(PanicData));
+    g_retainedPanicData.marker = PANIC_DATA_MARKER;
 
     //run the panic hook (if present)! this func doens't have to
     //return and can handle the system state / exit method on its own if required
