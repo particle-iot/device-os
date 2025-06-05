@@ -19,7 +19,7 @@
 
 #include <stdint.h>
 
-#if __arm__
+#ifdef __arm__
 
 __attribute__((always_inline)) static inline uint32_t __get_LR(void) { 
     uint32_t result; 

@@ -69,7 +69,7 @@ static struct Last_Reset_Info {
     uint32_t data;
 } last_reset_info = { RESET_REASON_NONE, 0 };
 
-void CommonFault_Handler( void ) __attribute__( ( naked ) );
+void CommonFault_Handler( uint32_t code ) __attribute__( ( naked ) );
 
 void HardFault_Handler(void);
 void MemManage_Handler(void);
