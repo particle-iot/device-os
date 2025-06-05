@@ -11,7 +11,7 @@ TARGET_NRF5_SDK_NFC_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/components/nfc
 TARGET_NRF5_SDK_EXTERNAL_SRC_PATH = $(TARGET_NRF5_SDK_PATH)/nrf5_sdk/external
 
 # C source files included in this build.
-CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/,*.c)
+CSRC += $(filter-out $(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/nrfx_i2s.c,$(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/,*.c))
 CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/drivers/src/prs/,*.c)
 CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/hal/,*.c)
 CSRC += $(call target_files,$(TARGET_NRF5_SDK_NRFX_SRC_PATH)/soc/,*.c)

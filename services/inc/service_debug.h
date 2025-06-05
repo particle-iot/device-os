@@ -75,7 +75,11 @@ extern thread_current_fn application_thread_current_;
 
 #if PLATFORM_ID != PLATFORM_GCC
 #define SPARK_ASSERT_LOCATION __FILE_NAME__ ":" PP_STR(__LINE__)
+#if !HAL_PLATFORM_SHORT_ASSERTS
 #define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure, SPARK_ASSERT_LOCATION " AssertionFailure "#predicate);} while(0);
+#else
+#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure, "AssertionFailure");} while(0);
+#endif
 #else
 #define SPARK_ASSERT(predicate) assert(predicate)
 #endif // PLATFORM_ID != PLATFORM_GCC
