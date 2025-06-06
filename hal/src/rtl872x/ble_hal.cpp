@@ -1274,7 +1274,7 @@ int BleGap::stop(bool restore) {
                 os_queue_destroy(cmdQueue_, nullptr);
                 cmdQueue_ = nullptr;
             } else {
-                uint8_t command;
+                Command command = {};
                 while (!os_queue_take(cmdQueue_, &command, 0, nullptr)) {}
             }
         }
