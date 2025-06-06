@@ -72,6 +72,10 @@
 #include "ledger/ledger_manager.h"
 #include "ledger/ledger.h"
 
+#include "ota_module.h"
+#include "user_hal.h"
+#include "ota_flash_hal_impl.h"
+
 // FIXME
 #include "system_control_internal.h"
 
@@ -649,6 +653,64 @@ private:
     func_t f_;
 };
 
+SimpleUnsignedIntegerDiagnosticData g_systemVersionDiag(DIAG_ID_SYSTEM_VERSION, DIAG_NAME_SYSTEM_VERSION, SYSTEM_VERSION);
+
+#if defined(PLATFORM_MODULAR) && PLATFORM_MODULAR
+class ModuleShortHashDiagnosticData: public AbstractIntegerDiagnosticData {
+public:
+    ModuleShortHashDiagnosticData(uint16_t id, const char* name, const module_bounds_t* bounds)
+            : AbstractIntegerDiagnosticData(id, name),
+              bounds_(bounds) {
+    }
+
+    virtual int get(IntType& val) override {
+        CHECK_TRUE(bounds_, SYSTEM_ERROR_NOT_FOUND);
+        hal_module_t module = {};
+        bool valid = fetch_module(&module, bounds_, false, MODULE_VALIDATION_INTEGRITY);
+        if (valid && (module.validity_result & MODULE_VALIDATION_INTEGRITY)) {
+            uint32_t shortSha = 0;
+            shortSha |= (uint32_t)module.suffix.sha[0] << 24;
+            shortSha |= (uint32_t)module.suffix.sha[1] << 16;
+            shortSha |= (uint32_t)module.suffix.sha[2] << 8;
+            shortSha |= (uint32_t)module.suffix.sha[3];
+            val = shortSha;
+            return 0;
+        }
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+protected:
+    const module_bounds_t* bounds_;
+};
+
+class UserModuleShortHashDiagnosticData: public ModuleShortHashDiagnosticData {
+public:
+    UserModuleShortHashDiagnosticData(uint16_t id, const char* name)
+            : ModuleShortHashDiagnosticData(id, name, nullptr) {
+    }
+
+    virtual int get(IntType& val) override {
+        if (!bounds_ && system_mode() != SAFE_MODE) {
+            hal_user_module_descriptor desc = {};
+            CHECK(hal_user_module_get_descriptor(&desc));
+            auto bounds = find_module_bounds(module_function(&desc.info),
+                    module_index(&desc.info), module_mcu_target(&desc.info));
+            if (bounds) {
+                bounds_ = bounds;
+            }
+        }
+        return ModuleShortHashDiagnosticData::get(val);
+    }
+};
+
+ModuleShortHashDiagnosticData g_systemPartHashDiag(DIAG_ID_SYSTEM_SYSTEM_PART_HASH, DIAG_NAME_SYSTEM_SYSTEM_PART_HASH, &module_system_part1);
+UserModuleShortHashDiagnosticData g_userPartHashDiag(DIAG_ID_SYSTEM_USER_PART_HASH, DIAG_NAME_SYSTEM_USER_PART_HASH);
+#endif // defined(PLATFORM_MODULAR) && PLATFORM_MODULAR
+
+SimpleUnsignedIntegerDiagnosticData g_panicCodeDiag(DIAG_ID_SYSTEM_PANIC_CODE, DIAG_NAME_SYSTEM_PANIC_CODE);
+SimpleUnsignedIntegerDiagnosticData g_panicPcDiag(DIAG_ID_SYSTEM_PANIC_PC, DIAG_NAME_SYSTEM_PANIC_PC);
+SimpleUnsignedIntegerDiagnosticData g_panicLrDiag(DIAG_ID_SYSTEM_PANIC_LR, DIAG_NAME_SYSTEM_PANIC_LR);
+SimpleUnsignedIntegerDiagnosticData g_panicAssertionStringDiag(DIAG_ID_SYSTEM_PANIC_ASSERTION_STRING, DIAG_NAME_SYSTEM_PANIC_ASSERTION_STRING);
+
 int resetSettingsToFactoryDefaultsIfNeeded() {
 #if !defined(SPARK_NO_PLATFORM) && HAL_PLATFORM_DCT
     Load_SystemFlags();
@@ -800,6 +862,15 @@ void app_setup_and_loop(void)
         if (HAL_Core_Get_Last_Reset_Info(&reason, &data, nullptr) == 0 && reason != RESET_REASON_NONE) {
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
+    }
+
+    PanicData panic = {};
+    panic.size = sizeof(panic);
+    if (!panic_get_last_panic_data(&panic, nullptr)) {
+        g_panicCodeDiag = panic.code;
+        g_panicPcDiag = panic.pc;
+        g_panicLrDiag = panic.lr;
+        g_panicAssertionStringDiag = (uintptr_t)panic.text;
     }
 
 #if HAL_PLATFORM_RADIO_STACK

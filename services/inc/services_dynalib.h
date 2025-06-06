@@ -30,6 +30,7 @@
 #include "devicetree_stubs.h"
 #include "security_mode.h"
 #include <stdint.h>
+#include "panic.h"
 #ifdef PB_WITHOUT_64BIT
 #define pb_int64_t int32_t
 #define pb_uint64_t uint32_t
@@ -55,7 +56,7 @@ DYNALIB_FN(10, services, LED_Fade, void(Led_TypeDef))
 DYNALIB_FN(11, services, Get_LED_Brightness, uint8_t(void))
 
 DYNALIB_FN(12, services, set_logger_output, void(debug_output_fn, LoggerOutputLevel)) // Deprecated
-DYNALIB_FN(13, services, panic_, void(ePanicCode, void*, void(*)(uint32_t)))
+DYNALIB_FN(13, services, panic_, void(ePanicCode, const char*, void*))
 
 DYNALIB_FN(14, services, jsmn_init, void(jsmn_parser*, void*))
 DYNALIB_FN(15, services, jsmn_parse_deprecated, jsmnerr_t(jsmn_parser*, const char*, size_t, jsmntok_t*, unsigned int, void*))
@@ -98,6 +99,8 @@ DYNALIB_FN(49, services, devicetree_tree_get, int(void*, uint32_t, void*))
 DYNALIB_FN(50, services, devicetree_string_dictionary_lookup, const char*(uint32_t, void*))
 DYNALIB_FN(51, services, devicetree_hash_string, uint32_t(const char*, size_t))
 DYNALIB_FN(52, services, security_mode_get, int(void*))
+DYNALIB_FN(53, services, panic_ext, void(const PanicData*, void*))
+DYNALIB_FN(54, services, panic_get_last_panic_data, int(PanicData*, void*))
 
 DYNALIB_END(services)
 

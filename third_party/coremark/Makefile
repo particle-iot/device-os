@@ -6,7 +6,7 @@ TARGET_TYPE = a
 
 BUILD_PATH_EXT=$(COREMARK_BUILD_PATH_EXT)
 
-DEPENDENCIES += services
+DEPENDENCIES += services hal
 
 PROJECT_ROOT ?= ../..
 include ../../build/arm-tlm.mk

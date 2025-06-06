@@ -442,12 +442,21 @@ static const char* const _log_category = NULL;
 #define PANIC(_code, _fmt, ...) \
         do { \
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
-            panic_(_code, (void *)_fmt, HAL_Delay_Microseconds); \
+            PANIC_COMPAT(_code, _fmt, NULL); \
         } while (0)
+#define PANIC_EXT(_data, ...) ({ \
+        if ((_data)->text) { \
+            LOG_DEBUG(PANIC, (_data)->text, ##__VA_ARGS__); \
+        } \
+        panic_ext((_data), NULL); \
+    })
 #else
 #define PANIC(_code, _fmt, ...) \
         do { \
-            panic_(_code, NULL, HAL_Delay_Microseconds); \
+            PANIC_COMPAT(_code, _fmt, NULL); \
         } while (0)
+#define PANIC_EXT(_data, ...) ({ \
+        panic_ext((_data), NULL); \
+    })
 #endif // LOG_DISABLE
 #endif // _LOGGING_H

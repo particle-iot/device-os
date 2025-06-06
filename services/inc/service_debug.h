@@ -33,6 +33,7 @@
 
 #include "logging.h"
 #include "platforms.h"
+#include "preprocessor.h"
 
 #if PLATFORM_ID == PLATFORM_GCC
 #include <assert.h>
@@ -73,7 +74,18 @@ extern thread_current_fn application_thread_current_;
 #define DEBUG_D(fmt, ...) LOG_DEBUG_PRINTF(TRACE, fmt, ##__VA_ARGS__)
 
 #if PLATFORM_ID != PLATFORM_GCC
-#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure,"AssertionFailure "#predicate);} while(0);
+
+#if !HAL_PLATFORM_ASSERT_EXCLUDE_FILE_INFO
+#define SPARK_ASSERT_LOCATION __FILE_NAME__ ":" PP_STR(__LINE__) " "
+#else
+#define SPARK_ASSERT_LOCATION ""
+#endif
+
+#if !HAL_PLATFORM_SHORT_ASSERTS
+#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure, SPARK_ASSERT_LOCATION #predicate);} while(0);
+#else
+#define SPARK_ASSERT(predicate) do { if (!(predicate)) PANIC(AssertionFailure, "AssertionFailure");} while(0);
+#endif
 #else
 #define SPARK_ASSERT(predicate) assert(predicate)
 #endif // PLATFORM_ID != PLATFORM_GCC

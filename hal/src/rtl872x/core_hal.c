@@ -135,33 +135,46 @@ __attribute__((externally_visible)) void prvGetRegistersFromStack(uint32_t *pulF
         panicCode = UsageFault;
     }
 
+    PanicData data = {};
+    data.size = sizeof(data);
+    data.code = panicCode;
+    data.pc = (uintptr_t)pc;
+    data.lr = (uintptr_t)lr;
+    data.registers[0] = (uintptr_t)r0;
+    data.registers[1] = (uintptr_t)r1;
+    data.registers[2] = (uintptr_t)r2;
+    data.registers[3] = (uintptr_t)r3;
+    data.registers[4] = (uintptr_t)r12;
+    data.registers[5] = (uintptr_t)psr;
+
     switch (panicCode) {
         case HardFault: {
-            PANIC(panicCode, "HardFault");
+            data.text = "HardFault";
             break;
         }
         case MemManage: {
-            PANIC(panicCode, "MemManage");
+            data.text = "MemManage";
             break;
         }
         case BusFault: {
-            PANIC(panicCode, "BusFault");
+            data.text = "BusFault";
             break;
         }
         case UsageFault: {
-            PANIC(panicCode, "UsageFault");
+            data.text = "UsageFault";
             break;
         }
         case SecureFault: {
-            PANIC(panicCode, "SecureFault");
+            data.text = "SecureFault";
             break;
         }
         default: {
             // Shouldn't enter this case
-            PANIC(panicCode, "Unknown");
+            data.text = "Unknown";
             break;
         }
     }
+    PANIC_EXT(&data);
 
     /* Go to infinite loop when Hard Fault exception occurs */
     while (1) {

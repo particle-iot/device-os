@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,27 +15,34 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "application.h"
-#include "test.h"
+#pragma once
 
-namespace {
+#include <stdint.h>
 
-#if HAL_PLATFORM_NRF52840
-constexpr size_t FLASH_FILL_SIZE = 238 * 1024; // 239KB
-#elif HAL_PLATFORM_RTL872X
-constexpr size_t FLASH_FILL_SIZE = 1445 * 1024; // ~1.5MB
-#else
-#error "Unsupported platform"
-#endif
+#ifdef __arm__
 
-const uint8_t flashFiller[FLASH_FILL_SIZE] __attribute__((used)) = {
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-};
+__attribute__((always_inline)) static inline uint32_t __get_LR(void) { 
+    uint32_t result; 
 
-} // anonymous
-
-test(APPLICATION_MAX_SIZE_00) {
-    for (size_t i = 0; i < sizeof(flashFiller); i++) {
-        LOG(NONE, "%u", flashFiller[i]);
-    }
+    asm volatile ("mov %0, lr\n" : "=r" (result) ); 
+    return result;
 }
+
+__attribute__((always_inline)) static inline uint32_t __get_PC(void) { 
+    uint32_t result; 
+
+    asm volatile ("mov %0, pc\n" : "=r" (result) ); 
+    return result;
+}
+
+#else
+
+__attribute__((always_inline)) static inline uint32_t __get_LR(void) { 
+    return 0;
+}
+
+__attribute__((always_inline)) static inline uint32_t __get_PC(void) { 
+    return 0;
+}
+
+#endif // __arm__

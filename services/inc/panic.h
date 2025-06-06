@@ -17,6 +17,9 @@
 
 #pragma once
 
+#include "hal_platform.h"
+#include "program_regs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,6 +42,8 @@ typedef enum {
     SecureFault         = 15,
 } ePanicCode;
 
+#define PANIC_DATA_FLAG_HANDLED (0x01)
+
 typedef void (*PanicHook)(const ePanicCode code, const void* extraInfo);
 
 //optional function to set a hook that replaces the core body of the panic function
@@ -46,8 +51,33 @@ typedef void (*PanicHook)(const ePanicCode code, const void* extraInfo);
 void panic_set_hook(const PanicHook panicHookFunction, void* reserved);
 #endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
+typedef struct PanicData {
+    uint16_t size;
+    uint8_t code; // ePanicCode
+    uint8_t flags;
+    const char* text; // e.g. assertion
+    uintptr_t pc;
+    uintptr_t lr;
+    uintptr_t extra_code;
+    uintptr_t registers[HAL_PLATFORM_PANIC_REGISTERS_COUNT];
+} PanicData;
+
 //actually trigger the panic function
-void panic_(const ePanicCode code, void* extraInfo, void(*)(uint32_t));
+void panic_(const ePanicCode code, const char* text, void* unused);
+void panic_ext(const PanicData* data, void* reserved);
+
+int panic_get_last_panic_data(PanicData* panic, void* reserved);
+void panic_set_last_panic_data_handled(void* reserved);
+
+#define PANIC_COMPAT(_code, _text, ...) ({ \
+        PanicData _data = {}; \
+        _data.size = sizeof(_data); \
+        _data.code = _code; \
+        _data.text = _text; \
+        _data.lr = (uintptr_t)__builtin_return_address(0); /* XXX: __get_LR? */ \
+        _data.pc = __get_PC(); \
+        panic_ext(&_data, NULL); \
+    })
 
 #ifdef __cplusplus
 }
