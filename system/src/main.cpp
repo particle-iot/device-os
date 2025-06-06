@@ -655,6 +655,7 @@ private:
 
 SimpleUnsignedIntegerDiagnosticData g_systemVersionDiag(DIAG_ID_SYSTEM_VERSION, DIAG_NAME_SYSTEM_VERSION, SYSTEM_VERSION);
 
+#if defined(PLATFORM_MODULAR) && PLATFORM_MODULAR
 class ModuleShortHashDiagnosticData: public AbstractIntegerDiagnosticData {
 public:
     ModuleShortHashDiagnosticData(uint16_t id, const char* name, const module_bounds_t* bounds)
@@ -703,6 +704,8 @@ public:
 
 ModuleShortHashDiagnosticData g_systemPartHashDiag(DIAG_ID_SYSTEM_SYSTEM_PART_HASH, DIAG_NAME_SYSTEM_SYSTEM_PART_HASH, &module_system_part1);
 UserModuleShortHashDiagnosticData g_userPartHashDiag(DIAG_ID_SYSTEM_USER_PART_HASH, DIAG_NAME_SYSTEM_USER_PART_HASH);
+#endif // defined(PLATFORM_MODULAR) && PLATFORM_MODULAR
+
 SimpleUnsignedIntegerDiagnosticData g_panicCodeDiag(DIAG_ID_SYSTEM_PANIC_CODE, DIAG_NAME_SYSTEM_PANIC_CODE);
 SimpleUnsignedIntegerDiagnosticData g_panicPcDiag(DIAG_ID_SYSTEM_PANIC_PC, DIAG_NAME_SYSTEM_PANIC_PC);
 SimpleUnsignedIntegerDiagnosticData g_panicLrDiag(DIAG_ID_SYSTEM_PANIC_LR, DIAG_NAME_SYSTEM_PANIC_LR);

@@ -6,7 +6,8 @@
 extern "C" {
 #endif
 
-
+#define retained
+#define retained_system
 
 
 #ifdef	__cplusplus

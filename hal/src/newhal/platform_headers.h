@@ -5,3 +5,6 @@
  * features in user code. Normally user code should access the platform via
  * the HAL.
  */
+
+#define retained
+#define retained_system
