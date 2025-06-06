@@ -20,7 +20,7 @@ SECTIONS
     {
         . = ALIGN(4);
         link_code_ext_start = .;
-        *(.text.*)
+        INPUT_SECTION_FLAGS (!SHF_STRINGS) *(.text.*)
         link_code_ext_end = .;
     } > APP_FLASH_EXT AT>APP_FLASH_EXT
 
