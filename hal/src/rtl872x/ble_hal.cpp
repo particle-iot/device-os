@@ -108,6 +108,9 @@ void __wrap_bt_coex_handle_specific_evt(uint8_t* p, uint8_t len) {
 
 namespace {
 
+// Give MTU exchange 1.5 seconds to complete
+constexpr system_tick_t BLE_ATT_MTU_EXCHANGE_TIMEOUT_MS = 1500;
+
 // FIXME: should probably move under some class here
 StaticRecursiveMutex sBleEventMutex;
 
@@ -450,9 +453,12 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
-    int enqueue(uint8_t cmd) {
+    int enqueue(uint8_t cmd, void* arg = nullptr) {
         CHECK_TRUE(cmdQueue_, SYSTEM_ERROR_INVALID_STATE);
-        if (os_queue_put(cmdQueue_, &cmd, BLE_ENQUEUE_TIMEOUT_MS, nullptr)) {
+        Command c = {};
+        c.cmd = cmd;
+        c.arg = arg;
+        if (os_queue_put(cmdQueue_, &c, BLE_ENQUEUE_TIMEOUT_MS, nullptr)) {
             LOG(ERROR, "os_queue_put() failed.");
             if (cmd != BLE_CMD_EXIT_THREAD) {
                 SPARK_ASSERT(false);
@@ -493,7 +499,8 @@ private:
         BLE_CMD_EXIT_THREAD,
         BLE_CMD_STOP_ADV,
         BLE_CMD_STOP_ADV_NOTIFY,
-        BLE_CMD_START_ADV
+        BLE_CMD_START_ADV,
+        BLE_CMD_MTU_EXCHANGE_TIMEOUT
     };
 
     struct BleGapCache {
@@ -523,6 +530,7 @@ private:
               addr_{},
               advParams_{},
               advTimeoutTimer_(nullptr),
+              attMtuExchangeTimer_(nullptr),
               autoAdvCfg_(BLE_AUTO_ADV_ALWAYS),
               isScanning_(false),
               notifyScanResult_(false),
@@ -643,6 +651,7 @@ private:
 
     static T_APP_RESULT gapEventCallback(uint8_t type, void *data);
     static void onAdvTimeoutTimerExpired(os_timer_t timer);
+    static void onAttMtuExchangeTimerExpired(os_timer_t timer);
     static void bleCommandThread(void *context);
 
     struct BleAdvEventHandler {
@@ -652,12 +661,17 @@ private:
 
     void* cmdThread_;
     void* cmdQueue_;
+    struct Command {
+        uint8_t cmd;
+        void* arg;
+    };
     bool initialized_;
     bool btStackStarted_;
     volatile RtlGapDevState state_;                 /**< This should be atomically r/w as the struct is <= uint32_t */
     hal_ble_addr_t addr_;
     hal_ble_adv_params_t advParams_;
     os_timer_t advTimeoutTimer_;                    /**< Timer for advertising timeout.  */
+    os_timer_t attMtuExchangeTimer_;                /**< MTU exchange timer */
     volatile hal_ble_auto_adv_cfg_t autoAdvCfg_;    /**< Automatic advertising configuration. */
     volatile bool isScanning_;                      /**< If it is scanning or not. */
     volatile bool notifyScanResult_;
@@ -1047,12 +1061,12 @@ void BleEventDispatcher::bleEventDispatchThread(void *context) {
 
 void BleGap::bleCommandThread(void *context) {
     BleGap* gap = (BleGap*)context;
-    uint8_t command = 0;
+    Command command = {};
     while (true) {
         bool locked = false;
         if (!os_queue_peek(gap->cmdQueue_, &command, CONCURRENT_WAIT_FOREVER, nullptr)) {
-            LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command);
-            if (command == BLE_CMD_STOP_ADV || command == BLE_CMD_STOP_ADV_NOTIFY) {
+            LOCAL_DEBUG("---> Enter ble cmd thread, cmd: %d", command.cmd);
+            if (command.cmd == BLE_CMD_STOP_ADV || command.cmd == BLE_CMD_STOP_ADV_NOTIFY) {
                 if (gap->isAdvertising()) {
                     LOCAL_DEBUG( "stopAdvertising in ble cmd thread");
                     // FIXME: duplication, but for now works as a workaround
@@ -1070,11 +1084,11 @@ void BleGap::bleCommandThread(void *context) {
                     }
                     gap->stopAdvertising();
                     LOCAL_DEBUG("notifyAdvStop in ble cmd thread");
-                    if (command == BLE_CMD_STOP_ADV_NOTIFY) {
+                    if (command.cmd == BLE_CMD_STOP_ADV_NOTIFY) {
                         gap->notifyAdvStop();
                     }
                 }
-            } else if (command == BLE_CMD_START_ADV) {
+            } else if (command.cmd == BLE_CMD_START_ADV) {
                 LOCAL_DEBUG("startAdvertising in ble cmd thread");
                 // FIXME: duplication, but for now works as a workaround
                 while (!(locked = s_bleMutex.lock(BLE_WAIT_CMD_THREAD_TRY_LOCK)) && !gap->bleCommandThreadExit_) {
@@ -1090,7 +1104,9 @@ void BleGap::bleCommandThread(void *context) {
                     break;
                 }
                 gap->startAdvertising();
-            } else if (command == BLE_CMD_EXIT_THREAD) {
+            } else if (command.cmd == BLE_CMD_MTU_EXCHANGE_TIMEOUT) {
+                gap->handleMtuUpdated((uint8_t)(uintptr_t)command.arg /* connHandle */, 0);
+            } else if (command.cmd == BLE_CMD_EXIT_THREAD) {
                 LOCAL_DEBUG("Exit ble cmd thread");
                 break;
             }
@@ -1119,7 +1135,7 @@ int BleGap::init() {
     RCC_PeriphClockCmd(APBPeriph_UART1, APBPeriph_UART1_CLOCK, ENABLE);
 
     if (!cmdQueue_) {
-        CHECK_TRUE(os_msg_queue_create(&cmdQueue_, BLE_CMD_QUEUE_SIZE, sizeof(uint8_t)), SYSTEM_ERROR_INTERNAL);
+        CHECK_TRUE(os_queue_create(&cmdQueue_, sizeof(Command), BLE_CMD_QUEUE_SIZE, nullptr) == 0, SYSTEM_ERROR_INTERNAL);
     }
     if (!cmdThread_) {
         CHECK_TRUE(os_thread_create(&cmdThread_, "bleCommandThread", BLE_CMD_THREAD_PRIORITY, bleCommandThread, this, BLE_CMD_THREAD_STACK_SIZE) == 0, SYSTEM_ERROR_INTERNAL);
@@ -1131,6 +1147,7 @@ int BleGap::init() {
     // FreeRTOS timers are not supposed to be created with 0 timeout, enabling configASSERT will trigger it
     // We're just creating the timer with fixed period and we're going to change it anyway before starting advertising.
     CHECK_TRUE(os_timer_create(&advTimeoutTimer_, 1000, onAdvTimeoutTimerExpired, this, true, nullptr) == 0, SYSTEM_ERROR_INTERNAL);
+    CHECK_TRUE(os_timer_create(&attMtuExchangeTimer_, BLE_ATT_MTU_EXCHANGE_TIMEOUT_MS, onAttMtuExchangeTimerExpired, nullptr, true, nullptr) == 0, SYSTEM_ERROR_NO_MEMORY);
 
     gap_config_max_le_link_num(BLE_MAX_LINK_COUNT);
     gap_config_max_le_paired_device(BLE_MAX_LINK_COUNT);
@@ -1140,6 +1157,14 @@ int BleGap::init() {
     CHECK_TRUE(le_gap_init(BLE_MAX_LINK_COUNT), SYSTEM_ERROR_INTERNAL);
     uint8_t mtuReq = true;
     CHECK_RTL(le_set_gap_param(GAP_PARAM_SLAVE_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
+    // XXX: MTU exchange is broken in Central role if initiated by us and the remote peripheral
+    // does not respond to the request (which is the case with some Apple devices (of course))
+    // Because we do not get any response, the rest of the requests (write/read/discovery)
+    // are not executed and we are stuck in a connected state without being able to communicate
+    // with the peripheral. Disabling GAP_PARAM_MASTER_INIT_GATT_MTU_REQ seems to work and allows
+    // us to rely solely on the peripheral to perform MTU exchange.
+    mtuReq = false;
+    CHECK_RTL(le_set_gap_param(GAP_PARAM_MASTER_INIT_GATT_MTU_REQ, sizeof(mtuReq), &mtuReq));
     CHECK(setAppearance(GAP_GATT_APPEARANCE_UNKNOWN));
     CHECK(setDeviceName(devName_, devNameLen_));
     CHECK(setAdvertisingParameters(&advParams_));
@@ -1249,7 +1274,7 @@ int BleGap::stop(bool restore) {
                 os_queue_destroy(cmdQueue_, nullptr);
                 cmdQueue_ = nullptr;
             } else {
-                uint8_t command;
+                Command command = {};
                 while (!os_queue_take(cmdQueue_, &command, 0, nullptr)) {}
             }
         }
@@ -1304,6 +1329,10 @@ int BleGap::stop(bool restore) {
     if (advTimeoutTimer_) {
         os_timer_destroy(advTimeoutTimer_, nullptr);
         advTimeoutTimer_ = nullptr;
+    }
+    if (attMtuExchangeTimer_) {
+        os_timer_destroy(attMtuExchangeTimer_, nullptr);
+        attMtuExchangeTimer_ = nullptr;
     }
 
     BleGatt::getInstance().deinit();
@@ -1666,6 +1695,12 @@ void BleGap::onAdvTimeoutTimerExpired(os_timer_t timer) {
     BleGap* gap;
     os_timer_get_id(timer, (void**)&gap);
     gap->enqueue(BLE_CMD_STOP_ADV_NOTIFY);
+}
+
+void BleGap::onAttMtuExchangeTimerExpired(os_timer_t timer) {
+    void* timerId = nullptr;
+    os_timer_get_id(timer, &timerId); // This is connHandle
+    BleGap::getInstance().enqueue(BLE_CMD_MTU_EXCHANGE_TIMEOUT, timerId);
 }
 
 bool BleGap::scanning() {
@@ -2358,6 +2393,7 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
                 }
                 hal_ble_addr_t dummyAddr = {};
                 if (!addressEqual(connectingAddr_, dummyAddr)) {
+                    os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
                     // connecting_ might have been set to false on GAP_CONN_STATE_CONNECTED event, but the ATT MTU callback is not invoked
                     // Central failed to connect
                     os_semaphore_give(connectSemaphore_, false);
@@ -2456,8 +2492,16 @@ void BleGap::handleConnectionStateChanged(uint8_t connHandle, T_GAP_CONN_STATE n
             evt.params.connected.info = &connection.info;
             notifyLinkEvent(evt);
             if (connecting_ && connection.info.role == BLE_ROLE_CENTRAL) {
-                connecting_ = false;
+                // Postpone setting connecting_ = false until MTU exchange happens (or times out)
+                // as by the standard you are not allowed to perform any reads/writes etc during an MTU exchange
+                SPARK_ASSERT(!os_timer_is_active(attMtuExchangeTimer_, nullptr));
+                os_timer_set_id(attMtuExchangeTimer_, (void*)(uintptr_t)connHandle);
+                if (!os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_START, false, 0, 0, nullptr)) {
+                    LOG(ERROR, "Failed to start MTU exchange timer");
+                    os_semaphore_give(connectSemaphore_, false);
+                }
                 // See: handleMtuUpdated()
+                // connecting_ = false;
                 // os_semaphore_give(connectSemaphore_, false);
             }
             break;
@@ -2470,7 +2514,7 @@ void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     std::lock_guard<RecursiveMutex> lk(connectionsMutex_);
     LOG_DEBUG(TRACE, "handleMtuUpdated: handle:%d, mtu_size:%d", connHandle, mtuSize);
     BleConnection* connection = fetchConnection(connHandle);
-    if (!connection && connecting_) {
+    if (!connection && connecting_ && mtuSize != 0) {
         // Race condition in the stack
         LOG_DEBUG(WARN, "handleMtuUpdated force adding connection");
         handleConnectionStateChanged(connHandle, GAP_CONN_STATE_CONNECTED, 0);
@@ -2479,19 +2523,24 @@ void BleGap::handleMtuUpdated(uint8_t connHandle, uint16_t mtuSize) {
     if (!connection) {
         return;
     }
+    if (os_timer_is_active(attMtuExchangeTimer_, nullptr)) {
+        os_timer_change(attMtuExchangeTimer_, OS_TIMER_CHANGE_STOP, false, 0, 0, nullptr);
+    }
     // FIXME: when device initiates the connection establishment,
     // it will perform the ATT MTU exchange automatically on connected. This may result in
     // service discovery failure when the peer device is of other Gen3 platform.
-    if (connection->info.role == BLE_ROLE_CENTRAL) {
+    if (connection->info.role == BLE_ROLE_CENTRAL && connecting_) {
         connecting_ = false;
         os_semaphore_give(connectSemaphore_, false);
     }
-    connection->info.att_mtu = mtuSize;
-    hal_ble_link_evt_t evt = {};
-    evt.type = BLE_EVT_ATT_MTU_UPDATED;
-    evt.conn_handle = connHandle;
-    evt.params.att_mtu_updated.att_mtu_size = mtuSize;
-    notifyLinkEvent(evt);
+    if (mtuSize != 0) {
+        connection->info.att_mtu = mtuSize;
+        hal_ble_link_evt_t evt = {};
+        evt.type = BLE_EVT_ATT_MTU_UPDATED;
+        evt.conn_handle = connHandle;
+        evt.params.att_mtu_updated.att_mtu_size = mtuSize;
+        notifyLinkEvent(evt);
+    }
 }
 
 void BleGap::handleConnParamsUpdated(uint8_t connHandle, uint8_t status, uint16_t cause) {

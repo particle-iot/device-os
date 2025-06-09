@@ -106,7 +106,7 @@ const hal_ble_attr_handle_t SERVICES_BASE_START_HANDLE = 0x0001;
 const hal_ble_attr_handle_t SERVICES_TOP_END_HANDLE = 0xFFFF;
 
 // Pool for BLE event data.
-constexpr size_t BLE_EVT_DATA_POOL_SIZE = 2048;
+constexpr size_t BLE_EVT_DATA_POOL_SIZE = 3072;
 
 // Timeout for a BLE procedure.
 constexpr uint32_t BLE_OPERATION_TIMEOUT_MS = 60000;
@@ -391,6 +391,7 @@ public:
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
     int stopScanning();
+    int stopScanningImpl();
     int continueScanning(bool stop = false);
     ble_gap_scan_params_t toPlatformScanParams() const;
     int processAdvReportEventFromThread(const ble_evt_t* event);
@@ -1477,9 +1478,7 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
     return SYSTEM_ERROR_NONE;
 }
 
-int BleObject::Observer::stopScanning() {
-    BleLock lk;
-
+int BleObject::Observer::stopScanningImpl() {
     if (!isScanning_) {
         return SYSTEM_ERROR_NONE;
     }
@@ -1503,6 +1502,12 @@ int BleObject::Observer::stopScanning() {
         os_semaphore_give(scanSemaphore_, false);
     }
     return SYSTEM_ERROR_NONE;
+}
+
+int BleObject::Observer::stopScanning() {
+    BleLock lk;
+
+    return stopScanningImpl();
 }
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
@@ -1657,7 +1662,8 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
             }
             ble_evt_t* observerEvent = (ble_evt_t*)BleObject::getInstance().dispatcher()->allocEventData(sizeof(ble_evt_t));
             if (!observerEvent) {
-                observer->stopScanning();
+                // XXX: can't call stopScanning() here as it normally acquires BLE mutex
+                observer->stopScanningImpl();
                 break;
             }
             // Copy the SoftDevice event.
@@ -1667,7 +1673,8 @@ void BleObject::Observer::processObserverEvents(const ble_evt_t* event, void* co
                 advReport.data.p_data = (uint8_t*)BleObject::getInstance().dispatcher()->allocEventData(advReport.data.len);
                 if (!advReport.data.p_data) {
                     BleObject::getInstance().dispatcher()->freeEventData(observerEvent);
-                    observer->stopScanning();
+                    // XXX: can't call stopScanning() here as it normally acquires BLE mutex
+                    observer->stopScanningImpl();
                     break;
                 }
                 // Copy the advertising packet data payload.
