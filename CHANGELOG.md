@@ -1,3 +1,19 @@
+## 6.3.3
+
+### FEATURES
+
+- Panic vitals [#2872](https://github.com/particle-iot/device-os/pull/2872)
+
+### ENHANCEMENTS
+
+- [Gen 4] Cortex-M33 FreeRTOS port updated to latest version with `BASEPRI` fixes [#2872](https://github.com/particle-iot/device-os/pull/2872) [realtek_ambd_sdk_public#6](https://github.com/particle-iot/realtek_ambd_sdk_public/pull/6)
+
+### BUGFIXES
+
+- [Gen 4] `free_worker` incorrect queue put [#2872](https://github.com/particle-iot/device-os/pull/2872)
+- [Gen 3] BLE lock is acquired inside ISR handler in cases where BLE memory pool gets exhausted [#2873](https://github.com/particle-iot/device-os/pull/2873)
+- [Gen 4] BLE stack does not handle correctly the case where the peripheral does not respond to the MTU exchange request [#2873](https://github.com/particle-iot/device-os/pull/2873)
+
 ## 6.3.2
 
 ### ENHANCEMENTS
