@@ -26,6 +26,7 @@
 #include "static_recursive_mutex.h"
 #include "concurrent_hal.h"
 #include "i2c_hal.h"
+#include "exrtc_hal.h"
 
 
 namespace particle {
@@ -127,7 +128,7 @@ class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
-    int begin();
+    int begin(const hal_exrtc_config_t* config);
     int end();
     int sync();
 
@@ -146,7 +147,7 @@ public:
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
     int sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const;
 
-    int getPartNumber(uint16_t* id) const;
+    int getPartNumber(uint16_t* id, bool detect = false) const;
 
     /*
      * The XT oscillator calibration value is determined by the following process:
@@ -175,6 +176,9 @@ public:
 private:
     Am18x5();
     ~Am18x5();
+
+    void dumpRegisters() const;
+    int setPsw(bool val) const; // This is dangerous, make it private for now!
 
     int setHundredths(uint8_t hundredths) const;
     int setSeconds(uint8_t seconds) const;
@@ -206,14 +210,14 @@ private:
     static constexpr uint16_t PART_NUMBER = 0x1805;
 
     bool initialized_;
-    uint8_t address_;
-    hal_i2c_interface_t wire_;
+    bool detected_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;
     os_thread_t exRtcWorkerThread_;
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
+    hal_exrtc_config_t config_;
 }; // class Am18x5
 
 
