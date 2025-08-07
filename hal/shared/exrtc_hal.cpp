@@ -33,9 +33,8 @@ const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 
 } // anonymous
 
-int hal_exrtc_init(void* reserved) {
-    (void)Am18x5::getInstance();
-    return 0;
+int hal_exrtc_init(const hal_exrtc_config_t* config, void* reserved) {
+    return Am18x5::getInstance().begin(config);
 }
 
 int hal_exrtc_set_time(const struct timeval* tv, void* reserved) {

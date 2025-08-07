@@ -70,7 +70,16 @@ uint64_t usUnixtimeFromTimeval(const struct timeval* tv) {
 
 void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_init(nullptr);
+    hal_exrtc_config_t config = {
+        .version = HAL_EXRTC_CONFIG_VERSION,
+        .size = sizeof(hal_exrtc_config_t),
+        .wdi_pin = RTC_WDI,
+        .int_pin = RTC_INT,
+        .i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C,
+        .i2c_addr = HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR,
+        .osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT,
+    };
+    hal_exrtc_init(&config, nullptr);
     struct timeval tv = {};
     if (!hal_exrtc_get_time(&tv, nullptr)) {
         hal_rtc_set_time(&tv, nullptr);

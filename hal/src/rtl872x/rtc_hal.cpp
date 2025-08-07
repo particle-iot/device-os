@@ -29,53 +29,12 @@ extern "C" {
 #include "rtl8721d.h"
 }
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
-#endif
-
-
 namespace {
 
 const time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 const time_t UNIX_TIME_20000101000000 = 946684800UL;   // 2000/01/01 00:00:00
 
 const int CFG_RTC_PRIORITY = 5;
-
-#if HAL_PLATFORM_EXTERNAL_RTC
-class ExternalRtc {
-public:
-    ExternalRtc() = default;
-    ~ExternalRtc() = default;
-
-    int init() {
-        return hal_exrtc_init(nullptr);
-    }
-
-    int deinit() {
-        return SYSTEM_ERROR_NONE;
-    }
-
-    int getTime(struct timeval* tv) {
-        return hal_exrtc_get_time(tv, nullptr);
-    }
-
-    int setTime(const struct timeval* tv) {
-        return hal_exrtc_set_time(tv, nullptr);
-    }
-
-    int setAlarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context) {
-        return hal_exrtc_set_alarm(tv, flags, handler, context, nullptr);
-    }
-
-    int cancelAlarm() {
-        return hal_exrtc_cancel_alarm(nullptr);
-    }
-
-    bool isTimeValid() {
-        return hal_exrtc_time_is_valid(nullptr);
-    }
-};
-#endif
 
 class RealtekRtc {
 public:
@@ -328,11 +287,7 @@ private:
 
 retained_system struct tm RealtekRtc::timeInfo_ = {};
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-ExternalRtc rtcInstance;
-#else
 RealtekRtc rtcInstance;
-#endif
 
 } // anonymous
 
