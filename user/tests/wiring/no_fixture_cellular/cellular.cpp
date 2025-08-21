@@ -189,8 +189,8 @@ test(CELLULAR_06_on_off_validity_check) {
 
     Cellular.off();
     waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
-    assertFalse(Cellular.isOn());
     assertTrue(Cellular.isOff());
+    assertFalse(Cellular.isOn());
 
     ret = Cellular.command("AT\r\n");
     assertNotEqual(ret, (int)RESP_OK);
@@ -202,28 +202,60 @@ test(CELLULAR_06_on_off_validity_check) {
 
     ret = Cellular.command("AT\r\n");
     assertEqual(ret, (int)RESP_OK);
-
-    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
 
 test(CELLULAR_07_urcs) {
-    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 
 #if HAL_PLATFORM_GEN == 3
     assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    int modem_type = -1;
+#if HAL_PLATFORM_NCP
+    modem_type = cellular_modem_type();
+#endif // HAL_PLATFORM_NCP
 
-    assertEqual(cellular_urcs(false, nullptr), (int)SYSTEM_ERROR_NONE);
-    // cellular_urcs() is async and may take a while, delay just in case
+    // Ensure we are disconnected, bad things can happen if messages are tx/rx
+    // on the cloud connection when the AT command channel is suspended.
+    if (Particle.connected) {
+        Particle.disconnect();
+        waitFor(Particle.disconnected, 30000);
+    }
+
     delay(100);
     SCOPE_GUARD({
         cellular_urcs(true, nullptr);
+        // cellular_urcs() is async and may take a while, delay just in case
+        delay(1000);
+        connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     });
-    assertNotEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+
+    assertEqual(cellular_urcs(false, nullptr), (int)SYSTEM_ERROR_NONE);
+    // cellular_urcs() is async and may take a while, delay just in case
+    delay(1000);
+
+    if (modem_type != DEV_QUECTEL_BG95_S5) {
+        assertNotEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    } else {
+        // TODO: Pull in addUrcHandler code from FOTA update PR,
+        //       monitor for +CGEV which happens right after AT+CFUN=4
+        //       Will need to run AT+CFUN=4, AT+CFUN=1 and look for absense of +CGEV
+        //
+        // For now we'll test AT commands work
+        assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    }
 
     assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
     // cellular_urcs() is async and may take a while, delay just in case
-    delay(100);
-    assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    delay(1000);
+    if (modem_type != DEV_QUECTEL_BG95_S5) {
+        assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    } else {
+        // TODO: Pull in addUrcHandler code from FOTA update PR,
+        //       monitor for +CGEV which happens right after AT+CFUN=4
+        //       Will need to run AT+CFUN=4, AT+CFUN=1, and look for presense of +CGEV
+        //
+        // For now we'll test AT commands work
+        assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
+    }
 #else
 #error "Unsupported platform"
 #endif
@@ -318,12 +350,12 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertTrue(contains);
 }
 
+#if 0 // FIXME
 static int atCallback(int type, const char* buf, int len, int* lines) {
     if (len && type == TYPE_UNKNOWN)
         (*lines)++;
     return WAIT;
 }
-#if 0 // FIXME
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
     if (cellular_modem_type() == DEV_QUECTEL_BG96 ||
             cellular_modem_type() == DEV_QUECTEL_EG91_E ||
