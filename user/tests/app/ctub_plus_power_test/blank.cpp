@@ -95,7 +95,7 @@ void setup() {
             Log.info("BMA400 power mode set to normal");
             bma400_sensor_conf conf = {};
             conf.type = BMA400_GEN1_INT;
-            conf.param.gen_int.gen_int_thres = 10; // 8mg per LSB
+            conf.param.gen_int.gen_int_thres = 200; // 8mg per LSB. 0 - 255
             conf.param.gen_int.gen_int_dur = 1;
             conf.param.gen_int.axes_sel = 0x07; // Enable all axes
             conf.param.gen_int.data_src = BMA400_DATA_SRC_ACC_FILT1;
@@ -112,14 +112,24 @@ void setup() {
                 Log.error("Failed to set BMA400 sensor configuration: %d", ret);
             } else {
                 Log.info("BMA400 sensor configuration set successfully");
-                bma400_int_enable enable = {};
-                enable.type = BMA400_GEN1_INT_EN;
-                enable.conf = BMA400_ENABLE; // Enable the generic interrupt 1
-                ret = bma400_enable_interrupt(&enable, 1, &dev);
+                bma400_device_conf devConfig = {};
+                devConfig.type = BMA400_INT_PIN_CONF;
+                devConfig.param.int_conf.int_chan = BMA400_INT_CHANNEL_1; // Map to interrupt channel 1
+                devConfig.param.int_conf.pin_conf = BMA400_INT_PUSH_PULL_ACTIVE_0;
+                ret = bma400_set_device_conf(&devConfig, 1, &dev);
                 if (ret != BMA400_OK) {
-                    Log.error("Failed to enable BMA400 interrupt: %d", ret);
+                    Log.error("Failed to configure BMA400 interrupt: %d", ret);
                 } else {
-                    Log.info("BMA400 interrupt enabled");
+                    Log.info("BMA400 interrupt configured successfully");
+                    bma400_int_enable enable = {};
+                    enable.type = BMA400_GEN1_INT_EN;
+                    enable.conf = BMA400_ENABLE; // Enable the generic interrupt 1
+                    ret = bma400_enable_interrupt(&enable, 1, &dev);
+                    if (ret != BMA400_OK) {
+                        Log.error("Failed to enable BMA400 interrupt: %d", ret);
+                    } else {
+                        Log.info("BMA400 interrupt enabled");
+                    }
                 }
             }
         }

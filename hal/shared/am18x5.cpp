@@ -353,7 +353,7 @@ int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, newValue));
 
     // Rising edge on EXTI pin will wake up the device
-    CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
+    // CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
 
     // Transfer to SLEEP state without any delay
     return writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT);
