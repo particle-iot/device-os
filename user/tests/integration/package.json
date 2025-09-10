@@ -5,7 +5,7 @@
     "@particle/device-constants": "^3.5.0",
     "binary-version-reader": "^2.4.0",
     "chai-exclude": "^2.1.0",
-    "particle-api-js": "^10.4.2",
+    "particle-api-js": "^11.1.4",
     "tempy": "^1.0.1"
   }
 }
