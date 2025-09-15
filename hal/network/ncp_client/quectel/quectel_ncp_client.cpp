@@ -1747,9 +1747,19 @@ int QuectelNcpClient::getMtu() {
 
 int QuectelNcpClient::urcs(bool enable) {
     if (enable) {
-        CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",1,1"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CEREG=2"));
+        } else {
+            CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        }
     } else {
-        CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",0,1"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CEREG=0"));
+        } else {
+            CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
+        }
     }
     return SYSTEM_ERROR_NONE;
 }
