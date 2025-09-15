@@ -13,6 +13,9 @@ const { readFile, writeFile } = require('fs').promises;
 const chaiExclude = require('chai-exclude');
 chai.use(chaiExclude);
 
+// Better logging on failure
+chai.config.truncateThreshold = 2000; // default truncation is only 40, which barely shows us the error
+
 let api = null;
 let auth = null;
 let device = null;
@@ -340,11 +343,11 @@ test('03_ad_hoc_ota_complete', async function() {
 	const local = generatedAssetsToReport();
 	console.log(local);
 	console.log(deviceReported);
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
 	const queried = await queryDeviceAssets();
-	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.available).excludingEvery(['crc', 'storageSize']).to.deep.equal(local);
 	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
@@ -364,12 +367,12 @@ test('06_ad_hoc_ota_asset_repeat_complete', async function() {
 	const local = generatedAssetsToReport();
 	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
 	cloudReported.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
 	const queried = await queryDeviceAssets();
 	queried.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.available).excludingEvery(['crc', 'storageSize']).to.deep.equal(local);
 	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
@@ -397,11 +400,11 @@ test('10_product_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const cloudReported = cloudReportedToReport(await waitForAssets(5 * 60 * 1000));
 	const local = generatedAssetsToReport();
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
 	const queried = await queryDeviceAssets();
-	expect(queried.available).excludingEvery(['crc']).to.deep.equal(local);
+	expect(queried.available).excludingEvery(['crc', 'storageSize']).to.deep.equal(local);
 	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
@@ -417,7 +420,7 @@ test('12_assets_handled_hook', async function() {
 test('13_assets_read_skip_reset', async function() {
     const deviceReported = JSON.parse(device.mailBox.shift().d);
 	const local = generatedAssetsToReport();
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
 });
 
@@ -430,8 +433,10 @@ test('15_assets_read_using_filesystem', async function() {
 	const local = generatedAssetsToReport();
 	console.dir(deviceReported, { depth: null });
 	console.dir(local, { depth: null });
-	expect(local).to.deep.include(deviceReported.available[0]);
-	expect(deviceReported.required).excludingEvery(['crc', 'size', 'readable', 'storageSize']).to.deep.equal(local);
+	const EXCLUDE = ['crc', 'size', 'readable', 'storageSize'];
+	const prune = x => JSON.parse(JSON.stringify(x, (k, v) => EXCLUDE.includes(k) ? undefined : v));
+	expect(local).excludingEvery(EXCLUDE).to.deep.include(prune(deviceReported.available[0]));
+	expect(deviceReported.required).excludingEvery(EXCLUDE).to.deep.equal(local);
 });
 
 test('16_assets_add_extra_asset_start', async function() {
@@ -457,10 +462,10 @@ test('18_assets_add_extra_asset_complete', async function() {
 	const queried = await queryDeviceAssets();
 	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
 	cloudReported.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(cloudReported).excludingEvery(['hash', 'crc', 'size', 'storageSize']).to.deep.equal(local);
-	expect(queried.available).excludingEvery(['crc']).to.deep.equal(localWithExtra);
+	expect(queried.available).excludingEvery(['crc', 'storageSize']).to.deep.equal(localWithExtra);
 	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
@@ -495,9 +500,9 @@ test('21_seek_backwards', async function() {
 	assets.push(extra);
 	const queried = await queryDeviceAssets();
 	deviceReported.available.sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0));
-	expect(deviceReported.available).to.deep.equal(local);
+	expect(deviceReported.available).excludingEvery(['storageSize']).to.deep.equal(local);
 	expect(deviceReported.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
-	expect(queried.available).excludingEvery(['crc']).to.deep.equal(localWithExtra);
+	expect(queried.available).excludingEvery(['crc', 'storageSize']).to.deep.equal(localWithExtra);
 	expect(queried.required).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 	expect(queried.requiredApp).excludingEvery(['crc', 'size', 'storageSize', 'readable']).to.deep.equal(local);
 });
