@@ -1,3 +1,20 @@
+## 6.3.4
+
+### BUGFIXES
+
+- Increase system power manager stack size for all platforms [#2874](https://github.com/particle-iot/device-os/pull/2874)
+- [gen4] [bootloader] Update SDK for pin toggling fix [#2876](https://github.com/particle-iot/device-os/pull/2876)
+- [test] fixes for M635/M-SoM BG95-S5/BG95-M5 CELLULAR_07_urcs [#2877](https://github.com/particle-iot/device-os/pull/2877)
+
+### ENHANCEMENTS
+
+- system event `network_credentials_added` passes `NetworkCredentials` object [#2882](https://github.com/particle-iot/device-os/pull/2882)
+
+### INTERNAL
+
+- [docs] Update CLA links [#2878](https://github.com/particle-iot/device-os/pull/2878)
+- [test] Update test dependencies [#2879](https://github.com/particle-iot/device-os/pull/2879)
+
 ## 6.3.3
 
 ### FEATURES
