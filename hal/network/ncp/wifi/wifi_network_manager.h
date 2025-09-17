@@ -23,6 +23,8 @@
 #include <cstdint>
 #include "enumflags.h"
 
+#include "wlan_hal_shared.h"
+
 namespace particle {
 
 class WifiNcpClient;
@@ -35,16 +37,6 @@ const size_t MAX_SSID_SIZE = 32;
 
 // Maximum length of a WPA/WPA2 key
 const size_t MAX_WPA_WPA2_PSK_SIZE = 64;
-
-enum class WifiSecurity {
-    NONE = 0,
-    WEP = 1,
-    WPA_PSK = 2,
-    WPA2_PSK = 3,
-    WPA_WPA2_PSK = 4,
-    WPA3_PSK = 5,
-    WPA2_WPA3_PSK = 6
-};
 
 enum class WifiNetworkConfigFlag {
     NONE = 0x00,

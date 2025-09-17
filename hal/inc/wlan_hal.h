@@ -33,6 +33,7 @@
 #include "socket_hal.h"
 #include "timer_hal.h"
 #include "net_hal.h"
+#include "wlan_hal_shared.h"
 
 
 #ifdef	__cplusplus
@@ -183,16 +184,6 @@ int wlan_has_credentials();
 #undef WLAN_SEC_WPA_ENTERPRISE
 #undef WLAN_SEC_WPA2_ENTERPRISE
 #endif
-typedef enum {
-    WLAN_SEC_UNSEC = 0,
-    WLAN_SEC_WEP,
-    WLAN_SEC_WPA,
-    WLAN_SEC_WPA2,
-    WLAN_SEC_WPA_ENTERPRISE,
-    WLAN_SEC_WPA2_ENTERPRISE,
-    WLAN_SEC_WPA3,
-    WLAN_SEC_NOT_SET = 0xFF
-} WLanSecurityType;
 
 
 typedef enum {
