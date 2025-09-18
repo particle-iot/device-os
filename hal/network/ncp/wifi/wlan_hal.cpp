@@ -71,25 +71,6 @@ WifiSecurity toWifiSecurity(WLanSecurityType type) {
     }
 }
 
-WLanSecurityType fromWifiSecurity(WifiSecurity sec) {
-    switch (sec) {
-    case WifiSecurity::NONE:
-        return WLanSecurityType::WLAN_SEC_UNSEC;
-    case WifiSecurity::WEP:
-        return WLanSecurityType::WLAN_SEC_WEP;
-    case WifiSecurity::WPA_PSK:
-        return WLanSecurityType::WLAN_SEC_WPA;
-    case WifiSecurity::WPA2_PSK:
-    case WifiSecurity::WPA_WPA2_PSK:
-        return WLanSecurityType::WLAN_SEC_WPA2;
-    case WifiSecurity::WPA3_PSK:
-    case WifiSecurity::WPA2_WPA3_PSK:
-        return WLanSecurityType::WLAN_SEC_WPA3;
-    default:
-        return WLanSecurityType::WLAN_SEC_UNSEC;
-    }
-}
-
 } // unnamed
 
 int wlan_connect_init() {

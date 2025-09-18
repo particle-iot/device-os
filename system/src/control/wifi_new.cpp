@@ -64,6 +64,49 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
     }
 }
 
+void network_credentials_cleanup(void* ptr) {
+    auto creds = static_cast<NetworkCredentials*>(ptr);
+    free(creds);
+}
+
+NetworkCredentials* alloc_network_credentials_deep_copy(WifiNetworkConfig conf)
+{
+    const size_t ssid_bytes = conf.ssid() ? (strlen(conf.ssid()) + 1) : 0;
+    const size_t pass_bytes = conf.credentials().password() ? (strlen(conf.credentials().password()) + 1) : 0;
+    const size_t total = sizeof(NetworkCredentials) + ssid_bytes + pass_bytes;
+
+    unsigned char* mem = static_cast<unsigned char*>(malloc(total));
+    if (!mem) {
+        return nullptr;
+    }
+
+    auto creds = reinterpret_cast<NetworkCredentials*>(mem);
+    memset(creds, 0, sizeof(*creds));
+
+    unsigned char* p = mem + sizeof(NetworkCredentials);
+
+    if (ssid_bytes) {
+        char* ssid_buf = reinterpret_cast<char*>(p);
+        memcpy(ssid_buf, conf.ssid(), ssid_bytes);
+        creds->ssid = ssid_buf;
+        creds->ssid_len = static_cast<unsigned>(ssid_bytes - 1);
+        p += ssid_bytes;
+    }
+
+    if (pass_bytes) {
+        char* pass_buf = reinterpret_cast<char*>(p);
+        memcpy(pass_buf, conf.credentials().password(), pass_bytes);
+        creds->password = pass_buf;
+        creds->password_len = static_cast<unsigned>(pass_bytes - 1);
+        p += pass_bytes;
+    }
+
+    creds->security = fromWifiSecurity(conf.security());
+    creds->size = sizeof(NetworkCredentials);
+
+    return creds;
+}
+
 } // unnamed
 
 int joinNewNetwork(ctrl_request* req) {
@@ -136,8 +179,18 @@ int joinNewNetwork(ctrl_request* req) {
     CHECK(ncpClient->on());
     // Set new configuration
     CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::VALIDATE));
-    // TODO: Not adding NetworkCredentials for now as this object needs to be allocated on heap and then cleaned up
-    system_notify_event(network_credentials, network_credentials_added);
+    // Deep copy credentials and pass object to system_notify_event with a cleanup function
+    auto creds = alloc_network_credentials_deep_copy(conf);
+
+    if (creds) {
+        system_notify_event(
+            network_credentials,
+            network_credentials_added,
+            creds,
+            network_credentials_cleanup,
+            creds
+        );
+    }
 
     network_connect(NETWORK_INTERFACE_WIFI_STA, NETWORK_CONNECT_FLAG_FORCE, 0, nullptr);
     NAMED_SCOPE_GUARD(networkDisconnectGuard, {
@@ -307,7 +360,18 @@ int setNetworkCredentials(ctrl_request* req) {
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
     CHECK(wifiMgr->setNetworkConfig(conf, WifiNetworkConfigFlag::NONE));
-    system_notify_event(network_credentials, network_credentials_added);
+    // Deep copy credentials and pass object to system_notify_event with a cleanup function
+    auto creds = alloc_network_credentials_deep_copy(conf);
+
+    if (creds) {
+        system_notify_event(
+            network_credentials,
+            network_credentials_added,
+            creds,
+            network_credentials_cleanup,
+            creds
+        );
+    }
 
     return 0;
 }
