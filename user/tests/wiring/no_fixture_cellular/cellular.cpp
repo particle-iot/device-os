@@ -232,7 +232,7 @@ test(CELLULAR_07_urcs) {
     // cellular_urcs() is async and may take a while, delay just in case
     delay(1000);
 
-    if (modem_type != DEV_QUECTEL_BG95_S5) {
+    if (modem_type != DEV_QUECTEL_BG95_S5 && modem_type != DEV_QUECTEL_BG95_M5) {
         assertNotEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
     } else {
         // TODO: Pull in addUrcHandler code from FOTA update PR,
@@ -246,7 +246,7 @@ test(CELLULAR_07_urcs) {
     assertEqual(cellular_urcs(true, nullptr), (int)SYSTEM_ERROR_NONE);
     // cellular_urcs() is async and may take a while, delay just in case
     delay(1000);
-    if (modem_type != DEV_QUECTEL_BG95_S5) {
+    if (modem_type != DEV_QUECTEL_BG95_S5 && modem_type != DEV_QUECTEL_BG95_M5) {
         assertEqual(Cellular.command("AT\r\n"), (int)RESP_OK);
     } else {
         // TODO: Pull in addUrcHandler code from FOTA update PR,
