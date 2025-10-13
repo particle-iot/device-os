@@ -134,7 +134,7 @@ int Am18x5::begin(const hal_exrtc_config_t* config) {
     // CHECK(enableAutoSwitchOnBattery(true));
 
     // Select the internal RC oscillator as the default oscillator.
-    // CHECK(selectOscillator(Am18x5Oscillator::INTERNAL_RC));
+    CHECK(selectOscillator(Am18x5Oscillator::EXTERNAL_CRYSTAL));
 
     // Digital calibration to improve accuracy.
     xtOscillatorDigitalCalibration(config_.osc_cal_xt);
@@ -545,6 +545,7 @@ int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
 int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0xA1));
     uint8_t val = 0;
     if (oscillator == Am18x5Oscillator::INTERNAL_RC) {
         val = 1;
@@ -555,6 +556,7 @@ int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
 int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0xA1));
     return writeRegister(Am18x5Register::OSC_CONTROL, enable, false, true, OSC_CONTROL_AOS_MASK, OSC_CONTROL_AOS_SHIFT);
 }
 
