@@ -133,8 +133,12 @@ int Am18x5::begin(const hal_exrtc_config_t* config) {
     // Automatically switch to internal RC oscillator when using VBAT as the power supply.
     // CHECK(enableAutoSwitchOnBattery(true));
 
-    // Select the internal RC oscillator as the default oscillator.
+    // Select the external crystal oscillator as the default oscillator.
     CHECK(selectOscillator(Am18x5Oscillator::EXTERNAL_CRYSTAL));
+
+    // But fallback to RC oscillator if the external oscillator fails
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
+    CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_FOS_MASK, OSC_CONTROL_FOS_SHIFT));
 
     // Digital calibration to improve accuracy.
     xtOscillatorDigitalCalibration(config_.osc_cal_xt);
