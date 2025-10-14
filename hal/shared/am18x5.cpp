@@ -322,16 +322,19 @@ int Am18x5::setPsw(bool val) const {
 int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    // Enable to access the BATMODE_IO and OUTPUT_CTRL registers
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0x9D));
+    // CONFIG_KEY_PRIMARY enables access to BATMODE_IO and OUTPUT_CTRL registers
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
     // Configure RTC pins to minimize power leakage
     CHECK(writeRegister(Am18x5Register::BATMODE_IO, 0x00));
+    // CONFIG_KEY resets on each write, redo for OUTPUT_CTRL
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
     CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, 0x20/*0x30*/)); // EXDS bit should be 0 inorder to use EXTI pin as the wakeup source
     // Stop the count down timer just in case
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 0, false, true, TIMER_CONTROL_TE_MASK, TIMER_CONTROL_TE_SHIFT));
     // Set PSW/nIRQ2 to be working in SLEEP mode
     CHECK(writeRegister(Am18x5Register::CONTROL2, 6, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
 
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_PWGT_MASK, OSC_CONTROL_PWGT_SHIFT));
 
     // Read status to clear the interrupt flags
@@ -545,7 +548,7 @@ int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
 int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0xA1));
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     uint8_t val = 0;
     if (oscillator == Am18x5Oscillator::INTERNAL_RC) {
         val = 1;
@@ -556,7 +559,7 @@ int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
 int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
     Am18x5Lock lock();
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0xA1));
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     return writeRegister(Am18x5Register::OSC_CONTROL, enable, false, true, OSC_CONTROL_AOS_MASK, OSC_CONTROL_AOS_SHIFT);
 }
 

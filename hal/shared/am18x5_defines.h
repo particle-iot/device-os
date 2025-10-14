@@ -168,6 +168,11 @@
 #define OUTPUT_CTRL_O3EN_MASK       0x02
 #define OUTPUT_CTRL_O1EN_MASK       0x01
 
+// Configuration Keys
+#define CONFIG_KEY_SOFTWARE_RESET   0x3C
+#define CONFIG_KEY_PRIMARY          0x9D
+#define CONFIG_KEY_OSC_CONTROL      0xA1
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC
 
 #endif // AM18X5_DEFINES_H
