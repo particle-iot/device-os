@@ -424,7 +424,7 @@ int Am18x5::setHours(uint8_t hours, HourFormat format) const {
         if (format == HourFormat::HOUR12_PM) {
             hours |= HOURS_AM_PM_MASK;
         }
-        return writeRegister(Am18x5Register::HOURS_ALARM, hours, false, false);
+        return writeRegister(Am18x5Register::HOURS, hours, false, false);
     }
 }
 
