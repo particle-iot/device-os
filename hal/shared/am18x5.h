@@ -177,7 +177,6 @@ private:
     Am18x5();
     ~Am18x5();
 
-    void dumpRegisters() const;
     int setPsw(bool val) const; // This is dangerous, make it private for now!
 
     int setHundredths(uint8_t hundredths) const;

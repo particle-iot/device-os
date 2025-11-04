@@ -128,6 +128,7 @@
 #define OSC_CONTROL_AOS_MASK        0x10
 #define OSC_CONTROL_AOS_SHIFT       (4)
 #define OSC_CONTROL_FOS_MASK        0x08
+#define OSC_CONTROL_FOS_SHIFT       (3)
 #define OSC_CONTROL_PWGT_MASK       0x04
 #define OSC_CONTROL_PWGT_SHIFT      (2)
 #define OSC_CONTROL_OFIE_MASK       0x02
@@ -167,6 +168,11 @@
 #define OUTPUT_CTRL_O4EN_MASK       0x04
 #define OUTPUT_CTRL_O3EN_MASK       0x02
 #define OUTPUT_CTRL_O1EN_MASK       0x01
+
+// Configuration Keys
+#define CONFIG_KEY_SOFTWARE_RESET   0x3C
+#define CONFIG_KEY_PRIMARY          0x9D
+#define CONFIG_KEY_OSC_CONTROL      0xA1
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC
 

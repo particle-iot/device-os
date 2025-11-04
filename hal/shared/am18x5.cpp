@@ -72,17 +72,6 @@ Am18x5& Am18x5::getInstance() {
     return am18x5;
 }
 
-void Am18x5::dumpRegisters() const {
-    uint8_t buff[16] = {0};
-    for (uint8_t i = 0; i < 16; ++i) {
-        readRegister(static_cast<Am18x5Register>(i + 0x0F), &buff[i]);
-    }
-    LOG(TRACE, "AM18x5 Registers:");
-    for (uint8_t i = 0; i < 16; ++i) {
-        LOG(TRACE, "Reg %02X: %02X", i + 0x0F, buff[i]);
-    }
-}
-
 int Am18x5::begin(const hal_exrtc_config_t* config) {
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -98,7 +87,7 @@ int Am18x5::begin(const hal_exrtc_config_t* config) {
 
     // NOTE: acquire lock only after initializing the I2C peripheral, as this will actually call into
     // hal_i2c_lock/hal_i2c_unlock, which do not function unless hal_i2c_init is called.
-    Am18x5Lock lock();
+    Am18x5Lock lock;
 
     uint16_t partNumber = 0;
     CHECK(getPartNumber(&partNumber, true));
@@ -133,8 +122,12 @@ int Am18x5::begin(const hal_exrtc_config_t* config) {
     // Automatically switch to internal RC oscillator when using VBAT as the power supply.
     // CHECK(enableAutoSwitchOnBattery(true));
 
-    // Select the internal RC oscillator as the default oscillator.
-    // CHECK(selectOscillator(Am18x5Oscillator::INTERNAL_RC));
+    // Select the external crystal oscillator as the default oscillator.
+    CHECK(selectOscillator(Am18x5Oscillator::EXTERNAL_CRYSTAL));
+
+    // But fallback to RC oscillator if the external oscillator fails
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
+    CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_FOS_MASK, OSC_CONTROL_FOS_SHIFT));
 
     // Digital calibration to improve accuracy.
     xtOscillatorDigitalCalibration(config_.osc_cal_xt);
@@ -146,7 +139,7 @@ int Am18x5::begin(const hal_exrtc_config_t* config) {
 }
 
 int Am18x5::end() {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
 
     exRtcWorkerThreadExit_ = true;
@@ -170,7 +163,7 @@ int Am18x5::unlock() {
 }
 
 int Am18x5::getPartNumber(uint16_t* id, bool detect) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     if (!detect) {
         CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     }
@@ -186,7 +179,7 @@ int Am18x5::setTime(const struct timeval* tv) const {
     struct tm calendar;
     CHECK(timevalToCalendar(tv, &calendar));
 
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t buff[8] = {0};
     buff[0] = CHECK(decToBcd(tv->tv_usec / MICROS_IN_HUNDREDTH));
@@ -204,7 +197,7 @@ int Am18x5::setTime(const struct timeval* tv) const {
 int Am18x5::getTime(struct timeval* tv) const {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t buff[8] = {0};
     CHECK(readContinuousRegisters(Am18x5Register::HUNDREDTHS, buff, sizeof(buff)));
@@ -230,7 +223,7 @@ int Am18x5::setAlarm(const struct timeval* tv) {
     struct tm calendar;
     CHECK(timevalToCalendar(tv, &calendar));
 
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t buff[7] = {0};
     buff[0] = CHECK(decToBcd(tv->tv_usec / MICROS_IN_HUNDREDTH));
@@ -247,7 +240,7 @@ int Am18x5::setAlarm(const struct timeval* tv) {
 }
 
 int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context) {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     alarmHandler_ = handler;
     alarmHandlerContext_ = context;
@@ -257,6 +250,7 @@ int Am18x5::enableAlarm(bool enable, Am18x5::AlarmHandler handler, void* context
 }
 
 int Am18x5::getAlarm(struct timeval* tv) const {
+    Am18x5Lock lock;
     if (tv) {
         uint8_t buff[7] = {};
         CHECK(readContinuousRegisters(Am18x5Register::HUNDREDTHS_ALARM, buff, sizeof(buff)));
@@ -282,7 +276,7 @@ int Am18x5::getAlarm(struct timeval* tv) const {
 }
 
 int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(value < 32, SYSTEM_ERROR_INVALID_ARGUMENT);
     uint8_t regValue = WDT_REGISTER_WDS_MASK;
@@ -292,13 +286,13 @@ int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) con
 }
 
 int Am18x5::disableWatchdog() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::WDT, 0, false, true, WDT_REGISTER_BMB_MASK, WDT_REGISTER_BMB_SHIFT);
 }
 
 int Am18x5::feedWatchdog() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_INVALID_STATE);
 
@@ -311,7 +305,7 @@ int Am18x5::feedWatchdog() const {
 }
 
 int Am18x5::setPsw(bool val) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(writeRegister(Am18x5Register::OSC_STATUS, 0, false, true, OSC_STATUS_LKO2_MASK, OSC_STATUS_LKO2_SHIFT));
     CHECK(writeRegister(Am18x5Register::CONTROL1, val, false, true, CONTROL1_OUTB_MASK, CONTROL1_OUTB_SHIFT));
@@ -320,18 +314,21 @@ int Am18x5::setPsw(bool val) const {
 }
 
 int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    // Enable to access the BATMODE_IO and OUTPUT_CTRL registers
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, 0x9D));
+    // CONFIG_KEY_PRIMARY enables access to BATMODE_IO and OUTPUT_CTRL registers
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
     // Configure RTC pins to minimize power leakage
     CHECK(writeRegister(Am18x5Register::BATMODE_IO, 0x00));
+    // CONFIG_KEY resets on each write, redo for OUTPUT_CTRL
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
     CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, 0x20/*0x30*/)); // EXDS bit should be 0 inorder to use EXTI pin as the wakeup source
     // Stop the count down timer just in case
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 0, false, true, TIMER_CONTROL_TE_MASK, TIMER_CONTROL_TE_SHIFT));
     // Set PSW/nIRQ2 to be working in SLEEP mode
     CHECK(writeRegister(Am18x5Register::CONTROL2, 6, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
 
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_PWGT_MASK, OSC_CONTROL_PWGT_SHIFT));
 
     // Read status to clear the interrupt flags
@@ -353,20 +350,20 @@ int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
     CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, newValue));
 
     // Rising edge on EXTI pin will wake up the device
-    CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
+    // CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
 
     // Transfer to SLEEP state without any delay
     return writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT);
 }
 
 int Am18x5::setHundredths(uint8_t hundredths) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::HUNDREDTHS, hundredths, true);
 }
 
 int Am18x5::getHundredths() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t hundredths = 0;
     CHECK(readRegister(Am18x5Register::HUNDREDTHS, &hundredths, true));
@@ -374,14 +371,14 @@ int Am18x5::getHundredths() const {
 }
 
 int Am18x5::setSeconds(uint8_t seconds) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(seconds <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::SECONDS, seconds, true, false, SECONDS_MASK);
 }
 
 int Am18x5::getSeconds() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t seconds = 0;
     CHECK(readRegister(Am18x5Register::SECONDS, &seconds, true, SECONDS_MASK));
@@ -389,14 +386,14 @@ int Am18x5::getSeconds() const {
 }
 
 int Am18x5::setMinutes(uint8_t minutes) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(minutes <= 59, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::MINUTES, minutes, true, false, MINUTES_MASK);
 }
 
 int Am18x5::getMinutes() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t minutes = 0;
     CHECK(readRegister(Am18x5Register::MINUTES, &minutes, true, MINUTES_MASK));
@@ -404,7 +401,7 @@ int Am18x5::getMinutes() const {
 }
 
 int Am18x5::setHours(uint8_t hours, HourFormat format) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     if (format == HourFormat::HOUR24) {
         CHECK_TRUE(hours <= 23, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -417,12 +414,12 @@ int Am18x5::setHours(uint8_t hours, HourFormat format) const {
         if (format == HourFormat::HOUR12_PM) {
             hours |= HOURS_AM_PM_MASK;
         }
-        return writeRegister(Am18x5Register::HOURS_ALARM, hours, false, false);
+        return writeRegister(Am18x5Register::HOURS, hours, false, false);
     }
 }
 
 int Am18x5::getHours(HourFormat* format) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(format, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t control1 = 0x00;
@@ -442,14 +439,14 @@ int Am18x5::getHours(HourFormat* format) const {
 }
 
 int Am18x5::setDate(uint8_t date) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(date > 0 && date <= 31, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::DATE, date, true, false, DATE_MASK);
 }
 
 int Am18x5::getDate() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t date = 0;
     CHECK(readRegister(Am18x5Register::DATE, &date, true, DATE_MASK));
@@ -457,14 +454,14 @@ int Am18x5::getDate() const {
 }
 
 int Am18x5::setMonths(uint8_t months) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(months > 0 && months <= 12, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::MONTHS, months, true, false, MONTHS_MASK);
 }
 
 int Am18x5::getMonths() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t months = 0;
     CHECK(readRegister(Am18x5Register::MONTHS, &months, true, MONTHS_MASK));
@@ -472,13 +469,13 @@ int Am18x5::getMonths() const {
 }
 
 int Am18x5::setYears(uint8_t years) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::YEARS, years, true, false);
 }
 
 int Am18x5::getYears() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t years = 0;
     CHECK(readRegister(Am18x5Register::YEARS, &years, true));
@@ -486,14 +483,14 @@ int Am18x5::getYears() const {
 }
 
 int Am18x5::setWeekday(uint8_t weekday) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(weekday > 0 && weekday <= 7, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::WEEKDAY, weekday, true, false, WEEKDAY_MASK);
 }
 
 int Am18x5::getWeekday() const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t weekday = 0;
     CHECK(readRegister(Am18x5Register::WEEKDAY, &weekday, true, WEEKDAY_MASK));
@@ -501,7 +498,7 @@ int Am18x5::getWeekday() const {
 }
 
 int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t xtcal, cmdx;
     int offsetx;
@@ -543,8 +540,9 @@ int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
 }
 
 int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     uint8_t val = 0;
     if (oscillator == Am18x5Oscillator::INTERNAL_RC) {
         val = 1;
@@ -553,13 +551,14 @@ int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
 }
 
 int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     return writeRegister(Am18x5Register::OSC_CONTROL, enable, false, true, OSC_CONTROL_AOS_MASK, OSC_CONTROL_AOS_SHIFT);
 }
 
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     uint8_t currValue = 0x00;
     if (rw) {
         CHECK(readRegister(reg, &currValue));
@@ -577,7 +576,7 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
 }
 
 int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     hal_i2c_begin_transmission(config_.i2c_if, config_.i2c_addr, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(start_reg), nullptr);
     for (size_t i = 0; i < len; i++) {
@@ -588,7 +587,7 @@ int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8
 }
 
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     hal_i2c_begin_transmission(config_.i2c_if, config_.i2c_addr, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(reg), nullptr);
     hal_i2c_end_transmission(config_.i2c_if, false, nullptr);
@@ -605,7 +604,7 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
 }
 
 int Am18x5::readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
-    Am18x5Lock lock();
+    Am18x5Lock lock;
     hal_i2c_begin_transmission(config_.i2c_if, config_.i2c_addr, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(start_reg), nullptr);
     hal_i2c_end_transmission(config_.i2c_if, false, nullptr);
@@ -635,7 +634,7 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     while(!instance->exRtcWorkerThreadExit_) {
         os_semaphore_take(instance->exRtcWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
-            Am18x5Lock lock();
+            Am18x5Lock lock;
 
             uint8_t alm = 0;
             if (instance->readRegister(Am18x5Register::STATUS, &alm, false, STATUS_ALM_MASK) != SYSTEM_ERROR_NONE) {
