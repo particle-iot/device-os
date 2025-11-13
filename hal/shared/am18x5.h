@@ -20,14 +20,14 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #include "time.h"
 #include "static_recursive_mutex.h"
 #include "concurrent_hal.h"
 #include "i2c_hal.h"
-#include "exrtc_hal.h"
 
+#define HAL_AM18X5_CONFIG_VERSION               1
 
 namespace particle {
 
@@ -107,8 +107,8 @@ enum class Weekday {
 };
 
 enum class Am18x5Oscillator {
-    INTERNAL_RC,
-    EXTERNAL_CRYSTAL
+    INTERNAL_RC = 0x00,
+    EXTERNAL_CRYSTAL = 0x01
 };
 
 enum class Am18x5WatchdogFrequency {
@@ -124,30 +124,52 @@ enum class Am18x5TimerFrequency {
     HZ_1_60 = 0x03
 };
 
+typedef struct hal_am18x5_config_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t default_rtc;
+    uint8_t wdi_pin;
+    uint8_t int_pin;
+    hal_i2c_interface_t i2c_if;
+    uint8_t rc_fallback;
+    uint8_t rc_on_battery;
+    Am18x5Oscillator osc_src;
+    int8_t osc_cal_xt;
+} hal_am18x5_config_t;
+
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
-    int begin(const hal_exrtc_config_t* config);
+    int setConfig(const hal_am18x5_config_t* config);
+    int getConfig(hal_am18x5_config_t* config);
+
+    int init(const hal_am18x5_config_t* config);
+    int detect();
+    bool isDefault() const;
+    bool isPresent() const { return detected_; }
+    int begin();
     int end();
     int sync();
 
     int setTime(const struct timeval* tv) const;
     int getTime(struct timeval* tv) const;
+    bool isTimeValid(struct timeval* tv = nullptr) const;
 
-    int setAlarm(const struct timeval* tv);
+    int setAlarm(bool enable, uint32_t flags = 0, const struct timeval* tv = nullptr, AlarmHandler handler = nullptr, void* context = nullptr);
     int getAlarm(struct timeval* tv) const;
-    int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
     int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
+    int enableWatchdog(system_tick_t ms) const;
     int disableWatchdog() const;
     int feedWatchdog() const;
+    void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
 
     // TODO: woken up by alarm and watchdog timer.
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
     int sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const;
 
-    int getPartNumber(uint16_t* id, bool detect = false) const;
+    int getPartNumber(uint16_t* id) const;
 
     /*
      * The XT oscillator calibration value is determined by the following process:
@@ -207,6 +229,8 @@ private:
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
     static constexpr uint16_t PART_NUMBER = 0x1805;
+    static constexpr uint8_t AM18X5_I2C_ADDR = 0x69;
+    static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
     bool detected_;
@@ -216,7 +240,7 @@ private:
     os_thread_t exRtcWorkerThread_;
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
-    hal_exrtc_config_t config_;
+    hal_am18x5_config_t config_;
 }; // class Am18x5
 
 
@@ -257,6 +281,6 @@ private:
 
 } // namespace particle
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #endif // AM18X5_H

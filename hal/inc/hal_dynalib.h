@@ -36,10 +36,6 @@
 #include "rtc_hal.h"
 #include "interrupts_hal.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
-#endif // HAL_PLATFORM_EXTERNAL_RTC
-
 #endif
 
 /**
@@ -99,23 +95,15 @@ DYNALIB_FN(BASE_IDX + 22, hal, hal_timer_micros, uint64_t(void*))
 DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, void*))
 DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, void*))
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog, int(system_tick_t, void*))
-DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t*, system_tick_t*, void*))
-DYNALIB_FN(BASE_IDX + 29, hal, hal_exrtc_init, int(const hal_exrtc_config_t*, void*))
-DYNALIB_FN(BASE_IDX + 30, hal, hal_exrtc_set_time, int(const struct timeval*, void*))
-DYNALIB_FN(BASE_IDX + 31, hal, hal_exrtc_get_time, int(struct timeval*, void*))
-DYNALIB_FN(BASE_IDX + 32, hal, hal_exrtc_set_alarm, int(const struct timeval*, uint32_t, hal_exrtc_alarm_handler, void*, void*))
-DYNALIB_FN(BASE_IDX + 33, hal, hal_exrtc_cancel_alarm, int(void*))
-DYNALIB_FN(BASE_IDX + 34, hal, hal_exrtc_time_is_valid, bool(void*))
-DYNALIB_FN(BASE_IDX + 35, hal, hal_exrtc_sleep_timer, int(system_tick_t, void*))
-DYNALIB_FN(BASE_IDX + 36, hal, hal_exrtc_calibrate_xt, int(int, void*))
+#if PLATFORM_ID == PLATFORM_TRACKER
+DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog_deprecated, int(system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits_deprecated, void(system_tick_t*, system_tick_t*, void*))
 #define BASE_IDX2 (BASE_IDX + 37)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 DYNALIB_END(hal)
 

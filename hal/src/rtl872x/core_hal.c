@@ -833,6 +833,9 @@ int HAL_Feature_Set(HAL_Feature feature, bool enabled) {
         case FEATURE_DISABLE_LISTENING_MODE: {
             return Write_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, enabled, NULL);
         }
+        case FEATURE_EXRTC_DETECTION: {
+            return Write_Feature_Flag(FEATURE_FLAG_EXRTC_DETECTION, enabled, NULL);
+        }
     }
 
     return -1;
@@ -857,6 +860,10 @@ bool HAL_Feature_Get(HAL_Feature feature) {
         case FEATURE_DISABLE_LISTENING_MODE: {
             bool value = false;
             return (Read_Feature_Flag(FEATURE_FLAG_DISBLE_LISTENING_MODE, &value) == 0) ? value : false;
+        }
+        case FEATURE_EXRTC_DETECTION: {
+            bool value = false;
+            return (Read_Feature_Flag(FEATURE_FLAG_EXRTC_DETECTION, &value) == 0) ? value : false;
         }
     }
     return false;
