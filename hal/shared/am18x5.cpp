@@ -351,14 +351,18 @@ int Am18x5::getAlarm(struct timeval* tv) const {
 int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
     CHECK_TRUE(value < 32, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t regValue = WDT_REGISTER_WDS_MASK;
+    uint8_t regValue = WDT_REGISTER_WDS_MASK; // Generate a reset when it times out
     regValue |= (value << WDT_REGISTER_BMB_SHIFT);
     regValue |= static_cast<uint8_t>(frequency);
     return writeRegister(Am18x5Register::WDT, regValue);
 }
 
 int Am18x5::enableWatchdog(system_tick_t ms) const {
+    Am18x5Lock lock;
+    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
     uint8_t value; // Maximum 31.
     Am18x5WatchdogFrequency frequency;
     if (ms < 1937) { // 31 * 1000 / 16
@@ -382,14 +386,14 @@ int Am18x5::enableWatchdog(system_tick_t ms) const {
 
 int Am18x5::disableWatchdog() const {
     Am18x5Lock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
     return writeRegister(Am18x5Register::WDT, 0, false, true, WDT_REGISTER_BMB_MASK, WDT_REGISTER_BMB_SHIFT);
 }
 
 int Am18x5::feedWatchdog() const {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
 
     if (hal_gpio_read(config_.wdi_pin) == 1) {
         hal_gpio_write(config_.wdi_pin, 0);
@@ -406,6 +410,14 @@ void Am18x5::getWatchdogLimits(system_tick_t* low, system_tick_t* high) const {
     if (high) {
         *high = 124000; // // round(Am18x5WatchdogFrequency::HZ_1_4 * 31)
     }
+}
+
+bool Am18x5::isWatchdogStarted() const {
+    Am18x5Lock lock;
+    CHECK_TRUE(detected_, false);
+    uint8_t bmb = 0;
+    readRegister(Am18x5Register::WDT, &bmb, false, WDT_REGISTER_BMB_MASK, WDT_REGISTER_BMB_SHIFT);
+    return (bmb != 0);
 }
 
 int Am18x5::setPsw(bool val) const {

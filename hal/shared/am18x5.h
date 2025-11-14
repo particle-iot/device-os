@@ -25,6 +25,8 @@
 #include "time.h"
 #include "concurrent_hal.h"
 #include "i2c_hal.h"
+#include "watchdog_hal.h"
+#include "watchdog_base.h"
 
 #define HAL_AM18X5_CONFIG_VERSION               1
 
@@ -163,6 +165,7 @@ public:
     int disableWatchdog() const;
     int feedWatchdog() const;
     void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
+    bool isWatchdogStarted() const;
 
     // TODO: woken up by alarm and watchdog timer.
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
@@ -279,6 +282,79 @@ private:
 };
 
 } // namespace particle
+
+class Am18x5Watchdog : public WatchdogBase {
+public:
+    int init(const hal_watchdog_config_t* config) {
+        CHECK_TRUE(particle::Am18x5::getInstance().isPresent(), SYSTEM_ERROR_NOT_FOUND);
+        if (started()) {
+            stop();
+        }
+
+        system_tick_t minTimeout, maxTimeout;
+        particle::Am18x5::getInstance().getWatchdogLimits(&minTimeout, &maxTimeout);
+
+        CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(config->timeout_ms >= minTimeout, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(config->timeout_ms <= maxTimeout, SYSTEM_ERROR_INVALID_ARGUMENT);
+        
+        memcpy(&info_.config, config, std::min(info_.config.size, config->size));
+        info_.min_timeout_ms = minTimeout;
+        info_.max_timeout_ms = maxTimeout;
+        info_.state = HAL_WATCHDOG_STATE_CONFIGURED;
+        initialized_ = true;
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int start() {
+        CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_FALSE(started(), SYSTEM_ERROR_NONE);
+        CHECK(particle::Am18x5::getInstance().enableWatchdog(info_.config.timeout_ms));
+        CHECK_TRUE(started(), SYSTEM_ERROR_INTERNAL);
+        return SYSTEM_ERROR_NONE;
+    }
+
+    bool started() override {
+        if (particle::Am18x5::getInstance().isWatchdogStarted()) {
+            info_.state = HAL_WATCHDOG_STATE_STARTED;
+        }
+        return info_.state == HAL_WATCHDOG_STATE_STARTED;
+    }
+
+    int stop() override {
+        CHECK_TRUE(started(), SYSTEM_ERROR_NONE);
+        CHECK(particle::Am18x5::getInstance().disableWatchdog());
+        info_.state = HAL_WATCHDOG_STATE_STOPPED;
+        CHECK_FALSE(started(), SYSTEM_ERROR_INTERNAL);
+        return SYSTEM_ERROR_NONE;
+    }
+
+    int refresh() {
+        CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_TRUE(started(), SYSTEM_ERROR_INVALID_STATE);
+        CHECK(particle::Am18x5::getInstance().feedWatchdog());
+        return SYSTEM_ERROR_NONE;
+    }
+
+    static Am18x5Watchdog* instance() {
+        static Am18x5Watchdog watchdog(HAL_WATCHDOG_CAPS_RESET,
+                                    HAL_WATCHDOG_CAPS_RECONFIGURABLE | HAL_WATCHDOG_CAPS_STOPPABLE |
+                                    HAL_WATCHDOG_CAPS_SLEEP_RUNNING | HAL_WATCHDOG_CAPS_DEBUG_RUNNING,
+                                    0, 0);
+        return &watchdog;
+    }
+
+private:
+    Am18x5Watchdog(uint32_t mandatoryCaps, uint32_t optionalCaps, uint32_t minTimeout, uint32_t maxTimeout)
+            : WatchdogBase(mandatoryCaps, optionalCaps, minTimeout, maxTimeout),
+              initialized_(false) {
+    }
+
+    ~Am18x5Watchdog() = default;
+
+    volatile bool initialized_;
+};
+
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 

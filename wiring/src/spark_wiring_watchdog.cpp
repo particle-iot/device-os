@@ -26,7 +26,6 @@ LOG_SOURCE_CATEGORY("wiring.watchdog")
 namespace particle {
 
 int WatchdogClass::init(const WatchdogConfiguration& config) {
-    instance_ = config.watchdogInstance();
     return hal_watchdog_set_config(instance_, config.halConfig(), nullptr);
 }
 

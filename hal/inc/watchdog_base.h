@@ -18,14 +18,12 @@
 #ifndef WATCHDOG_BASE_H
 #define	WATCHDOG_BASE_H
 
-#if HAL_PLATFORM_HW_WATCHDOG
-
 #include <algorithm>
 #include "check.h"
 
-class Watchdog {
+class WatchdogBase {
 public:
-    Watchdog(uint32_t mandatoryCaps, uint32_t optionalCaps, uint32_t minTimeout, uint32_t maxTimeout)
+    WatchdogBase(uint32_t mandatoryCaps, uint32_t optionalCaps, uint32_t minTimeout, uint32_t maxTimeout)
             : info_{},
               callback_(nullptr),
               context_(nullptr) {
@@ -41,7 +39,7 @@ public:
         info_.state = HAL_WATCHDOG_STATE_DISABLED;
     }
 
-    Watchdog() = default;
+    WatchdogBase() = default;
 
     void notify() {
         if (callback_) {
@@ -77,8 +75,6 @@ public:
     hal_watchdog_on_expired_callback_t callback_;
     void* context_;
 };
-
-#endif // HAL_PLATFORM_HW_WATCHDOG
 
 #endif	/* WATCHDOG_BASE_H */
 

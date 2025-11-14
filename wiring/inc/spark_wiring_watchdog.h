@@ -184,11 +184,6 @@ public:
         return &config_;
     }
 
-    hal_watchdog_instance_t watchdogInstance() const {
-        // TODO: Adjust the instance according to the watchdog configuration.
-        return HAL_WATCHDOG_INSTANCE1;
-    }
-
 private:
     hal_watchdog_config_t config_;
 
@@ -330,15 +325,19 @@ public:
      * 
      * @return The hardware watchdog singlton.
      */
-    static WatchdogClass& getInstance() {
-        static WatchdogClass watchdog;
-        return watchdog;
+    static WatchdogClass& getInstance(hal_watchdog_instance_t instance = HAL_WATCHDOG_INSTANCE1) {
+        static WatchdogClass watchdogs[] = {
+            WatchdogClass(HAL_WATCHDOG_INSTANCE1),
+            WatchdogClass(HAL_WATCHDOG_INSTANCE2)
+        };
+        return watchdogs[instance];
     }
 
 private:
-    WatchdogClass()
+    WatchdogClass() = delete;
+    explicit WatchdogClass(hal_watchdog_instance_t instance)
             : callback_(nullptr),
-              instance_(HAL_WATCHDOG_INSTANCE1) {
+              instance_(instance) {
     }
     ~WatchdogClass() = default;
 
@@ -353,7 +352,8 @@ private:
     hal_watchdog_instance_t instance_;
 };
 
-#define Watchdog WatchdogClass::getInstance()
+#define Watchdog WatchdogClass::getInstance(HAL_WATCHDOG_INSTANCE1)
+#define ExternalWatchdog WatchdogClass::getInstance(HAL_WATCHDOG_INSTANCE2)
 
 } // namespace particle
 
