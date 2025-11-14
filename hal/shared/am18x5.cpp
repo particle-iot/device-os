@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,7 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "am18x5.h"
 #include "rtc_hal.h"
 #include "system_cache.h"
 
@@ -31,6 +30,7 @@
 #include "gpio_hal.h"
 #include "system_cache.h"
 #include "am18x5_defines.h"
+#include "am18x5.h"
 
 using namespace particle;
 using namespace particle::services;
