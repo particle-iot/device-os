@@ -31,6 +31,7 @@ extern "C" {
 int system_external_rtc_set_config(const particle::hal_am18x5_config_t* conf, void* reserved);
 int system_external_rtc_get_config(particle::hal_am18x5_config_t* conf, void* reserved);
 bool system_external_rtc_is_present(void* reserved);
+int system_external_rtc_sleep(const particle::hal_am18x5_sleep_config_t* conf, void* reserved);
 
 #ifdef __cplusplus
 }

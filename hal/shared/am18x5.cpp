@@ -29,6 +29,7 @@
 #include "interrupts_hal.h"
 #include "gpio_hal.h"
 #include "system_cache.h"
+#include "scope_guard.h"
 #include "am18x5_defines.h"
 #include "am18x5.h"
 
@@ -429,47 +430,96 @@ int Am18x5::setPsw(bool val) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const {
+int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if ((config->exti_polarity == Am18x5ExtiPolarity::NONE) && (config->duration == 0)) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     // CONFIG_KEY_PRIMARY enables access to BATMODE_IO and OUTPUT_CTRL registers
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
-    // Configure RTC pins to minimize power leakage
+    // If 1, the AM18X5 will not disable the I/O interface even if VCC goes away and VBAT is still present.
+    // This allows external access while the AM18X5 is powered by VBAT.
     CHECK(writeRegister(Am18x5Register::BATMODE_IO, 0x00));
+
+    uint8_t outputCtrl = 0x00;
+    uint8_t intMask = 0xE0;
+
+    // 1, the WDI input is disabled when the AM18X5 is in Sleep Mode
+    outputCtrl |= OUTPUT_CTRL_WDDS_MASK;
+
+    if (config->exti_polarity != Am18x5ExtiPolarity::NONE) {
+        // 1, the EXTI input is enabled when the AM18X5 is powered from VBAT
+        outputCtrl |= OUTPUT_CTRL_EXBM_MASK;
+        // 0, the EXTI input is enabled when the AM18X5 is in Sleep Mode
+        outputCtrl &= ~OUTPUT_CTRL_EXDS_MASK;
+        intMask |= INTERRUPT_EX1E_MASK;
+        if (config->exti_polarity == Am18x5ExtiPolarity::RISING) {
+            CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
+        } else {
+            CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
+        }
+    } else {
+        // 1, the EXTI input is disabled when the AM18X5 is in Sleep Mode
+        outputCtrl |= OUTPUT_CTRL_EXDS_MASK;
+        intMask &= ~INTERRUPT_EX1E_MASK;
+    }
+
     // CONFIG_KEY resets on each write, redo for OUTPUT_CTRL
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_PRIMARY));
-    CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, 0x20/*0x30*/)); // EXDS bit should be 0 inorder to use EXTI pin as the wakeup source
-    // Stop the count down timer just in case
-    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, 0, false, true, TIMER_CONTROL_TE_MASK, TIMER_CONTROL_TE_SHIFT));
+    // Configure RTC pins to minimize power leakage
+    CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, outputCtrl));
+
     // Set PSW/nIRQ2 to be working in SLEEP mode
     CHECK(writeRegister(Am18x5Register::CONTROL2, 6, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
-
+    // When 1, the I/O interface will be disabled when the power switch is active and disabled 
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_PWGT_MASK, OSC_CONTROL_PWGT_SHIFT));
+
+    if (isWatchdogStarted()) {
+        CHECK(disableWatchdog());
+    }
+
+    struct timeval alarmTv = {};
+    int enabled = CHECK(getAlarm(&alarmTv));
+    int ret = SYSTEM_ERROR_INTERNAL;
+    SCOPE_GUARD ({
+        if (ret != SYSTEM_ERROR_NONE) {
+            // Restore alarm config
+            setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_);
+            // EXTI is only used for sleep wakeup for now
+            intMask &= ~INTERRUPT_EX1E_MASK;
+            writeRegister(Am18x5Register::INT_MASK, intMask);
+            // TODO: restore watchdog
+        }
+    });
+
+    if (config->duration > 0) {
+        struct timeval tv = {
+            .tv_sec = config->duration,
+            .tv_usec = 0
+        };
+        CHECK(setAlarm(true, HAL_RTC_ALARM_FLAG_IN, &tv, nullptr, nullptr));
+        intMask |= INTERRUPT_AIE_MASK;
+    } else {
+        intMask &= ~INTERRUPT_AIE_MASK;
+    }
 
     // Read status to clear the interrupt flags
     uint8_t status = 0x00;
     CHECK(readRegister(Am18x5Register::STATUS, &status));
+    // Enable interrupt
+    CHECK(writeRegister(Am18x5Register::INT_MASK, intMask));
 
-    // Enable count down timer interrupt
-    // CHECK(writeRegister(Am18x5Register::INT_MASK, 1, false, true, INTERRUPT_TIE_MASK, INTERRUPT_TIE_SHIFT)); // And the EX1E bit should be enabled to use EXTI pin as the wakeup source
-    CHECK(writeRegister(Am18x5Register::INT_MASK, 0xE9)); 
-    // Set count down timer's current value
-    CHECK(writeRegister(Am18x5Register::TIMER, ticks));
-    // Configure and start the count down timer
-    uint8_t newValue = 0x00;
-    CHECK(readRegister(Am18x5Register::TIMER_CONTROL, &newValue));
-    newValue |= TIMER_CONTROL_TE_MASK; // Enable the count down timer
-    newValue &= ~TIMER_CONTROL_TRPT_MASK; // Do not repeat
-    newValue &= ~TIMER_CONTROL_TFS_MASK;
-    newValue |= static_cast<uint8_t>(frequency); // Set the count down timer frequency
-    CHECK(writeRegister(Am18x5Register::TIMER_CONTROL, newValue));
-
-    // Rising edge on EXTI pin will wake up the device
-    // CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 0, false, true, SLEEP_CONTROL_EX1P_MASK, SLEEP_CONTROL_EX1P_SHIFT));
+    readRegister(Am18x5Register::STATUS, &status);
 
     // Transfer to SLEEP state without any delay
-    return writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT);
+    CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
+
+    ret = SYSTEM_ERROR_NONE;
+    return ret;
 }
 
 int Am18x5::setHundredths(uint8_t hundredths) const {

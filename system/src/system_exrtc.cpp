@@ -35,4 +35,8 @@ bool system_external_rtc_is_present(void* reserved) {
     return Am18x5::getInstance().isPresent();
 }
 
+int system_external_rtc_sleep(const hal_am18x5_sleep_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().sleep(conf);
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

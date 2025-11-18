@@ -120,9 +120,16 @@ enum class Am18x5WatchdogFrequency {
 };
 
 enum class Am18x5TimerFrequency {
+    HZ_4096 = 0x00,
     HZ_64 = 0x01,
     HZ_1 = 0x02,
     HZ_1_60 = 0x03
+};
+
+enum class Am18x5ExtiPolarity {
+    NONE,
+    FALLING,
+    RISING
 };
 
 typedef struct hal_am18x5_config_t {
@@ -137,6 +144,13 @@ typedef struct hal_am18x5_config_t {
     Am18x5Oscillator osc_src;
     int8_t osc_cal_xt;
 } hal_am18x5_config_t;
+
+typedef struct hal_am18x5_sleep_config_t {
+    uint16_t version;
+    uint16_t size;
+    Am18x5ExtiPolarity exti_polarity;
+    system_tick_t duration; // in seconds
+} hal_am18x5_sleep_config_t;
 
 class Am18x5 {
 public:
@@ -167,9 +181,8 @@ public:
     void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
     bool isWatchdogStarted() const;
 
-    // TODO: woken up by alarm and watchdog timer.
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
-    int sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const;
+    int sleep(const hal_am18x5_sleep_config_t* config);
 
     int getPartNumber(uint16_t* id) const;
 

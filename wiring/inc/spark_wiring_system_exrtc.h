@@ -118,6 +118,50 @@ private:
     hal_am18x5_config_t conf_;
 };
 
+
+class SystemExternalRtcSleepConfiguration {
+public:
+
+    SystemExternalRtcSleepConfiguration()
+            : conf_{} {
+        conf_.version = HAL_AM18X5_CONFIG_VERSION;
+        conf_.size = sizeof(conf_);
+    }
+
+    SystemExternalRtcSleepConfiguration(SystemExternalRtcSleepConfiguration&&) = default;
+    SystemExternalRtcSleepConfiguration(const hal_am18x5_sleep_config_t& conf) : conf_(conf) {}
+    SystemExternalRtcSleepConfiguration& operator=(SystemExternalRtcSleepConfiguration&&) = default;
+
+    SystemExternalRtcSleepConfiguration& exti(Am18x5ExtiPolarity polarity) {
+        conf_.exti_polarity = polarity;
+        return *this;
+    }
+
+    Am18x5ExtiPolarity exti() const {
+        return conf_.exti_polarity;
+    }
+
+    SystemExternalRtcSleepConfiguration& duration(system_tick_t duration) {
+        conf_.duration = duration;
+        return *this;
+    }
+
+    SystemExternalRtcSleepConfiguration& duration(std::chrono::milliseconds ms) {
+        system_tick_t seconds = ms.count() / 1000;
+        return duration(seconds);
+    }
+
+    uint8_t duration() const {
+        return conf_.duration;
+    }
+
+    const hal_am18x5_sleep_config_t* config() const {
+        return &conf_;
+    }
+private:
+    hal_am18x5_sleep_config_t conf_;
+};
+
 } // particle
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

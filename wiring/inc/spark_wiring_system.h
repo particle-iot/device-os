@@ -1138,6 +1138,10 @@ public:
     bool isExternalRtcPresent() {
         return system_external_rtc_is_present(nullptr);
     }
+
+    int powerGatedByExternalRtc(const particle::SystemExternalRtcSleepConfiguration& conf) {
+        return system_external_rtc_sleep(conf.config(), nullptr);
+    }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 private:
