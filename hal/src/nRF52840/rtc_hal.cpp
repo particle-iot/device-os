@@ -87,14 +87,16 @@ void hal_rtc_init(void) {
         .osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL,
         .osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT,
     };
-    if (Am18x5::getInstance().init(&config) == SYSTEM_ERROR_NONE) {
-        if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
-            exRtcPresent = true;
+    if (Am18x5::getInstance().setConfig(&config) == SYSTEM_ERROR_NONE) {
+        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
+            if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+                exRtcPresent = true;
+            }
         }
     }
 #else
     if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-        if (Am18x5::getInstance().init(nullptr) == SYSTEM_ERROR_NONE) {
+        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
             if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
                 exRtcPresent = true;
             }

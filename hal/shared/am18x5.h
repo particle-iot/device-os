@@ -159,7 +159,7 @@ public:
     int setConfig(const hal_am18x5_config_t* config);
     int getConfig(hal_am18x5_config_t* config);
 
-    int init(const hal_am18x5_config_t* config);
+    int init();
     int detect();
     bool isDefault() const;
     bool isPresent() const { return detected_; }

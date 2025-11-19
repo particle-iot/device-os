@@ -320,7 +320,7 @@ void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     exRtcPresent = false;
     if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-        if (Am18x5::getInstance().init(nullptr) == SYSTEM_ERROR_NONE) {
+        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
             if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
                 exRtcPresent = true;
             }

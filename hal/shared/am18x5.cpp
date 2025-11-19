@@ -30,6 +30,7 @@
 #include "gpio_hal.h"
 #include "system_cache.h"
 #include "scope_guard.h"
+#include "core_hal.h"
 #include "am18x5_defines.h"
 #include "am18x5.h"
 
@@ -92,8 +93,19 @@ int Am18x5::setConfig(const hal_am18x5_config_t* config) {
     if (result != std::min(tempData.size, config->size) ||
             memcmp(&tempData, config, std::min(tempData.size, config->size)) != 0) {
         result = SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)config, config->size);
+        if (result < 0) {
+            return result;
+        }
+        CHECK(init());
+        if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
+            if (detected_) {
+                end();
+                detected_ = false;
+            }
+            CHECK(begin());
+        }
     }
-    return (result < 0) ? result : SYSTEM_ERROR_NONE;
+    return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::getConfig(hal_am18x5_config_t* config) {
@@ -109,11 +121,8 @@ int Am18x5::getConfig(hal_am18x5_config_t* config) {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::init(const hal_am18x5_config_t* config) {
+int Am18x5::init() {
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
-    if (config) {
-        CHECK(setConfig(config));
-    }
     CHECK(getConfig(&config_));
     initialized_ = true;
     return SYSTEM_ERROR_NONE;
@@ -200,14 +209,22 @@ int Am18x5::begin() {
 int Am18x5::end() {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_NONE);
+    if (config_.wdi_pin != PIN_INVALID) {
+        hal_gpio_mode(config_.wdi_pin, INPUT);
+    }
     if (config_.int_pin != PIN_INVALID) {
         exRtcWorkerThreadExit_ = true;
-        os_thread_join(exRtcWorkerThread_);
-        os_thread_cleanup(exRtcWorkerThread_);
-        os_semaphore_destroy(exRtcWorkerSemaphore_);
+        if (exRtcWorkerThread_) {
+            os_semaphore_give(exRtcWorkerSemaphore_, false);
+            os_thread_join(exRtcWorkerThread_);
+            os_thread_cleanup(exRtcWorkerThread_);
+            os_semaphore_destroy(exRtcWorkerSemaphore_);
+        }
         exRtcWorkerThreadExit_ = false;
         exRtcWorkerThread_ = nullptr;
         exRtcWorkerSemaphore_ = nullptr;
+        hal_interrupt_detach(config_.int_pin);
+        hal_gpio_mode(config_.int_pin, INPUT);
     }
     return SYSTEM_ERROR_NONE;
 }
@@ -797,6 +814,9 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     while(!instance->exRtcWorkerThreadExit_) {
         os_semaphore_take(instance->exRtcWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
+            if (instance->exRtcWorkerThreadExit_) {
+                break;
+            }
             Am18x5Lock lock;
 
             uint8_t alm = 0;
