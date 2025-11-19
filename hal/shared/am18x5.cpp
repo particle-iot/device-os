@@ -349,21 +349,9 @@ int Am18x5::getAlarm(struct timeval* tv) const {
     return alm;
 }
 
-int Am18x5::enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const {
+int Am18x5::enableWatchdog(system_tick_t ms) {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
-    CHECK_TRUE(value < 32, SYSTEM_ERROR_INVALID_ARGUMENT);
-    uint8_t regValue = WDT_REGISTER_WDS_MASK; // Generate a reset when it times out
-    regValue |= (value << WDT_REGISTER_BMB_SHIFT);
-    regValue |= static_cast<uint8_t>(frequency);
-    return writeRegister(Am18x5Register::WDT, regValue);
-}
-
-int Am18x5::enableWatchdog(system_tick_t ms) const {
-    Am18x5Lock lock;
-    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
     uint8_t value; // Maximum 31.
     Am18x5WatchdogFrequency frequency;
     if (ms < 1937) { // 31 * 1000 / 16
@@ -381,8 +369,12 @@ int Am18x5::enableWatchdog(system_tick_t ms) const {
     } else {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    CHECK_TRUE(value > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-    return enableWatchdog(value, frequency);
+    CHECK_TRUE(value > 0 && value < 32, SYSTEM_ERROR_INVALID_ARGUMENT);
+    uint8_t regValue = WDT_REGISTER_WDS_MASK; // Generate a reset when it times out
+    regValue |= (value << WDT_REGISTER_BMB_SHIFT);
+    regValue |= static_cast<uint8_t>(frequency);
+    watchdogValue_ = regValue;
+    return writeRegister(Am18x5Register::WDT, regValue);
 }
 
 int Am18x5::disableWatchdog() const {
@@ -394,8 +386,10 @@ int Am18x5::disableWatchdog() const {
 int Am18x5::feedWatchdog() const {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK_TRUE(config_.wdi_pin != PIN_INVALID, SYSTEM_ERROR_IO);
 
+    if (config_.wdi_pin == PIN_INVALID) {
+        return writeRegister(Am18x5Register::WDT, watchdogValue_);
+    }
     if (hal_gpio_read(config_.wdi_pin) == 1) {
         hal_gpio_write(config_.wdi_pin, 0);
     } else {
@@ -478,7 +472,8 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_PWGT_MASK, OSC_CONTROL_PWGT_SHIFT));
 
-    if (isWatchdogStarted()) {
+    bool watchdogWasStarted = isWatchdogStarted();
+    if (watchdogWasStarted) {
         CHECK(disableWatchdog());
     }
 
@@ -489,10 +484,12 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
         if (ret != SYSTEM_ERROR_NONE) {
             // Restore alarm config
             setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_);
-            // EXTI is only used for sleep wakeup for now
+            // Disable EXTI interrupt, as it is only used for sleep wakeup for now
             intMask &= ~INTERRUPT_EX1E_MASK;
             writeRegister(Am18x5Register::INT_MASK, intMask);
-            // TODO: restore watchdog
+            if (watchdogWasStarted) {
+                enableWatchdog(watchdogValue_);
+            }
         }
     });
 

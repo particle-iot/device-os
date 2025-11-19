@@ -174,8 +174,7 @@ public:
     int setAlarm(bool enable, uint32_t flags = 0, const struct timeval* tv = nullptr, AlarmHandler handler = nullptr, void* context = nullptr);
     int getAlarm(struct timeval* tv) const;
 
-    int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
-    int enableWatchdog(system_tick_t ms) const;
+    int enableWatchdog(system_tick_t ms);
     int disableWatchdog() const;
     int feedWatchdog() const;
     void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
@@ -256,6 +255,7 @@ private:
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
     hal_am18x5_config_t config_;
+    uint8_t watchdogValue_;
 }; // class Am18x5
 
 
