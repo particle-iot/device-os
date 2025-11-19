@@ -35,6 +35,11 @@ typedef enum hal_rtc_alarm_flags {
     HAL_RTC_ALARM_FLAG_IN = 0x01 // In provided amount of time, instead of an absolute timestamp
 } hal_rtc_alarm_flags;
 
+typedef enum hal_rtc_source_t {
+    HAL_RTC_SOURCE_INTERNAL = 0,
+    HAL_RTC_SOURCE_EXTERNAL = 1
+} hal_rtc_source_t;
+
 void hal_rtc_init(void);
 int hal_rtc_get_time(struct timeval* tv, void* reserved);
 int hal_rtc_set_time(const struct timeval* tv, void* reserved);
@@ -42,6 +47,9 @@ bool hal_rtc_time_is_valid(void* reserved);
 // XXX: only one alarm and its handler can be registered at a time
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
 void hal_rtc_cancel_alarm(void);
+
+int hal_rtc_set_source(hal_rtc_source_t source, void* reserved);
+hal_rtc_source_t hal_rtc_get_source(void* reserved);
 
 // These functions are deprecated and are only used for backwards compatibility
 // due to time_t size change

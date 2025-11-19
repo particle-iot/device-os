@@ -156,7 +156,7 @@ class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
-    int setConfig(const hal_am18x5_config_t* config);
+    int setConfig(const hal_am18x5_config_t* config, bool restart = true);
     int getConfig(hal_am18x5_config_t* config);
 
     int init();

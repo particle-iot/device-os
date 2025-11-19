@@ -100,10 +100,13 @@ DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog_deprecated, int(system_
 DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog_deprecated, int(void*))
 DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog_deprecated, int(void*))
 DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits_deprecated, void(system_tick_t*, system_tick_t*, void*))
-#define BASE_IDX2 (BASE_IDX + 37)
+#define BASE_IDX2 (BASE_IDX + 29)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)
 #endif // PLATFORM_ID == PLATFORM_TRACKER
+
+DYNALIB_FN(BASE_IDX2 + 0, hal, hal_rtc_set_source, int(hal_rtc_source_t, void*))
+DYNALIB_FN(BASE_IDX2 + 1, hal, hal_rtc_get_source, hal_rtc_source_t(void*))
 
 DYNALIB_END(hal)
 

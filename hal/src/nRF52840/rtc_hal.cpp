@@ -105,17 +105,15 @@ void hal_rtc_init(void) {
 #endif
     if (exRtcPresent) {
         struct timeval exRtcTv = {};
-        if (Am18x5::getInstance().isTimeValid(&exRtcTv)) {
-            if (!Am18x5::getInstance().isDefault()) {
-                // Sync time from external RTC to internal RTC
-                hal_rtc_set_time(&exRtcTv, nullptr);
-            }
-        } else {
+        if (!Am18x5::getInstance().isTimeValid(&exRtcTv)) {
             struct timeval tv = {
                 .tv_sec = UNIX_TIME_20000101000000,
                 .tv_usec = 0
             };
             Am18x5::getInstance().setTime(&tv);
+        } else {
+            // Sync time from external RTC to internal RTC
+            hal_rtc_set_time(&exRtcTv, nullptr);
         }
     }
 #else
@@ -231,6 +229,41 @@ void hal_rtc_cancel_alarm(void) {
     }
 #endif
 #endif
+}
+
+int hal_rtc_set_source(hal_rtc_source_t source, void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    hal_am18x5_config_t config = {};
+    config.size = sizeof(hal_am18x5_config_t);
+    if (!Am18x5::getInstance().isPresent()) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    CHECK(Am18x5::getInstance().getConfig(&config));
+    uint8_t currDefault = config.default_rtc;
+    if (source == HAL_RTC_SOURCE_EXTERNAL && !currDefault) {
+        config.default_rtc = true;
+    }
+    if (source == HAL_RTC_SOURCE_INTERNAL && currDefault) {
+        config.default_rtc = false;
+    }
+    if (currDefault != config.default_rtc) {
+        CHECK(Am18x5::getInstance().setConfig(&config, false));
+    }
+#else
+    if (source == HAL_RTC_SOURCE_EXTERNAL) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
+    return SYSTEM_ERROR_NONE;
+}
+
+hal_rtc_source_t hal_rtc_get_source(void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return HAL_RTC_SOURCE_EXTERNAL;
+    }
+#endif
+    return HAL_RTC_SOURCE_INTERNAL;
 }
 
 // These are deprecated due to time_t size changes

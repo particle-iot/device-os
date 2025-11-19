@@ -79,7 +79,7 @@ Am18x5& Am18x5::getInstance() {
     return am18x5;
 }
 
-int Am18x5::setConfig(const hal_am18x5_config_t* config) {
+int Am18x5::setConfig(const hal_am18x5_config_t* config, bool restart) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (config->size != sizeof(hal_am18x5_config_t) ||
             config->version != HAL_AM18X5_CONFIG_VERSION ||
@@ -96,13 +96,16 @@ int Am18x5::setConfig(const hal_am18x5_config_t* config) {
         if (result < 0) {
             return result;
         }
-        CHECK(init());
-        if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-            if (detected_) {
-                end();
-                detected_ = false;
+        memcpy(&config_, config, std::min(config_.size, config->size));
+        if (restart) {
+            CHECK(init());
+            if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
+                if (detected_) {
+                    end();
+                    detected_ = false;
+                }
+                CHECK(begin());
             }
-            CHECK(begin());
         }
     }
     return SYSTEM_ERROR_NONE;
