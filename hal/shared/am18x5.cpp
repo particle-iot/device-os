@@ -174,7 +174,7 @@ int Am18x5::begin() {
             LOG(ERROR, "os_semaphore_create() failed");
             return SYSTEM_ERROR_INTERNAL;
         }
-        if (os_thread_create(&exRtcWorkerThread_, "exrtc", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 512)) {
+        if (os_thread_create(&exRtcWorkerThread_, "exrtc", OS_THREAD_PRIORITY_NETWORK, exRtcInterruptHandleThread, this, 1536)) {
             os_semaphore_destroy(exRtcWorkerSemaphore_);
             exRtcWorkerSemaphore_ = nullptr;
             LOG(ERROR, "os_thread_create() failed");
@@ -257,7 +257,12 @@ int Am18x5::setTime(const struct timeval* tv) const {
     Am18x5Lock lock;
     CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t buff[8] = {0};
-    buff[0] = CHECK(decToBcd(tv->tv_usec / MICROS_IN_HUNDREDTH));
+    auto tv_usec = tv->tv_usec;
+    if (tv_usec > 99) {
+        // In most cases, tv_usec is not set in user app, which leaves it being an invalid value.
+        tv_usec = 0;
+    }
+    buff[0] = CHECK(decToBcd(tv_usec / MICROS_IN_HUNDREDTH));
     buff[1] = CHECK(decToBcd(calendar.tm_sec));
     buff[2] = CHECK(decToBcd(calendar.tm_min));
     buff[3] = CHECK(decToBcd(calendar.tm_hour));
@@ -313,15 +318,24 @@ int Am18x5::setAlarm(bool enable, uint32_t flags, const struct timeval* tv, Alar
     if (enable) {
         if (tv) {
             struct timeval alarm = *tv;
+            struct timeval now;
+            CHECK(getTime(&now));
             if (flags & HAL_RTC_ALARM_FLAG_IN) {
-                struct timeval now;
-                CHECK(getTime(&now));
                 timeradd(tv, &now, &alarm);
+            }
+
+            if (alarm.tv_sec <= now.tv_sec) {
+                // Too late to set such an alarm
+                return SYSTEM_ERROR_TIMEOUT;
             }
 
             struct tm calendar;
             CHECK(timevalToCalendar(&alarm, &calendar));
             uint8_t buff[7] = {0};
+            if (alarm.tv_usec > 99) {
+                // In most cases, tv_usec is not set in user app, which leaves it being an invalid value.
+                alarm.tv_usec = 0;
+            }
             buff[0] = CHECK(decToBcd(alarm.tv_usec / MICROS_IN_HUNDREDTH));
             buff[1] = CHECK(decToBcd(calendar.tm_sec));
             buff[2] = CHECK(decToBcd(calendar.tm_min));
