@@ -494,3 +494,34 @@ test(SYSTEM_11_system_reset) {
     System.reset();
 }
 #endif // PARTICLE_TEST_RUNNER
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+test(SYSTEM_12_system_update_external_rtc_configuration) {
+    SystemExternalRtcConfiguration config = {};
+    assertEqual(System.getExternalRtcConfiguration(config), 0);
+    bool wasDefault = config.defaultRtc();
+    if (wasDefault) {
+        assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_EXTERNAL);
+        config.defaultRtc(false);
+    } else {
+        assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
+        config.defaultRtc(true);
+    }
+    // Change the time source
+    assertEqual(System.setExternalRtcConfiguration(config), 0);
+    // Verify the change
+    assertEqual(System.getExternalRtcConfiguration(config), 0);
+    if (wasDefault) {
+        assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
+    } else {
+        assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_EXTERNAL);
+    }
+}
+
+test(SYSTEM_13_system_power_gated_by_external_rtc) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    SystemExternalRtcSleepConfiguration sleepConf = {};
+    sleepConf.duration(3s);
+    System.powerGatedByExternalRtc(sleepConf);
+}
+#endif
