@@ -27,6 +27,7 @@
 #include "delay_hal.h"
 #include "spi_lock.h"
 #include <mutex>
+#include "scope_guard.h"
 
 using namespace particle;
 
@@ -58,6 +59,7 @@ Mcp23s17::Mcp23s17()
           ioExpanderWorkerThreadExit_(false),
           ioExpanderWorkerSemaphore_(nullptr),
           spiLock_(HAL_PLATFORM_MCP23S17_SPI, sDefaultSettings) {
+    begin();
 }
 
 Mcp23s17::~Mcp23s17() {
@@ -65,7 +67,11 @@ Mcp23s17::~Mcp23s17() {
 }
 
 int Mcp23s17::begin() {
-    Mcp23s17Lock lock;
+    lock();
+    SCOPE_GUARD ({
+        unlock();
+    });
+
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
     hal_gpio_mode(IOE_CS, OUTPUT);
@@ -130,7 +136,10 @@ bool Mcp23s17::initialized() const {
 }
 
 int Mcp23s17::reset(bool verify) {
-    Mcp23s17Lock lock;
+    lock();
+    SCOPE_GUARD ({
+        unlock();
+    });
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(IOE_RST != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin

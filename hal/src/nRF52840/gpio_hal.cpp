@@ -170,8 +170,6 @@ int hal_gpio_configure(hal_pin_t pin, const hal_gpio_config_t* conf, void* reser
             hal_pin_set_function(pin, PF_NONE);
         }
 
-        CHECK(Mcp23s17::getInstance().begin());
-
         // Pre-set the output value if requested to avoid a glitch
         if (conf->set_value && mode == OUTPUT) {
             CHECK(Mcp23s17::getInstance().writePinValue(PIN_MAP[pin].gpio_port, PIN_MAP[pin].gpio_pin, conf->value));
