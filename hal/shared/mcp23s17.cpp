@@ -58,7 +58,6 @@ Mcp23s17::Mcp23s17()
           ioExpanderWorkerThreadExit_(false),
           ioExpanderWorkerSemaphore_(nullptr),
           spiLock_(HAL_PLATFORM_MCP23S17_SPI, sDefaultSettings) {
-    begin();
 }
 
 Mcp23s17::~Mcp23s17() {
@@ -66,7 +65,7 @@ Mcp23s17::~Mcp23s17() {
 }
 
 int Mcp23s17::begin() {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_FALSE(initialized_, SYSTEM_ERROR_NONE);
 
     hal_gpio_mode(IOE_CS, OUTPUT);
@@ -107,7 +106,7 @@ int Mcp23s17::begin() {
 }
 
 int Mcp23s17::end() {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
 
     CHECK(reset());
@@ -131,7 +130,7 @@ bool Mcp23s17::initialized() const {
 }
 
 int Mcp23s17::reset(bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(IOE_RST != PIN_INVALID, SYSTEM_ERROR_INVALID_ARGUMENT);
     // Assert reset pin
@@ -165,7 +164,7 @@ int Mcp23s17::reset(bool verify) {
 }
 
 int Mcp23s17::setPinMode(uint8_t port, uint8_t pin, PinMode mode, bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -210,7 +209,7 @@ int Mcp23s17::setPinMode(uint8_t port, uint8_t pin, PinMode mode, bool verify) {
 }
 
 int Mcp23s17::setPinInputInverted(uint8_t port, uint8_t pin, bool enable, bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -234,7 +233,7 @@ int Mcp23s17::setPinInputInverted(uint8_t port, uint8_t pin, bool enable, bool v
 }
 
 int Mcp23s17::writePinValue(uint8_t port, uint8_t pin, uint8_t value, bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -258,7 +257,7 @@ int Mcp23s17::writePinValue(uint8_t port, uint8_t pin, uint8_t value, bool verif
 }
 
 int Mcp23s17::readPinValue(uint8_t port, uint8_t pin, uint8_t* value) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -279,7 +278,7 @@ int Mcp23s17::readPinValue(uint8_t port, uint8_t pin, uint8_t* value) {
 }
 
 int Mcp23s17::attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, Mcp23s17InterruptCallback callback, void* context, bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -319,7 +318,7 @@ int Mcp23s17::attachPinInterrupt(uint8_t port, uint8_t pin, InterruptMode trig, 
 }
 
 int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(port < MCP23S17_PORT_COUNT, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(pin < MCP23S17_PIN_COUNT_PER_PORT, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -346,7 +345,7 @@ int Mcp23s17::detachPinInterrupt(uint8_t port, uint8_t pin, bool verify) {
 }
 
 int Mcp23s17::interruptsSuspend() {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     // Simply reset the registers, since we have cached current registers' value
     CHECK(writeRegister(GPINTEN_ADDR[0], 0x00));
@@ -363,7 +362,7 @@ int Mcp23s17::interruptsSuspend() {
 }
 
 int Mcp23s17::interruptsRestore(uint8_t intStatus[2]) {
-    Mcp23s17Lock lock();
+    Mcp23s17Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK(readRegister(INTF_ADDR[0], &intStatus[0]));
     CHECK(readRegister(INTF_ADDR[1], &intStatus[1]));
@@ -452,7 +451,7 @@ os_thread_return_t Mcp23s17::ioInterruptHandleThread(void* param) {
     while(!instance->ioExpanderWorkerThreadExit_) {
         os_semaphore_take(instance->ioExpanderWorkerSemaphore_, CONCURRENT_WAIT_FOREVER, false);
         {
-            Mcp23s17Lock lock();
+            Mcp23s17Lock lock;
             uint8_t intStatus[2];
             uint8_t portValue[2];
             if (instance->readRegister(instance->INTF_ADDR[0], &intStatus[0]) != SYSTEM_ERROR_NONE) {
