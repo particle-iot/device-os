@@ -340,6 +340,8 @@ void Set_System(void)
     // irq_table_init(RTL_DEFAULT_MSP_S);
     // __set_MSP(RTL_DEFAULT_MSP_S);
 
+    Cache_Enable(1);
+
 #if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
     __NVIC_SetVector(HardFault_IRQn, (u32)(void*)HardFault_Handler);
     __NVIC_SetVector(MemoryManagement_IRQn, (u32)(void*)MemManage_Handler);
