@@ -3699,7 +3699,6 @@ int hal_ble_cancel_callback_on_adv_events(hal_ble_on_adv_evt_cb_t callback, void
 int hal_ble_set_callback_on_periph_link_events(hal_ble_on_link_evt_cb_t callback, void* context, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_set_callback_on_periph_link_events().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGap::getInstance().onPeripheralLinkEventCallback(callback, context);
 }
 
@@ -4027,14 +4026,12 @@ bool hal_ble_gap_is_paired(hal_ble_conn_handle_t conn_handle, void* reserved) {
 int hal_ble_gatt_server_add_service(uint8_t type, const hal_ble_uuid_t* uuid, hal_ble_attr_handle_t* handle, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_add_service().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGatt::getInstance().addService(type, uuid, handle);;
 }
 
 int hal_ble_gatt_server_add_characteristic(const hal_ble_char_init_t* char_init, hal_ble_char_handles_t* char_handles, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_add_characteristic().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGatt::getInstance().addCharacteristic(char_init, char_handles);
 }
 
@@ -4047,7 +4044,6 @@ int hal_ble_gatt_server_add_descriptor(const hal_ble_desc_init_t* desc_init, hal
 ssize_t hal_ble_gatt_server_set_characteristic_value(hal_ble_attr_handle_t value_handle, const uint8_t* buf, size_t len, void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_gatt_server_set_characteristic_value().");
-    CHECK_TRUE(BleGap::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
     return BleGatt::getInstance().setValue(value_handle, buf, len);
 }
 
