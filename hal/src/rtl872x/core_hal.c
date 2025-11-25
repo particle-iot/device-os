@@ -454,7 +454,8 @@ bool HAL_Core_Validate_Modules(uint32_t flags, void* reserved)
     do {
         bounds = find_module_bounds(MODULE_FUNCTION_SYSTEM_PART, i++, HAL_PLATFORM_MCU_DEFAULT);
         if (bounds) {
-            module_fetched = fetch_module(&mod, bounds, false, MODULE_VALIDATION_INTEGRITY);
+            // Bootloader has done integrity check
+            module_fetched = fetch_module(&mod, bounds, false, 0);
             valid = module_fetched && (mod.validity_checked == mod.validity_result);
         }
         if (flags & 1) {
