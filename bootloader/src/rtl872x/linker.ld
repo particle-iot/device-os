@@ -89,6 +89,13 @@ SECTIONS
         link_global_data_end = .;
     } > SRAM AT> APP_FLASH
 
+    .igot.plt :
+    {
+        *(.igot.plt)
+        FILL(0xff)
+        . = ALIGN(16);
+    } > SRAM AT> APP_FLASH
+
     .sram.text :
     {
         . = ALIGN(4);
