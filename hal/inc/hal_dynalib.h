@@ -34,11 +34,10 @@
 #include "delay_hal.h"
 #include "timer_hal.h"
 #include "rtc_hal.h"
+#include "interrupts_hal.h"
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 #include "exrtc_hal.h"
 #endif
-#include "interrupts_hal.h"
-
 #endif
 
 /**
