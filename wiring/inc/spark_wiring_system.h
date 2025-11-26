@@ -1122,13 +1122,13 @@ public:
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     int setExternalRtcConfiguration(const particle::SystemExternalRtcConfiguration& conf) {
-        return system_external_rtc_set_config(conf.config(), nullptr);
+        return hal_external_rtc_set_config(conf.config(), nullptr);
     }
 
     int getExternalRtcConfiguration(particle::SystemExternalRtcConfiguration& conf) {
         particle::hal_am18x5_config_t config = {};
         config.size = sizeof(config);
-        int ret = system_external_rtc_get_config(&config, nullptr);
+        int ret = hal_external_rtc_get_config(&config, nullptr);
         if (ret == SYSTEM_ERROR_NONE) {
             conf = particle::SystemExternalRtcConfiguration(config);
         }
@@ -1136,11 +1136,11 @@ public:
     }
 
     bool isExternalRtcPresent() {
-        return system_external_rtc_is_present(nullptr);
+        return hal_external_rtc_is_present(nullptr);
     }
 
     int powerGatedByExternalRtc(const particle::SystemExternalRtcSleepConfiguration& conf) {
-        return system_external_rtc_sleep(conf.config(), nullptr);
+        return hal_external_rtc_sleep(conf.config(), nullptr);
     }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 

@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "system_exrtc.h"
+#include "exrtc_hal.h"
 #include "spark_wiring_platform.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

@@ -15,26 +15,28 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
-
-#include "hal_platform.h"
+#include "exrtc_hal.h"
+#include "spark_wiring_platform.h"
+#include "debug.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
-#include "system_tick_hal.h"
-#include "am18x5.h"
+using namespace particle;
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
-int system_external_rtc_set_config(const particle::hal_am18x5_config_t* conf, void* reserved);
-int system_external_rtc_get_config(particle::hal_am18x5_config_t* conf, void* reserved);
-bool system_external_rtc_is_present(void* reserved);
-int system_external_rtc_sleep(const particle::hal_am18x5_sleep_config_t* conf, void* reserved);
-
-#ifdef __cplusplus
+int hal_external_rtc_set_config(const hal_am18x5_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().setConfig(conf);
 }
-#endif // __cplusplus
+
+int hal_external_rtc_get_config(hal_am18x5_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().getConfig(conf);
+}
+
+bool hal_external_rtc_is_present(void* reserved) {
+    return Am18x5::getInstance().isPresent();
+}
+
+int hal_external_rtc_sleep(const hal_am18x5_sleep_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().sleep(conf);
+}
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

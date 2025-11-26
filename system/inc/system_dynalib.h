@@ -38,7 +38,6 @@
 #include "system_led_signal.h"
 #include "system_setup.h"
 #include "system_power.h"
-#include "system_exrtc.h"
 #include "system_ble_prov.h"
 #endif
 
@@ -137,16 +136,6 @@ DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t c
 #endif  // HAL_PLATFORM_BLE
 
 DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
-
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-DYNALIB_FN(BASE_IDX3 + 1, system, system_external_rtc_set_config, int(const particle::hal_am18x5_config_t*, void*))
-DYNALIB_FN(BASE_IDX3 + 2, system, system_external_rtc_get_config, int(particle::hal_am18x5_config_t*, void*))
-DYNALIB_FN(BASE_IDX3 + 3, system, system_external_rtc_is_present, bool(void*))
-DYNALIB_FN(BASE_IDX3 + 4, system, system_external_rtc_sleep, int(const particle::hal_am18x5_sleep_config_t*, void*))
-#define BASE_IDX4 (BASE_IDX3 + 5)
-#else
-#define BASE_IDX4 (BASE_IDX3 + 1)
-#endif  // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 DYNALIB_END(system)
 
