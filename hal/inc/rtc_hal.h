@@ -22,6 +22,8 @@
 #include <time.h>
 #include <stdbool.h>
 #include "time_compat.h"
+#include "platforms.h"
+#include "system_tick_hal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,6 +35,11 @@ typedef enum hal_rtc_alarm_flags {
     HAL_RTC_ALARM_FLAG_IN = 0x01 // In provided amount of time, instead of an absolute timestamp
 } hal_rtc_alarm_flags;
 
+typedef enum hal_rtc_source_t {
+    HAL_RTC_SOURCE_INTERNAL = 0,
+    HAL_RTC_SOURCE_EXTERNAL = 1
+} hal_rtc_source_t;
+
 void hal_rtc_init(void);
 int hal_rtc_get_time(struct timeval* tv, void* reserved);
 int hal_rtc_set_time(const struct timeval* tv, void* reserved);
@@ -41,14 +48,21 @@ bool hal_rtc_time_is_valid(void* reserved);
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
 void hal_rtc_cancel_alarm(void);
 
-void hal_rtc_internal_enter_sleep();
-void hal_rtc_internal_exit_sleep();
+int hal_rtc_set_source(hal_rtc_source_t source, void* reserved);
+hal_rtc_source_t hal_rtc_get_source(void* reserved);
 
 // These functions are deprecated and are only used for backwards compatibility
 // due to time_t size change
 time32_t hal_rtc_get_unixtime_deprecated(void);
 void hal_rtc_set_unixtime_deprecated(time32_t value);
-//
+
+// For Tracker-specific backwards compatibility
+#if PLATFORM_ID == PLATFORM_TRACKER
+void hal_exrtc_get_watchdog_limits_deprecated(system_tick_t* low, system_tick_t* high, void* reserved);
+int hal_exrtc_enable_watchdog_deprecated(system_tick_t ms, void* reserved);
+int hal_exrtc_disable_watchdog_deprecated(void* reserved);
+int hal_exrtc_feed_watchdog_deprecated(void* reserved);
+#endif // PLATFORM_ID == PLATFORM_TRACKER
 
 #ifdef __cplusplus
 }

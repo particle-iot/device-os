@@ -268,3 +268,108 @@ test(WATCHDDOG_100_reload_value_is_calculated_correctly) {
         checkError(expectedTo);
     }
 }
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
+static void startExternalWatchdog(const WatchdogConfiguration& config) {
+    WatchdogInfo info;
+    assertEqual(0, ExternalWatchdog.init(config));
+    assertEqual(0, ExternalWatchdog.start());
+    assertEqual(0, ExternalWatchdog.getInfo(info));
+    assertTrue(info.state() == WatchdogState::STARTED);
+}
+
+static void checkExternalWatchdogState(WatchdogState state) {
+    WatchdogInfo info;
+    assertEqual(0, ExternalWatchdog.getInfo(info));
+    assertTrue(info.state() == state);
+}
+
+test(WATCHDOG_EXT_01_capabilities) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+    WatchdogInfo info;
+    assertEqual(0, ExternalWatchdog.getInfo(info));
+    assertTrue(info.mandatoryCapabilities() == WatchdogCap::RESET);
+    assertTrue(info.capabilities() == (WatchdogCap::RECONFIGURABLE | WatchdogCap::STOPPABLE |
+                                       WatchdogCap::SLEEP_RUNNING | WatchdogCap::DEBUG_RUNNING));
+}
+
+test(WATCHDOG_EXT_02_timeout_reset) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+
+    WatchdogInfo info;
+    assertEqual(0, ExternalWatchdog.init(WatchdogConfiguration().timeout(5s)));
+    checkExternalWatchdogState(WatchdogState::CONFIGURED);
+
+    // Notify about a pending reset
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+
+    assertEqual(0, ExternalWatchdog.start());
+    assertEqual(0, ExternalWatchdog.getInfo(info));
+    assertEqual(info.configuration().timeout(), 5000);
+    assertTrue(info.state() == WatchdogState::STARTED);
+    assertTrue(ExternalWatchdog.started());
+
+    delay(3000);
+    assertEqual(0, ExternalWatchdog.refresh());
+    delay(3000);
+    assertEqual(0, ExternalWatchdog.refresh());
+    delay(10000);
+    // This should not be reachable
+    assertFalse(true);
+}
+
+test(WATCHDOG_EXT_03_stoppable) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+    startExternalWatchdog(WatchdogConfiguration().timeout(5s));
+    delay(1s);
+    assertEqual(0, ExternalWatchdog.stop());
+    checkExternalWatchdogState(WatchdogState::STOPPED);
+}
+
+test(WATCHDOG_EXT_04_reconfigurable) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+    startExternalWatchdog(WatchdogConfiguration().timeout(5s));
+    delay(4s);
+    startExternalWatchdog(WatchdogConfiguration().timeout(10s));
+    delay(5s);
+    // Notify about a pending reset
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+}
+
+test(WATCHDOG_EXT_05_hibernate_mode_running) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+    startExternalWatchdog(WatchdogConfiguration().timeout(5s));
+    // Notify about a pending reset
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE));
+    // This should not be reachable
+    assertFalse(true);
+}
+
+test(WATCHDOG_EXT_06_running_after_waking_up) {
+    if (!System.isExternalRtcPresent()) {
+        skip();
+    }
+    startExternalWatchdog(WatchdogConfiguration().timeout(10s));
+
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(5s));
+    assertEqual((int)r.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
+
+    assertEqual(0, ExternalWatchdog.refresh());
+    delay(7000);
+    checkExternalWatchdogState(WatchdogState::STARTED);
+}
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

@@ -39,6 +39,7 @@
 #include <limits>
 #include <mutex>
 #include "spark_wiring_system_power.h"
+#include "spark_wiring_system_exrtc.h"
 #include "system_sleep_configuration.h"
 #include "system_control.h"
 #include "spark_wiring_vector.h"
@@ -1118,6 +1119,30 @@ public:
     static bool protectedDevice() {
         return security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
     }
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    int setExternalRtcConfiguration(const particle::SystemExternalRtcConfiguration& conf) {
+        return hal_external_rtc_set_config(conf.config(), nullptr);
+    }
+
+    int getExternalRtcConfiguration(particle::SystemExternalRtcConfiguration& conf) {
+        particle::hal_am18x5_config_t config = {};
+        config.size = sizeof(config);
+        int ret = hal_external_rtc_get_config(&config, nullptr);
+        if (ret == SYSTEM_ERROR_NONE) {
+            conf = particle::SystemExternalRtcConfiguration(config);
+        }
+        return ret;
+    }
+
+    bool isExternalRtcPresent() {
+        return hal_external_rtc_is_present(nullptr);
+    }
+
+    int powerGatedByExternalRtc(const particle::SystemExternalRtcSleepConfiguration& conf) {
+        return hal_external_rtc_sleep(conf.config(), nullptr);
+    }
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 private:
     SystemSleepResult systemSleepResult_;

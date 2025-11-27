@@ -63,4 +63,22 @@ test(watchdog_class) {
     API_COMPILE({ auto v = config.timeout(); }); 
 }
 
+test(external_watchdog_class) {
+    WatchdogConfiguration config;
+    WatchdogInfo info;
+
+    API_COMPILE({ int ret = ExternalWatchdog.init(config); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.start(); (void)ret; });
+    API_COMPILE({ bool ret = ExternalWatchdog.started(); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.stop(); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.refresh(); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.getInfo(info); (void)ret; });
+
+    API_COMPILE({ int ret = ExternalWatchdog.onExpired(onWatchdogExpiredHandlerFunc); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.onExpired(onWatchdogExpiredHandlerFunc, nullptr); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.onExpired([]() {}); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.onExpired(&Handlers::onWatchdogExpired, &watchdogHandler); (void)ret; });
+    API_COMPILE({ int ret = ExternalWatchdog.onExpired(std::bind(&Handlers::onWatchdogExpired, &watchdogHandler)); (void)ret; });
+}
+
 #endif

@@ -22,9 +22,10 @@
 #include "service_debug.h"
 #include "hal_platform.h"
 #include "check.h"
-
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
+#include "core_hal.h"
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#include "am18x5.h"
+using namespace particle;
 #endif
 
 // This implementation uses timer_hal. See timer_hal.cpp for additional information
@@ -36,6 +37,7 @@ namespace {
 
 const uint64_t UNIX_TIME_201801010000 = 1514764800000000; // 2018/01/01 00:00:00
 
+const uint64_t UNIX_TIME_20000101000000 = 946684800UL;   // 2000/01/01 00:00:00
 uint64_t s_unix_time_base = 946684800000000; // Default date/time to 2000/01/01 00:00:00
 uint64_t s_unix_time_base_us = 0; // Microsecond clock reference to the s_unix_time_base
 
@@ -69,11 +71,50 @@ uint64_t usUnixtimeFromTimeval(const struct timeval* tv) {
 } // anonymous
 
 void hal_rtc_init(void) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    bool exRtcPresent = false;
 #if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_init(nullptr);
-    struct timeval tv = {};
-    if (!hal_exrtc_get_time(&tv, nullptr)) {
-        hal_rtc_set_time(&tv, nullptr);
+    // FIXME: Tracker platform specific as for now
+    hal_am18x5_config_t config = {
+        .version = HAL_AM18X5_CONFIG_VERSION,
+        .size = sizeof(hal_am18x5_config_t),
+        .default_rtc = false,
+        .wdi_pin = RTC_WDI,
+        .int_pin = RTC_INT,
+        .i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C,
+        .rc_fallback = true,
+        .rc_on_battery = false,
+        .osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL,
+        .osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT,
+    };
+    if (Am18x5::getInstance().setConfig(&config) == SYSTEM_ERROR_NONE) {
+        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
+            if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+                exRtcPresent = true;
+            }
+        }
+    }
+#else
+    if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
+        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
+            if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+                exRtcPresent = true;
+            }
+        }
+    }
+#endif
+    if (exRtcPresent) {
+        struct timeval exRtcTv = {};
+        if (!Am18x5::getInstance().isTimeValid(&exRtcTv)) {
+            struct timeval tv = {
+                .tv_sec = UNIX_TIME_20000101000000,
+                .tv_usec = 0
+            };
+            Am18x5::getInstance().setTime(&tv);
+        } else {
+            // Sync time from external RTC to internal RTC
+            hal_rtc_set_time(&exRtcTv, nullptr);
+        }
     }
 #else
     // Do nothing
@@ -81,11 +122,21 @@ void hal_rtc_init(void) {
 }
 
 bool hal_rtc_time_is_valid(void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().isTimeValid();
+    }
+#endif
     return s_unix_time_base > UNIX_TIME_201801010000;
 }
 
 int hal_rtc_get_time(struct timeval* tv, void* reserved) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().getTime(tv);
+    }
+#endif
     auto unixTimeUs = getUsUnixTime();
     timevalFromUsUnixtime(tv, unixTimeUs);
     return 0;
@@ -93,21 +144,31 @@ int hal_rtc_get_time(struct timeval* tv, void* reserved) {
 
 int hal_rtc_set_time(const struct timeval* tv, void* reserved) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isPresent()) {
+        int ret = Am18x5::getInstance().setTime(tv);
+        if (Am18x5::getInstance().isDefault()) {
+            CHECK(ret);
+        }
+    }
+#endif
     uint64_t us = hal_timer_micros(nullptr);
     int st = HAL_disable_irq();
     s_unix_time_base = usUnixtimeFromTimeval(tv);
     s_unix_time_base_us = us;
     HAL_enable_irq(st);
-#if HAL_PLATFORM_EXTERNAL_RTC
-    CHECK(hal_exrtc_set_time(tv, nullptr));
-#endif
     return 0;
 }
 
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
-#if HAL_PLATFORM_EXTERNAL_RTC
-    return hal_exrtc_set_alarm(tv, flags, handler, context, nullptr);
+#if HAL_PLATFORM_EXTERNAL_RTC // For backwards compatibility, tracker platform always use external RTC for alarm
+    return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context);
 #else
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context);
+    }
+#endif
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
     struct timeval alarm = *tv;
     if (flags & HAL_RTC_ALARM_FLAG_IN) {
@@ -153,8 +214,13 @@ int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_ha
 }
 
 void hal_rtc_cancel_alarm(void) {
-#if HAL_PLATFORM_EXTERNAL_RTC
-    hal_exrtc_cancel_alarm(nullptr);
+#if HAL_PLATFORM_EXTERNAL_RTC // For backwards compatibility, tracker platform always use external RTC for alarm
+    Am18x5::getInstance().setAlarm(false);
+#else
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        Am18x5::getInstance().setAlarm(false);
+    }
 #else
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.
@@ -162,6 +228,42 @@ void hal_rtc_cancel_alarm(void) {
         os_timer_change(s_alarm_timer, OS_TIMER_CHANGE_STOP, false, 0, 0xffffffff, nullptr);
     }
 #endif
+#endif
+}
+
+int hal_rtc_set_source(hal_rtc_source_t source, void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    hal_am18x5_config_t config = {};
+    config.size = sizeof(hal_am18x5_config_t);
+    if (!Am18x5::getInstance().isPresent()) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    CHECK(Am18x5::getInstance().getConfig(&config));
+    uint8_t currDefault = config.default_rtc;
+    if (source == HAL_RTC_SOURCE_EXTERNAL && !currDefault) {
+        config.default_rtc = true;
+    }
+    if (source == HAL_RTC_SOURCE_INTERNAL && currDefault) {
+        config.default_rtc = false;
+    }
+    if (currDefault != config.default_rtc) {
+        CHECK(Am18x5::getInstance().setConfig(&config, false));
+    }
+#else
+    if (source == HAL_RTC_SOURCE_EXTERNAL) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
+    return SYSTEM_ERROR_NONE;
+}
+
+hal_rtc_source_t hal_rtc_get_source(void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return HAL_RTC_SOURCE_EXTERNAL;
+    }
+#endif
+    return HAL_RTC_SOURCE_INTERNAL;
 }
 
 // These are deprecated due to time_t size changes
@@ -178,3 +280,21 @@ time32_t hal_rtc_get_unixtime_deprecated(void) {
     hal_rtc_get_time(&tv, nullptr);
     return (time32_t)tv.tv_sec;
 }
+
+#if PLATFORM_ID == PLATFORM_TRACKER // For Tracker-specific backwards compatibility
+void hal_exrtc_get_watchdog_limits_deprecated(system_tick_t* low, system_tick_t* high, void* reserved) {
+    Am18x5::getInstance().getWatchdogLimits(low, high);
+}
+
+int hal_exrtc_enable_watchdog_deprecated(system_tick_t ms, void* reserved) {
+    return Am18x5::getInstance().enableWatchdog(ms);
+}
+
+int hal_exrtc_disable_watchdog_deprecated(void* reserved) {
+    return Am18x5::getInstance().disableWatchdog();
+}
+
+int hal_exrtc_feed_watchdog_deprecated(void* reserved) {
+    return Am18x5::getInstance().feedWatchdog();
+}
+#endif // PLATFORM_ID == PLATFORM_TRACKER

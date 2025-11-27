@@ -35,11 +35,9 @@
 #include "timer_hal.h"
 #include "rtc_hal.h"
 #include "interrupts_hal.h"
-
-#if PLATFORM_ID == PLATFORM_TRACKER
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 #include "exrtc_hal.h"
-#endif // PLATFORM_ID == PLATFORM_TRACKER
-
+#endif
 #endif
 
 /**
@@ -100,14 +98,25 @@ DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, void*))
 DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, void*))
 
 #if PLATFORM_ID == PLATFORM_TRACKER
-DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog, int(system_tick_t, void*))
-DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t*, system_tick_t*, void*))
+DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog_deprecated, int(system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits_deprecated, void(system_tick_t*, system_tick_t*, void*))
 #define BASE_IDX2 (BASE_IDX + 29)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)
 #endif // PLATFORM_ID == PLATFORM_TRACKER
+
+DYNALIB_FN(BASE_IDX2 + 0, hal, hal_rtc_set_source, int(hal_rtc_source_t, void*))
+DYNALIB_FN(BASE_IDX2 + 1, hal, hal_rtc_get_source, hal_rtc_source_t(void*))
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+DYNALIB_FN(BASE_IDX2 + 2, hal, hal_external_rtc_set_config, int(const particle::hal_am18x5_config_t*, void*))
+DYNALIB_FN(BASE_IDX2 + 3, hal, hal_external_rtc_get_config, int(particle::hal_am18x5_config_t*, void*))
+DYNALIB_FN(BASE_IDX2 + 4, hal, hal_external_rtc_is_present, bool(void*))
+DYNALIB_FN(BASE_IDX2 + 5, hal, hal_external_rtc_sleep, int(const particle::hal_am18x5_sleep_config_t*, void*))
+#endif  // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
 
 DYNALIB_END(hal)
 
