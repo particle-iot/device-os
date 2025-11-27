@@ -45,8 +45,6 @@ void PRE_STARTUP() __attribute((weak));
 void setup() __attribute((weak));
 void loop() __attribute((weak));
 
-// needed on ARM GCC
-#if PLATFORM_ID != PLATFORM_GCC
 /**
  * Declare weak preStartup/setup/loop implementations so that they are always defined.
  */
@@ -61,7 +59,6 @@ void setup() {
 void loop() {
 
 }
-#endif // PLATFORM_ID != PLATFORM_GCC
 
 /**
  * Allow the application to override this to avoid processing
