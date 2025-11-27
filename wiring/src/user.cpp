@@ -41,19 +41,22 @@
  * Declare the following function bodies as weak. They will only be used if no
  * other strong function body is found when linking.
  */
+void PRE_STARTUP() __attribute((weak));
 void setup() __attribute((weak));
 void loop() __attribute((weak));
 
 // needed on ARM GCC
 #if PLATFORM_ID != PLATFORM_GCC
 /**
- * Declare weak setup/loop implementations so that they are always defined.
+ * Declare weak preStartup/setup/loop implementations so that they are always defined.
  */
-
-void setup()  {
+void PRE_STARTUP() {
 
 }
 
+void setup() {
+
+}
 
 void loop() {
 

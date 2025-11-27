@@ -37,6 +37,8 @@ DYNALIB_EXTERN_C void* module_user_pre_init();
  */
 DYNALIB_EXTERN_C void module_user_init();
 
+DYNALIB_EXTERN_C void module_user_pre_startup();
+
 DYNALIB_EXTERN_C void module_user_loop();
 
 DYNALIB_EXTERN_C void module_user_setup();

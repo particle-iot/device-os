@@ -54,6 +54,7 @@ bool validUserModuleInfoAtIndex(uint8_t function, uint8_t index, module_info_t* 
 extern "C" {
 void* module_user_pre_init();
 void module_user_init();
+void module_user_pre_startup();
 void module_user_loop();
 void module_user_setup();
 
@@ -85,6 +86,7 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
     if (desc) {
         desc->info = info;
         desc->pre_init = &module_user_pre_init;
+        desc->pre_startup = &module_user_pre_startup;
         desc->init = &module_user_init;
         desc->loop = &module_user_loop;
         desc->setup = &module_user_setup;

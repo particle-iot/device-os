@@ -41,6 +41,10 @@ void* module_user_pre_init() {
     return &link_global_data_start;
 }
 
+void module_user_pre_startup() {
+    preStartup();
+}
+
 /**
  * Array of C++ static constructors.
  */

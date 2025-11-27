@@ -827,6 +827,10 @@ void app_setup_and_loop(void)
     // configurations set in STARTUP() is not reset by factory reset
     resetSettingsToFactoryDefaultsIfNeeded();
 
+    system_power_management_init();
+
+    PRE_STARTUP();
+
     // NOTE: this calls user app global constructors
     system_part2_post_init();
 
@@ -840,8 +844,6 @@ void app_setup_and_loop(void)
 #if HAL_PLATFORM_LWIP
     system_subscribe_event(aux_power_state, if_init_postpone, nullptr);
 #endif /* HAL_PLATFORM_LWIP */
-
-    system_power_management_init();
 
     // Start the diagnostics service
     diag_command(DIAG_SERVICE_CMD_START, nullptr, nullptr);

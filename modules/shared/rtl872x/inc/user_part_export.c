@@ -70,6 +70,10 @@ __attribute__((section(".xip.text"))) void* module_user_pre_init() {
     return &link_global_data_start;
 }
 
+void module_user_pre_startup() {
+    PRE_STARTUP();
+}
+
 /**
  * Array of C++ static constructors.
  */

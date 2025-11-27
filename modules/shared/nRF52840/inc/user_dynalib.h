@@ -33,6 +33,7 @@ DYNALIB_FN(0, user, module_user_pre_init, void*(void))
 DYNALIB_FN(1, user, module_user_init, void(void))
 DYNALIB_FN(2, user, module_user_setup, void(void))
 DYNALIB_FN(3, user, module_user_loop, void(void))
+DYNALIB_FN(4, user, module_user_pre_startup, void(void))
 
 DYNALIB_END(user)
 

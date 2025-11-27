@@ -22,7 +22,7 @@ bool run_user_module()
  * but before C++ constructors are executed and before any dynamic memory has been allocated.
  */
 void system_part1_pre_init() {
-    // HAL_Core_Config() has been invoked in startup_nrf52840.S
+    // HAL_Core_Config() has been invoked in startup_rtl872x.S
 
     const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
 
@@ -38,6 +38,12 @@ void system_part1_pre_init() {
  * Invoked after all module-scope instances have been constructed.
  */
 void system_part1_init() {
+}
+
+void PRE_STARTUP() {
+    if (run_user_module()) {
+        user_descriptor.pre_startup();
+    }
 }
 
 void system_part2_post_init() __attribute__((alias("system_part1_post_init")));

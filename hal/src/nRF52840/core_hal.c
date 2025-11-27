@@ -95,9 +95,6 @@ static void* new_heap_end = &link_heap_location_end;
 extern void malloc_enable(uint8_t);
 extern void malloc_set_heap_end(void*);
 extern void* malloc_heap_end();
-#if defined(MODULAR_FIRMWARE)
-void* module_user_pre_init();
-#endif
 
 __attribute__((used, section(".isr_vector_legacy"))) static uintptr_t* legacy_vectors[2] = {
     &link_stack_end,

@@ -21,7 +21,13 @@ bool run_user_module()
  */
 void system_part1_pre_init() {
     // HAL_Core_Config() has been invoked in startup_nrf52840.S
-    if (HAL_Core_Enter_Safe_Mode_Requested()) {
+
+    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
+
+    bool safe_mode = HAL_Core_Enter_Safe_Mode_Requested();
+
+    if (!bootloader_validated || safe_mode || hal_user_module_get_descriptor(&user_descriptor)) {
+        // indicate to the system that it shouldn't run user code
         set_system_mode(SAFE_MODE);
     }
 }
@@ -32,17 +38,15 @@ void system_part1_pre_init() {
 void system_part1_init() {
 }
 
+void PRE_STARTUP() {
+    if (run_user_module()) {
+        user_descriptor.pre_startup();
+    }
+}
+
 void system_part2_post_init() __attribute__((alias("system_part1_post_init")));
 
 void system_part1_post_init() {
-    // NOTE: it may fetch the NCP and radio stack version, so some ealy
-    // initialization work should have been done before getting here.
-    const bool bootloader_validated = HAL_Core_Validate_Modules(1, NULL);
-    if (!bootloader_validated || hal_user_module_get_descriptor(&user_descriptor)) {
-        // indicate to the system that it shouldn't run user code
-        set_system_mode(SAFE_MODE);
-    }
-    
     if (run_user_module()) {
         user_descriptor.init();
     }

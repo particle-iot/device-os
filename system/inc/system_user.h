@@ -25,6 +25,7 @@ extern "C" {
 
 #include <stdbool.h>
 
+void PRE_STARTUP();
 void setup();
 void loop();
 
