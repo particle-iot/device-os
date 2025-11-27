@@ -42,7 +42,7 @@ void* module_user_pre_init() {
 }
 
 void module_user_pre_startup() {
-    preStartup();
+    PRE_STARTUP();
 }
 
 /**
