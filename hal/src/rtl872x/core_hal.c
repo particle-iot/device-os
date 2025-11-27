@@ -93,10 +93,6 @@ malloc_heap_region malloc_heap_regions[HAL_PLATFORM_HEAP_REGIONS] = {
     }
 };
 
-#if defined(MODULAR_FIRMWARE)
-void* module_user_pre_init();
-#endif
-
 extern void* dynalib_table_location; // user part dynalib location
 extern module_bounds_t module_user;
 extern module_bounds_t module_ota;
