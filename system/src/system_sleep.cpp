@@ -60,6 +60,11 @@ network_status_t system_sleep_network_suspend(network_interface_index index) {
     network_status_t status = {};
     status.suspended = true;
 
+    if (NetworkManager::instance()->getState() == NetworkManager::State::NONE) {
+        LOG(WARN, "Network manager is not initialized, skipped");
+        return status;
+    }
+
     // Disconnect from network
     if (network_connecting(index, 0, nullptr) || network_ready(index, 0, nullptr)) {
         if (network_connecting(index, 0, nullptr)) {
