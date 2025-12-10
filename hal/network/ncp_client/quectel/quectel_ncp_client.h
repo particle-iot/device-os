@@ -112,6 +112,7 @@ private:
 
     system_tick_t regStartTime_;
     system_tick_t regCheckTime_;
+    system_tick_t policymanSrvModeCheckTime_;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
     volatile bool inFlowControl_ = false;
@@ -132,6 +133,8 @@ private:
     int checkSimCard();
     int getModuleFunctionality();
     int setModuleFunctionality(CellularFunctionality cfun, bool check);
+    int getPolicymanServiceMode();
+    int setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check);
     int configureApn(const CellularNetworkConfig& conf);
     int registerNet();
     int changeBaudRate(unsigned int baud);
