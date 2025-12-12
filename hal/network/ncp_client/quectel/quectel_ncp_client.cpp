@@ -113,6 +113,8 @@ const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
+const unsigned QUECTEL_POLICYMAN_SRV_MODE_CHECK_INTERVAL = 60 * 1000;
+
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
 
@@ -177,6 +179,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     connState_ = NcpConnectionState::DISCONNECTED;
     regStartTime_ = 0;
     regCheckTime_ = 0;
+    policymanSrvModeCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
@@ -1139,6 +1142,10 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
     }
 
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
+        setPolicymanServiceMode(CellularPolicymanServiceMode::FULL_SERVICE, true /* check */);
+    }
+
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
 
@@ -1397,6 +1404,43 @@ int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool ch
     return r;
 }
 
+int QuectelNcpClient::getPolicymanServiceMode() {
+    auto resp = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+QNVFR=\"policyman/svc_mode\"");
+    int curVal = (int)CellularPolicymanServiceMode::NONE;
+    auto r = resp.scanf("+QNVFR: %d", &curVal);
+    // Soft response on ERROR
+    const int result = CHECK_PARSER(resp.readResult());
+    if (result != AtResponse::OK) {
+        return (int)CellularPolicymanServiceMode::NONE;
+    }
+    CHECK_TRUE(r == 1, (int)CellularPolicymanServiceMode::NONE);
+    return curVal;
+}
+
+int QuectelNcpClient::setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check) {
+    int curVal = (int)CellularPolicymanServiceMode::NONE;
+    if (check) {
+        curVal = getPolicymanServiceMode();
+        if ((int)mode == curVal || curVal == (int)CellularPolicymanServiceMode::NONE) {
+            // Already in required state, or command error'd/not supported.
+            return 0;
+        }
+    }
+
+    int r = SYSTEM_ERROR_UNKNOWN;
+
+    if (mode == CellularPolicymanServiceMode::FULL_SERVICE) {
+        r = parser_.execCommand(10000, "AT+QNVFW=\"policyman/svc_mode\",02");
+    } else if (mode == CellularPolicymanServiceMode::NO_SERVICE) {
+        r = parser_.execCommand(10000, "AT+QNVFW=\"policyman/svc_mode\",00");
+    }
+
+    CHECK_PARSER(r);
+
+    // AtResponse::Result!
+    return r;
+}
+
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
@@ -1549,6 +1593,7 @@ int QuectelNcpClient::registerNet() {
 
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    policymanSrvModeCheckTime_ = regStartTime_;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1857,6 +1902,7 @@ void QuectelNcpClient::resetRegistrationState() {
     eps_.reset();
     regStartTime_ = millis();
     regCheckTime_ = regStartTime_;
+    policymanSrvModeCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
 }
 
@@ -1974,6 +2020,11 @@ int QuectelNcpClient::processEventsImpl() {
         return SYSTEM_ERROR_NONE;
     }
     SCOPE_GUARD({ regCheckTime_ = millis(); });
+
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX && millis() - policymanSrvModeCheckTime_ >= QUECTEL_POLICYMAN_SRV_MODE_CHECK_INTERVAL) {
+        policymanSrvModeCheckTime_ = millis();
+        setPolicymanServiceMode(CellularPolicymanServiceMode::FULL_SERVICE, true /* check */);
+    }
 
     // Log extended errors for modems that support AT+CEER
     if (isQuecCat1Device()) {
