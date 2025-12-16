@@ -293,8 +293,53 @@ test(I2C_05_Hal_Sleep_API_Test) {
     assertTrue(Wire.isEnabled());
 }
 
+#ifdef PARTICLE_TEST_RUNNER
+// one or more larger than default (32:gen3,512:gen4) will force hal_i2c_init(),
+constexpr size_t I2C_BUFFER_SIZE = HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_PLATFORM_PMIC_BQ24195_I2C) + 1;
+uint8_t _rx_buf[I2C_BUFFER_SIZE];
+uint8_t _tx_buf[I2C_BUFFER_SIZE];
+hal_i2c_config_t acquireWireBuffer()
+{
+    hal_i2c_config_t config = {
+        .size = sizeof(hal_i2c_config_t),
+        .version = HAL_I2C_CONFIG_VERSION_1,
+        .rx_buffer = _rx_buf,
+        .rx_buffer_size = I2C_BUFFER_SIZE,
+        .tx_buffer = _tx_buf,
+        .tx_buffer_size = I2C_BUFFER_SIZE
+    };
+    return config;
+}
+test(I2C_06_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface_Reset) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    System.reset();
+}
+
 #if HAL_PLATFORM_FUELGAUGE_MAX17043
-test(I2C_06_I2c_Sleep_FuelGauge) {
+test(I2C_07_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface) {
+    delay(10000); // allow PMIC setup to finish after rebooting from previous step
+
+    FuelGauge fuel(true);
+    // fuel.begin(); // sc-137389 - purposely do not call begin() as in our documentation,
+                     // FuelGauge should call begin() on its own.
+    assertTrue(Wire.isEnabled());
+    fuel.wakeup();
+    auto ver = 0xffff & fuel.getVersion();
+#if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    if (ver < 0) {
+        skip();
+        return;
+    }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+    assertNotEqual(ver, 0xff60); // gen3, if i2c interface not enabled, this is returned
+    assertNotEqual(ver, 0x7400); // gen4
+    assertMoreOrEqual(ver, 0);
+    assertNotEqual(ver, 0x0000);
+    assertNotEqual(ver, 0xffff);
+}
+#endif // PARTICLE_TEST_RUNNER
+
+test(I2C_08_I2c_Sleep_FuelGauge) {
     FuelGauge fuel(true);
     fuel.begin();
     fuel.wakeup();
@@ -321,7 +366,7 @@ test(I2C_06_I2c_Sleep_FuelGauge) {
     assertEqual(ver, ver2);
 }
 
-test(I2C_07_bus_reset_is_not_destructive) {
+test(I2C_09_bus_reset_is_not_destructive) {
     constexpr uint16_t MAX17043_DEFAULT_CONFIG = 0x971c;
 
     FuelGauge fuel;
@@ -379,7 +424,7 @@ test(I2C_07_bus_reset_is_not_destructive) {
 
 #if HAL_PLATFORM_FUELGAUGE_MAX17043 && HAL_PLATFORM_I2C_NUM == 1
 // Uses transactions
-test(I2C_08_can_talk_to_fuelgauge_with_transactions) {
+test(I2C_10_can_talk_to_fuelgauge_with_transactions) {
     FuelGauge fuel;
     fuel.begin();
     fuel.wakeup();
@@ -397,7 +442,7 @@ test(I2C_08_can_talk_to_fuelgauge_with_transactions) {
 #endif // HAL_PLATFORM_FUELGAUGE_MAX17043 && HAL_PLATFORM_I2C_NUM == 1
 
 #if HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_I2C_NUM == 1
-test(I2C_09_can_talk_to_pmic_with_transactions) {
+test(I2C_11_can_talk_to_pmic_with_transactions) {
     constexpr uint8_t BQ24195_VERSION = 0x23;
     PMIC power;
     power.begin();
