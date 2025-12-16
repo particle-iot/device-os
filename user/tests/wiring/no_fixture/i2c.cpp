@@ -293,6 +293,8 @@ test(I2C_05_Hal_Sleep_API_Test) {
     assertTrue(Wire.isEnabled());
 }
 
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+
 #ifdef PARTICLE_TEST_RUNNER
 // one or more larger than default (32:gen3,512:gen4) will force hal_i2c_init(),
 constexpr size_t I2C_BUFFER_SIZE = HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_PLATFORM_PMIC_BQ24195_I2C) + 1;
@@ -315,7 +317,6 @@ test(I2C_06_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface_Reset) {
     System.reset();
 }
 
-#if HAL_PLATFORM_FUELGAUGE_MAX17043
 test(I2C_07_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface) {
     delay(10000); // allow PMIC setup to finish after rebooting from previous step
 

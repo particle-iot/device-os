@@ -816,7 +816,26 @@ private:
 
 int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    return instance->init(config);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    bool wasEnabled = instance->isEnabled();
+#endif // #if HAL_PLATFORM_PMIC_BQ24195
+
+    auto ret = instance->init(config);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    if (ret == SYSTEM_ERROR_NONE) {
+        if (i2c == HAL_PLATFORM_PMIC_BQ24195_I2C) {
+            if (wasEnabled) {
+                ret = instance->begin(I2C_MODE_MASTER, 0x00);
+            }
+        }
+    }
+#endif // #if HAL_PLATFORM_PMIC_BQ24195
+
+    return ret;
 }
 
 void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved) {
