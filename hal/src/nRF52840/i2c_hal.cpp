@@ -317,11 +317,19 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     os_thread_scheduling(false, nullptr);
     if (i2cMap[i2c].mutex == nullptr) {
         os_mutex_recursive_create(&i2cMap[i2c].mutex);
-    } 
+    }
 
     // Re-enable threading and capture the mutex
     os_thread_scheduling(true, nullptr);
     I2cLock lk(i2c);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    bool wasEnabled = false;
+    if (i2cMap[i2c].state == HAL_I2C_STATE_ENABLED) {
+        wasEnabled = true;
+    }
+#endif // HAL_PLATFORM_PMIC_BQ24195
 
     if (i2cMap[i2c].configured) {
         // Configured, but new buffers are invalid
@@ -374,6 +382,15 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     i2cMap[i2c].configured = true;
     memset((void *)i2cMap[i2c].rx_buf, 0, i2cMap[i2c].rx_buf_size);
     memset((void *)i2cMap[i2c].tx_buf, 0, i2cMap[i2c].tx_buf_size);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    if (i2c == HAL_PLATFORM_PMIC_BQ24195_I2C) {
+        if (wasEnabled) {
+            hal_i2c_begin(i2c, I2C_MODE_MASTER, 0x00, nullptr);
+        }
+    }
+#endif // #if HAL_PLATFORM_PMIC_BQ24195
 
     return SYSTEM_ERROR_NONE;
 }
