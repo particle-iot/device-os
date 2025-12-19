@@ -192,9 +192,9 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
         .error = 0
     };
 
-    PB_SYSTEM(EnvVars) pbMsg = {};
-    pbMsg.vars.arg = &d;
-    pbMsg.vars.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
+    PB_SYSTEM(EnvVars) pbVars = {};
+    pbVars.vars.arg = &d;
+    pbVars.vars.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
         auto d = (DecodeContext*)*arg;
 
         PB_SYSTEM(EnvVars_Var) pbVar = {};
@@ -241,8 +241,19 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
 
         return true;
     };
-    if (!pb_decode(&stream, &PB_SYSTEM(EnvVars_msg), &pbMsg)) {
+    if (!pb_decode(&stream, &PB_SYSTEM(EnvVars_msg), &pbVars)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_BAD_DATA;
+    }
+
+    if (pbVars.hash.size > 0) {
+        if (pbVars.hash.size != SNAPSHOT_HASH_SIZE) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        vars.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
+        if (!vars.snapshotHash) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        std::memcpy(vars.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
     }
 
     return 0;
