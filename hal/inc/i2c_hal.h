@@ -84,6 +84,7 @@ typedef enum hal_i2c_state_t {
 } hal_i2c_state_t;
 
 /* Exported macros -----------------------------------------------------------*/
+#define CLOCK_SPEED_10KHZ          (uint32_t)10000
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
 #define CLOCK_SPEED_400KHZ         (uint32_t)400000
 #define HAL_I2C_DEFAULT_TIMEOUT_MS (100)
