@@ -107,6 +107,57 @@ private:
     filesystem_t* fs_;
 };
 
+class File {
+public:
+    explicit File(filesystem_instance_t fs = FILESYSTEM_INSTANCE_DEFAULT) :
+            File(filesystem_get_instance(fs, nullptr /* reserved */)) {
+    }
+
+    explicit File(filesystem_t* fs) :
+            File(fs ? &fs->instance : nullptr) {
+    }
+
+    explicit File(lfs_t* lfs);
+    File(const File& file) = delete;
+    File(File&& file);
+    ~File();
+
+    int open(const char* path, int flags);
+    int close();
+
+    bool isOpen() const {
+        return open_;
+    }
+
+    int read(void* buf, lfs_size_t size);
+    int write(const void* buf, lfs_size_t size);
+    int tell();
+    int seek(lfs_soff_t offs, int whence);
+    int size();
+    int truncate(lfs_off_t size);
+    int sync();
+
+    lfs_file_t* handle() {
+        return &file_;
+    }
+
+    lfs_t* lfs() const {
+        return lfs_;
+    }
+
+    File& operator=(const File& file) = delete;
+    File& operator=(File&& file);
+
+private:
+    lfs_file_t file_;
+    lfs_t* lfs_;
+    bool open_;
+};
+
+int remove(lfs_t* lfs, const char* path);
+int rename(lfs_t* lfs, const char* oldPath, const char* newPath);
+int stat(lfs_t* lfs, const char* path, lfs_info* info);
+
 } } /* particle::fs */
 
 #endif /* __cplusplus */
