@@ -19,13 +19,18 @@
 
 #if HAL_PLATFORM_ENV_VARS
 
+#include <pb_decode.h>
+
+#include "nanopb_misc.h"
 #include "scope_guard.h"
 #include "check.h"
 #include "logging.h"
 
-namespace particle {
+#include "system/env_vars.pb.h"
 
-namespace system {
+#define PB_SYSTEM(_name) particle_system_##_name
+
+namespace particle::system {
 
 namespace {
 
@@ -33,6 +38,10 @@ const auto APP_VARS_FILE = "/sys/env_app";
 const auto APP_VARS_FILE_STAGED = "/sys/env_app.staged";
 const auto SNAPSHOT_VARS_FILE = "/sys/env_snapshot";
 const auto SNAPSHOT_VARS_FILE_STAGED = "/sys/env_snapshot.staged";
+
+const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
+
+static_assert(EnvVars::MAX_NAME_LEN + 1 == sizeof(PB_SYSTEM(EnvVars_Var::name)));
 
 } // unnamed
 
@@ -113,6 +122,19 @@ int EnvVars::openVarsFile(VarSource src, fs::File& file, Vars& vars) {
             }
             continue;
         }
+        r = file.size();
+        if (r < 0) {
+            if (!error) {
+                error = r;
+            }
+            continue;
+        }
+        if (r > (int)MAX_VARS_FILE_SIZE) {
+            if (!error) {
+                error = SYSTEM_ERROR_TOO_LARGE;
+            }
+            continue;
+        }
         r = readVars(src, file, vars);
         if (r < 0) {
             LOG(ERROR, "Error while reading %s: %d", path, r);
@@ -150,11 +172,82 @@ int EnvVars::openVarsFile(VarSource src, fs::File& file, Vars& vars) {
 }
 
 int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
+    pb_istream_t stream = {};
+    CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
+
+    struct DecodeContext {
+        fs::File& file;
+        VarMap& varMap;
+        VarSource varSrc;
+        size_t valOffs;
+        size_t valSize;
+        int error;
+    };
+    DecodeContext d = {
+        .file = file,
+        .varMap = vars.entries,
+        .varSrc = src,
+        .valOffs = 0,
+        .valSize = 0,
+        .error = 0
+    };
+
+    PB_SYSTEM(EnvVars) pbMsg = {};
+    pbMsg.vars.arg = &d;
+    pbMsg.vars.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
+        auto d = (DecodeContext*)*arg;
+
+        PB_SYSTEM(EnvVars_Var) pbVar = {};
+        pbVar.value.arg = &d;
+        pbVar.value.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
+            auto d = (DecodeContext*)*arg;
+
+            int r = d->file.tell();
+            if (r < 0) {
+                d->error = r;
+                return false;
+            }
+            d->valOffs = r;
+            d->valSize = stream->bytes_left;
+
+            return pb_read(stream, nullptr /* buf */, d->valSize); // Skip the value bytes
+        };
+        if (!pb_decode(stream, &PB_SYSTEM(EnvVars_Var_msg), &pbVar)) {
+            return false;
+        }
+
+        if (!pbVar.name[0]) {
+            d->error = SYSTEM_ERROR_BAD_DATA; // Empty names are not allowed
+            return false;
+        }
+        CString name(pbVar.name);
+        if (!name) {
+            d->error = SYSTEM_ERROR_NO_MEMORY;
+            return false;
+        }
+        VarEntry entry = {
+            .valOffs = (uint16_t)d->valOffs,
+            .valSize = (uint16_t)d->valSize,
+            .src = d->varSrc
+        };
+        auto [it, inserted] = d->varMap.insert(std::move(name), entry);
+        if (it == d->varMap.end()) {
+            d->error = SYSTEM_ERROR_NO_MEMORY;
+            return false;
+        }
+        if (!inserted) {
+            it->second = entry;
+        }
+
+        return true;
+    };
+    if (!pb_decode(&stream, &PB_SYSTEM(EnvVars_msg), &pbMsg)) {
+        return (d.error < 0) ? d.error : SYSTEM_ERROR_BAD_DATA;
+    }
+
     return 0;
 }
 
-} // system
-
-} // particle
+} // particle::system
 
 #endif // HAL_PLATFORM_ENV_VARS
