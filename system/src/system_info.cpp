@@ -38,6 +38,8 @@ using particle::control::common::EncodedString;
 #include "asset_manager.h"
 #endif // HAL_PLATFORM_ASSETS
 
+#include "env_vars.h"
+
 #define PB(name) particle_cloud_##name
 
 namespace {
@@ -499,6 +501,15 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
 #if HAL_PLATFORM_ASSETS
     EncodeAssets assets(&pbDesc.assets, AssetManager::instance().availableAssets());
 #endif // HAL_PLATFORM_ASSETS
+
+#if HAL_PLATFORM_ENV_VARS
+    const auto envVarsHash = EnvVars::instance().snapshotHash();
+    if (envVarsHash) {
+        std::memcpy(pbDesc.env_vars_hash.bytes, envVarsHash, EnvVars::SNAPSHOT_HASH_SIZE);
+        pbDesc.env_vars_hash.size = EnvVars::SNAPSHOT_HASH_SIZE;
+    }
+#endif // HAL_PLATFORM_ENV_VARS
+
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
 }
