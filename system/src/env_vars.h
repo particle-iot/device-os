@@ -32,11 +32,12 @@ namespace particle::system {
 
 class EnvVars {
 public:
+    static const size_t MAX_NAME_LEN = 128;
+    static const size_t SNAPSHOT_HASH_SIZE = 32;
+
     enum Result {
         NEED_RESET = 1
     };
-
-    static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     EnvVars(const EnvVars&) = delete;
     ~EnvVars();
