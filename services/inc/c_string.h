@@ -25,6 +25,8 @@ namespace particle {
 
 class CString {
 public:
+    struct Less;
+
     CString() :
             s_(nullptr) {
     }
@@ -64,6 +66,18 @@ public:
         return s_;
     }
 
+    static int compare(const CString& str1, const CString& str2) {
+        return compare(str1.s_, str2.s_);
+    }
+
+    static int compare(const CString& str1, const char* str2) {
+        return compare(str1.s_, str2);
+    }
+
+    static int compare(const char* str1, const CString& str2) {
+        return compare(str1, str2.s_);
+    }
+
     static CString wrap(char* str) {
         CString s;
         s.s_ = str;
@@ -71,6 +85,9 @@ public:
     }
 
     // Declare comparison operators as deleted to avoid their misuse
+    //
+    // TODO: Is this due to the implicit const char* operator? If so, we should probably remove
+    // that and enable the comparison operators back
     bool operator==(const CString&) const = delete;
     bool operator==(const char*) const = delete;
     bool operator!=(const CString&) const = delete;
@@ -87,9 +104,36 @@ public:
 private:
     const char* s_;
 
+    static int compare(const char* str1, const char* str2) {
+        if (!str1) {
+            if (!str2) {
+                return 0; // str1 == NULL && str2 == NULL
+            }
+            return -1; // str1 == NULL && str2 != NULL
+        }
+        if (!str2) {
+            return 1; // str1 != NULL && str2 == NULL
+        }
+        return strcmp(str1, str2); // str1 != NULL && str2 != NULL
+    }
+
     friend void swap(CString& str1, CString& str2) {
         using std::swap;
         swap(str1.s_, str2.s_);
+    }
+};
+
+struct CString::Less {
+    bool operator()(const CString& str1, const CString& str2) const {
+        return CString::compare(str1, str2) < 0;
+    }
+
+    bool operator()(const CString& str1, const char* str2) const {
+        return CString::compare(str1, str2) < 0;
+    }
+
+    bool operator()(const char* str1, const CString& str2) const {
+        return CString::compare(str1, str2) < 0;
     }
 };
 
