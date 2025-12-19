@@ -24,8 +24,9 @@
 #include "system_error.h"
 #include "file_util.h"
 #include "scope_guard.h"
+#include "check.h"
 
-using namespace particle::fs;
+using particle::fs::FsLock;
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
@@ -312,8 +313,10 @@ int filesystem_mount(filesystem_t* fs) {
     if (!ret) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (fs->index == FILESYSTEM_INSTANCE_DEFAULT) {
-            // Make sure /usr and /tmp folders exist
-            int r = lfs_mkdir(&fs->instance, "/usr");
+            // Make sure /sys, /usr and /tmp folders exist
+            int r = lfs_mkdir(&fs->instance, "/sys");
+            SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            r = lfs_mkdir(&fs->instance, "/usr");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
             r = lfs_mkdir(&fs->instance, "/tmp");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
@@ -449,3 +452,119 @@ int filesystem_to_system_error(int error) {
     default: return SYSTEM_ERROR_FILESYSTEM;
     }
 }
+
+namespace particle::fs {
+
+File::File(lfs_t* lfs) :
+        file_(),
+        lfs_(lfs),
+        open_(false) {
+}
+
+File::File(File&& file) :
+        file_(file.file_),
+        lfs_(file.lfs_),
+        open_(file.open_) {
+    file.open_ = false;
+}
+
+File::~File() {
+    int r = close();
+    if (r < 0) {
+        LOG(ERROR, "Failed to close file: %d", r);
+    }
+}
+
+int File::open(const char* path, int flags) {
+    if (!lfs_) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(close());
+    CHECK_FS(lfs_file_open(lfs_, &file_, path, flags));
+    open_ = true;
+    return 0;
+}
+
+int File::close() {
+    if (!open_) {
+        return 0;
+    }
+    CHECK_FS(lfs_file_close(lfs_, &file_));
+    open_ = false;
+    return 0;
+}
+
+int File::read(void* buf, lfs_size_t size) {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_read(lfs_, &file_, buf, size));
+}
+
+int File::write(const void* buf, lfs_size_t size) {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_write(lfs_, &file_, buf, size));
+}
+
+int File::tell() {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_tell(lfs_, &file_));
+}
+
+int File::seek(lfs_soff_t offs, int whence) {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_seek(lfs_, &file_, offs, whence));
+}
+
+int File::size() {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_size(lfs_, &file_));
+}
+
+int File::truncate(lfs_off_t size) {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_truncate(lfs_, &file_, size));
+}
+
+int File::sync() {
+    if (!open_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_sync(lfs_, &file_));
+}
+
+File& File::operator=(File&& file) {
+    int r = close();
+    if (r < 0) {
+        LOG(ERROR, "Failed to close file: %d", r);
+    }
+    file_ = file.file_;
+    lfs_ = file.lfs_;
+    open_ = file.open_;
+    file.open_ = false;
+    return *this;
+}
+
+int remove(lfs_t* lfs, const char* path) {
+    return CHECK_FS(lfs_remove(lfs, path));
+}
+
+int rename(lfs_t* lfs, const char* oldPath, const char* newPath) {
+    return CHECK_FS(lfs_rename(lfs, oldPath, newPath));
+}
+
+int stat(lfs_t* lfs, const char* path, lfs_info* info) {
+    return CHECK_FS(stat(lfs, path, info));
+}
+
+} // particle::fs

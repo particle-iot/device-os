@@ -41,6 +41,7 @@
         (FLASH_IO, "Flash IO error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
+        (FILE_NOT_OPEN, "File is not open", -224), \
         (FILE, "File error", -225), \
         (PATH_TOO_LONG, "Path is too long", -226), \
         (NETWORK, "Network error", -230), \

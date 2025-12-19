@@ -126,12 +126,9 @@ private:
 
         LOG_DEBUG(INFO, "Filesystem mounted");
 
-        int r = lfs_mkdir(lfs(), "/sys");
-        SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
-
         /* Check that /sys/dct.bin exists */
         struct lfs_info info;
-        r = lfs_stat(lfs(), path_, &info);
+        int r = lfs_stat(lfs(), path_, &info);
 
         int flags = LFS_O_RDWR;
 
