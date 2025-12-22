@@ -103,26 +103,22 @@ struct FsLock {
         return &fs_->instance;
     }
 
+    filesystem_t* fs() const {
+        return fs_;
+    }
+
 private:
     filesystem_t* fs_;
 };
 
 class File {
 public:
-    explicit File(filesystem_instance_t fs = FILESYSTEM_INSTANCE_DEFAULT) :
-            File(filesystem_get_instance(fs, nullptr /* reserved */)) {
-    }
-
-    explicit File(filesystem_t* fs) :
-            File(fs ? &fs->instance : nullptr) {
-    }
-
-    explicit File(lfs_t* lfs);
+    File();
     File(const File& file) = delete;
     File(File&& file);
     ~File();
 
-    int open(const char* path, int flags);
+    int open(const char* path, int flags, filesystem_t* fs = nullptr);
     int close();
 
     bool isOpen() const {
@@ -141,8 +137,8 @@ public:
         return &file_;
     }
 
-    lfs_t* lfs() const {
-        return lfs_;
+    filesystem_t* fs() const {
+        return fs_;
     }
 
     File& operator=(const File& file) = delete;
@@ -150,13 +146,17 @@ public:
 
 private:
     lfs_file_t file_;
-    lfs_t* lfs_;
+    filesystem_t* fs_;
     bool open_;
 };
 
-int remove(lfs_t* lfs, const char* path);
-int rename(lfs_t* lfs, const char* oldPath, const char* newPath);
-int stat(lfs_t* lfs, const char* path, lfs_info* info);
+int mount(filesystem_t* fs = nullptr);
+
+int remove(const char* path, filesystem_t* fs = nullptr);
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs = nullptr);
+int stat(const char* path, lfs_info* info, filesystem_t* fs = nullptr);
+
+
 
 } } /* particle::fs */
 

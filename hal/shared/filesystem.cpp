@@ -455,15 +455,15 @@ int filesystem_to_system_error(int error) {
 
 namespace particle::fs {
 
-File::File(lfs_t* lfs) :
+File::File() :
         file_(),
-        lfs_(lfs),
+        fs_(nullptr),
         open_(false) {
 }
 
 File::File(File&& file) :
         file_(file.file_),
-        lfs_(file.lfs_),
+        fs_(file.fs_),
         open_(file.open_) {
     file.open_ = false;
 }
@@ -471,16 +471,20 @@ File::File(File&& file) :
 File::~File() {
     int r = close();
     if (r < 0) {
-        LOG(ERROR, "Failed to close file: %d", r);
+        LOG(ERROR, "Error while closing file: %d", r);
     }
 }
 
-int File::open(const char* path, int flags) {
-    if (!lfs_) {
-        return SYSTEM_ERROR_FILESYSTEM;
-    }
+int File::open(const char* path, int flags, filesystem_t* fs) {
     CHECK(close());
-    CHECK_FS(lfs_file_open(lfs_, &file_, path, flags));
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+    }
+    CHECK_FS(lfs_file_open(&fs->instance, &file_, path, flags));
+    fs_ = fs;
     open_ = true;
     return 0;
 }
@@ -489,7 +493,7 @@ int File::close() {
     if (!open_) {
         return 0;
     }
-    CHECK_FS(lfs_file_close(lfs_, &file_));
+    CHECK_FS(lfs_file_close(&fs_->instance, &file_));
     open_ = false;
     return 0;
 }
@@ -498,73 +502,102 @@ int File::read(void* buf, lfs_size_t size) {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_read(lfs_, &file_, buf, size));
+    return CHECK_FS(lfs_file_read(&fs_->instance, &file_, buf, size));
 }
 
 int File::write(const void* buf, lfs_size_t size) {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_write(lfs_, &file_, buf, size));
+    return CHECK_FS(lfs_file_write(&fs_->instance, &file_, buf, size));
 }
 
 int File::tell() {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_tell(lfs_, &file_));
+    return CHECK_FS(lfs_file_tell(&fs_->instance, &file_));
 }
 
 int File::seek(lfs_soff_t offs, int whence) {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_seek(lfs_, &file_, offs, whence));
+    return CHECK_FS(lfs_file_seek(&fs_->instance, &file_, offs, whence));
 }
 
 int File::size() {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_size(lfs_, &file_));
+    return CHECK_FS(lfs_file_size(&fs_->instance, &file_));
 }
 
 int File::truncate(lfs_off_t size) {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_truncate(lfs_, &file_, size));
+    return CHECK_FS(lfs_file_truncate(&fs_->instance, &file_, size));
 }
 
 int File::sync() {
     if (!open_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_sync(lfs_, &file_));
+    return CHECK_FS(lfs_file_sync(&fs_->instance, &file_));
 }
 
 File& File::operator=(File&& file) {
     int r = close();
     if (r < 0) {
-        LOG(ERROR, "Failed to close file: %d", r);
+        LOG(ERROR, "Error while closing file: %d", r);
     }
     file_ = file.file_;
-    lfs_ = file.lfs_;
+    fs_ = file.fs_;
     open_ = file.open_;
     file.open_ = false;
     return *this;
 }
 
-int remove(lfs_t* lfs, const char* path) {
-    return CHECK_FS(lfs_remove(lfs, path));
+int mount(filesystem_t* fs) {
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+    }
+    CHECK(filesystem_mount(fs));
+    return 0;
 }
 
-int rename(lfs_t* lfs, const char* oldPath, const char* newPath) {
-    return CHECK_FS(lfs_rename(lfs, oldPath, newPath));
+int remove(const char* path, filesystem_t* fs) {
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+    }
+    return CHECK_FS(lfs_remove(&fs->instance, path));
 }
 
-int stat(lfs_t* lfs, const char* path, lfs_info* info) {
-    return CHECK_FS(stat(lfs, path, info));
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs) {
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+    }
+    return CHECK_FS(lfs_rename(&fs->instance, oldPath, newPath));
+}
+
+int stat(const char* path, lfs_info* info, filesystem_t* fs) {
+    if (!fs) {
+        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+        if (!fs) {
+            return SYSTEM_ERROR_FILESYSTEM;
+        }
+    }
+    return CHECK_FS(lfs_stat(&fs->instance, path, info));
 }
 
 } // particle::fs
