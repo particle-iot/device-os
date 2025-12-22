@@ -41,8 +41,6 @@ const auto SNAPSHOT_VARS_FILE_STAGED = "/sys/env_snapshot.staged";
 
 const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
 
-static_assert(EnvVars::MAX_NAME_LEN + 1 == sizeof(PB_SYSTEM(EnvVars_Var::name)));
-
 } // unnamed
 
 EnvVars::EnvVars() {
@@ -52,31 +50,27 @@ EnvVars::~EnvVars() {
 }
 
 int EnvVars::init() {
-    auto fsInstance = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-    if (!fsInstance) {
-        return SYSTEM_ERROR_FILESYSTEM;
-    }
-    fs::FsLock lock(fsInstance);
-    CHECK(filesystem_mount(fsInstance));
+    fs::FsLock lock;
+    CHECK(fs::mount());
 
     Vars vars;
 
     // Load the variables bundled with the app
-    std::unique_ptr<fs::File> appFile(new(std::nothrow) fs::File(fsInstance));
+    std::unique_ptr<fs::File> appFile(new(std::nothrow) fs::File());
     if (!appFile) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(openVarsFile(VarSource::APP, *appFile, vars));
+    CHECK(loadVarsFile(VarSource::APP, *appFile, vars));
     if (!appFile->isOpen()) {
         appFile.reset();
     }
 
     // Override with the variables set in the cloud
-    std::unique_ptr<fs::File> snapshotFile(new(std::nothrow) fs::File(fsInstance));
+    std::unique_ptr<fs::File> snapshotFile(new(std::nothrow) fs::File());
     if (!snapshotFile) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(openVarsFile(VarSource::SNAPSHOT, *snapshotFile, vars));
+    CHECK(loadVarsFile(VarSource::SNAPSHOT, *snapshotFile, vars));
     if (!snapshotFile->isOpen()) {
         snapshotFile.reset();
     }
@@ -93,16 +87,15 @@ EnvVars& EnvVars::instance() {
     return envVars;
 }
 
-int EnvVars::openVarsFile(VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::loadVarsFile(VarSource src, fs::File& file, Vars& vars) {
     const char* path = nullptr;
     bool tryNormal = true;
     bool tryStaged = true;
     bool isStaged = false;
-    bool loaded = false;
     int error = 0;
 
     for (;;) {
-        isStaged = tryStaged;
+        auto tryingStaged = tryStaged;
         if (tryStaged) {
             path = (src == VarSource::APP) ? APP_VARS_FILE_STAGED : SNAPSHOT_VARS_FILE_STAGED;
             tryStaged = false;
@@ -112,62 +105,52 @@ int EnvVars::openVarsFile(VarSource src, fs::File& file, Vars& vars) {
         } else {
             break;
         }
-        int r = file.open(path, LFS_O_RDONLY);
+        int r = loadVarsFile(path, src, file, vars);
         if (r < 0) {
             if (r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-                LOG(ERROR, "Error while opening %s: %d", path, r);
+                LOG(ERROR, "Error while loading %s: %d", path, r);
                 if (!error) {
                     error = r;
                 }
-            }
-            continue;
-        }
-        r = file.size();
-        if (r < 0) {
-            if (!error) {
-                error = r;
-            }
-            continue;
-        }
-        if (r > (int)MAX_VARS_FILE_SIZE) {
-            if (!error) {
-                error = SYSTEM_ERROR_TOO_LARGE;
-            }
-            continue;
-        }
-        r = readVars(src, file, vars);
-        if (r < 0) {
-            LOG(ERROR, "Error while reading %s: %d", path, r);
-            if (!error) {
-                error = r;
-            }
-            r = file.close();
-            if (r < 0) {
-                LOG(ERROR, "Error while closing %s: %d", path, r);
-            }
-            // Delete the staged file but not the normal one as this might be an intermittent IO error
-            if (isStaged) {
-                r = fs::remove(file.lfs(), path);
-                if (r < 0) {
-                    LOG(ERROR, "Error while removing %s: %d", path, r);
+                // Delete the staged file but not the normal one as this might be an intermittent
+                // IO error
+                if (tryingStaged) {
+                    r = fs::remove(path);
+                    if (r < 0) {
+                        LOG(ERROR, "Error while removing %s: %d", path, r);
+                    }
                 }
             }
             continue;
         }
+        isStaged = tryingStaged;
         error = 0;
-        loaded = true;
         break;
     }
     if (error < 0) {
         return error;
     }
-    if (loaded && isStaged) {
+    if (isStaged) {
         // Rename the staged file
         CHECK(file.close());
         auto newPath = (src == VarSource::APP) ? APP_VARS_FILE : SNAPSHOT_VARS_FILE;
-        CHECK(fs::rename(file.lfs(), path, newPath));
+        CHECK(fs::rename(path, newPath));
+        // Reopen the file
         CHECK(file.open(newPath, LFS_O_RDONLY));
     }
+    return 0;
+}
+
+// Parses the file and keeps it open
+int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars) {
+    fs::File f;
+    CHECK(f.open(path, LFS_O_RDONLY));
+    size_t size = CHECK(f.size());
+    if (size > MAX_VARS_FILE_SIZE) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    CHECK(readVars(src, f, vars));
+    file = std::move(f);
     return 0;
 }
 
@@ -230,24 +213,19 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
             .valSize = (uint16_t)d->valSize,
             .src = d->varSrc
         };
-        auto [it, inserted] = d->varMap.insert(std::move(name), entry);
-        if (it == d->varMap.end()) {
+        if (!d->varMap.set(std::move(name), std::move(entry))) {
             d->error = SYSTEM_ERROR_NO_MEMORY;
             return false;
         }
-        if (!inserted) {
-            it->second = entry;
-        }
-
         return true;
     };
     if (!pb_decode(&stream, &PB_SYSTEM(EnvVars_msg), &pbVars)) {
         return (d.error < 0) ? d.error : SYSTEM_ERROR_BAD_DATA;
     }
 
-    if (pbVars.hash.size > 0) {
+    if (src == VarSource::SNAPSHOT) {
         if (pbVars.hash.size != SNAPSHOT_HASH_SIZE) {
-            return SYSTEM_ERROR_BAD_DATA;
+            return SYSTEM_ERROR_BAD_DATA; // Snapshot hash is missing
         }
         vars.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
         if (!vars.snapshotHash) {

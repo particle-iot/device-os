@@ -32,7 +32,6 @@ namespace particle::system {
 
 class EnvVars {
 public:
-    static const size_t MAX_NAME_LEN = 128;
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     enum Result {
@@ -81,7 +80,8 @@ private:
 
     EnvVars();
 
-    static int openVarsFile(VarSource src, fs::File& file, Vars& vars);
+    static int loadVarsFile(VarSource src, fs::File& file, Vars& vars);
+    static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
     static int readVars(VarSource src, fs::File& file, Vars& vars);
 };
 
