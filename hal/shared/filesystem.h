@@ -128,7 +128,7 @@ public:
     int read(void* buf, lfs_size_t size);
     int write(const void* buf, lfs_size_t size);
     int tell();
-    int seek(lfs_soff_t offs, int whence);
+    int seek(lfs_soff_t offs, int whence = LFS_SEEK_SET);
     int size();
     int truncate(lfs_off_t size);
     int sync();
