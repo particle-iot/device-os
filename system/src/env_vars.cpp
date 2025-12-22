@@ -19,12 +19,14 @@
 
 #if HAL_PLATFORM_ENV_VARS
 
+#include <algorithm>
+#include <cstdlib>
+
 #include <pb_decode.h>
 
 #include "nanopb_misc.h"
-#include "scope_guard.h"
-#include "check.h"
 #include "logging.h"
+#include "check.h"
 
 #include "system/env_vars.pb.h"
 
@@ -80,6 +82,51 @@ int EnvVars::init() {
     snapshotFile_ = std::move(snapshotFile);
 
     return 0;
+}
+
+CString EnvVars::get(const char* name) {
+    char buf[128] = {};
+    int len = get(name, buf, sizeof(buf));
+    if (len < 0) {
+        return CString();
+    }
+    if (len < (int)sizeof(buf)) {
+        return CString(buf, len);
+    }
+    auto buf2 = (char*)std::malloc(len + 1);
+    if (!buf2) {
+        return CString();
+    }
+    auto str = CString::wrap(buf2);
+    int r = get(name, buf2, len + 1);
+    if (r != len) {
+        return CString();
+    }
+    return str;
+}
+
+int EnvVars::get(const char* name, char* buf, size_t bufSize) {
+    auto it = vars_.entries.find(name);
+    if (it == vars_.entries.end()) {
+        return 0;
+    }
+    const auto& var = it->second;
+    if (bufSize > 0) {
+        auto& file = (var.src == VarSource::APP) ? *appFile_ : *snapshotFile_;
+        CHECK(file.seek(var.valOffs));
+        auto bytesToRead = std::min<int>(var.valSize, bufSize - 1);
+        auto bytesRead = CHECK(file.read(buf, bytesToRead));
+        if (bytesRead != bytesToRead) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        buf[bytesRead] = '\0';
+    }
+    return var.valSize;
+}
+
+bool EnvVars::has(const char* name) const {
+    auto it = vars_.entries.find(name);
+    return it != vars_.entries.end();
 }
 
 EnvVars& EnvVars::instance() {

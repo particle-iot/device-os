@@ -43,6 +43,10 @@ public:
 
     int init();
 
+    CString get(const char* name);
+    int get(const char* name, char* buf, size_t bufSize);
+    bool has(const char* name) const;
+
     const char* snapshotHash() const {
         return vars_.snapshotHash.get();
     }
