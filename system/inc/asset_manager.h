@@ -29,13 +29,20 @@
 
 namespace particle {
 
+enum class AssetType {
+    DEFAULT = 0,
+    ENV_VARS_APP = 1,
+    ENV_VARS_SNAPSHOT = 2
+};
+
 class Asset {
 public:
     Asset() = default;
-    Asset(const char* name, const AssetHash& hash, size_t size = 0, size_t storageSize = 0);
+    Asset(const char* name, const AssetHash& hash, AssetType type = AssetType::DEFAULT, size_t size = 0, size_t storageSize = 0);
 
     const String& name() const;
     const AssetHash& hash() const;
+    AssetType type() const;
     size_t size() const;
     size_t storageSize() const;
 
@@ -46,13 +53,15 @@ public:
 private:
     String name_;
     AssetHash hash_;
+    AssetType type_ = AssetType::DEFAULT;
     size_t size_ = 0;
     size_t storageSize_ = 0;
 };
 
-inline Asset::Asset(const char* name, const AssetHash& hash, size_t size, size_t storageSize)
+inline Asset::Asset(const char* name, const AssetHash& hash, AssetType type, size_t size, size_t storageSize)
         : name_(name),
           hash_(hash),
+          type_(type),
           size_(size),
           storageSize_(storageSize) {
 }
@@ -63,6 +72,10 @@ inline const String& Asset::name() const {
 
 inline const AssetHash& Asset::hash() const {
     return hash_;
+}
+
+inline AssetType Asset::type() const {
+    return type_;
 }
 
 inline size_t Asset::size() const {

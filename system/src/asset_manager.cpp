@@ -78,6 +78,7 @@ int parseAssetDependencies(Vector<Asset>& assets, hal_storage_id storageId, uint
 int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
     Buffer nameExtBuf;
     AssetHash hash;
+    AssetType type = AssetType::DEFAULT;
     while (size > 0) {
         module_info_extension_t ext = {};
         CHECK(stream->peek((char*)&ext, sizeof(ext)));
@@ -93,6 +94,11 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
             module_info_hash_ext_t hashExt = {};
             CHECK(stream->peek((char*)&hashExt, sizeof(hashExt)));
             hash = AssetHash((const uint8_t*)hashExt.hash.hash, hashExt.hash.length, (AssetHash::Type)hashExt.hash.type);
+        } else if (ext.type == MODULE_INFO_EXTENSION_ASSET_TYPE) {
+            CHECK_TRUE(ext.length >= sizeof(module_info_asset_type_ext_t), SYSTEM_ERROR_BAD_DATA);
+            module_info_asset_type_ext_t typeExt = {};
+            CHECK(stream->peek((char*)&typeExt, sizeof(typeExt)));
+            type = (AssetType)typeExt.type;
         } else if (ext.type == MODULE_INFO_EXTENSION_END) {
             break;
         }
@@ -101,7 +107,7 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
     }
     if (nameExtBuf.data() && hash.isValid()) {
         auto nameExt = (module_info_name_ext_t*)nameExtBuf.data();
-        asset = Asset(nameExt->name, hash);
+        asset = Asset(nameExt->name, hash, type);
         return 0;
     }
     return SYSTEM_ERROR_BAD_DATA;
@@ -448,7 +454,7 @@ int AssetReader::validate(bool full) {
     CHECK_TRUE(moduleSize == ((uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + sizeof(uint32_t) /* CRC32 */), SYSTEM_ERROR_BAD_DATA);
     bool compressed = prefix.flags & MODULE_INFO_FLAG_COMPRESSED;
 
-    // Comperssion header
+    // Compression header
     compressed_module_header compHeader = {};
     size_t origSize = 0;
     if (compressed) {
@@ -487,7 +493,7 @@ int AssetReader::validate(bool full) {
     dataSize_ = moduleSize - suffix.size - sizeof(uint32_t) - dataOffset_;
     size_ = moduleSize;
     originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - sizeof(uint32_t) - suffix.size);
-    asset_ = Asset(asset.name(), asset.hash(), originalSize_, moduleSize);
+    asset_ = Asset(asset.name(), asset.hash(), asset.type(), originalSize_, moduleSize);
     return 0;
 }
 
