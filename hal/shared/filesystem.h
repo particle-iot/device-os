@@ -78,10 +78,14 @@ int filesystem_to_system_error(int error);
             _r; \
         })
 
-namespace particle { namespace fs {
+namespace particle::fs {
+
+inline filesystem_t* defaultFs() {
+    return filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+}
 
 struct FsLock {
-    explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
+    explicit FsLock(filesystem_t* fs = defaultFs())
             : fs_(fs) {
         lock();
     }
@@ -118,7 +122,7 @@ public:
     File(File&& file);
     ~File();
 
-    int open(const char* path, int flags, filesystem_t* fs = nullptr);
+    int open(const char* path, int flags, filesystem_t* fs = defaultFs());
     int close();
 
     bool isOpen() const {
@@ -150,14 +154,12 @@ private:
     bool open_;
 };
 
-int mount(filesystem_t* fs = nullptr);
+int mount(filesystem_t* fs = defaultFs());
 
-int remove(const char* path, filesystem_t* fs = nullptr);
-int rename(const char* oldPath, const char* newPath, filesystem_t* fs = nullptr);
-int stat(const char* path, lfs_info* info, filesystem_t* fs = nullptr);
+int remove(const char* path, filesystem_t* fs = defaultFs());
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs = defaultFs());
+int stat(const char* path, lfs_info* info, filesystem_t* fs = defaultFs());
 
-
-
-} } /* particle::fs */
+} // particle::fs
 
 #endif /* __cplusplus */
