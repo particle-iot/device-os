@@ -220,6 +220,7 @@ typedef enum module_info_extension_type_t {
     MODULE_INFO_EXTENSION_NAME = 0x0011,
     MODULE_INFO_EXTENSION_ASSET_DEPENDENCY = 0x0012,
     MODULE_INFO_EXTENSION_SECURITY_MODE = 0x0013,
+    MODULE_INFO_EXTENSION_ASSET_TYPE = 0x0014,
     MODULE_INFO_EXTENSION_INVALID = 0xffff
 } __attribute__((__packed__)) module_info_extension_type_t;
 
@@ -278,6 +279,12 @@ typedef struct module_info_asset_dependency_ext_t {
     module_info_hash_t hash;
     char name[];
 } __attribute__((packed)) module_info_asset_dependency_ext_t;
+
+typedef struct module_info_asset_type_ext_t {
+    module_info_extension_t ext;
+    uint8_t type;
+    uint8_t reserved;
+} __attribute__((packed)) module_info_asset_type_ext_t;
 
 typedef enum module_info_security_mode {
     MODULE_INFO_SECURITY_MODE_NONE = 0,
