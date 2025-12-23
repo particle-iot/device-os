@@ -478,10 +478,7 @@ File::~File() {
 int File::open(const char* path, int flags, filesystem_t* fs) {
     CHECK(close());
     if (!fs) {
-        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-        if (!fs) {
-            return SYSTEM_ERROR_FILESYSTEM;
-        }
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     CHECK_FS(lfs_file_open(&fs->instance, &file_, path, flags));
     fs_ = fs;
@@ -561,10 +558,7 @@ File& File::operator=(File&& file) {
 
 int mount(filesystem_t* fs) {
     if (!fs) {
-        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-        if (!fs) {
-            return SYSTEM_ERROR_FILESYSTEM;
-        }
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     CHECK(filesystem_mount(fs));
     return 0;
@@ -572,30 +566,21 @@ int mount(filesystem_t* fs) {
 
 int remove(const char* path, filesystem_t* fs) {
     if (!fs) {
-        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-        if (!fs) {
-            return SYSTEM_ERROR_FILESYSTEM;
-        }
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     return CHECK_FS(lfs_remove(&fs->instance, path));
 }
 
 int rename(const char* oldPath, const char* newPath, filesystem_t* fs) {
     if (!fs) {
-        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-        if (!fs) {
-            return SYSTEM_ERROR_FILESYSTEM;
-        }
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     return CHECK_FS(lfs_rename(&fs->instance, oldPath, newPath));
 }
 
 int stat(const char* path, lfs_info* info, filesystem_t* fs) {
     if (!fs) {
-        fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
-        if (!fs) {
-            return SYSTEM_ERROR_FILESYSTEM;
-        }
+        return SYSTEM_ERROR_FILESYSTEM;
     }
     return CHECK_FS(lfs_stat(&fs->instance, path, info));
 }
