@@ -32,6 +32,11 @@ namespace particle::system {
 
 class EnvVars {
 public:
+    static const char* const APP_FILE;
+    static const char* const APP_FILE_STAGED;
+    static const char* const SNAPSHOT_FILE;
+    static const char* const SNAPSHOT_FILE_STAGED;
+
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     enum Result {

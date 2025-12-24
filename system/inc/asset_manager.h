@@ -167,10 +167,18 @@ private:
     int clearUnusedAssets();
 
 private:
+    enum class StorageOption {
+        SAVE, // Save the asset to the default storage normally
+        COPY, // Save the asset to the default storage and also to the main filesystem
+        MOVE // Save the asset to the main filesystem only
+    };
+
     Vector<Asset> requiredAssets_;
     Vector<Asset> availableAssets_;
     asset_manager_notify_hook hook_ = nullptr;
     void* hookContext_ = nullptr;
+
+    static void getStorageOption(const Asset& asset, StorageOption& opt, const char*& path);
 };
 
 } // particle
