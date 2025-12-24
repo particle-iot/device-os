@@ -39,6 +39,7 @@
 #include "system_setup.h"
 #include "system_power.h"
 #include "system_ble_prov.h"
+#include "system_config.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -137,10 +138,20 @@ DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t c
 
 DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
 
+#if HAL_PLATFORM_ENV_VARS
+DYNALIB_FN(BASE_IDX3 + 1, system, system_get_env_var, int(const char*, char*, size_t, int*, void*))
+DYNALIB_FN(BASE_IDX3 + 2, system, system_get_env_var_names, int(const char*[], size_t, void*))
+#define BASE_IDX4 (BASE_IDX3 + 3)
+#else
+#define BASE_IDX4 (BASE_IDX3 + 1)
+#endif  // HAL_PLATFORM_ENV_VARS
+
 DYNALIB_END(system)
 
 #undef BASE_IDX
 #undef BASE_IDX1
 #undef BASE_IDX2
+#undef BASE_IDX3
+#undef BASE_IDX4
 
 #endif	/* SYSTEM_DYNALIB_H */
