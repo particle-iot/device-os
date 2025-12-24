@@ -109,38 +109,6 @@ struct FsLock {
 
 private:
     filesystem_t* fs_;
-    bool locked_;
-};
-
-struct OptionalLock {
-    explicit OptionalLock(filesystem_t* fs = defaultFs()) :
-            fs_(fs),
-            locked_(false) {
-    }
-
-    ~OptionalLock() {
-        if (locked_) {
-            unlock();
-        }
-    }
-
-    void lock() {
-        filesystem_lock(fs_);
-        locked_ = true;
-    }
-
-    void unlock() {
-        filesystem_unlock(fs_);
-        locked_ = false;
-    }
-
-    filesystem_t* fs() const {
-        return fs_;
-    }
-
-private:
-    filesystem_t* fs_;
-    bool locked_;
 };
 
 class File {
