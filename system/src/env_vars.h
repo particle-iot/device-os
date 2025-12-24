@@ -27,6 +27,7 @@
 #include "c_string.h"
 
 #include "spark_wiring_map.h"
+#include "spark_wiring_vector.h"
 
 namespace particle::system {
 
@@ -49,8 +50,36 @@ public:
     int init();
 
     CString get(const char* name);
-    int get(const char* name, char* buf, size_t bufSize);
+    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
     bool has(const char* name) const;
+
+    size_t count() const;
+
+    template<typename F>
+    int forEach(char* buf, size_t bufSize, F fn) {
+        for (const auto& entry: vars_.entries) {
+            int r = get(entry.first, buf, bufSize);
+            if (r < 0) {
+                return r;
+            }
+            r = fn(entry.first, buf);
+            if (r < 0) {
+                return r;
+            }
+        }
+        return vars_.entries.size();
+    }
+
+    template<typename F>
+    int forEach(F fn) {
+        for (const auto& entry: vars_.entries) {
+            int r = fn(entry.first);
+            if (r < 0) {
+                return r;
+            }
+        }
+        return vars_.entries.size();
+    }
 
     const char* snapshotHash() const {
         return vars_.snapshotHash.get();

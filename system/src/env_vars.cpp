@@ -105,9 +105,12 @@ CString EnvVars::get(const char* name) {
     return str;
 }
 
-int EnvVars::get(const char* name, char* buf, size_t bufSize) {
+int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
+        if (found) {
+            *found = false;
+        }
         return 0;
     }
     const auto& var = it->second;
@@ -121,12 +124,19 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize) {
         }
         buf[bytesRead] = '\0';
     }
+    if (found) {
+        *found = true;
+    }
     return var.valSize;
 }
 
 bool EnvVars::has(const char* name) const {
     auto it = vars_.entries.find(name);
     return it != vars_.entries.end();
+}
+
+size_t EnvVars::count() const {
+    return vars_.entries.size();
 }
 
 EnvVars& EnvVars::instance() {
