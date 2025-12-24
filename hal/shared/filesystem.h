@@ -107,22 +107,50 @@ struct FsLock {
         return &fs_->instance;
     }
 
+private:
+    filesystem_t* fs_;
+    bool locked_;
+};
+
+struct OptionalLock {
+    explicit OptionalLock(filesystem_t* fs = defaultFs()) :
+            fs_(fs),
+            locked_(false) {
+    }
+
+    ~OptionalLock() {
+        if (locked_) {
+            unlock();
+        }
+    }
+
+    void lock() {
+        filesystem_lock(fs_);
+        locked_ = true;
+    }
+
+    void unlock() {
+        filesystem_unlock(fs_);
+        locked_ = false;
+    }
+
     filesystem_t* fs() const {
         return fs_;
     }
 
 private:
     filesystem_t* fs_;
+    bool locked_;
 };
 
 class File {
 public:
-    File();
+    explicit File(filesystem_t* fs = defaultFs());
     File(const File& file) = delete;
     File(File&& file);
     ~File();
 
-    int open(const char* path, int flags, filesystem_t* fs = defaultFs());
+    int open(const char* path, int flags);
     int close();
 
     bool isOpen() const {
@@ -155,6 +183,7 @@ private:
 };
 
 int mount(filesystem_t* fs = defaultFs());
+int unmount(filesystem_t* fs = defaultFs());
 
 int remove(const char* path, filesystem_t* fs = defaultFs());
 int rename(const char* oldPath, const char* newPath, filesystem_t* fs = defaultFs());

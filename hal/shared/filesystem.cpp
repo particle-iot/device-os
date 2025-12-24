@@ -455,9 +455,9 @@ int filesystem_to_system_error(int error) {
 
 namespace particle::fs {
 
-File::File() :
+File::File(filesystem_t* fs) :
         file_(),
-        fs_(nullptr),
+        fs_(fs),
         open_(false) {
 }
 
@@ -475,13 +475,12 @@ File::~File() {
     }
 }
 
-int File::open(const char* path, int flags, filesystem_t* fs) {
-    CHECK(close());
-    if (!fs) {
-        return SYSTEM_ERROR_FILESYSTEM;
+int File::open(const char* path, int flags) {
+    if (!fs_) {
+        return SYSTEM_ERROR_FILESYSTEM; // filesystem_get_instance() failed
     }
-    CHECK_FS(lfs_file_open(&fs->instance, &file_, path, flags));
-    fs_ = fs;
+    CHECK(close());
+    CHECK_FS(lfs_file_open(&fs_->instance, &file_, path, flags));
     open_ = true;
     return 0;
 }
@@ -561,6 +560,14 @@ int mount(filesystem_t* fs) {
         return SYSTEM_ERROR_FILESYSTEM;
     }
     CHECK(filesystem_mount(fs));
+    return 0;
+}
+
+int unmount(filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(filesystem_unmount(fs));
     return 0;
 }
 
