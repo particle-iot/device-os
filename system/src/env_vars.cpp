@@ -36,14 +36,14 @@ namespace particle::system {
 
 namespace {
 
-const auto APP_VARS_FILE = "/sys/env_app";
-const auto APP_VARS_FILE_STAGED = "/sys/env_app.staged";
-const auto SNAPSHOT_VARS_FILE = "/sys/env_snapshot";
-const auto SNAPSHOT_VARS_FILE_STAGED = "/sys/env_snapshot.staged";
-
 const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
 
 } // unnamed
+
+const char* const EnvVars::APP_FILE = "/sys/env_app";
+const char* const EnvVars::APP_FILE_STAGED = "/sys/env_app.staged";
+const char* const EnvVars::SNAPSHOT_FILE = "/sys/env_snapshot";
+const char* const EnvVars::SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 EnvVars::EnvVars() {
 }
@@ -144,10 +144,10 @@ int EnvVars::loadVarsFile(VarSource src, fs::File& file, Vars& vars) {
     for (;;) {
         auto tryingStaged = tryStaged;
         if (tryStaged) {
-            path = (src == VarSource::APP) ? APP_VARS_FILE_STAGED : SNAPSHOT_VARS_FILE_STAGED;
+            path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
             tryStaged = false;
         } else if (tryNormal) {
-            path = (src == VarSource::APP) ? APP_VARS_FILE : SNAPSHOT_VARS_FILE;
+            path = (src == VarSource::APP) ? APP_FILE : SNAPSHOT_FILE;
             tryNormal = false;
         } else {
             break;
@@ -180,7 +180,7 @@ int EnvVars::loadVarsFile(VarSource src, fs::File& file, Vars& vars) {
     if (isStaged) {
         // Rename the staged file
         CHECK(file.close());
-        auto newPath = (src == VarSource::APP) ? APP_VARS_FILE : SNAPSHOT_VARS_FILE;
+        auto newPath = (src == VarSource::APP) ? APP_FILE : SNAPSHOT_FILE;
         CHECK(fs::rename(path, newPath));
         // Reopen the file
         CHECK(file.open(newPath, LFS_O_RDONLY));

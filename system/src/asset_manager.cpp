@@ -32,10 +32,13 @@
 #include "system_cache.h"
 #include "system_defs.h"
 #include "ota_module.h"
+#include "env_vars.h"
 
 namespace particle {
 
 namespace {
+
+using namespace system;
 
 const size_t FREE_BLOCKS_REQUIRED = 16;
 
@@ -318,39 +321,60 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     auto info = reader.asset();
     LOG(INFO, "Storing asset %s (hash=%s) size=%u original size=%u", info.name().c_str(), info.hash().toString().c_str(), reader.size(), reader.originalSize());
 
-    CHECK(clearUnusedAssets());
+    auto storageOpt = StorageOption::SAVE;
+    const char* altPath = nullptr;
+    getStorageOption(info, storageOpt, altPath);
+
+    auto assetFs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
+    fs::OptionalLock assetLock(assetFs);
+    fs::File assetFile(assetFs);
+
+    if (storageOpt != StorageOption::MOVE) {
+        CHECK(clearUnusedAssets());
+
+        assetLock.lock();
+
+        // Unmount and remount in order to invalidate access to any of the currently opened assets
+        fs::unmount(assetFs);
+        availableAssets_.clear();
+        CHECK(fs::mount(assetFs));
+
+        fs::remove(info.name().c_str(), assetFs);
+        CHECK(assetFile.open(info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
+    }
+
+    fs::OptionalLock altLock;
+    fs::File altFile;
+
+    if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
+        altLock.lock();
+
+        fs::remove(altPath);
+        CHECK(altFile.open(altPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
+    }
 
     CHECK(stream.seek(0));
     char tmp[256];
 
-    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
-    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
-    fs::FsLock lock(fs);
-
-    // Unmount and remount in order to invalidate access to any of the currently opened assets
-    filesystem_unmount(fs);
-    availableAssets_.clear();
-    CHECK(filesystem_mount(fs));
-
-    lfs_file_t file = {};
-    lfs_remove(&fs->instance, info.name().c_str());
-    CHECK_FS(lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
-    SCOPE_GUARD({     
-        lfs_file_close(&fs->instance, &file);
-    });
-
     while (stream.availForRead() > 0) {
         int read = stream.read(tmp, sizeof(tmp));
-        if (read < 0 && read != SYSTEM_ERROR_END_OF_STREAM) {
+        if (read < 0) {
+            if (read == SYSTEM_ERROR_END_OF_STREAM) {
+                break;
+            }
             return read;
         }
-        if (read == SYSTEM_ERROR_END_OF_STREAM) {
-            break;
+        if (storageOpt == StorageOption::SAVE || storageOpt == StorageOption::COPY) {
+            CHECK(assetFile.write(tmp, (size_t)read));
         }
-        CHECK_FS(lfs_file_write(&fs->instance, &file, tmp, (size_t)read));
+        if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
+            CHECK(altFile.write(tmp, (size_t)read));
+        }
     }
 
-    CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
+    if (storageOpt != StorageOption::MOVE) {
+        CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
+    }
     return 0;
 }
 
@@ -411,6 +435,24 @@ int AssetManager::formatStorage(bool remount) {
     availableAssets_.clear();
     CHECK(filesystem_mount(fs));
     return 0;
+}
+
+void AssetManager::getStorageOption(const Asset& asset, StorageOption& opt, const char*& path) {
+    switch (asset.type()) {
+    case AssetType::ENV_VARS_APP: {
+        opt = StorageOption::COPY;
+        path = EnvVars::APP_FILE_STAGED;
+        break;
+    }
+    case AssetType::ENV_VARS_SNAPSHOT: {
+        opt = StorageOption::MOVE;
+        path = EnvVars::SNAPSHOT_FILE_STAGED;
+        break;
+    }
+    default:
+        opt = StorageOption::SAVE;
+        break;
+    }
 }
 
 // AssetReader
