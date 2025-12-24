@@ -439,6 +439,7 @@ int AssetManager::formatStorage(bool remount) {
 
 void AssetManager::getStorageOption(const Asset& asset, StorageOption& opt, const char*& path) {
     switch (asset.type()) {
+#if HAL_PLATFORM_ENV_VARS
     case AssetType::ENV_VARS_APP: {
         opt = StorageOption::COPY;
         path = EnvVars::APP_FILE_STAGED;
@@ -449,6 +450,7 @@ void AssetManager::getStorageOption(const Asset& asset, StorageOption& opt, cons
         path = EnvVars::SNAPSHOT_FILE_STAGED;
         break;
     }
+#endif // HAL_PLATFORM_ENV_VARS
     default:
         opt = StorageOption::SAVE;
         break;
