@@ -116,6 +116,30 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
     return SYSTEM_ERROR_BAD_DATA;
 }
 
+int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
+    fs::FsLock lock(fs);
+
+    fs::remove(destPath, fs);
+
+    fs::File file(fs);
+    CHECK(file.open(destPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
+
+    char buf[256];
+    while (srcStream.availForRead() > 0) {
+        int n = srcStream.read(buf, sizeof(buf));
+        if (n < 0) {
+            if (n == SYSTEM_ERROR_END_OF_STREAM) {
+                break;
+            }
+            return n;
+        }
+        CHECK(file.write(buf, n));
+    }
+
+    CHECK(file.close());
+    return 0;
+}
+
 } // anynomous
 
 AssetManager& AssetManager::instance() {
@@ -325,56 +349,30 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     const char* altPath = nullptr;
     getStorageOption(info, storageOpt, altPath);
 
-    auto assetFs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
-    fs::OptionalLock assetLock(assetFs);
-    fs::File assetFile(assetFs);
-
-    if (storageOpt != StorageOption::MOVE) {
+    if (storageOpt == StorageOption::SAVE || storageOpt == StorageOption::COPY) {
         CHECK(clearUnusedAssets());
 
-        assetLock.lock();
+        auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
+        fs::FsLock lock(fs);
 
         // Unmount and remount in order to invalidate access to any of the currently opened assets
-        fs::unmount(assetFs);
+        fs::unmount(fs);
         availableAssets_.clear();
-        CHECK(fs::mount(assetFs));
+        CHECK(fs::mount(fs));
 
-        fs::remove(info.name().c_str(), assetFs);
-        CHECK(assetFile.open(info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
-    }
+        CHECK(stream.seek(0));
+        CHECK(saveToFile(stream, info.name().c_str(), fs));
 
-    fs::OptionalLock altLock;
-    fs::File altFile;
-
-    if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
-        altLock.lock();
-
-        fs::remove(altPath);
-        CHECK(altFile.open(altPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
-    }
-
-    CHECK(stream.seek(0));
-    char tmp[256];
-
-    while (stream.availForRead() > 0) {
-        int read = stream.read(tmp, sizeof(tmp));
-        if (read < 0) {
-            if (read == SYSTEM_ERROR_END_OF_STREAM) {
-                break;
-            }
-            return read;
-        }
-        if (storageOpt == StorageOption::SAVE || storageOpt == StorageOption::COPY) {
-            CHECK(assetFile.write(tmp, (size_t)read));
-        }
-        if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
-            CHECK(altFile.write(tmp, (size_t)read));
-        }
-    }
-
-    if (storageOpt != StorageOption::MOVE) {
         CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
     }
+
+    if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
+        InputStream* assetStream = nullptr;
+        CHECK(reader.assetStream(assetStream));
+
+        CHECK(saveToFile(*assetStream, altPath, fs::defaultFs()));
+    }
+
     return 0;
 }
 
