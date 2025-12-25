@@ -51,9 +51,14 @@ public:
 
     int get(const char* name, CString& val) const;
     int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr) const;
-    bool has(const char* name) const;
 
-    size_t count() const;
+    bool has(const char* name) const {
+        return vars_.entries.has(name);
+    }
+
+    size_t count() const {
+        return vars_.entries.size();
+    }
 
     template<typename F>
     int forEach(char* buf, size_t bufSize, F fn) const {
@@ -116,7 +121,7 @@ private:
     std::unique_ptr<fs::File> appFile_;
     std::unique_ptr<fs::File> snapshotFile_;
 
-    EnvVars();
+    EnvVars() = default;
 
     int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
     int updateBootloaderVars() const;
