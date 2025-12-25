@@ -63,10 +63,9 @@ int EnvVars::init() {
     }
 
     Vars vars;
-
     int r = loadAllVars(true /* tryStaged */, *appFile, *snapshotFile, vars);
     if (r < 0) {
-        // Try without staged files as a fallback
+        // Ignore any staged files as a fallback
         vars = Vars();
         CHECK(loadAllVars(false /* tryStaged */, *appFile, *snapshotFile, vars));
     }
@@ -81,7 +80,7 @@ int EnvVars::init() {
     appFile_ = std::move(appFile);
     snapshotFile_ = std::move(snapshotFile);
 
-    r = updateBootloaderVars(vars.entries);
+    r = updateBootloaderVars();
     if (r < 0) {
         LOG(ERROR, "Error while updating bootloader env vars: %d", r);
         // The system should be able to use the loaded variables and there's nothing we can do about
@@ -91,28 +90,24 @@ int EnvVars::init() {
     return r; // 0 or Update::NEED_RESET
 }
 
-CString EnvVars::get(const char* name) {
-    char buf[128] = {};
-    int len = get(name, buf, sizeof(buf));
-    if (len < 0) {
-        return CString();
+int EnvVars::get(const char* name, CString& val) const {
+    auto it = vars_.entries.find(name);
+    if (it == vars_.entries.end()) {
+        val = CString();
+        return 0;
     }
-    if (len < (int)sizeof(buf)) {
-        return CString(buf, len);
+    const auto& var = it->second;
+    auto buf = (char*)std::malloc(var.valSize + 1);
+    if (!buf) {
+        return SYSTEM_ERROR_NO_MEMORY;
     }
-    auto buf2 = (char*)std::malloc(len + 1);
-    if (!buf2) {
-        return CString();
-    }
-    auto str = CString::wrap(buf2);
-    int r = get(name, buf2, len + 1);
-    if (r != len) {
-        return CString();
-    }
-    return str;
+    auto s = CString::wrap(buf); // Takes ownership over the buffer
+    CHECK(readValue(var, buf, var.valSize + 1));
+    val = std::move(s);
+    return 0;
 }
 
-int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
+int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) const {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
         if (found) {
@@ -121,16 +116,7 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
         return 0;
     }
     const auto& var = it->second;
-    if (bufSize > 0) {
-        auto& file = (var.src == VarSource::APP) ? *appFile_ : *snapshotFile_;
-        CHECK(file.seek(var.valOffs));
-        auto bytesToRead = std::min<int>(var.valSize, bufSize - 1);
-        auto bytesRead = CHECK(file.read(buf, bytesToRead));
-        if (bytesRead != bytesToRead) {
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-        buf[bytesRead] = '\0';
-    }
+    CHECK(readValue(var, buf, bufSize));
     if (found) {
         *found = true;
     }
@@ -151,7 +137,22 @@ EnvVars& EnvVars::instance() {
     return envVars;
 }
 
-int EnvVars::updateBootloaderVars(const VarMap& vars) {
+int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) const {
+    if (!bufSize) {
+        return 0;
+    }
+    auto& file = (var.src == VarSource::APP) ? *appFile_ : *snapshotFile_;
+    CHECK(file.seek(var.valOffs));
+    size_t bytesToRead = std::min<size_t>(var.valSize, bufSize - 1);
+    size_t bytesRead = CHECK(file.read(buf, bytesToRead));
+    if (bytesRead != bytesToRead) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    buf[bytesRead] = '\0';
+    return 0;
+}
+
+int EnvVars::updateBootloaderVars() const {
     // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
     // apply the changes and return Result::NEED_RESET
     return 0;
@@ -230,12 +231,12 @@ int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars&
     if (size > MAX_VARS_FILE_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    CHECK(readVars(src, f, vars));
+    CHECK(parseVars(src, f, vars));
     file = std::move(f);
     return 0;
 }
 
-int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::parseVars(VarSource src, fs::File& file, Vars& vars) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
