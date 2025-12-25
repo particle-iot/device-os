@@ -25,6 +25,7 @@
 #include <pb_decode.h>
 
 #include "nanopb_misc.h"
+#include "scope_guard.h"
 #include "logging.h"
 #include "check.h"
 
@@ -55,24 +56,23 @@ int EnvVars::init() {
     fs::FsLock lock;
     CHECK(fs::mount());
 
-    Vars vars;
-
-    // Load the variables bundled with the app
     std::unique_ptr<fs::File> appFile(new(std::nothrow) fs::File());
-    if (!appFile) {
+    std::unique_ptr<fs::File> snapshotFile(new(std::nothrow) fs::File());
+    if (!appFile || !snapshotFile) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(loadVarsFile(VarSource::APP, *appFile, vars));
+
+    Vars vars;
+
+    int r = loadAllVars(true /* tryStaged */, *appFile, *snapshotFile, vars);
+    if (r < 0) {
+        // Try without staged files as a fallback
+        vars = Vars();
+        CHECK(loadAllVars(false /* tryStaged */, *appFile, *snapshotFile, vars));
+    }
     if (!appFile->isOpen()) {
         appFile.reset();
     }
-
-    // Override with the variables set in the cloud
-    std::unique_ptr<fs::File> snapshotFile(new(std::nothrow) fs::File());
-    if (!snapshotFile) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    CHECK(loadVarsFile(VarSource::SNAPSHOT, *snapshotFile, vars));
     if (!snapshotFile->isOpen()) {
         snapshotFile.reset();
     }
@@ -81,7 +81,14 @@ int EnvVars::init() {
     appFile_ = std::move(appFile);
     snapshotFile_ = std::move(snapshotFile);
 
-    return 0;
+    r = updateBootloaderVars(vars.entries);
+    if (r < 0) {
+        LOG(ERROR, "Error while updating bootloader env vars: %d", r);
+        // The system should be able to use the loaded variables and there's nothing we can do about
+        // the bootloader
+        r = 0;
+    }
+    return r; // 0 or Update::NEED_RESET
 }
 
 CString EnvVars::get(const char* name) {
@@ -144,10 +151,28 @@ EnvVars& EnvVars::instance() {
     return envVars;
 }
 
-int EnvVars::loadVarsFile(VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::updateBootloaderVars(const VarMap& vars) {
+    // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
+    // apply the changes and return Result::NEED_RESET
+    return 0;
+}
+
+int EnvVars::loadAllVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars) {
+    // Load the variables bundled with the app
+    CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars));
+    NAMED_SCOPE_GUARD(closeAppFile, {
+        appFile.close();
+    });
+
+    // Override with the variables set in the cloud
+    CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars));
+    closeAppFile.dismiss();
+    return 0;
+}
+
+int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars) {
     const char* path = nullptr;
     bool tryNormal = true;
-    bool tryStaged = true;
     bool isStaged = false;
     int error = 0;
 
@@ -198,7 +223,6 @@ int EnvVars::loadVarsFile(VarSource src, fs::File& file, Vars& vars) {
     return 0;
 }
 
-// Parses the file and keeps it open
 int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars) {
     fs::File f;
     CHECK(f.open(path, LFS_O_RDONLY));

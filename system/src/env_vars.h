@@ -118,7 +118,10 @@ private:
 
     EnvVars();
 
-    static int loadVarsFile(VarSource src, fs::File& file, Vars& vars);
+    static int updateBootloaderVars(const VarMap& vars);
+
+    static int loadAllVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars);
+    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars);
     static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
     static int readVars(VarSource src, fs::File& file, Vars& vars);
 };

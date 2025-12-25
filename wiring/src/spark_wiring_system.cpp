@@ -215,7 +215,7 @@ bool SystemClass::envVar(const char* name, bool defaultVal) {
     if (std::strcmp(buf, "false") == 0) {
         return false;
     }
-    // Try parsing as a numeric value
+    // Try parsing as a number
     int val = 0;
     auto r = std::from_chars(buf, buf + n, val);
     if (r.ec != std::errc() || r.ptr != buf + n) {
