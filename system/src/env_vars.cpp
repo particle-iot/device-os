@@ -46,9 +46,6 @@ const char* const EnvVars::APP_FILE_STAGED = "/sys/env_app.staged";
 const char* const EnvVars::SNAPSHOT_FILE = "/sys/env_snapshot";
 const char* const EnvVars::SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
-EnvVars::EnvVars() {
-}
-
 EnvVars::~EnvVars() {
 }
 
@@ -121,15 +118,6 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) const
         *found = true;
     }
     return var.valSize;
-}
-
-bool EnvVars::has(const char* name) const {
-    auto it = vars_.entries.find(name);
-    return it != vars_.entries.end();
-}
-
-size_t EnvVars::count() const {
-    return vars_.entries.size();
 }
 
 EnvVars& EnvVars::instance() {
