@@ -49,14 +49,14 @@ public:
 
     int init();
 
-    CString get(const char* name);
-    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
+    int get(const char* name, CString& val) const;
+    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr) const;
     bool has(const char* name) const;
 
     size_t count() const;
 
     template<typename F>
-    int forEach(char* buf, size_t bufSize, F fn) {
+    int forEach(char* buf, size_t bufSize, F fn) const {
         for (const auto& entry: vars_.entries) {
             int r = get(entry.first, buf, bufSize);
             if (r < 0) {
@@ -71,7 +71,7 @@ public:
     }
 
     template<typename F>
-    int forEach(F fn) {
+    int forEach(F fn) const {
         for (const auto& entry: vars_.entries) {
             int r = fn(entry.first);
             if (r < 0) {
@@ -118,12 +118,13 @@ private:
 
     EnvVars();
 
-    static int updateBootloaderVars(const VarMap& vars);
+    int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
+    int updateBootloaderVars() const;
 
     static int loadAllVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars);
     static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars);
     static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
-    static int readVars(VarSource src, fs::File& file, Vars& vars);
+    static int parseVars(VarSource src, fs::File& file, Vars& vars);
 };
 
 } // particle::system
