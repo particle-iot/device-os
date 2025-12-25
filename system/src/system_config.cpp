@@ -34,7 +34,7 @@ int system_get_env_var(const char* name, char* buf, size_t bufSize, int* foundAr
 	return size;
 }
 
-int system_get_env_var_names(const char* names[], size_t namesSize, void* reserved) {
+int system_list_env_vars(const char* names[], size_t namesSize, void* reserved) {
 	size_t i = 0;
 	int r = EnvVars::instance().forEach([&](const char* name) -> int {
 		if (i >= namesSize) {
