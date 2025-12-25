@@ -1,3 +1,4 @@
+#include <charconv>
 
 #include "core_hal.h"
 #include "rtc_hal.h"
@@ -8,6 +9,7 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
+#include "system_config.h"
 #include "scope_guard.h"
 
 #if Wiring_LogConfig
@@ -161,6 +163,93 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
     return 0;
 }
 #endif // HAL_PLATFORM_ASSET
+
+#if HAL_PLATFORM_ENV_VARS
+
+String SystemClass::envVar(const char* name, const char* defaultVal) {
+    char buf[128] = {};
+    int found = 0;
+    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
+    if (n < 0 || !found) {
+        return defaultVal;
+    }
+    if (n < (int)sizeof(buf)) {
+        return buf;
+    }
+    String s;
+    if (!s.resize(n)) {
+        return defaultVal;
+    }
+    int r = system_get_env_var(name, &s[0u], n, nullptr /* found */, nullptr /* reserved */);
+    if (r != n) {
+        return defaultVal;
+    }
+    return s;
+}
+
+int SystemClass::envVar(const char* name, int defaultVal) {
+    char buf[32] = {};
+    int found = 0;
+    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
+    if (n < 0 || !found) {
+        return defaultVal;
+    }
+    int val = 0;
+    auto r = std::from_chars(buf, buf + n, val);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        return defaultVal;
+    }
+    return val;
+}
+
+bool SystemClass::envVar(const char* name, bool defaultVal) {
+    char buf[32] = {};
+    int found = 0;
+    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
+    if (n < 0 || !found) {
+        return defaultVal;
+    }
+    if (std::strcmp(buf, "true") == 0) {
+        return true;
+    }
+    if (std::strcmp(buf, "false") == 0) {
+        return false;
+    }
+    // Try parsing as a numeric value
+    int val = 0;
+    auto r = std::from_chars(buf, buf + n, val);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        return defaultVal;
+    }
+    return val;
+}
+
+bool SystemClass::hasEnvVar(const char* name) {
+    int found = 0;
+    int r = system_get_env_var(name, nullptr /* buf */, 0 /* buf_size */, &found, nullptr /* reserved */);
+    if (r < 0) {
+        return false;
+    }
+    return found;
+}
+
+Vector<const char*> SystemClass::envVarNames() {
+    int count = system_list_env_vars(nullptr /* names */, 0 /* names_size */, nullptr /* reserved */);
+    if (count < 0) {
+        return Vector<const char*>();
+    }
+    Vector<const char*> names;
+    if (!names.resize(count)) {
+        return Vector<const char*>();
+    }
+    int r = system_list_env_vars(names.data(), names.size(), nullptr /* reserved */);
+    if (r < 0) {
+        return Vector<const char*>();
+    }
+    return names;
+}
+
+#endif // HAL_PLATFORM_ENV_VARS
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {

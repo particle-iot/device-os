@@ -1119,6 +1119,14 @@ public:
         return security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
     }
 
+#if HAL_PLATFORM_ENV_VARS
+    static String envVar(const char* name, const char* defaultVal = "");
+    static int envVar(const char* name, int defaultVal);
+    static bool envVar(const char* name, bool defaultVal);
+    static bool hasEnvVar(const char* name);
+    static Vector<const char*> envVarNames();
+#endif // HAL_PLATFORM_ENV_VARS
+
 private:
     SystemSleepResult systemSleepResult_;
 
