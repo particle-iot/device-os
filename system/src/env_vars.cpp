@@ -25,7 +25,6 @@
 #include <pb_decode.h>
 
 #include "nanopb_misc.h"
-#include "scope_guard.h"
 #include "logging.h"
 #include "check.h"
 
@@ -66,6 +65,8 @@ int EnvVars::init() {
         if (hasStaged) {
             // Ignore the staged files as a fallback
             vars = Vars();
+            appFile->close();
+            snapshotFile->close();
             r = loadVars(false /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
         }
         if (r < 0) {
@@ -132,6 +133,12 @@ EnvVars& EnvVars::instance() {
     return envVars;
 }
 
+int EnvVars::updateBootloaderVars() const {
+    // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
+    // apply the changes and return Result::NEED_RESET
+    return 0;
+}
+
 int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) const {
     if (!bufSize) {
         return 0;
@@ -147,22 +154,12 @@ int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) const {
     return 0;
 }
 
-int EnvVars::updateBootloaderVars() const {
-    // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
-    // apply the changes and return Result::NEED_RESET
-    return 0;
-}
-
 int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged) {
     // Load the variables bundled with the app
     CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars, hasStaged));
-    NAMED_SCOPE_GUARD(closeAppFile, {
-        appFile.close();
-    });
 
-    // Override with the variables set in the cloud
+    // Override with the variables from the snapshot
     CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars, hasStaged));
-    closeAppFile.dismiss();
     return 0;
 }
 
@@ -201,12 +198,12 @@ int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars&
     if (size > MAX_VARS_FILE_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    CHECK(parseVars(src, f, vars));
-    file = std::move(f);
+    CHECK(readVars(src, f, vars));
+    file = std::move(f); // Keep the file open
     return 0;
 }
 
-int EnvVars::parseVars(VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
