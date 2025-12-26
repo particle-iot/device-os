@@ -11,6 +11,7 @@
 #include "system_network.h"
 #include "system_config.h"
 #include "scope_guard.h"
+#include "check.h"
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -167,21 +168,10 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
 #if HAL_PLATFORM_ENV_VARS
 
 String SystemClass::envVar(const char* name, const char* defaultVal) {
-    char buf[128] = {};
-    int found = 0;
-    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
-    if (n < 0 || !found) {
-        return defaultVal;
-    }
-    if (n < (int)sizeof(buf)) {
-        return buf;
-    }
     String s;
-    if (!s.resize(n)) {
-        return defaultVal;
-    }
-    int r = system_get_env_var(name, &s[0u], n, nullptr /* found */, nullptr /* reserved */);
-    if (r != n) {
+    bool found = false;
+    int r = getEnvVar(name, s, &found);
+    if (r < 0 || !found) {
         return defaultVal;
     }
     return s;
@@ -234,19 +224,40 @@ bool SystemClass::hasEnvVar(const char* name) {
 }
 
 Vector<const char*> SystemClass::envVarNames() {
-    int count = system_list_env_vars(nullptr /* names */, 0 /* names_size */, nullptr /* reserved */);
-    if (count < 0) {
-        return Vector<const char*>();
-    }
     Vector<const char*> names;
-    if (!names.resize(count)) {
-        return Vector<const char*>();
-    }
-    int r = system_list_env_vars(names.data(), names.size(), nullptr /* reserved */);
-    if (r < 0) {
-        return Vector<const char*>();
-    }
+    getEnvVarNames(names);
     return names;
+}
+
+int SystemClass::getEnvVar(const char* name, String& val, bool* foundArg) {
+    char buf[128] = {};
+    int found = 0;
+    size_t n = CHECK(system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */));
+    String s;
+    if (!s.resize(n)) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    if (n < sizeof(buf)) {
+        std::memcpy(&s[0u], buf, n);
+    } else {
+        CHECK(system_get_env_var(name, &s[0u], n, nullptr /* found */, nullptr /* reserved */));
+    }
+    if (foundArg) {
+        *foundArg = found;
+    }
+    val = std::move(s);
+    return 0;
+}
+
+int SystemClass::getEnvVarNames(Vector<const char*>& namesArg) {
+    size_t n = CHECK(system_list_env_vars(nullptr /* names */, 0 /* names_size */, nullptr /* reserved */));
+    Vector<const char*> names;
+    if (!names.resize(n)) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(system_list_env_vars(names.data(), n, nullptr /* reserved */));
+    namesArg = std::move(names);
+    return 0;
 }
 
 #endif // HAL_PLATFORM_ENV_VARS

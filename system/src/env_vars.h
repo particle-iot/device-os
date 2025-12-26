@@ -33,9 +33,9 @@ namespace particle::system {
 
 class EnvVars {
 public:
-    static const char* const APP_FILE;
+    static const char* const APP_FILE_CURRENT;
     static const char* const APP_FILE_STAGED;
-    static const char* const SNAPSHOT_FILE;
+    static const char* const SNAPSHOT_FILE_CURRENT;
     static const char* const SNAPSHOT_FILE_STAGED;
 
     static const size_t SNAPSHOT_HASH_SIZE = 32;
@@ -126,8 +126,8 @@ private:
     int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
     int updateBootloaderVars() const;
 
-    static int loadAllVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars);
-    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars);
+    static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged);
+    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged);
     static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
     static int parseVars(VarSource src, fs::File& file, Vars& vars);
 };
