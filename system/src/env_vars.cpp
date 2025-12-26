@@ -41,9 +41,9 @@ const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
 
 } // unnamed
 
-const char* const EnvVars::APP_FILE = "/sys/env_app";
+const char* const EnvVars::APP_FILE_CURRENT = "/sys/env_app";
 const char* const EnvVars::APP_FILE_STAGED = "/sys/env_app.staged";
-const char* const EnvVars::SNAPSHOT_FILE = "/sys/env_snapshot";
+const char* const EnvVars::SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const char* const EnvVars::SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 EnvVars::~EnvVars() {
@@ -60,11 +60,18 @@ int EnvVars::init() {
     }
 
     Vars vars;
-    int r = loadAllVars(true /* tryStaged */, *appFile, *snapshotFile, vars);
+    bool hasStaged = false;
+    int r = loadVars(true /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
     if (r < 0) {
-        // Ignore any staged files as a fallback
-        vars = Vars();
-        CHECK(loadAllVars(false /* tryStaged */, *appFile, *snapshotFile, vars));
+        if (hasStaged) {
+            // Ignore the staged files as a fallback
+            vars = Vars();
+            r = loadVars(false /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
+        }
+        if (r < 0) {
+            LOG(ERROR, "Error while loading env vars: %d", r);
+            return r;
+        }
     }
     if (!appFile->isOpen()) {
         appFile.reset();
@@ -80,7 +87,7 @@ int EnvVars::init() {
     r = updateBootloaderVars();
     if (r < 0) {
         LOG(ERROR, "Error while updating bootloader env vars: %d", r);
-        // The system should be able to use the loaded variables and there's nothing we can do about
+        // The variables have been loaded successfully and there's not much we can do about
         // the bootloader
         r = 0;
     }
@@ -146,69 +153,44 @@ int EnvVars::updateBootloaderVars() const {
     return 0;
 }
 
-int EnvVars::loadAllVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars) {
+int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged) {
     // Load the variables bundled with the app
-    CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars));
+    CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars, hasStaged));
     NAMED_SCOPE_GUARD(closeAppFile, {
         appFile.close();
     });
 
     // Override with the variables set in the cloud
-    CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars));
+    CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars, hasStaged));
     closeAppFile.dismiss();
     return 0;
 }
 
-int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars) {
-    const char* path = nullptr;
-    bool tryNormal = true;
-    bool isStaged = false;
-    int error = 0;
-
-    for (;;) {
-        auto tryingStaged = tryStaged;
-        if (tryStaged) {
-            path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
-            tryStaged = false;
-        } else if (tryNormal) {
-            path = (src == VarSource::APP) ? APP_FILE : SNAPSHOT_FILE;
-            tryNormal = false;
-        } else {
-            break;
-        }
+int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged) {
+    if (tryStaged) {
+        auto path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
         int r = loadVarsFile(path, src, file, vars);
-        if (r < 0) {
-            if (r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-                LOG(ERROR, "Error while loading %s: %d", path, r);
-                if (!error) {
-                    error = r;
-                }
-                // Delete the staged file but not the normal one as this might be an intermittent
-                // IO error
-                if (tryingStaged) {
-                    r = fs::remove(path);
-                    if (r < 0) {
-                        LOG(ERROR, "Error while removing %s: %d", path, r);
-                    }
-                }
+        if (r >= 0) {
+            hasStaged = true;
+            // Rename the staged file
+            CHECK(file.close());
+            auto newPath = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
+            CHECK(fs::rename(path, newPath));
+            // Reopen the file
+            CHECK(file.open(newPath, LFS_O_RDONLY));
+            return 0;
+        } else if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
+            hasStaged = true;
+            r = fs::remove(path);
+            if (r < 0) {
+                LOG(ERROR, "Error while removing %s: %d", path, r);
             }
-            continue;
+            return r;
         }
-        isStaged = tryingStaged;
-        error = 0;
-        break;
     }
-    if (error < 0) {
-        return error;
-    }
-    if (isStaged) {
-        // Rename the staged file
-        CHECK(file.close());
-        auto newPath = (src == VarSource::APP) ? APP_FILE : SNAPSHOT_FILE;
-        CHECK(fs::rename(path, newPath));
-        // Reopen the file
-        CHECK(file.open(newPath, LFS_O_RDONLY));
-    }
+
+    auto path = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
+    CHECK(loadVarsFile(path, src, file, vars));
     return 0;
 }
 
