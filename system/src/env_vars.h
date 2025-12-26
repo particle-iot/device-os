@@ -123,13 +123,13 @@ private:
 
     EnvVars() = default;
 
-    int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
     int updateBootloaderVars() const;
+    int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
 
     static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged);
     static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged);
     static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
-    static int parseVars(VarSource src, fs::File& file, Vars& vars);
+    static int readVars(VarSource src, fs::File& file, Vars& vars);
 };
 
 } // particle::system
