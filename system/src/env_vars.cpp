@@ -190,6 +190,7 @@ int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Va
             CHECK(file.open(newPath, LFS_O_RDONLY));
             return 0;
         } else if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
+            LOG(ERROR, "Error while reading %s: %d", path, r);
             hasStaged = true;
             r = fs::remove(path);
             if (r < 0) {
@@ -215,7 +216,7 @@ int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars&
         return SYSTEM_ERROR_TOO_LARGE;
     }
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
-    // the corresponding file stored on the device
+    // the corresponding file on the device (see `init()`)
     if (size > 0) {
         CHECK(readVars(src, f, vars));
     }

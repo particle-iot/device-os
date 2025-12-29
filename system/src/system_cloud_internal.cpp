@@ -60,6 +60,7 @@
 #include "system_version.h"
 #include "firmware_update.h"
 #include "server_config.h"
+#include "env_vars.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -422,6 +423,7 @@ uint32_t compute_describe_app_checksum()
 
 uint32_t compute_describe_system_checksum()
 {
+    // TODO: Encode and hash the describe message rather than selected fields of the system info
     hal_system_info_t info;
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
@@ -432,6 +434,11 @@ uint32_t compute_describe_system_checksum()
 		checksum += crc(info.modules[i].suffix.sha);
 	}
 	HAL_System_Info(&info, false, NULL);
+#if HAL_PLATFORM_ENV_VARS
+    if (EnvVars::instance().hasSnapshot()) {
+        checksum += crc(EnvVars::instance().snapshotHash(), EnvVars::SNAPSHOT_HASH_SIZE);
+    }
+#endif
     return checksum;
 }
 
