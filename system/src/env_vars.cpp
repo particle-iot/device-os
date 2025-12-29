@@ -105,7 +105,7 @@ int EnvVars::init() {
         // the bootloader
         r = 0;
     }
-    return r; // 0 or Update::NEED_RESET
+    return r; // 0 or Result::NEED_RESET
 }
 
 int EnvVars::get(const char* name, CString& val) const {
@@ -214,6 +214,8 @@ int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars&
     if (size > MAX_VARS_FILE_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
+    // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
+    // the corresponding file stored on the device
     if (size > 0) {
         CHECK(readVars(src, f, vars));
     }
