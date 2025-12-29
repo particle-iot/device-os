@@ -59,20 +59,37 @@ int EnvVars::init() {
     }
 
     Vars vars;
+    unsigned appCount = 0; // Number of variables in the file bundled with the app
+    unsigned snapshotCount = 0; // Number of variables in the snapshot file
     bool hasStaged = false;
-    int r = loadVars(true /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
+    int r = loadVars(true /* tryStaged */, *appFile, *snapshotFile, vars, appCount, snapshotCount, hasStaged);
     if (r < 0) {
         if (hasStaged) {
             // Ignore the staged files as a fallback
             vars = Vars();
             appFile->close();
             snapshotFile->close();
-            r = loadVars(false /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
+            appCount = 0;
+            snapshotCount = 0;
+            hasStaged = false;
+            r = loadVars(false /* tryStaged */, *appFile, *snapshotFile, vars, appCount, snapshotCount, hasStaged);
         }
         if (r < 0) {
             LOG(ERROR, "Error while loading env vars: %d", r);
             return r;
         }
+    }
+
+    // Clean up the empty files
+    if (appFile->isOpen() && !appCount) {
+        appFile->close();
+        fs::remove(APP_FILE_CURRENT);
+        fs::remove(APP_FILE_STAGED);
+    }
+    if (snapshotFile->isOpen() && !snapshotCount && !vars.snapshotHash) {
+        snapshotFile->close();
+        fs::remove(SNAPSHOT_FILE_CURRENT);
+        fs::remove(SNAPSHOT_FILE_STAGED);
     }
     if (!appFile->isOpen()) {
         appFile.reset();
@@ -154,19 +171,20 @@ int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) const {
     return 0;
 }
 
-int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged) {
+int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, unsigned& appCount,
+        unsigned& snapshotCount, bool& hasStaged) {
     // Load the variables bundled with the app
-    CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars, hasStaged));
+    CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars, appCount, hasStaged));
 
     // Override with the variables from the snapshot
-    CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars, hasStaged));
+    CHECK(loadVarsForSource(tryStaged, VarSource::SNAPSHOT, snapshotFile, vars, snapshotCount, hasStaged));
     return 0;
 }
 
-int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged) {
+int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, unsigned& count, bool& hasStaged) {
     if (tryStaged) {
         auto path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
-        int r = loadVarsFile(path, src, file, vars);
+        int r = loadVarsFile(path, src, file, vars, count);
         if (r >= 0) {
             hasStaged = true;
             // Rename the staged file
@@ -187,40 +205,45 @@ int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Va
     }
 
     auto path = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
-    CHECK(loadVarsFile(path, src, file, vars));
+    int r = loadVarsFile(path, src, file, vars, count);
+    if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
+        return r;
+    }
     return 0;
 }
 
-int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars, unsigned& count) {
     fs::File f;
     CHECK(f.open(path, LFS_O_RDONLY));
     size_t size = CHECK(f.size());
     if (size > MAX_VARS_FILE_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
-    CHECK(readVars(src, f, vars));
+    CHECK(readVars(src, f, vars, count));
     file = std::move(f); // Keep the file open
     return 0;
 }
 
-int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
+int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars, unsigned& count) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
     struct DecodeContext {
         fs::File& file;
-        VarMap& varMap;
-        VarSource varSrc;
-        size_t valOffs;
-        size_t valSize;
+        VarEntries& entries;
+        VarSource src;
+        size_t valOffs; // Offset of the last read variable value
+        size_t valSize; // Size of the last read variable value
+        unsigned varCount; // Number of variables read
         int error;
     };
     DecodeContext d = {
         .file = file,
-        .varMap = vars.entries,
-        .varSrc = src,
+        .entries = vars.entries,
+        .src = src,
         .valOffs = 0,
         .valSize = 0,
+        .varCount = 0,
         .error = 0
     };
 
@@ -260,12 +283,13 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
         VarEntry entry = {
             .valOffs = (uint16_t)d->valOffs,
             .valSize = (uint16_t)d->valSize,
-            .src = d->varSrc
+            .src = d->src
         };
-        if (!d->varMap.set(std::move(name), std::move(entry))) {
+        if (!d->entries.set(std::move(name), std::move(entry))) {
             d->error = SYSTEM_ERROR_NO_MEMORY;
             return false;
         }
+        ++d->varCount;
         return true;
     };
     if (!pb_decode(&stream, &PB_SYSTEM(EnvVars_msg), &pbVars)) {
@@ -273,16 +297,27 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
     }
 
     if (src == VarSource::SNAPSHOT) {
-        if (pbVars.hash.size != SNAPSHOT_HASH_SIZE) {
-            return SYSTEM_ERROR_BAD_DATA; // Snapshot hash is missing
+        if (pbVars.hash.size) {
+            if (pbVars.hash.size != SNAPSHOT_HASH_SIZE) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+            vars.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
+            if (!vars.snapshotHash) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            std::memcpy(vars.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
+        } else {
+            // As a special case, allow the snapshot hash to be empty but only if the list of
+            // variables is empty as well. This is used for cleaning up the snapshot stored on
+            // the device
+            if (d.varCount > 0) {
+                return SYSTEM_ERROR_BAD_DATA;
+            }
+            vars.snapshotHash.reset();
         }
-        vars.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
-        if (!vars.snapshotHash) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        std::memcpy(vars.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
     }
 
+    count = d.varCount;
     return 0;
 }
 

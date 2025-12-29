@@ -327,6 +327,7 @@ int AssetManager::clearUnusedAssets() {
         CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
         const fs::FsLock lock(fs);
         CHECK_FS(lfs_remove(&fs->instance, asset.name().c_str()));
+        // TODO: Clean up the app env vars
     }
     return 0;
 }

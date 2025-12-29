@@ -60,6 +60,7 @@ public:
         return vars_.entries.size();
     }
 
+    // Invokes a callback for each variable name and value
     template<typename F>
     int forEach(char* buf, size_t bufSize, F fn) const {
         for (const auto& entry: vars_.entries) {
@@ -75,6 +76,7 @@ public:
         return vars_.entries.size();
     }
 
+    // Invokes a callback for each variable name
     template<typename F>
     int forEach(F fn) const {
         for (const auto& entry: vars_.entries) {
@@ -110,10 +112,10 @@ private:
         VarSource src;
     };
 
-    typedef Map<CString, VarEntry, CString::Less> VarMap;
+    typedef Map<CString, VarEntry, CString::Less> VarEntries;
 
     struct Vars {
-        VarMap entries;
+        VarEntries entries;
         std::unique_ptr<char[]> snapshotHash;
     };
 
@@ -121,15 +123,16 @@ private:
     std::unique_ptr<fs::File> appFile_;
     std::unique_ptr<fs::File> snapshotFile_;
 
-    EnvVars() = default;
+    EnvVars() = default; // Use instance()
 
     int updateBootloaderVars() const;
     int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
 
-    static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged);
-    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged);
-    static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
-    static int readVars(VarSource src, fs::File& file, Vars& vars);
+    static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, unsigned& appCount,
+            unsigned& snapshotCount, bool& hasStaged);
+    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, unsigned& count, bool& hasStaged);
+    static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars, unsigned& count);
+    static int readVars(VarSource src, fs::File& file, Vars& vars, unsigned& count);
 };
 
 } // particle::system
