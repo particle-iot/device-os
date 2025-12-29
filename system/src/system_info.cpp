@@ -503,9 +503,9 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
 #endif // HAL_PLATFORM_ASSETS
 
 #if HAL_PLATFORM_ENV_VARS
-    const auto envVarsHash = EnvVars::instance().snapshotHash();
-    if (envVarsHash) {
-        std::memcpy(pbDesc.env_vars_hash.bytes, envVarsHash, EnvVars::SNAPSHOT_HASH_SIZE);
+    if (EnvVars::instance().hasSnapshot()) {
+        static_assert(sizeof(pbDesc.env_vars_hash.bytes) >= EnvVars::SNAPSHOT_HASH_SIZE);
+        std::memcpy(pbDesc.env_vars_hash.bytes, EnvVars::instance().snapshotHash(), EnvVars::SNAPSHOT_HASH_SIZE);
         pbDesc.env_vars_hash.size = EnvVars::SNAPSHOT_HASH_SIZE;
     }
 #endif // HAL_PLATFORM_ENV_VARS

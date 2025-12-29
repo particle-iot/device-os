@@ -361,6 +361,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         availableAssets_.clear();
         CHECK(fs::mount(fs));
 
+        // Save the module to the asset filesystem
         CHECK(stream.seek(0));
         CHECK(saveToFile(stream, info.name().c_str(), fs));
 
@@ -371,6 +372,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         InputStream* assetStream = nullptr;
         CHECK(reader.assetStream(assetStream));
 
+        // Save the uncompressed asset data to the main filesystem
         CHECK(saveToFile(*assetStream, altPath, fs::defaultFs()));
     }
 
@@ -530,8 +532,9 @@ int AssetReader::validate(bool full) {
     CHECK(parseAssetInfo(stream_, suffix.size - sizeof(module_info_suffix_base_t), asset));
     valid_ = true;
     compressed_ = compressed;
+    dataOffset_ = sizeof(module_info_t);
     if (compressed) {
-        dataOffset_ = sizeof(module_info_t) + compHeader.size;
+        dataOffset_ += compHeader.size;
     }
     dataSize_ = moduleSize - suffix.size - sizeof(uint32_t) - dataOffset_;
     size_ = moduleSize;
