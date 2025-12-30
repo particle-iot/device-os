@@ -861,17 +861,6 @@ void app_setup_and_loop(void)
     String s = spark_deviceID();
     INFO("Device %s started", s.c_str());
 
-#if HAL_PLATFORM_ENV_VARS
-    if (system::EnvVars::instance().count()) {
-        // Print the environment variables
-        char buf[128] = {};
-        system::EnvVars::instance().forEach(buf, sizeof(buf), [=](const char* name, const char* val) {
-            LOG(INFO, "%s=%s", name, val);
-            return 0;
-        });
-    }
-#endif // HAL_PLATFORM_ENV_VARS
-
 #if HAL_PLATFORM_FILESYSTEM
     filesystem_dump_info(filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr));
 #endif /* HAL_PLATFORM_FILESYSTEM */
