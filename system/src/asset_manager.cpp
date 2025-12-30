@@ -327,7 +327,8 @@ int AssetManager::clearUnusedAssets() {
         CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
         const fs::FsLock lock(fs);
         CHECK_FS(lfs_remove(&fs->instance, asset.name().c_str()));
-        // TODO: Clean up the app env vars
+        // TODO: When removing an env vars asset, clean up the app env vars used by the system by
+        // creating an empty /sys/env_app.staged
     }
     return 0;
 }

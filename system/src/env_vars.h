@@ -49,8 +49,8 @@ public:
 
     int init();
 
-    int get(const char* name, CString& val) const;
-    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr) const;
+    int get(const char* name, CString& val);
+    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
 
     bool has(const char* name) const {
         return vars_.entries.has(name);
@@ -62,7 +62,7 @@ public:
 
     // Invokes a callback for each variable name and value
     template<typename F>
-    int forEach(char* buf, size_t bufSize, F fn) const {
+    int forEach(char* buf, size_t bufSize, F fn) {
         for (const auto& entry: vars_.entries) {
             int r = get(entry.first, buf, bufSize);
             if (r < 0) {
@@ -93,7 +93,7 @@ public:
     }
 
     bool hasSnapshot() const {
-        return snapshotFile_.get();
+        return snapshotFile_.isOpen();
     }
 
     EnvVars& operator=(const EnvVars&) = delete;
@@ -120,13 +120,13 @@ private:
     };
 
     Vars vars_;
-    std::unique_ptr<fs::File> appFile_;
-    std::unique_ptr<fs::File> snapshotFile_;
+    fs::File appFile_;
+    fs::File snapshotFile_;
 
     EnvVars() = default; // Use instance()
 
-    int updateBootloaderVars() const;
-    int readValue(const VarEntry& var, char* buf, size_t bufSize) const;
+    int updateBootloaderVars();
+    int readValue(const VarEntry& var, char* buf, size_t bufSize);
 
     static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged);
     static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged);

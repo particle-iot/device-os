@@ -52,23 +52,20 @@ int EnvVars::init() {
     fs::FsLock lock;
     CHECK(fs::mount());
 
-    std::unique_ptr<fs::File> appFile(new(std::nothrow) fs::File());
-    std::unique_ptr<fs::File> snapshotFile(new(std::nothrow) fs::File());
-    if (!appFile || !snapshotFile) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-
     Vars vars;
+    fs::File appFile;
+    fs::File snapshotFile;
+
     bool hasStaged = false;
-    int r = loadVars(true /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
+    int r = loadVars(true /* tryStaged */, appFile, snapshotFile, vars, hasStaged);
     if (r < 0) {
         if (hasStaged) {
             // Ignore the staged files as a fallback
             vars = Vars();
-            appFile->close();
-            snapshotFile->close();
+            appFile.close();
+            snapshotFile.close();
             hasStaged = false;
-            r = loadVars(false /* tryStaged */, *appFile, *snapshotFile, vars, hasStaged);
+            r = loadVars(false /* tryStaged */, appFile, snapshotFile, vars, hasStaged);
         }
         if (r < 0) {
             LOG(ERROR, "Error while loading env vars: %d", r);
@@ -77,21 +74,15 @@ int EnvVars::init() {
     }
 
     // Clean up empty files
-    if (appFile->isOpen() && appFile->size() == 0) {
-        appFile->close();
+    if (appFile.isOpen() && appFile.size() == 0) {
+        appFile.close();
         fs::remove(APP_FILE_CURRENT);
         fs::remove(APP_FILE_STAGED);
     }
-    if (snapshotFile->isOpen() && snapshotFile->size() == 0) {
-        snapshotFile->close();
+    if (snapshotFile.isOpen() && snapshotFile.size() == 0) {
+        snapshotFile.close();
         fs::remove(SNAPSHOT_FILE_CURRENT);
         fs::remove(SNAPSHOT_FILE_STAGED);
-    }
-    if (!appFile->isOpen()) {
-        appFile.reset();
-    }
-    if (!snapshotFile->isOpen()) {
-        snapshotFile.reset();
     }
 
     vars_ = std::move(vars);
@@ -108,7 +99,7 @@ int EnvVars::init() {
     return r; // 0 or Result::NEED_RESET
 }
 
-int EnvVars::get(const char* name, CString& val) const {
+int EnvVars::get(const char* name, CString& val) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
         val = CString();
@@ -125,7 +116,7 @@ int EnvVars::get(const char* name, CString& val) const {
     return 0;
 }
 
-int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) const {
+int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
         if (found) {
@@ -146,17 +137,17 @@ EnvVars& EnvVars::instance() {
     return envVars;
 }
 
-int EnvVars::updateBootloaderVars() const {
+int EnvVars::updateBootloaderVars() {
     // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
     // apply the changes and return Result::NEED_RESET
     return 0;
 }
 
-int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) const {
+int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) {
     if (!bufSize) {
         return 0;
     }
-    auto& file = (var.src == VarSource::APP) ? *appFile_ : *snapshotFile_;
+    auto& file = (var.src == VarSource::APP) ? appFile_ : snapshotFile_;
     CHECK(file.seek(var.valOffs));
     size_t bytesToRead = std::min<size_t>(var.valSize, bufSize - 1);
     size_t bytesRead = CHECK(file.read(buf, bytesToRead));
