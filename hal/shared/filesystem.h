@@ -69,6 +69,8 @@ int filesystem_to_system_error(int error);
 #ifdef __cplusplus
 } // extern "C"
 
+#include <memory>
+
 #define CHECK_FS(expr) \
         ({ \
             auto _r = expr; \
@@ -122,7 +124,7 @@ public:
     int close();
 
     bool isOpen() const {
-        return open_;
+        return file_.get();
     }
 
     int read(void* buf, lfs_size_t size);
@@ -134,7 +136,7 @@ public:
     int sync();
 
     lfs_file_t* handle() {
-        return &file_;
+        return file_.get();
     }
 
     filesystem_t* fs() const {
@@ -145,9 +147,8 @@ public:
     File& operator=(File&& file);
 
 private:
-    lfs_file_t file_;
+    std::unique_ptr<lfs_file_t> file_;
     filesystem_t* fs_;
-    bool open_;
 };
 
 int mount(filesystem_t* fs = defaultFs());

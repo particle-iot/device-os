@@ -456,16 +456,12 @@ int filesystem_to_system_error(int error) {
 namespace particle::fs {
 
 File::File(filesystem_t* fs) :
-        file_(),
-        fs_(fs),
-        open_(false) {
+        fs_(fs) {
 }
 
 File::File(File&& file) :
-        file_(file.file_),
-        fs_(file.fs_),
-        open_(file.open_) {
-    file.open_ = false;
+        file_(std::move(file.file_)),
+        fs_(file.fs_) {
 }
 
 File::~File() {
@@ -480,67 +476,71 @@ int File::open(const char* path, int flags) {
         return SYSTEM_ERROR_FILESYSTEM; // filesystem_get_instance() failed
     }
     CHECK(close());
-    CHECK_FS(lfs_file_open(&fs_->instance, &file_, path, flags));
-    open_ = true;
+    std::unique_ptr<lfs_file_t> file(new(std::nothrow) lfs_file_t());
+    if (!file) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK_FS(lfs_file_open(&fs_->instance, file.get(), path, flags));
+    file_ = std::move(file);
     return 0;
 }
 
 int File::close() {
-    if (!open_) {
+    if (!file_) {
         return 0;
     }
-    CHECK_FS(lfs_file_close(&fs_->instance, &file_));
-    open_ = false;
+    CHECK_FS(lfs_file_close(&fs_->instance, file_.get()));
+    file_.reset();
     return 0;
 }
 
 int File::read(void* buf, lfs_size_t size) {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_read(&fs_->instance, &file_, buf, size));
+    return CHECK_FS(lfs_file_read(&fs_->instance, file_.get(), buf, size));
 }
 
 int File::write(const void* buf, lfs_size_t size) {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_write(&fs_->instance, &file_, buf, size));
+    return CHECK_FS(lfs_file_write(&fs_->instance, file_.get(), buf, size));
 }
 
 int File::tell() {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_tell(&fs_->instance, &file_));
+    return CHECK_FS(lfs_file_tell(&fs_->instance, file_.get()));
 }
 
 int File::seek(lfs_soff_t offs, int whence) {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_seek(&fs_->instance, &file_, offs, whence));
+    return CHECK_FS(lfs_file_seek(&fs_->instance, file_.get(), offs, whence));
 }
 
 int File::size() {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_size(&fs_->instance, &file_));
+    return CHECK_FS(lfs_file_size(&fs_->instance, file_.get()));
 }
 
 int File::truncate(lfs_off_t size) {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_truncate(&fs_->instance, &file_, size));
+    return CHECK_FS(lfs_file_truncate(&fs_->instance, file_.get(), size));
 }
 
 int File::sync() {
-    if (!open_) {
+    if (!file_) {
         return SYSTEM_ERROR_FILE_NOT_OPEN;
     }
-    return CHECK_FS(lfs_file_sync(&fs_->instance, &file_));
+    return CHECK_FS(lfs_file_sync(&fs_->instance, file_.get()));
 }
 
 File& File::operator=(File&& file) {
@@ -548,10 +548,8 @@ File& File::operator=(File&& file) {
     if (r < 0) {
         LOG(ERROR, "Error while closing file: %d", r);
     }
-    file_ = file.file_;
+    file_ = std::move(file.file_);
     fs_ = file.fs_;
-    open_ = file.open_;
-    file.open_ = false;
     return *this;
 }
 
