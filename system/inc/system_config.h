@@ -28,8 +28,7 @@ extern "C" {
 /**
  * Get the value of an environment variable.
  *
- * The output is null-terminated unless the requested variable is not defined or the size of the
- * output buffer is 0.
+ * The output is always null-terminated unless the size of the output buffer is 0.
  *
  * @param name Variable name.
  * @param buf Output buffer.

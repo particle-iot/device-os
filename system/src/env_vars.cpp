@@ -20,7 +20,9 @@
 #if HAL_PLATFORM_ENV_VARS
 
 #include <algorithm>
+#include <charconv>
 #include <cstdlib>
+#include <cstring>
 
 #include <pb_decode.h>
 
@@ -119,6 +121,9 @@ int EnvVars::get(const char* name, CString& val) {
 int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
+        if (bufSize > 0) {
+            buf[0] = '\0';
+        }
         if (found) {
             *found = false;
         }
@@ -298,6 +303,64 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
         std::memcpy(vars.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
     }
     return 0;
+}
+
+CString getEnv(const char* name, const char* defaultVal) {
+    CString val;
+    int r = EnvVars::instance().get(name, val);
+    if (r < 0) {
+        return defaultVal;
+    }
+    return val;
+}
+
+int getEnv(const char* name, int defaultVal) {
+    char buf[32] = {};
+    bool found = false;
+    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
+    if (n < 0 || !found) {
+        return defaultVal;
+    }
+    int val = 0;
+    auto r = std::from_chars(buf, buf + n, val);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        return defaultVal;
+    }
+    return val;
+}
+
+bool getEnv(const char* name, bool defaultVal) {
+    char buf[32] = {};
+    bool found = false;
+    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
+    if (n < 0 || !found) {
+        return defaultVal;
+    }
+    if (std::strcmp(buf, "true") == 0) {
+        return true;
+    }
+    if (std::strcmp(buf, "false") == 0) {
+        return false;
+    }
+    // Try parsing as a number
+    int val = 0;
+    auto r = std::from_chars(buf, buf + n, val);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        return defaultVal;
+    }
+    return val;
+}
+
+int getEnv(const char* name, CString& val) {
+    return EnvVars::instance().get(name, val);
+}
+
+int getEnv(const char* name, char* buf, size_t bufSize, bool* found) {
+    return EnvVars::instance().get(name, buf, bufSize, found);
+}
+
+bool hasEnv(const char* name) {
+    return EnvVars::instance().has(name);
 }
 
 } // particle::system

@@ -134,6 +134,72 @@ private:
     static int readVars(VarSource src, fs::File& file, Vars& vars);
 };
 
+/**
+ * Get the value of an environment variable.
+ *
+ * @param name Variable name.
+ * @param defaultVal Default value.
+ * @return Variable value if defined, or the default value.
+ */
+CString getEnv(const char* name, const char* defaultVal);
+
+/**
+ * Get the value of an environment variable and convert it to `int`.
+ *
+ * @param name Variable name.
+ * @param defaultVal Default value.
+ * @return Variable value if defined, or the default value.
+ */
+int getEnv(const char* name, int defaultVal);
+
+/**
+ * Get the value of an environment variable and convert it to `bool`.
+ *
+ * @param name Variable name.
+ * @param defaultVal Default value.
+ * @return Variable value if defined, or the default value.
+ */
+bool getEnv(const char* name, bool defaultVal);
+
+/**
+ * Get the value of an environment variable.
+ *
+ * Alias for `EnvVars::get(const char* name, CString& val)`.
+ *
+ * @param name Variable name.
+ * @param[out] val Variable value. Will be set to a null-initialized string if the variable is
+ *             not defined.
+ * @return 0 on success, or an error code defined by `system_error_t`.
+ */
+int getEnv(const char* name, CString& val);
+
+/**
+ * Get the value of an environment variable.
+ *
+ * The output is always null-terminated unless the size of the output buffer is 0.
+ *
+ * Alias for `EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found)`.
+ *
+ * @param name Variable name.
+ * @param buf Output buffer.
+ * @param bufSize Size of the output buffer.
+ * @param[out] found Will be set to `true` if the variable is defined, otherwise to `false`.
+ * @return On success, the actual length of the variable value, not including `\0`, or 0 if the
+ *         variable is not defined. On failure, an error code defined by `system_error_t`. The
+ *         returned length can be greater than the size of the output buffer.
+ */
+int getEnv(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
+
+/**
+ * Check if an environment variable is defined.
+ *
+ * Alias for `EnvVars::has(const char* name)`.
+ *
+ * @param name Variable name.
+ * @return `true` if the variable is defined, otherwise `false`.
+ */
+bool hasEnv(const char* name);
+
 } // particle::system
 
 #endif // HAL_PLATFORM_ENV_VARS
