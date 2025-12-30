@@ -244,7 +244,7 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
         auto d = (DecodeContext*)*arg;
 
         PB_SYSTEM(EnvVars_Var) pbVar = {};
-        pbVar.value.arg = &d;
+        pbVar.value.arg = d;
         pbVar.value.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
             auto d = (DecodeContext*)*arg;
 
