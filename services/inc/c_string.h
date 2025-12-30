@@ -51,6 +51,10 @@ public:
         free(const_cast<char*>(s_));
     }
 
+    const char* data() const {
+        return s_;
+    }
+
     char* unwrap() {
         const auto s = const_cast<char*>(s_);
         s_ = nullptr;
