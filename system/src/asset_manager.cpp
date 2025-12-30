@@ -121,8 +121,8 @@ int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
 
     fs::remove(destPath, fs);
 
-    fs::File file(fs);
-    CHECK(file.open(destPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
+    fs::File file;
+    CHECK(file.open(destPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND, fs));
 
     char buf[256];
     while (srcStream.availForRead() > 0) {

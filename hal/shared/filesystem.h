@@ -115,16 +115,16 @@ private:
 
 class File {
 public:
-    explicit File(filesystem_t* fs = defaultFs());
+    File();
     File(const File& file) = delete;
     File(File&& file);
     ~File();
 
-    int open(const char* path, int flags);
+    int open(const char* path, int flags, filesystem_t* fs = defaultFs());
     int close();
 
     bool isOpen() const {
-        return file_.get();
+        return d_.get();
     }
 
     int read(void* buf, lfs_size_t size);
@@ -135,20 +135,16 @@ public:
     int truncate(lfs_off_t size);
     int sync();
 
-    lfs_file_t* handle() {
-        return file_.get();
-    }
-
-    filesystem_t* fs() const {
-        return fs_;
-    }
+    lfs_file_t* handle();
+    filesystem_t* fs() const;
 
     File& operator=(const File& file) = delete;
     File& operator=(File&& file);
 
 private:
-    std::unique_ptr<lfs_file_t> file_;
-    filesystem_t* fs_;
+    struct Data;
+
+    std::unique_ptr<Data> d_;
 };
 
 int mount(filesystem_t* fs = defaultFs());
