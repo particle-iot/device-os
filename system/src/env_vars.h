@@ -68,7 +68,7 @@ public:
             if (r < 0) {
                 return r;
             }
-            r = fn(entry.first, buf);
+            r = fn(entry.first.data(), buf);
             if (r < 0) {
                 return r;
             }
@@ -80,7 +80,7 @@ public:
     template<typename F>
     int forEach(F fn) const {
         for (const auto& entry: vars_.entries) {
-            int r = fn(entry.first);
+            int r = fn(entry.first.data());
             if (r < 0) {
                 return r;
             }
