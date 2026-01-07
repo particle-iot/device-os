@@ -48,7 +48,9 @@ test(api_wiring_analogGetReference) {
 
 test(api_wiring_wire_setSpeed)
 {
+    API_COMPILE(Wire.setSpeed(CLOCK_SPEED_10KHZ));
     API_COMPILE(Wire.setSpeed(CLOCK_SPEED_100KHZ));
+    API_COMPILE(Wire.setSpeed(CLOCK_SPEED_400KHZ));
 }
 void D0_callback()
 {
