@@ -230,7 +230,8 @@ extern "C" {
 #define SYSTEM_VERSION_v632         SYSTEM_VERSION_DEFAULT(6, 3, 2)
 #define SYSTEM_VERSION_v633         SYSTEM_VERSION_DEFAULT(6, 3, 3)
 #define SYSTEM_VERSION_v634         SYSTEM_VERSION_DEFAULT(6, 3, 4)
-#define SYSTEM_VERSION SYSTEM_VERSION_v634
+#define SYSTEM_VERSION_v635         SYSTEM_VERSION_DEFAULT(6, 3, 5)
+#define SYSTEM_VERSION SYSTEM_VERSION_v635
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make
@@ -425,6 +426,7 @@ extern "C" {
 #define SYSTEM_VERSION_632
 #define SYSTEM_VERSION_633
 #define SYSTEM_VERSION_634
+#define SYSTEM_VERSION_635
 
 typedef struct __attribute__((packed)) SystemVersionInfo
 {
