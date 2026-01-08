@@ -7,6 +7,29 @@
 
 namespace {
 
+TwoWire* fuelWireInstance() {
+#if HAL_PLATFORM_FUELGAUGE_MAX17043
+    switch (HAL_PLATFORM_FUELGAUGE_MAX17043_I2C) {
+        case HAL_I2C_INTERFACE1:
+        default: {
+            return &Wire;
+        }
+#if Wiring_Wire1
+        case HAL_I2C_INTERFACE2: {
+            return &Wire1;
+        }
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+        case HAL_I2C_INTERFACE3: {
+            return &Wire3;
+        }
+#endif // Wiring_Wire3
+    }
+#endif // HAL_PLATFORM_FUELGAUGE_MAX17043
+
+    return &Wire;
+}
+
 #if HAL_PLATFORM_FUELGAUGE_MAX17043
 std::pair<hal_pin_t, hal_pin_t> i2cToSdaSclPins(hal_i2c_interface_t i2c) {
 #if HAL_PLATFORM_GEN == 3
@@ -323,7 +346,7 @@ test(I2C_07_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface) {
     FuelGauge fuel(true);
     // fuel.begin(); // sc-137389 - purposely do not call begin() as in our documentation,
                      // FuelGauge should call begin() on its own.
-    assertTrue(Wire.isEnabled());
+    assertTrue((*fuelWireInstance()).isEnabled());
     fuel.wakeup();
     auto ver = 0xffff & fuel.getVersion();
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
@@ -345,14 +368,14 @@ test(I2C_08_I2c_FuelGauge_Works_Across_Entire_Frequency_Range) {
     uint32_t s = millis();
     while (true) {
         FuelGauge fuel(true);
-        Wire.setSpeed(freq);
-        Wire.begin();
+        (*fuelWireInstance()).setSpeed(freq);
+        (*fuelWireInstance()).begin();
         if (freq == CLOCK_SPEED_400KHZ) {
             freq -= 300000;
         } else if (freq <= CLOCK_SPEED_100KHZ) {
             freq -= 1000; // will drop to 9kHz which is not supported, so will default to 100kHz
         }
-        assertTrue(Wire.isEnabled());
+        assertTrue((*fuelWireInstance()).isEnabled());
         fuel.wakeup();
         auto ver = 0xffff & fuel.getVersion();
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
