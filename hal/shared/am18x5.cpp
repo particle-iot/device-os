@@ -546,6 +546,16 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
 
     readRegister(Am18x5Register::STATUS, &status);
 
+    if (config->exti_trigger_latched && config->exti_polarity != Am18x5ExtiPolarity::NONE) {
+        uint8_t exin;
+        CHECK(readRegister(Am18x5Register::EXTENSION_RAM_ADDRESS, &exin));
+        bool isExtiHigh = exin & EXTENSION_RAM_EXIN_MASK;
+        if((config->exti_polarity == Am18x5ExtiPolarity::RISING && isExtiHigh) ||
+            (config->exti_polarity == Am18x5ExtiPolarity::FALLING && !isExtiHigh)) {
+            return SYSTEM_ERROR_ABORTED;
+        }
+    }
+
     // Transfer to SLEEP state without any delay
     CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
 

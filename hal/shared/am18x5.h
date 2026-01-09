@@ -149,6 +149,7 @@ typedef struct hal_am18x5_sleep_config_t {
     uint16_t version;
     uint16_t size;
     Am18x5ExtiPolarity exti_polarity;
+    bool exti_trigger_latched;
     system_tick_t duration; // in seconds
 } hal_am18x5_sleep_config_t;
 

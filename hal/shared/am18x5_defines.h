@@ -169,6 +169,8 @@
 #define OUTPUT_CTRL_O3EN_MASK       0x02
 #define OUTPUT_CTRL_O1EN_MASK       0x01
 
+#define EXTENSION_RAM_EXIN_MASK     0x10
+
 // Configuration Keys
 #define CONFIG_KEY_SOFTWARE_RESET   0x3C
 #define CONFIG_KEY_PRIMARY          0x9D

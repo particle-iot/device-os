@@ -132,12 +132,21 @@ public:
     SystemExternalRtcSleepConfiguration(const hal_am18x5_sleep_config_t& conf) : conf_(conf) {}
     SystemExternalRtcSleepConfiguration& operator=(SystemExternalRtcSleepConfiguration&&) = default;
 
-    SystemExternalRtcSleepConfiguration& exti(Am18x5ExtiPolarity polarity) {
+    SystemExternalRtcSleepConfiguration& extiTriggerLatched(bool latched) {
+        conf_.exti_trigger_latched = latched;
+        return *this;
+    }
+
+    bool extiTriggerLatched() const {
+        return conf_.exti_trigger_latched;
+    }
+
+    SystemExternalRtcSleepConfiguration& extiPolarity(Am18x5ExtiPolarity polarity) {
         conf_.exti_polarity = polarity;
         return *this;
     }
 
-    Am18x5ExtiPolarity exti() const {
+    Am18x5ExtiPolarity extiPolarity() const {
         return conf_.exti_polarity;
     }
 
