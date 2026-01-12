@@ -513,17 +513,16 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
 
     struct timeval alarmTv = {};
     int enabled = CHECK(getAlarm(&alarmTv));
-    int ret = SYSTEM_ERROR_INTERNAL;
+
+    // This function should not return if succeeded.
     SCOPE_GUARD ({
-        if (ret != SYSTEM_ERROR_NONE) {
-            // Restore alarm config
-            setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_);
-            // Disable EXTI interrupt, as it is only used for sleep wakeup for now
-            intMask &= ~INTERRUPT_EX1E_MASK;
-            writeRegister(Am18x5Register::INT_MASK, intMask);
-            if (watchdogWasStarted) {
-                enableWatchdog(watchdogValue_);
-            }
+        // Restore alarm config
+        setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_);
+        // Disable EXTI interrupt, as it is only used for sleep wakeup for now
+        intMask &= ~INTERRUPT_EX1E_MASK;
+        writeRegister(Am18x5Register::INT_MASK, intMask);
+        if (watchdogWasStarted) {
+            enableWatchdog(watchdogValue_);
         }
     });
 
@@ -558,9 +557,23 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
 
     // Transfer to SLEEP state without any delay
     CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
+    /*
+     * In addition, SLP cannot be set if there is an interrupt pending. Software should read the SLP bit after
+     * attempting to set it. If SLP is not asserted, the attempt to set SLP was unsuccessful either because a
+     * correct trigger was not enabled or because an interrupt was already pending. Once SLP is set, software
+     * should continue to poll it until the Sleep actually occurs, in order to handle the case where a trigger occurs
+     * before the AM18X5AB18XX enters Sleep Mode.
+     */
+    uint8_t isSlpSet = 0;
+    CHECK(readRegister(Am18x5Register::SLEEP_CONTROL, &isSlpSet, false, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
+    if (!isSlpSet) {
+        return SYSTEM_ERROR_ABORTED;
+    }
+    do {
+        CHECK(readRegister(Am18x5Register::SLEEP_CONTROL, &isSlpSet, false, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
+    } while (isSlpSet);
 
-    ret = SYSTEM_ERROR_NONE;
-    return ret;
+    return SYSTEM_ERROR_ABORTED;
 }
 
 int Am18x5::setHundredths(uint8_t hundredths) const {
