@@ -30,6 +30,7 @@
 #include "enumclass.h"
 
 #define HAL_AM18X5_CONFIG_VERSION               1
+#define HAL_EXRTC_ID_STR_LEN                    18
 
 namespace particle {
 
@@ -190,13 +191,10 @@ public:
     void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
     bool isWatchdogStarted() const;
 
-    int enableClkOut(Am18x5SqwFrequency freq = Am18x5SqwFrequency::HZ_32768);
-    int disableClkOut();
-
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
     int sleep(const hal_am18x5_sleep_config_t* config);
 
-    int getPartNumber(uint16_t* id) const;
+    int getIdString(char* id, size_t len) const;
 
     /*
      * The XT oscillator calibration value is determined by the following process:
@@ -249,14 +247,18 @@ private:
     int selectOscillator(Am18x5Oscillator oscillator) const;
     int enableAutoSwitchOnBattery(bool enable) const;
 
+    int enableClkOut(Am18x5SqwFrequency freq);
+    int disableClkOut();
+
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
-    static constexpr uint16_t PART_NUMBER = 0x1805;
+    static constexpr uint16_t AM1805_PART_NUMBER = 0x1805;
     static constexpr uint8_t AM18X5_I2C_ADDR = 0x69;
+    static constexpr uint8_t AM18X5_ID_COUNT = 7;
     static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
@@ -269,6 +271,7 @@ private:
     bool exRtcWorkerThreadExit_;
     hal_am18x5_config_t config_;
     uint8_t watchdogValue_;
+    uint8_t ids_[AM18X5_ID_COUNT];
 }; // class Am18x5
 
 

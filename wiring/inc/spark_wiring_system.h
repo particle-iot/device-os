@@ -1135,6 +1135,15 @@ public:
         return ret;
     }
 
+    String getExternalRtcId() {
+        char buf[HAL_EXRTC_ID_STR_LEN] = {};
+        int ret = hal_external_rtc_get_id(buf, sizeof(buf), nullptr);
+        if (ret != SYSTEM_ERROR_NONE) {
+            return String();
+        }
+        return String(buf, sizeof(buf));
+    }
+
     bool isExternalRtcPresent() {
         return hal_external_rtc_is_present(nullptr);
     }

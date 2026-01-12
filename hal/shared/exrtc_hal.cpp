@@ -31,6 +31,10 @@ int hal_external_rtc_get_config(hal_am18x5_config_t* conf, void* reserved) {
     return Am18x5::getInstance().getConfig(conf);
 }
 
+int hal_external_rtc_get_id(char* buf, size_t len, void* reserved) {
+    return Am18x5::getInstance().getIdString(buf, len);
+}
+
 bool hal_external_rtc_is_present(void* reserved) {
     return Am18x5::getInstance().isPresent();
 }

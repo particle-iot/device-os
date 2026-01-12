@@ -31,6 +31,7 @@
 #include "system_cache.h"
 #include "scope_guard.h"
 #include "core_hal.h"
+#include "bytes2hexbuf.h"
 #include "am18x5_defines.h"
 #include "am18x5.h"
 
@@ -145,8 +146,10 @@ int Am18x5::detect() {
     // hal_i2c_lock/hal_i2c_unlock, which do not function unless hal_i2c_init is called.
     Am18x5Lock lock;
     uint16_t partNumber = 0;
-    CHECK(getPartNumber(&partNumber));
-    CHECK_TRUE(partNumber == PART_NUMBER, SYSTEM_ERROR_NOT_FOUND);
+    CHECK(readContinuousRegisters(Am18x5Register::ID0, ids_, AM18X5_ID_COUNT));
+    partNumber = ((uint16_t)ids_[0]) << 8;
+    partNumber |= (uint16_t)ids_[1];
+    CHECK_TRUE(partNumber == AM1805_PART_NUMBER, SYSTEM_ERROR_NOT_FOUND);
     detected_ = true;
     return SYSTEM_ERROR_NONE;
 }
@@ -247,13 +250,33 @@ int Am18x5::unlock() {
     return hal_i2c_unlock(config_.i2c_if, nullptr);
 }
 
-int Am18x5::getPartNumber(uint16_t* id) const {
+int Am18x5::getIdString(char* id, size_t len) const {
     Am18x5Lock lock;
-    uint8_t val = 0x00;
-    CHECK(readRegister(Am18x5Register::ID0, &val));
-    *id = ((uint16_t)val) << 8;
-    CHECK(readRegister(Am18x5Register::ID1, &val));
-    *id |= (uint16_t)val;
+    CHECK_TRUE(id && (len >= HAL_EXRTC_ID_STR_LEN), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    bytes2hexbuf(ids_, 2, id); // Part Number in BCD format
+    id += 4;
+    uint8_t major = ((ids_[2] >> 3) & 0x1F);
+    bytes2hexbuf(&major, 1, id); // Revision major
+    id += 2;
+    uint8_t minor = (ids_[2] & 0x07);
+    bytes2hexbuf(&minor, 1, id); // Revision minor
+    id += 2;
+    uint8_t mfgLotHi = ((ids_[4] & 0x80) ? 0x02 : 0x00); // Lot[9]
+    mfgLotHi |= ((ids_[6] & 0x80) ? 0x01 : mfgLotHi); // Lot[8]
+    bytes2hexbuf(&mfgLotHi, 1, id);
+    id += 2;
+    uint8_t mfgLotLo = ids_[3]; // Lot[7:0]
+    bytes2hexbuf(&mfgLotLo, 1, id);
+    id += 2;
+    uint8_t mfgWafer = ((ids_[6] >> 2) & 0x1F); // Wafer[4:0]
+    bytes2hexbuf(&mfgWafer, 1, id);
+    id += 2;
+    uint8_t idHi = (ids_[4] & 0x7F); // ID[14:8]
+    bytes2hexbuf(&idHi, 1, id);
+    id += 2;
+    uint8_t idLo = ids_[5]; // ID[7:0]
+    bytes2hexbuf(&idLo, 1, id);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -901,7 +924,5 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     }
     os_thread_exit(instance->exRtcWorkerThread_);
 }
-
-constexpr uint16_t Am18x5::PART_NUMBER;
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

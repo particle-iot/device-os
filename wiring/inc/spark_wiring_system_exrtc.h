@@ -111,6 +111,24 @@ public:
         return conf_.osc_cal_xt;
     }
 
+    SystemExternalRtcConfiguration& clkOutEnabled(bool enable) {
+        conf_.clk_out_en = enable;
+        return *this;
+    }
+
+    bool clkOutEnabled() const {
+        return conf_.clk_out_en;
+    }
+
+    SystemExternalRtcConfiguration& clkOutFrequency(uint8_t freq) {
+        conf_.clk_out_freq = freq;
+        return *this;
+    }
+
+    uint8_t clkOutFrequency() const {
+        return conf_.clk_out_freq;
+    }
+
     const hal_am18x5_config_t* config() const {
         return &conf_;
     }

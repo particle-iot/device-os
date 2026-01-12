@@ -113,8 +113,9 @@ DYNALIB_FN(BASE_IDX2 + 1, hal, hal_rtc_get_source, hal_rtc_source_t(void*))
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 DYNALIB_FN(BASE_IDX2 + 2, hal, hal_external_rtc_set_config, int(const particle::hal_am18x5_config_t*, void*))
 DYNALIB_FN(BASE_IDX2 + 3, hal, hal_external_rtc_get_config, int(particle::hal_am18x5_config_t*, void*))
-DYNALIB_FN(BASE_IDX2 + 4, hal, hal_external_rtc_is_present, bool(void*))
-DYNALIB_FN(BASE_IDX2 + 5, hal, hal_external_rtc_sleep, int(const particle::hal_am18x5_sleep_config_t*, void*))
+DYNALIB_FN(BASE_IDX2 + 4, hal, hal_external_rtc_get_id, int(char*, size_t, void*))
+DYNALIB_FN(BASE_IDX2 + 5, hal, hal_external_rtc_is_present, bool(void*))
+DYNALIB_FN(BASE_IDX2 + 6, hal, hal_external_rtc_sleep, int(const particle::hal_am18x5_sleep_config_t*, void*))
 #endif  // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 
