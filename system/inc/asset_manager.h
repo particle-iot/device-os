@@ -136,13 +136,23 @@ private:
 };
 
 /**
+ * Asset storage option.
+ */
+enum class AssetStorageOption {
+    DEFAULT = 0, ///< Save the asset to the default storage normally.
+    DONT_STORE = 1 ///< Don't save the asset to the default storage.
+};
+
+/**
  * Abstract system handler for special types of assets.
  */
 class SystemAssetHandler {
 public:
     virtual ~SystemAssetHandler() = default;
 
-    virtual int handleAsset(const Asset& asset, InputStream& data) = 0;
+    virtual int updateAsset(const Asset& asset, InputStream& data) = 0;
+    virtual int removeAsset(const Asset& asset) = 0;
+    virtual AssetStorageOption storageOptionForAsset(const Asset& asset) = 0;
 };
 
 class AssetManager {
@@ -182,7 +192,7 @@ private:
     asset_manager_notify_hook hook_ = nullptr;
     void* hookContext_ = nullptr;
 
-    static void getSystemAssetHandler(const Asset& asset, SystemAssetHandler*& handler, bool& dontStore);
+    static SystemAssetHandler* systemHandlerForAssetType(AssetType type);
 };
 
 } // particle

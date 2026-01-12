@@ -337,8 +337,8 @@ int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
         CHECK(file.write(buf, n));
         bytesWritten += n;
     }
-    CHECK(file.close());
 
+    CHECK(file.close());
     return bytesWritten;
 }
 

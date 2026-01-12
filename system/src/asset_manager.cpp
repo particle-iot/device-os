@@ -304,8 +304,11 @@ int AssetManager::clearUnusedAssets() {
         CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
         const fs::FsLock lock(fs);
         CHECK_FS(lfs_remove(&fs->instance, asset.name().c_str()));
-        // TODO: When removing an env vars asset, clean up the app env vars used by the system by
-        // creating an empty /sys/env_app.staged
+
+        auto sysHandler = systemHandlerForAssetType(asset.type());
+        if (sysHandler) {
+            CHECK(sysHandler->removeAsset(asset));
+        }
     }
     return 0;
 }
@@ -324,11 +327,13 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     auto info = reader.asset();
     LOG(INFO, "Storing asset %s (hash=%s) size=%u original size=%u", info.name().c_str(), info.hash().toString().c_str(), reader.size(), reader.originalSize());
 
-    SystemAssetHandler* sysHandler = nullptr;
-    bool dontStore = false;
-    getSystemAssetHandler(info, sysHandler, dontStore);
+    auto storageOpt = AssetStorageOption::DEFAULT;
+    auto sysHandler = systemHandlerForAssetType(info.type());
+    if (sysHandler) {
+        storageOpt = sysHandler->storageOptionForAsset(info);
+    }
 
-    if (!dontStore) {
+    if (storageOpt != AssetStorageOption::DONT_STORE) {
         CHECK(clearUnusedAssets());
 
         auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
@@ -353,7 +358,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
 
         // Invoke the system handler with the asset info and stream for reading the uncompressed
         // asset data
-        CHECK(sysHandler->handleAsset(info, *stream));
+        CHECK(sysHandler->updateAsset(info, *stream));
     }
 
     return 0;
@@ -418,25 +423,24 @@ int AssetManager::formatStorage(bool remount) {
     return 0;
 }
 
-void AssetManager::getSystemAssetHandler(const Asset& asset, SystemAssetHandler*& handler, bool& dontStore) {
-    switch (asset.type()) {
+SystemAssetHandler* AssetManager::systemHandlerForAssetType(AssetType type) {
+    SystemAssetHandler* handler = nullptr;
+
+    switch (type) {
 #if HAL_PLATFORM_ENV_VARS
     case AssetType::ENV_VARS_APP:
     case AssetType::ENV_VARS_SNAPSHOT: {
         handler = &EnvVars::instance();
-        if (asset.type() == AssetType::ENV_VARS_SNAPSHOT) {
-            dontStore = true;
-        }
         break;
     }
 #endif // HAL_PLATFORM_ENV_VARS
     case AssetType::DEFAULT:
         break;
     default:
-        LOG(WARN, "Unsupported asset type: %d", (int)asset.type());
-        dontStore = true;
+        LOG(WARN, "Unsupported asset type: %d", (int)type);
         break;
     }
+    return handler;
 }
 
 // AssetReader
