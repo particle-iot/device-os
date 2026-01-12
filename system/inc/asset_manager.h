@@ -135,6 +135,16 @@ private:
     size_t dataSize_;
 };
 
+/**
+ * Abstract system handler for special types of assets.
+ */
+class SystemAssetHandler {
+public:
+    virtual ~SystemAssetHandler() = default;
+
+    virtual int handleAsset(const Asset& asset, InputStream& data) = 0;
+};
+
 class AssetManager {
 public:
     static AssetManager& instance();
@@ -167,18 +177,12 @@ private:
     int clearUnusedAssets();
 
 private:
-    enum class StorageOption {
-        SAVE, // Save the asset to the default storage normally
-        COPY, // Save the asset to the default storage and also to the main filesystem
-        MOVE // Save the asset to the main filesystem only
-    };
-
     Vector<Asset> requiredAssets_;
     Vector<Asset> availableAssets_;
     asset_manager_notify_hook hook_ = nullptr;
     void* hookContext_ = nullptr;
 
-    static void getStorageOption(const Asset& asset, StorageOption& opt, const char*& path);
+    static void getSystemAssetHandler(const Asset& asset, SystemAssetHandler*& handler, bool& dontStore);
 };
 
 } // particle

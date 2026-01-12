@@ -23,6 +23,8 @@ typedef struct pb_msgdesc_s pb_msgdesc_t;
 
 namespace particle {
 
+class InputStream;
+
 int openFile(lfs_file_t* file, const char* path, unsigned flags = LFS_O_RDWR);
 int dumpFile(const char* path);
 
@@ -40,5 +42,7 @@ int mkdirp(const char* path);
  * @return 0 on success, otherwise an error code defined by `system_error_t`.
  */
 int clearDir(const char* path);
+
+int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs = fs::defaultFs());
 
 } // particle
