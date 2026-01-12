@@ -178,7 +178,7 @@ public:
         return duration(seconds);
     }
 
-    uint8_t duration() const {
+    system_tick_t duration() const {
         return conf_.duration;
     }
 

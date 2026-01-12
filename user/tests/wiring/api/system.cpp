@@ -500,7 +500,9 @@ test(system_external_rtc) {
           .rcOnBatteryPowered(true)
           .oscSource(Am18x5Oscillator::INTERNAL_RC)
           .oscSource(Am18x5Oscillator::EXTERNAL_CRYSTAL)
-          .xtalCalibrationValue(-45);
+          .xtalCalibrationValue(-45)
+          .clkOutEnabled(true)
+          .clkOutFrequency((uint8_t)Am18x5SqwFrequency::HZ_32768);
     API_COMPILE(System.setExternalRtcConfiguration(config));
     
     API_COMPILE(System.getExternalRtcConfiguration(config));
@@ -512,10 +514,21 @@ test(system_external_rtc) {
     API_COMPILE({ auto rcOnBattery = config.rcOnBatteryPowered(); (void)rcOnBattery; });
     API_COMPILE({ auto oscSrc = config.oscSource(); (void)oscSrc; });
     API_COMPILE({ auto calValue = config.xtalCalibrationValue(); (void)calValue; });
+    API_COMPILE({ auto enabled = config.clkOutEnabled(); (void)enabled; });
+    API_COMPILE({ auto freq = config.clkOutFrequency(); (void)freq; });
 
     API_COMPILE({ auto isPresent = System.isExternalRtcPresent(); (void)isPresent; });
+    API_COMPILE({ auto id = System.getExternalRtcId(); (void)id; });
 
     SystemExternalRtcSleepConfiguration sleepConfig;
+    sleepConfig.extiTriggerLatched(true)
+               .extiPolarity(Am18x5ExtiPolarity::FALLING)
+               .extiPolarity(Am18x5ExtiPolarity::RISING)
+               .duration(10000)
+               .duration(10s);
     API_COMPILE(System.powerGatedByExternalRtc(sleepConfig));
+    API_COMPILE({ auto latched = sleepConfig.extiTriggerLatched(); (void)latched; });
+    API_COMPILE({ auto polarity = sleepConfig.extiPolarity(); (void)polarity; });
+    API_COMPILE({ auto duration = sleepConfig.duration(); (void)duration; });
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
