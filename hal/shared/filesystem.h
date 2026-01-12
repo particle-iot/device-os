@@ -113,6 +113,7 @@ private:
     filesystem_t* fs_;
 };
 
+// TODO: Implement Input/OutputStream?
 class File {
 public:
     File();

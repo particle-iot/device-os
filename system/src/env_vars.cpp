@@ -26,6 +26,7 @@
 
 #include <pb_decode.h>
 
+#include "file_util.h"
 #include "nanopb_misc.h"
 #include "logging.h"
 #include "check.h"
@@ -38,14 +39,14 @@ namespace particle::system {
 
 namespace {
 
+const auto APP_FILE_CURRENT = "/sys/env_app";
+const auto APP_FILE_STAGED = "/sys/env_app.staged";
+const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
+const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
+
 const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
 
 } // unnamed
-
-const char* const EnvVars::APP_FILE_CURRENT = "/sys/env_app";
-const char* const EnvVars::APP_FILE_STAGED = "/sys/env_app.staged";
-const char* const EnvVars::SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
-const char* const EnvVars::SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 EnvVars::~EnvVars() {
 }
@@ -135,6 +136,24 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
         *found = true;
     }
     return var.valSize;
+}
+
+int EnvVars::handleAsset(const Asset& asset, InputStream& data) {
+    const char* path = nullptr;
+
+    switch (asset.type()) {
+    case AssetType::ENV_VARS_APP:
+        path = APP_FILE_STAGED;
+        break;
+    case AssetType::ENV_VARS_SNAPSHOT:
+        path = SNAPSHOT_FILE_STAGED;
+        break;
+    default:
+        return SYSTEM_ERROR_INTERNAL; // Shouldn't happen
+    }
+
+    CHECK(saveToFile(data, path));
+    return 0;
 }
 
 EnvVars& EnvVars::instance() {

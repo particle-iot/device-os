@@ -21,6 +21,7 @@
 
 #include "asset_manager.h"
 #include "storage_streams.h"
+#include "file_util.h"
 #include "check.h"
 #include "ota_flash_hal_impl.h"
 #include "user_hal.h"
@@ -114,30 +115,6 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
         return 0;
     }
     return SYSTEM_ERROR_BAD_DATA;
-}
-
-int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
-    fs::FsLock lock(fs);
-
-    fs::remove(destPath, fs);
-
-    fs::File file;
-    CHECK(file.open(destPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND, fs));
-
-    char buf[256];
-    while (srcStream.availForRead() > 0) {
-        int n = srcStream.read(buf, sizeof(buf));
-        if (n < 0) {
-            if (n == SYSTEM_ERROR_END_OF_STREAM) {
-                break;
-            }
-            return n;
-        }
-        CHECK(file.write(buf, n));
-    }
-
-    CHECK(file.close());
-    return 0;
 }
 
 } // anynomous
@@ -347,11 +324,11 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     auto info = reader.asset();
     LOG(INFO, "Storing asset %s (hash=%s) size=%u original size=%u", info.name().c_str(), info.hash().toString().c_str(), reader.size(), reader.originalSize());
 
-    auto storageOpt = StorageOption::SAVE;
-    const char* altPath = nullptr;
-    getStorageOption(info, storageOpt, altPath);
+    SystemAssetHandler* sysHandler = nullptr;
+    bool dontStore = false;
+    getSystemAssetHandler(info, sysHandler, dontStore);
 
-    if (storageOpt == StorageOption::SAVE || storageOpt == StorageOption::COPY) {
+    if (!dontStore) {
         CHECK(clearUnusedAssets());
 
         auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
@@ -369,12 +346,14 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
     }
 
-    if (storageOpt == StorageOption::COPY || storageOpt == StorageOption::MOVE) {
-        InputStream* assetStream = nullptr;
-        CHECK(reader.assetStream(assetStream));
+    if (sysHandler) {
+        InputStream* stream = nullptr;
+        CHECK(reader.assetStream(stream));
+        CHECK(stream->seek(0)); // Just in case
 
-        // Save the uncompressed asset data to the main filesystem
-        CHECK(saveToFile(*assetStream, altPath, fs::defaultFs()));
+        // Invoke the system handler with the asset info and stream for reading the uncompressed
+        // asset data
+        CHECK(sysHandler->handleAsset(info, *stream));
     }
 
     return 0;
@@ -439,22 +418,23 @@ int AssetManager::formatStorage(bool remount) {
     return 0;
 }
 
-void AssetManager::getStorageOption(const Asset& asset, StorageOption& opt, const char*& path) {
+void AssetManager::getSystemAssetHandler(const Asset& asset, SystemAssetHandler*& handler, bool& dontStore) {
     switch (asset.type()) {
 #if HAL_PLATFORM_ENV_VARS
-    case AssetType::ENV_VARS_APP: {
-        opt = StorageOption::COPY;
-        path = EnvVars::APP_FILE_STAGED;
-        break;
-    }
+    case AssetType::ENV_VARS_APP:
     case AssetType::ENV_VARS_SNAPSHOT: {
-        opt = StorageOption::MOVE;
-        path = EnvVars::SNAPSHOT_FILE_STAGED;
+        handler = &EnvVars::instance();
+        if (asset.type() == AssetType::ENV_VARS_SNAPSHOT) {
+            dontStore = true;
+        }
         break;
     }
 #endif // HAL_PLATFORM_ENV_VARS
+    case AssetType::DEFAULT:
+        break;
     default:
-        opt = StorageOption::SAVE;
+        LOG(WARN, "Unsupported asset type: %d", (int)asset.type());
+        dontStore = true;
         break;
     }
 }

@@ -23,6 +23,8 @@
 
 #include <memory>
 
+#include "asset_manager.h"
+
 #include "filesystem.h"
 #include "c_string.h"
 
@@ -31,13 +33,8 @@
 
 namespace particle::system {
 
-class EnvVars {
+class EnvVars: public SystemAssetHandler {
 public:
-    static const char* const APP_FILE_CURRENT;
-    static const char* const APP_FILE_STAGED;
-    static const char* const SNAPSHOT_FILE_CURRENT;
-    static const char* const SNAPSHOT_FILE_STAGED;
-
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     enum Result {
@@ -95,6 +92,8 @@ public:
     bool hasSnapshot() const {
         return snapshotFile_.isOpen();
     }
+
+    int handleAsset(const Asset& asset, InputStream& data) override;
 
     EnvVars& operator=(const EnvVars&) = delete;
 
