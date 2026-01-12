@@ -46,6 +46,17 @@ const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
 
+const char* stagedPathForAssetType(AssetType type) {
+    switch (type) {
+    case AssetType::ENV_VARS_APP:
+        return APP_FILE_STAGED;
+    case AssetType::ENV_VARS_SNAPSHOT:
+        return SNAPSHOT_FILE_STAGED;
+    default:
+        return nullptr;
+    }
+}
+
 } // unnamed
 
 EnvVars::~EnvVars() {
@@ -138,22 +149,39 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
     return var.valSize;
 }
 
-int EnvVars::handleAsset(const Asset& asset, InputStream& data) {
-    const char* path = nullptr;
+int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
+    fs::FsLock lock;
 
-    switch (asset.type()) {
-    case AssetType::ENV_VARS_APP:
-        path = APP_FILE_STAGED;
-        break;
-    case AssetType::ENV_VARS_SNAPSHOT:
-        path = SNAPSHOT_FILE_STAGED;
-        break;
-    default:
-        return SYSTEM_ERROR_INTERNAL; // Shouldn't happen
+    const char* path = stagedPathForAssetType(asset.type());
+    if (!path) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     CHECK(saveToFile(data, path));
     return 0;
+}
+
+int EnvVars::removeAsset(const Asset& asset) {
+    fs::FsLock lock;
+
+    const char* path = stagedPathForAssetType(asset.type());
+    if (!path) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
+    // Create an empty staged file
+    fs::File file;
+    CHECK(file.open(path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC));
+    CHECK(file.close());
+    return 0;
+}
+
+AssetStorageOption EnvVars::storageOptionForAsset(const Asset& asset) {
+    if (asset.type() == AssetType::ENV_VARS_SNAPSHOT) {
+        // Apps don't depend on snapshot env vars so those are not stored as normal assets
+        return AssetStorageOption::DONT_STORE;
+    }
+    return AssetStorageOption::DEFAULT;
 }
 
 EnvVars& EnvVars::instance() {

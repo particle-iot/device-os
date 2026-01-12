@@ -93,7 +93,10 @@ public:
         return snapshotFile_.isOpen();
     }
 
-    int handleAsset(const Asset& asset, InputStream& data) override;
+    // Reimplemented from SystemAssetHandler
+    int updateAsset(const Asset& asset, InputStream& data) override;
+    int removeAsset(const Asset& asset) override;
+    AssetStorageOption storageOptionForAsset(const Asset& asset) override;
 
     EnvVars& operator=(const EnvVars&) = delete;
 
