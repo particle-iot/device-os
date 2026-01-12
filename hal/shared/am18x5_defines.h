@@ -85,7 +85,9 @@
 
 // SQW Bit Mask
 #define SQW_SQWE_MASK               0x80
+#define SQW_SQWE_SHIFT              (7)
 #define SQW_SQFS_MASK               0x1F
+#define SQW_SQFS_SHIFT              (0)
 
 // Calibration Bits Mask
 #define CAL_XT_CMDX_MASK            0x80

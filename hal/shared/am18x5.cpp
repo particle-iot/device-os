@@ -203,6 +203,13 @@ int Am18x5::begin() {
     // Digital calibration to improve accuracy.
     xtOscillatorDigitalCalibration(config_.osc_cal_xt);
 
+    // Enable square wave output on the CLKOUT pin
+    if (config_.clk_out_en) {
+        CHECK(enableClkOut((Am18x5SqwFrequency)config_.clk_out_freq));
+    } else {
+        CHECK(disableClkOut());
+    }
+
     // Automatically clear interrupt flags after reading the the status register.
     CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
 
@@ -447,6 +454,22 @@ bool Am18x5::isWatchdogStarted() const {
     uint8_t bmb = 0;
     readRegister(Am18x5Register::WDT, &bmb, false, WDT_REGISTER_BMB_MASK, WDT_REGISTER_BMB_SHIFT);
     return (bmb != 0);
+}
+
+int Am18x5::enableClkOut(Am18x5SqwFrequency freq) {
+    Am18x5Lock lock;
+    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    if (to_underlying(freq) > 0x1F) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    CHECK(writeRegister(Am18x5Register::SQW, to_underlying(freq), false, true, SQW_SQFS_MASK, SQW_SQFS_SHIFT));
+    return writeRegister(Am18x5Register::SQW, 1, false, true, SQW_SQWE_MASK, SQW_SQWE_SHIFT);
+}
+
+int Am18x5::disableClkOut() {
+    Am18x5Lock lock;
+    CHECK_TRUE(detected_, SYSTEM_ERROR_INVALID_STATE);
+    return writeRegister(Am18x5Register::SQW, 0, false, true, SQW_SQWE_MASK, SQW_SQWE_SHIFT);
 }
 
 int Am18x5::setPsw(bool val) const {

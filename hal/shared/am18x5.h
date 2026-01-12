@@ -27,6 +27,7 @@
 #include "i2c_hal.h"
 #include "watchdog_hal.h"
 #include "watchdog_base.h"
+#include "enumclass.h"
 
 #define HAL_AM18X5_CONFIG_VERSION               1
 
@@ -132,6 +133,12 @@ enum class Am18x5ExtiPolarity {
     RISING
 };
 
+enum class Am18x5SqwFrequency : uint8_t {
+    HZ_32768 = 0x01,
+    HZ_1 = 0x0F,
+    // TODO: Add more values
+};
+
 typedef struct hal_am18x5_config_t {
     uint16_t version;
     uint16_t size;
@@ -143,6 +150,8 @@ typedef struct hal_am18x5_config_t {
     uint8_t rc_on_battery;
     Am18x5Oscillator osc_src;
     int8_t osc_cal_xt;
+    uint8_t clk_out_en;
+    uint8_t clk_out_freq;
 } hal_am18x5_config_t;
 
 typedef struct hal_am18x5_sleep_config_t {
@@ -180,6 +189,9 @@ public:
     int feedWatchdog() const;
     void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
     bool isWatchdogStarted() const;
+
+    int enableClkOut(Am18x5SqwFrequency freq = Am18x5SqwFrequency::HZ_32768);
+    int disableClkOut();
 
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
     int sleep(const hal_am18x5_sleep_config_t* config);
