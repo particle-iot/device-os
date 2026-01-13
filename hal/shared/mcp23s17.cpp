@@ -89,7 +89,7 @@ int Mcp23s17::begin() {
         LOG(ERROR, "os_semaphore_create() failed");
         return SYSTEM_ERROR_INTERNAL;
     }
-    if (os_thread_create(&ioExpanderWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_CRITICAL, ioInterruptHandleThread, this, 512)) {
+    if (os_thread_create(&ioExpanderWorkerThread_, "IO Expander Thread", OS_THREAD_PRIORITY_CRITICAL, ioInterruptHandleThread, this, 640)) {
         os_semaphore_destroy(ioExpanderWorkerSemaphore_);
         ioExpanderWorkerSemaphore_ = nullptr;
         LOG(ERROR, "os_thread_create() failed");
