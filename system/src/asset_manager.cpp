@@ -469,36 +469,37 @@ int AssetReader::init(InputStream* stream) {
 }
 
 int AssetReader::validate(bool full) {
-    // Sanity checks
     CHECK_TRUE(stream_, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(stream_->availForRead() > (int)(sizeof(module_info_t) + sizeof(compressed_module_header) + sizeof(module_info_suffix_base_t) + sizeof(uint32_t)),
-            SYSTEM_ERROR_NOT_ENOUGH_DATA);
     size_t moduleSize = CHECK(stream_->availForRead());
 
     // Prefix
     module_info_t prefix = {};
+    CHECK_TRUE(stream_->availForRead() >= (int)sizeof(prefix), SYSTEM_ERROR_NOT_ENOUGH_DATA);
     CHECK(stream_->read((char*)&prefix, sizeof(prefix)));
     CHECK_TRUE(prefix.module_function == MODULE_FUNCTION_ASSET, SYSTEM_ERROR_BAD_DATA);
     CHECK_TRUE(prefix.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO, SYSTEM_ERROR_BAD_DATA);
     CHECK_FALSE(prefix.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(moduleSize == ((uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + sizeof(uint32_t) /* CRC32 */), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(moduleSize == (uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + 4 /* CRC32 */, SYSTEM_ERROR_BAD_DATA);
     bool compressed = prefix.flags & MODULE_INFO_FLAG_COMPRESSED;
 
     // Compression header
     compressed_module_header compHeader = {};
     size_t origSize = 0;
     if (compressed) {
+        CHECK_TRUE(stream_->availForRead() >= (int)sizeof(compHeader), SYSTEM_ERROR_NOT_ENOUGH_DATA);
         CHECK(stream_->peek((char*)&compHeader, sizeof(compHeader)));
         CHECK_TRUE(compHeader.size >= sizeof(compHeader), SYSTEM_ERROR_BAD_DATA);
         CHECK_TRUE(compHeader.method == 0, SYSTEM_ERROR_BAD_DATA);
         origSize = compHeader.original_size;
     }
+
     // Base suffix
-    CHECK(stream_->seek(0));
-    CHECK_TRUE(stream_->availForRead() == (int)moduleSize, SYSTEM_ERROR_IO);
     module_info_suffix_base_t suffix = {};
-    CHECK(stream_->skipAll(stream_->availForRead() - sizeof(uint32_t) - sizeof(module_info_suffix_base_t)));
+    CHECK(stream_->seek(0));
+    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + compHeader.size + sizeof(suffix) + 4 /* CRC32 */, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+    CHECK(stream_->skipAll(moduleSize - sizeof(suffix) - 4 /* CRC32 */));
     CHECK(stream_->read((char*)&suffix, sizeof(suffix)));
+
     // CRC and check integrity
     uint32_t crc = 0;
     CHECK(stream_->read((char*)&crc, sizeof(crc)));
@@ -508,11 +509,11 @@ int AssetReader::validate(bool full) {
         CHECK(calculateCrc(&calculatedCrc));
         CHECK_TRUE(calculatedCrc == bigEndianToNative(crc), SYSTEM_ERROR_BAD_DATA);
     }
-    CHECK(stream_->seek(0));
+
     // Suffix extensions
-    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + sizeof(compressed_module_header) + suffix.size + sizeof(uint32_t), SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(suffix.size >= sizeof(module_info_suffix_base_t) + 2 * sizeof(module_info_extension_t), SYSTEM_ERROR_BAD_DATA);
-    CHECK(stream_->seek(moduleSize - suffix.size - sizeof(uint32_t)));
+    CHECK_TRUE(suffix.size >= sizeof(module_info_suffix_base_t) + sizeof(module_info_extension_t) * 2 /* Name and hash extensions */, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + compHeader.size + suffix.size + 4 /* CRC32 */, SYSTEM_ERROR_BAD_DATA);
+    CHECK(stream_->seek(moduleSize - suffix.size - 4 /* CRC32 */));
     Asset asset;
     CHECK(parseAssetInfo(stream_, suffix.size - sizeof(module_info_suffix_base_t), asset));
     valid_ = true;
@@ -521,9 +522,9 @@ int AssetReader::validate(bool full) {
     if (compressed) {
         dataOffset_ += compHeader.size;
     }
-    dataSize_ = moduleSize - suffix.size - sizeof(uint32_t) - dataOffset_;
+    dataSize_ = moduleSize - suffix.size - dataOffset_ - 4 /* CRC32 */;
     size_ = moduleSize;
-    originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - sizeof(uint32_t) - suffix.size);
+    originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - suffix.size - 4 /* CRC32 */);
     asset_ = Asset(asset.name(), asset.hash(), asset.type(), originalSize_, moduleSize);
     return 0;
 }
