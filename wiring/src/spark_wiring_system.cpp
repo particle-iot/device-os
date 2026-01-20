@@ -250,7 +250,7 @@ int SystemClass::getEnvVar(const char* name, String& val, bool* foundArg) {
 }
 
 int SystemClass::getEnvVarNames(Vector<const char*>& namesArg) {
-    size_t n = CHECK(system_list_env_vars(nullptr /* names */, 0 /* names_size */, nullptr /* reserved */));
+    size_t n = CHECK(system_list_env_vars(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
     Vector<const char*> names;
     if (!names.resize(n)) {
         return SYSTEM_ERROR_NO_MEMORY;

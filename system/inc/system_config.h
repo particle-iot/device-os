@@ -43,16 +43,26 @@ extern "C" {
 int system_get_env_var(const char* name, char* buf, size_t buf_size, int* found, void* reserved);
 
 /**
- * Get the names of all defined environment variables.
+ * List all defined environment variables.
  *
  * @param[out] names Array to store the variable names.
- * @param names_size Maximum number of elements that can be stored in the array.
+ * @param count Maximum number of elements that can be stored in the array.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return On success, the actual number of defined variables. On failure, an error code defined by
  *         `system_error_t`. The returned number of variables can be greater than the size of the
  *         output array.
  */
-int system_list_env_vars(const char* names[], size_t names_size, void* reserved);
+int system_list_env_vars(const char* names[], size_t count, void* reserved);
+
+/**
+ * Clear all defined environment variables.
+ *
+ * The variables will be cleared next time the device boots.
+ *
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+int system_clear_env_vars(void* reserved);
 
 #endif // HAL_PLATFORM_ENV_VARS
 

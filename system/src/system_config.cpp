@@ -34,10 +34,10 @@ int system_get_env_var(const char* name, char* buf, size_t bufSize, int* foundAr
 	return size;
 }
 
-int system_list_env_vars(const char* names[], size_t namesSize, void* reserved) {
+int system_list_env_vars(const char* names[], size_t count, void* reserved) {
 	size_t i = 0;
 	int r = EnvVars::instance().forEach([&](const char* name) -> int {
-		if (i >= namesSize) {
+		if (i >= count) {
 			return SYSTEM_ERROR_END_OF_STREAM; // Break the loop
 		}
 		names[i++] = name;
@@ -47,6 +47,10 @@ int system_list_env_vars(const char* names[], size_t namesSize, void* reserved) 
 		return r;
 	}
 	return EnvVars::instance().count();
+}
+
+int system_clear_env_vars(void* reserved) {
+	return EnvVars::instance().clear(); // 0 or EnvVars::Result::NEED_RESET
 }
 
 #endif // HAL_PLATFORM_ENV_VARS
