@@ -167,16 +167,15 @@ class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
-    int setConfig(const hal_am18x5_config_t* config, bool restart = true);
+    int setConfig(const hal_am18x5_config_t* config);
     int getConfig(hal_am18x5_config_t* config);
 
-    int init();
-    int detect();
     bool isDefault() const;
-    bool isPresent() const { return detected_; }
+    bool isPresent() const { return initialized_; }
     int begin();
     int end();
     int sync();
+    int reset();
 
     int setTime(const struct timeval* tv) const;
     int getTime(struct timeval* tv) const;
@@ -224,6 +223,9 @@ private:
     Am18x5();
     ~Am18x5();
 
+    int detect();
+    int applyConfig();
+
     int setPsw(bool val) const; // This is dangerous, make it private for now!
 
     int setHundredths(uint8_t hundredths) const;
@@ -262,7 +264,7 @@ private:
     static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
-    bool detected_;
+    bool disableI2cOnEnded_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;

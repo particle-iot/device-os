@@ -320,10 +320,8 @@ void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     exRtcPresent = false;
     if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-        if (Am18x5::getInstance().init() == SYSTEM_ERROR_NONE) {
-            if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
-                exRtcPresent = true;
-            }
+        if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+            exRtcPresent = true;
         }
     }
 #endif
@@ -406,7 +404,7 @@ int hal_rtc_set_source(hal_rtc_source_t source, void* reserved) {
         config.default_rtc = false;
     }
     if (currDefault != config.default_rtc) {
-        CHECK(Am18x5::getInstance().setConfig(&config, false));
+        CHECK(Am18x5::getInstance().setConfig(&config));
     }
 #else
     if (source == HAL_RTC_SOURCE_EXTERNAL) {
