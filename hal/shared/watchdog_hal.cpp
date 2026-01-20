@@ -57,42 +57,42 @@ static WatchdogBase* getWatchdogInstance(hal_watchdog_instance_t instance) {
 }
 
 int hal_watchdog_set_config(hal_watchdog_instance_t instance, const hal_watchdog_config_t* config, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     return pInstance->init(config);
 }
 
 int hal_watchdog_on_expired_callback(hal_watchdog_instance_t instance, hal_watchdog_on_expired_callback_t callback, void* context, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     return pInstance->setOnExpiredCallback(callback, context);
 }
 
 int hal_watchdog_start(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     return pInstance->start();
 }
 
 int hal_watchdog_stop(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     return pInstance->stop();
 }
 
 int hal_watchdog_refresh(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     return pInstance->refresh();
 }
 
 int hal_watchdog_get_info(hal_watchdog_instance_t instance, hal_watchdog_info_t* info, void* reserved) {
-    WatchdogLock lk();
+    WatchdogLock lk;
     auto pInstance = getWatchdogInstance(instance);
     CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
     // Update info.state according to the status register.
