@@ -829,6 +829,8 @@ void loop() {
     return ::particle::TestRunner::instance()->pushMailboxBuffer(data, size, wait);
   }
 
+  void notifyResetPending();
+
   // Construct a test with a given name and verbosity level
 
   Test(const char *_name, uint8_t _verbosity = TEST_VERBOSITY_TESTS_ALL|TEST_VERBOSITY_ASSERTIONS_FAILED);
