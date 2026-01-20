@@ -141,7 +141,8 @@ DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
 #if HAL_PLATFORM_ENV_VARS
 DYNALIB_FN(BASE_IDX3 + 1, system, system_get_env_var, int(const char*, char*, size_t, int*, void*))
 DYNALIB_FN(BASE_IDX3 + 2, system, system_list_env_vars, int(const char*[], size_t, void*))
-#define BASE_IDX4 (BASE_IDX3 + 3)
+DYNALIB_FN(BASE_IDX3 + 3, system, system_clear_env_vars, int(void*))
+#define BASE_IDX4 (BASE_IDX3 + 4)
 #else
 #define BASE_IDX4 (BASE_IDX3 + 1)
 #endif  // HAL_PLATFORM_ENV_VARS

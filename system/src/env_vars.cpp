@@ -57,6 +57,13 @@ const char* stagedPathForAssetType(AssetType type) {
     }
 }
 
+int createEmptyFile(const char* path) {
+    fs::File file;
+    CHECK(file.open(path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC));
+    CHECK(file.close());
+    return 0;
+}
+
 } // unnamed
 
 EnvVars::~EnvVars() {
@@ -149,6 +156,17 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
     return var.valSize;
 }
 
+int EnvVars::clear() {
+    if (vars_.entries.isEmpty()) {
+        return 0;
+    }
+    fs::FsLock lock;
+    // Create empty staged files for app and snapshot env vars
+    CHECK(createEmptyFile(APP_FILE_STAGED));
+    CHECK(createEmptyFile(SNAPSHOT_FILE_STAGED));
+    return Result::NEED_RESET;
+}
+
 int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
     fs::FsLock lock;
 
@@ -156,7 +174,6 @@ int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
     if (!path) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-
     CHECK(saveToFile(data, path));
     return 0;
 }
@@ -168,11 +185,8 @@ int EnvVars::removeAsset(const Asset& asset) {
     if (!path) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-
     // Create an empty staged file
-    fs::File file;
-    CHECK(file.open(path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC));
-    CHECK(file.close());
+    CHECK(createEmptyFile(path));
     return 0;
 }
 

@@ -49,6 +49,8 @@ public:
     int get(const char* name, CString& val);
     int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
 
+    int clear();
+
     bool has(const char* name) const {
         return vars_.entries.has(name);
     }
