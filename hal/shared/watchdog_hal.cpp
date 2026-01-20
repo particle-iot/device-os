@@ -35,9 +35,16 @@ public:
         mutex_.unlock();
     }
 
+    WatchdogLock(const WatchdogLock&) = delete;
+    WatchdogLock& operator=(const WatchdogLock&) = delete;
+    WatchdogLock(WatchdogLock&&) = delete;
+    WatchdogLock& operator=(WatchdogLock&&) = delete;
+
 private:
-    StaticRecursiveMutex mutex_;
+    static StaticRecursiveMutex mutex_;
 };
+
+StaticRecursiveMutex WatchdogLock::mutex_;
 
 static WatchdogBase* getWatchdogInstance(hal_watchdog_instance_t instance) {
     static WatchdogBase* watchdogs[] = {

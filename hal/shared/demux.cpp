@@ -45,7 +45,7 @@ Demux::~Demux() {
 }
 
 int Demux::write(uint8_t pin, uint8_t value) {
-    DemuxLock lock();
+    DemuxLock lock;
     CHECK_TRUE(pin < DEMUX_MAX_PIN_COUNT && pin != 0, SYSTEM_ERROR_INVALID_ARGUMENT); // Y0 is not available for user's usage.
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
 #if HAL_PLATFORM_NRF52840
