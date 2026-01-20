@@ -580,7 +580,7 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
         intMask &= ~INTERRUPT_EX1E_MASK;
         writeRegister(Am18x5Register::INT_MASK, intMask);
         if (watchdogWasStarted) {
-            enableWatchdog(watchdogValue_);
+            writeRegister(Am18x5Register::WDT, watchdogValue_);
         }
     });
 
