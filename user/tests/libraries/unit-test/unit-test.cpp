@@ -252,18 +252,6 @@ unsigned Test::exclude(const char *pattern)
   return count;
 }
 
-void Test::notifyResetPending() {
-  int r = pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
-  if (r < 0) {
-#if TEST_VERBOSITY_EXISTS(ASSERTIONS_FAILED)
-    if (TEST_VERBOSITY(ASSERTIONS_FAILED) && out) {
-      out->printlnf("notifyResetPending() failed: %d", r);
-    }
-#endif
-    fail();
-  }
-}
-
 TestOnce::TestOnce(const char *name) : Test(name) {}
 
 void TestOnce::loop()

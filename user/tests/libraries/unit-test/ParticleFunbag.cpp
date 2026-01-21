@@ -509,6 +509,20 @@ void TestRunner::updateLEDStatus() {
     RGB.color(color);
 }
 
+void TestRunner::expectSystemReset() {
+    int r = pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    if (r < 0 && Test::current) {
+        Test::current->fail();
+    }
+}
+
+void TestRunner::expectSafeMode() {
+    int r = pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000);
+    if (r < 0 && Test::current) {
+        Test::current->fail();
+    }
+}
+
 TestRunner* TestRunner::instance() {
     static TestRunner runner;
     return &runner;
