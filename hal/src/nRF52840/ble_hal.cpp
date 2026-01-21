@@ -24,6 +24,10 @@ LOG_SOURCE_CATEGORY("hal.ble");
 // Uncomment to enable more error logs
 // #define LOG_CHECKED_ERRORS 1
 
+#if HAL_PLATFORM_ENV_VARS
+#include "env_vars.h"
+#endif
+
 /* Headers included from nRF5_SDK/components/softdevice/s140/headers */
 #include "ble.h"
 #include "ble_gap.h"
@@ -3965,7 +3969,23 @@ int hal_ble_stack_init(void* reserved) {
     BleLock lk;
     /* The SoftDevice has been enabled in core_hal.c */
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
-    return BleObject::getInstance().init();
+
+    int result = SYSTEM_ERROR_NONE;
+    String enabled = "true";
+
+    #if HAL_PLATFORM_ENV_VARS
+        // Check environment variable for hard disable
+        // ignore the return - if the variable is filled in, its updated
+        particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled);
+    #endif
+
+    if (enabled == "true") {
+        result = BleObject::getInstance().init();
+    } else {
+        result = SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    return result;
 }
 
 int hal_ble_stack_deinit(void* reserved) {

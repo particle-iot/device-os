@@ -167,51 +167,52 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
 
 #if HAL_PLATFORM_ENV_VARS
 
-String SystemClass::envVar(const char* name, const char* defaultVal) {
-    String s;
+// Primary string-first API
+bool SystemClass::envVar(const char* name, String& value) {
     bool found = false;
-    int r = getEnvVar(name, s, &found);
-    if (r < 0 || !found) {
-        return defaultVal;
+    int r = getEnvVar(name, value, &found);
+    return (r == 0) && found;
+}
+
+void SystemClass::envVar(const char* name, String& value, const char* defaultVal) {
+    if (!envVar(name, value)) {
+        value = defaultVal;
     }
-    return s;
+}
+
+// Backward-compatible overloads
+String SystemClass::envVar(const char* name, const char* defaultVal) {
+    String v;
+    if (envVar(name, v)) {
+        return v;
+    }
+    return String(defaultVal);
 }
 
 int SystemClass::envVar(const char* name, int defaultVal) {
-    char buf[32] = {};
-    int found = 0;
-    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
-    if (n < 0 || !found) {
+    String v;
+    if (!envVar(name, v)) {
         return defaultVal;
     }
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
-        return defaultVal;
-    }
-    return val;
+    // Parse integer
+    char* end = nullptr;
+    long n = std::strtol(v.c_str(), &end, 10);
+    return (end && *end == '\0') ? (int)n : defaultVal;
 }
 
 bool SystemClass::envVar(const char* name, bool defaultVal) {
-    char buf[32] = {};
-    int found = 0;
-    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
-    if (n < 0 || !found) {
+    String v;
+    if (!envVar(name, v)) {
         return defaultVal;
     }
-    if (std::strcmp(buf, "true") == 0) {
+    // Parse boolean - supports "true" or "false" only
+    if (v == "true") {
         return true;
     }
-    if (std::strcmp(buf, "false") == 0) {
+    if (v == "false") {
         return false;
     }
-    // Try parsing as a number
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
-        return defaultVal;
-    }
-    return val;
+    return defaultVal;
 }
 
 bool SystemClass::hasEnvVar(const char* name) {

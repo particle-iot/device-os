@@ -1120,9 +1120,16 @@ public:
     }
 
 #if HAL_PLATFORM_ENV_VARS
+    // Primary string-first API
+    static bool envVar(const char* name, String& value);
+    static void envVar(const char* name, String& value, const char* defaultVal);
+
+    // Backward-compatible overloads (return value with defaults)
     static String envVar(const char* name, const char* defaultVal = "");
     static int envVar(const char* name, int defaultVal);
     static bool envVar(const char* name, bool defaultVal);
+
+    // Convenience methods
     static bool hasEnvVar(const char* name);
     static Vector<const char*> listEnvVars();
 

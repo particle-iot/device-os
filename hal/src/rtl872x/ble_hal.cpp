@@ -23,6 +23,10 @@ LOG_SOURCE_CATEGORY("hal.ble");
 
 #if HAL_PLATFORM_BLE
 
+#if HAL_PLATFORM_ENV_VARS
+#include "env_vars.h"
+#endif
+
 extern "C" {
 #include "rtl8721d.h"
 #include "rtl8721d_efuse.h"
@@ -3658,8 +3662,23 @@ int hal_ble_exit_locked_mode(void* reserved) {
 int hal_ble_stack_init(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
-    CHECK(BleGap::getInstance().init());
-    return SYSTEM_ERROR_NONE;
+
+    int result = SYSTEM_ERROR_NONE;
+    String enabled = "true";
+
+    #if HAL_PLATFORM_ENV_VARS
+        // Check environment variable for hard disable
+        // ignore the return - if the variable is filled in, its updated
+        particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled);
+    #endif
+
+    if (enabled == "true") {
+        CHECK(BleGap::getInstance().init());
+    } else {
+        result = SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    return result;
 }
 
 int hal_ble_stack_deinit(void* reserved) {

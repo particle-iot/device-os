@@ -31,6 +31,10 @@
 
 #include "dct.h"
 
+#if HAL_PLATFORM_ENV_VARS
+#include "env_vars.h"
+#endif
+
 #include <atomic>
 #include <algorithm>
 
@@ -265,10 +269,32 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
-                if (param & NETWORK_STATE_PARAM_UNBLOCK) {
-                    NetworkManager::instance()->blockInterface(iface, false);
+                String allowPower = "true";
+
+                #if HAL_PLATFORM_ENV_VARS
+                    // Check environment variables for hard disable
+                    uint8_t index;
+                    if_get_index(iface, &index);
+
+                    #if HAL_PLATFORM_WIFI
+                        if (index == NETWORK_INTERFACE_WIFI_STA || index == NETWORK_INTERFACE_WIFI_AP) {
+                            particle::system::getEnv("PARTICLE_WIFI_ENABLE", allowPower);
+                        }
+                    #endif // HAL_PLATFORM_WIFI
+
+                    #if HAL_PLATFORM_ETHERNET
+                        if (index == NETWORK_INTERFACE_ETHERNET) {
+                            particle::system::getEnv("PARTICLE_ETHERNET_ENABLE", allowPower);
+                        }
+                    #endif // HAL_PLATFORM_ETHERNET
+                #endif // HAL_PLATFORM_ENV_VARS
+
+                if (allowPower == "true") {
+                    if (param & NETWORK_STATE_PARAM_UNBLOCK) {
+                        NetworkManager::instance()->blockInterface(iface, false);
+                    }
+                    NetworkManager::instance()->powerInterface(iface, true);
                 }
-                NetworkManager::instance()->powerInterface(iface, true);
             }
         }
 
