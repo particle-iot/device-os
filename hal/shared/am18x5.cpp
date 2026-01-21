@@ -82,10 +82,8 @@ Am18x5& Am18x5::getInstance() {
 
 int Am18x5::setConfig(const hal_am18x5_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-    if (config->size != sizeof(hal_am18x5_config_t) ||
-            config->version != HAL_AM18X5_CONFIG_VERSION ||
-            config->i2c_if >= HAL_PLATFORM_I2C_NUM) {
-        return SYSTEM_ERROR_BAD_DATA;
+    if (config->size == 0 || config->i2c_if >= HAL_PLATFORM_I2C_NUM) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     hal_am18x5_config_t tempData = {};
     tempData.size = sizeof(hal_am18x5_config_t);
@@ -532,6 +530,15 @@ int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     if ((config->exti_polarity == Am18x5ExtiPolarity::NONE) && (config->duration == 0)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if ((config->exti_polarity == Am18x5ExtiPolarity::NONE) && (config->duration > 0)) {
+        // Only the Alarm can wake up the system
+        uint8_t oscControl = 0x00;
+        CHECK(readRegister(Am18x5Register::OSC_CONTROL, &oscControl));
+        if (!(oscControl & OSC_CONTROL_OSEL_MASK) && !(oscControl & OSC_CONTROL_FOS_MASK)) {
+            // If we're using XTAL and RC fallback is not enabled, we will end up in infinite sleep if OSC failure occurs.
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
     }
 
     // CONFIG_KEY_PRIMARY enables access to BATMODE_IO and OUTPUT_CTRL registers

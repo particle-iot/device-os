@@ -518,7 +518,25 @@ test(SYSTEM_12_system_update_external_rtc_configuration) {
     }
 }
 
-test(SYSTEM_13_system_power_gated_by_external_rtc) {
+test(SYSTEM_13_system_power_gated_by_external_rtc_should_fail) {
+    SystemExternalRtcConfiguration config = {};
+    assertEqual(System.getExternalRtcConfiguration(config), 0);
+    config.oscSource(Am18x5Oscillator::EXTERNAL_CRYSTAL);
+    config.rcFallbackOnXtalFailure(false);
+    assertEqual(System.setExternalRtcConfiguration(config), 0);
+
+    SystemExternalRtcSleepConfiguration sleepConf = {};
+    sleepConf.duration(3s);
+    assertNotEqual(System.powerGatedByExternalRtc(sleepConf), 0);
+}
+
+test(SYSTEM_14_system_power_gated_by_external_rtc_should_succeed) {
+    SystemExternalRtcConfiguration config = {};
+    assertEqual(System.getExternalRtcConfiguration(config), 0);
+    config.oscSource(Am18x5Oscillator::EXTERNAL_CRYSTAL);
+    config.rcFallbackOnXtalFailure(true);
+    assertEqual(System.setExternalRtcConfiguration(config), 0);
+
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
     SystemExternalRtcSleepConfiguration sleepConf = {};
     sleepConf.duration(3s);

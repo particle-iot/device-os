@@ -153,6 +153,9 @@ public:
             : conf_{} {
         conf_.version = HAL_AM18X5_CONFIG_VERSION;
         conf_.size = sizeof(conf_);
+        conf_.exti_polarity = Am18x5ExtiPolarity::NONE;
+        conf_.exti_trigger_latched = false;
+        conf_.duration = 0;
     }
 
     SystemExternalRtcSleepConfiguration(SystemExternalRtcSleepConfiguration&&) = default;
