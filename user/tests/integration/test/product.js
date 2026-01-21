@@ -4,7 +4,7 @@ const productsByDeviceId = new Map();
 const groupsByDeviceId = new Map();
 
 function randomProductVersion() {
-	ver = randomInt(1000, 60000);
+	return randomInt(1000, 60000);
 }
 
 /**
@@ -15,7 +15,7 @@ function randomProductVersion() {
  * @returns {number} Product ID.
  */
 async function getProductId({ deviceId, api }) {
-	const productId = productsByDeviceId.get(deviceId);
+	let productId = productsByDeviceId.get(deviceId);
 	if (productId !== undefined) {
 		return productId;
 	}
@@ -23,7 +23,9 @@ async function getProductId({ deviceId, api }) {
 	if (typeof dev.product_id !== 'number' || dev.product_id === dev.platform_id) {
 		throw new Error('Device is not in a product');
 	}
-	productsByDeviceId.set(deviceId, dev.product_id)
+	productId = dev.product_id;
+	console.log('Product ID:', productId);
+	productsByDeviceId.set(deviceId, productId);
 	return dev.product_id;
 }
 
@@ -121,6 +123,18 @@ async function generateProductVersion({ deviceId, api }) {
 }
 
 /**
+ * Enable or disable development mode for a product device.
+ *
+ * @param {string} deviceId Device ID.
+ * @param {boolean} [enabled=true] Whether to enable development mode.
+ * @param {Particle} api API client.
+ */
+async function setDevelopmentMode({ deviceId, enabled = true, api }) {
+	const product = await getProductId({ deviceId, api });
+	await api.updateDevice({ deviceId, product, development: enabled });
+}
+
+/**
  * Clear the cached product info.
  *
  * @param {string} deviceId Device ID.
@@ -134,5 +148,6 @@ module.exports = {
 	getProductId,
 	generateDeviceGroup,
 	generateProductVersion,
+	setDevelopmentMode,
 	clearProductCache
 };
