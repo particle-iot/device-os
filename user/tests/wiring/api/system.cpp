@@ -502,10 +502,10 @@ test(system_external_rtc) {
           .oscSource(Am18x5Oscillator::EXTERNAL_CRYSTAL)
           .xtalCalibrationValue(-45)
           .clkOutEnabled(true)
-          .clkOutFrequency((uint8_t)Am18x5SqwFrequency::HZ_32768)
-          .autoCalibration(Am18x5AutoCalibration::DISABLE)
-          .autoCalibration(Am18x5AutoCalibration::EVERY_1024_SEC)
-          .autoCalibration(Am18x5AutoCalibration::EVERY_512_SEC)
+          .clkOutFrequency(Am18x5SqwFrequency::HZ_32768)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_DISABLE)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_EVERY_1024_SEC)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_EVERY_512_SEC);
     API_COMPILE(System.setExternalRtcConfiguration(config));
     
     API_COMPILE(System.getExternalRtcConfiguration(config));

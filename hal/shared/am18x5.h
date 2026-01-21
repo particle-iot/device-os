@@ -136,6 +136,19 @@ enum class Am18x5ExtiPolarity {
 
 enum class Am18x5SqwFrequency : uint8_t {
     HZ_32768 = 0x01,
+    HZ_8192 = 0x02,
+    HZ_4096 = 0x03,
+    HZ_2048 = 0x04,
+    HZ_1024 = 0x05,
+    HZ_512 = 0x06,
+    HZ_256 = 0x07,
+    HZ_128 = 0x08,
+    HZ_64 = 0x09,
+    HZ_32 = 0x0A,
+    HZ_16 = 0x0B,
+    HZ_8 = 0x0C,
+    HZ_4 = 0x0D,
+    HZ_2 = 0x0E,
     HZ_1 = 0x0F,
     // TODO: Add more values
 };
@@ -157,7 +170,7 @@ typedef struct hal_am18x5_config_t {
     Am18x5Oscillator osc_src;
     int8_t osc_cal_xt;
     uint8_t clk_out_en;
-    uint8_t clk_out_freq;
+    Am18x5SqwFrequency clk_out_freq;
     Am18x5AutoCalibration auto_calibration;
 } hal_am18x5_config_t;
 

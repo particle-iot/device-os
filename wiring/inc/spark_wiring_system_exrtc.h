@@ -120,12 +120,12 @@ public:
         return conf_.clk_out_en;
     }
 
-    SystemExternalRtcConfiguration& clkOutFrequency(uint8_t freq) {
+    SystemExternalRtcConfiguration& clkOutFrequency(Am18x5SqwFrequency freq) {
         conf_.clk_out_freq = freq;
         return *this;
     }
 
-    uint8_t clkOutFrequency() const {
+    Am18x5SqwFrequency clkOutFrequency() const {
         return conf_.clk_out_freq;
     }
 

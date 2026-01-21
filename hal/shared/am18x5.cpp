@@ -252,7 +252,7 @@ int Am18x5::applyConfig() {
 
     // Enable square wave output on the CLKOUT pin
     if (config_.clk_out_en) {
-        CHECK(enableClkOut((Am18x5SqwFrequency)config_.clk_out_freq));
+        CHECK(enableClkOut(config_.clk_out_freq));
     } else {
         CHECK(disableClkOut());
     }
