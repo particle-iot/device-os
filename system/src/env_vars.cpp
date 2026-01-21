@@ -403,21 +403,64 @@ bool getEnv(const char* name, bool defaultVal) {
     if (std::strcmp(buf, "false") == 0) {
         return false;
     }
-    // Try parsing as a number
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
-        return defaultVal;
+    // Invalid value - not exactly "true" or "false"
+    return defaultVal;
+}
+
+bool getEnv(const char* name, CString& val) {
+    CString tmp;
+    int r = EnvVars::instance().get(name, tmp);
+    if (r < 0 || !tmp) {
+        return false;
     }
-    return val;
+    val = std::move(tmp);
+    return true;
 }
 
-int getEnv(const char* name, CString& val) {
-    return EnvVars::instance().get(name, val);
+bool getEnv(const char* name, char* buf, size_t bufSize) {
+    bool found = false;
+    int r = EnvVars::instance().get(name, buf, bufSize, &found);
+    if (r < 0 || !found) {
+        return false;
+    }
+    return true;
 }
 
-int getEnv(const char* name, char* buf, size_t bufSize, bool* found) {
-    return EnvVars::instance().get(name, buf, bufSize, found);
+bool getEnv(const char* name, bool& val) {
+    char buf[32] = {};
+    bool found = false;
+    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
+    if (n < 0 || !found) {
+        return false;
+    }
+    // Case-sensitive comparison - only lowercase "true" and "false" are valid
+    if (std::strcmp(buf, "true") == 0) {
+        val = true;
+        return true;
+    }
+    if (std::strcmp(buf, "false") == 0) {
+        val = false;
+        return true;
+    }
+    // Invalid value - not exactly "true" or "false"
+    return false;
+}
+
+bool getEnv(const char* name, int& val) {
+    char buf[32] = {};
+    bool found = false;
+    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
+    if (n < 0 || !found) {
+        return false;
+    }
+    int parsed = 0;
+    auto r = std::from_chars(buf, buf + n, parsed);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        // Invalid: not a valid integer, or has trailing characters
+        return false;
+    }
+    val = parsed;
+    return true;
 }
 
 bool hasEnv(const char* name) {

@@ -42,11 +42,40 @@ test('03_start_app_env_vars_update', async function() {
 	const appBin = await readFile(device.testAppBinFile);
 	const randomStr = randomString(30);
 	const bundleZip = await createApplicationAndAssetBundle(appBin, [] /* assets */, {
+		// Basic string and numeric values
 		APP_VAR1: 'abcdef',
 		APP_VAR2: '123',
 		APP_VAR3: '0',
 		APP_VAR4: 'true',
 		APP_VAR5: 'false',
+		// Bool case sensitivity tests (all invalid - only lowercase "true"/"false" valid)
+		BOOL_UPPER_TRUE: 'TRUE',
+		BOOL_UPPER_FALSE: 'FALSE',
+		BOOL_MIXED_TRUE: 'True',
+		BOOL_MIXED_FALSE: 'False',
+		// Bool invalid values (not "true" or "false")
+		BOOL_ONE: '1',
+		BOOL_ZERO: '0',
+		BOOL_YES: 'yes',
+		BOOL_NO: 'no',
+		BOOL_LEADING_SPACE: ' true',
+		BOOL_TRAILING_SPACE: 'true ',
+		// Int edge cases
+		INT_NEGATIVE: '-456',
+		INT_LEADING_ZEROS: '00123',
+		INT_NEGATIVE_ZERO: '-0',
+		INT_PLUS_SIGN: '+123',
+		INT_MAX: '2147483647',
+		INT_MIN: '-2147483648',
+		INT_OVERFLOW: '2147483648',
+		INT_UNDERFLOW: '-2147483649',
+		INT_FLOAT: '12.34',
+		INT_LEADING_SPACE: ' 123',
+		INT_TRAILING_SPACE: '123 ',
+		INT_HEX: '0x1F',
+		INT_WITH_CHARS: '123abc',
+		// Empty value test
+		EMPTY_VAR: '',
 		// This is to ensure the resulting asset module gets a unique checksum and cause the device
 		// to enter safe mode even if it happens to have an asset with env vars from a prior run of
 		// this test

@@ -53,4 +53,38 @@ int system_clear_env_vars(void* reserved) {
 	return EnvVars::instance().clear(); // 0 or EnvVars::Result::NEED_RESET
 }
 
+int system_get_env_var_bool(const char* name, bool* val, void* reserved) {
+	if (!val) {
+		return SYSTEM_ERROR_INVALID_ARGUMENT;
+	}
+	bool v = false;
+	if (!getEnv(name, v)) {
+		// getEnv returns false if not found or invalid
+		// Check if the variable exists to distinguish between not found and invalid
+		if (!hasEnv(name)) {
+			return SYSTEM_ERROR_NOT_FOUND;
+		}
+		return SYSTEM_ERROR_BAD_DATA;
+	}
+	*val = v;
+	return 0;
+}
+
+int system_get_env_var_int(const char* name, int* val, void* reserved) {
+	if (!val) {
+		return SYSTEM_ERROR_INVALID_ARGUMENT;
+	}
+	int v = 0;
+	if (!getEnv(name, v)) {
+		// getEnv returns false if not found or invalid
+		// Check if the variable exists to distinguish between not found and invalid
+		if (!hasEnv(name)) {
+			return SYSTEM_ERROR_NOT_FOUND;
+		}
+		return SYSTEM_ERROR_BAD_DATA;
+	}
+	*val = v;
+	return 0;
+}
+
 #endif // HAL_PLATFORM_ENV_VARS

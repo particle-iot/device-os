@@ -24,7 +24,7 @@ LOG_SOURCE_CATEGORY("hal.ble");
 #if HAL_PLATFORM_BLE
 
 #if HAL_PLATFORM_ENV_VARS
-#include "env_vars.h"
+#include "system_config.h"
 #endif
 
 extern "C" {
@@ -3664,15 +3664,15 @@ int hal_ble_stack_init(void* reserved) {
     LOG_DEBUG(TRACE, "hal_ble_stack_init().");
 
     int result = SYSTEM_ERROR_NONE;
-    String enabled = "true";
+    bool enabled = true;
 
     #if HAL_PLATFORM_ENV_VARS
         // Check environment variable for hard disable
-        // ignore the return - if the variable is filled in, its updated
-        particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled);
+        // If not found or invalid, enabled remains true (default)
+        system_get_env_var_bool("PARTICLE_BLUETOOTH_ENABLE", &enabled, nullptr);
     #endif
 
-    if (enabled == "true") {
+    if (enabled) {
         CHECK(BleGap::getInstance().init());
     } else {
         result = SYSTEM_ERROR_NOT_SUPPORTED;

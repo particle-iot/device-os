@@ -64,6 +64,35 @@ int system_list_env_vars(const char* names[], size_t count, void* reserved);
  */
 int system_clear_env_vars(void* reserved);
 
+/**
+ * Get the value of an environment variable and validate it as a boolean.
+ *
+ * Only "true" and "false" (case-sensitive, lowercase only) are valid.
+ *
+ * @param name Variable name.
+ * @param[out] val Output boolean value. Only modified if the variable is defined and valid.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 if the variable is defined and contains a valid boolean value, otherwise an error code
+ *         defined by `system_error_t`. Returns SYSTEM_ERROR_NOT_FOUND if not defined, or
+ *         SYSTEM_ERROR_BAD_DATA if the value is not a valid boolean.
+ */
+int system_get_env_var_bool(const char* name, bool* val, void* reserved);
+
+/**
+ * Get the value of an environment variable and validate it as a 32-bit signed integer.
+ *
+ * Only decimal digits with an optional leading minus sign are valid.
+ * Overflow is detected and returns an error.
+ *
+ * @param name Variable name.
+ * @param[out] val Output integer value. Only modified if the variable is defined and valid.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 if the variable is defined and contains a valid integer, otherwise an error code
+ *         defined by `system_error_t`. Returns SYSTEM_ERROR_NOT_FOUND if not defined, or
+ *         SYSTEM_ERROR_BAD_DATA if the value is not a valid integer or overflows.
+ */
+int system_get_env_var_int(const char* name, int* val, void* reserved);
+
 #endif // HAL_PLATFORM_ENV_VARS
 
 #ifdef __cplusplus

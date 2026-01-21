@@ -269,10 +269,11 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
         if (network != NETWORK_INTERFACE_ALL) {
             if_t iface;
             if (!if_get_by_index(network, &iface)) {
-                String allowPower = "true";
+                bool allowPower = true;
 
                 #if HAL_PLATFORM_ENV_VARS
                     // Check environment variables for hard disable
+                    // If not found or invalid, allowPower remains true (default)
                     uint8_t index;
                     if_get_index(iface, &index);
 
@@ -289,7 +290,7 @@ void network_on(network_handle_t network, uint32_t flags, uint32_t param, void* 
                     #endif // HAL_PLATFORM_ETHERNET
                 #endif // HAL_PLATFORM_ENV_VARS
 
-                if (allowPower == "true") {
+                if (allowPower) {
                     if (param & NETWORK_STATE_PARAM_UNBLOCK) {
                         NetworkManager::instance()->blockInterface(iface, false);
                     }

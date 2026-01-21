@@ -1,5 +1,3 @@
-#include <charconv>
-
 #include "core_hal.h"
 #include "rtc_hal.h"
 #include "rgbled.h"
@@ -190,29 +188,23 @@ String SystemClass::envVar(const char* name, const char* defaultVal) {
 }
 
 int SystemClass::envVar(const char* name, int defaultVal) {
-    String v;
-    if (!envVar(name, v)) {
-        return defaultVal;
-    }
-    // Parse integer
-    char* end = nullptr;
-    long n = std::strtol(v.c_str(), &end, 10);
-    return (end && *end == '\0') ? (int)n : defaultVal;
+    int val = defaultVal;
+    system_get_env_var_int(name, &val, nullptr);
+    return val;
 }
 
 bool SystemClass::envVar(const char* name, bool defaultVal) {
-    String v;
-    if (!envVar(name, v)) {
-        return defaultVal;
-    }
-    // Parse boolean - supports "true" or "false" only
-    if (v == "true") {
-        return true;
-    }
-    if (v == "false") {
-        return false;
-    }
-    return defaultVal;
+    bool val = defaultVal;
+    system_get_env_var_bool(name, &val, nullptr);
+    return val;
+}
+
+bool SystemClass::envVar(const char* name, bool& value) {
+    return system_get_env_var_bool(name, &value, nullptr) == 0;
+}
+
+bool SystemClass::envVar(const char* name, int& value) {
+    return system_get_env_var_int(name, &value, nullptr) == 0;
 }
 
 bool SystemClass::hasEnvVar(const char* name) {
