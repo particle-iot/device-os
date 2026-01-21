@@ -1124,11 +1124,12 @@ public:
     static int envVar(const char* name, int defaultVal);
     static bool envVar(const char* name, bool defaultVal);
     static bool hasEnvVar(const char* name);
-    static Vector<const char*> envVarNames();
+    static Vector<const char*> listEnvVars();
 
-    // Methods for explicit error handling
+    // Methods with explicit error handling
     static int getEnvVar(const char* name, String& val, bool* found = nullptr);
-    static int getEnvVarNames(Vector<const char*>& names);
+    static int listEnvVars(Vector<const char*>& names);
+    static int clearEnvVars();
 #endif // HAL_PLATFORM_ENV_VARS
 
 private:

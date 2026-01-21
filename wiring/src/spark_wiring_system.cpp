@@ -223,9 +223,9 @@ bool SystemClass::hasEnvVar(const char* name) {
     return found;
 }
 
-Vector<const char*> SystemClass::envVarNames() {
+Vector<const char*> SystemClass::listEnvVars() {
     Vector<const char*> names;
-    getEnvVarNames(names);
+    listEnvVars(names);
     return names;
 }
 
@@ -249,7 +249,7 @@ int SystemClass::getEnvVar(const char* name, String& val, bool* foundArg) {
     return 0;
 }
 
-int SystemClass::getEnvVarNames(Vector<const char*>& namesArg) {
+int SystemClass::listEnvVars(Vector<const char*>& namesArg) {
     size_t n = CHECK(system_list_env_vars(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
     Vector<const char*> names;
     if (!names.resize(n)) {
@@ -258,6 +258,10 @@ int SystemClass::getEnvVarNames(Vector<const char*>& namesArg) {
     CHECK(system_list_env_vars(names.data(), n, nullptr /* reserved */));
     namesArg = std::move(names);
     return 0;
+}
+
+int SystemClass::clearEnvVars() {
+    return system_clear_env_vars(nullptr /* reserved */);
 }
 
 #endif // HAL_PLATFORM_ENV_VARS
