@@ -129,6 +129,15 @@ public:
         return conf_.clk_out_freq;
     }
 
+    SystemExternalRtcConfiguration& autoCalibration(Am18x5AutoCalibration calibration) {
+        conf_.auto_calibration = calibration;
+        return *this;
+    }
+
+    Am18x5AutoCalibration autoCalibration() const {
+        return conf_.auto_calibration;
+    }
+
     const hal_am18x5_config_t* config() const {
         return &conf_;
     }

@@ -127,6 +127,7 @@
 #define OSC_CONTROL_OSEL_MASK       0x80
 #define OSC_CONTROL_OSEL_SHIFT      (7)
 #define OSC_CONTROL_ACAL_MASK       0x60
+#define OSC_CONTROL_ACAL_SHIFT      (5)
 #define OSC_CONTROL_AOS_MASK        0x10
 #define OSC_CONTROL_AOS_SHIFT       (4)
 #define OSC_CONTROL_FOS_MASK        0x08

@@ -139,6 +139,11 @@ enum class Am18x5SqwFrequency : uint8_t {
     HZ_1 = 0x0F,
     // TODO: Add more values
 };
+enum class Am18x5AutoCalibration {
+    AUTO_CAL_DISABLE = 0x00,
+    AUTO_CAL_EVERY_1024_SEC = 0x02,
+    AUTO_CAL_EVERY_512_SEC = 0x03,
+};
 
 typedef struct hal_am18x5_config_t {
     uint16_t version;
@@ -153,6 +158,7 @@ typedef struct hal_am18x5_config_t {
     int8_t osc_cal_xt;
     uint8_t clk_out_en;
     uint8_t clk_out_freq;
+    Am18x5AutoCalibration auto_calibration;
 } hal_am18x5_config_t;
 
 typedef struct hal_am18x5_sleep_config_t {

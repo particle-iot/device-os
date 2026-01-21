@@ -226,29 +226,39 @@ int Am18x5::reset() {
 int Am18x5::applyConfig() {
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_NONE);
-    // Automatically switch to internal RC oscillator when using VBAT as the power supply.
+
+    uint8_t oscControl = 0x00;
+    CHECK(readRegister(Am18x5Register::OSC_CONTROL, &oscControl));
+    if (config_.osc_src == Am18x5Oscillator::INTERNAL_RC) {
+        oscControl |= OSC_CONTROL_OSEL_MASK;
+    } else {
+        oscControl &= ~OSC_CONTROL_OSEL_MASK;
+    }
+    oscControl &= ~OSC_CONTROL_ACAL_MASK;
+    oscControl |= (static_cast<uint8_t>(config_.auto_calibration) << OSC_CONTROL_ACAL_SHIFT);
     if (config_.rc_on_battery) {
-        CHECK(enableAutoSwitchOnBattery(true));
+        oscControl |= OSC_CONTROL_AOS_MASK;
     } else {
-        CHECK(enableAutoSwitchOnBattery(false));
+        oscControl &= ~OSC_CONTROL_AOS_MASK;
     }
-    // But fallback to RC oscillator if the external oscillator fails
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     if (config_.rc_fallback) {
-        CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_FOS_MASK, OSC_CONTROL_FOS_SHIFT));
+        oscControl |= OSC_CONTROL_FOS_MASK;
     } else {
-        CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 0, false, true, OSC_CONTROL_FOS_MASK, OSC_CONTROL_FOS_SHIFT));
+        oscControl &= ~OSC_CONTROL_FOS_MASK;
     }
-    // Select the external crystal oscillator as the default oscillator.
-    CHECK(selectOscillator(config_.osc_src));
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
+    CHECK(writeRegister(Am18x5Register::OSC_CONTROL, oscControl));
+
     // Digital calibration to improve accuracy.
     xtOscillatorDigitalCalibration(config_.osc_cal_xt);
+
     // Enable square wave output on the CLKOUT pin
     if (config_.clk_out_en) {
         CHECK(enableClkOut((Am18x5SqwFrequency)config_.clk_out_freq));
     } else {
         CHECK(disableClkOut());
     }
+
     // Automatically clear interrupt flags after reading the the status register.
     CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
     return SYSTEM_ERROR_NONE;
