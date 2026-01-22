@@ -152,6 +152,7 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     Km0Km4IpcLock lock;
+    (void)lock;
     km0Km4IpcMessage_ = {};
     km0Km4IpcMessage_.size = sizeof(km0_km4_ipc_msg_t);
     km0Km4IpcMessage_.version = KM0_KM4_IPC_MSG_VERSION;
@@ -192,6 +193,7 @@ int Km0Km4IpcClass::sendRequest(km0_km4_ipc_msg_type_t type, void* data, uint32_
 
 int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
     Km0Km4IpcLock lock;
+    (void)lock;
     km0Km4IpcMessage_ = {};
     km0Km4IpcMessage_.size = sizeof(km0_km4_ipc_msg_t);
     km0Km4IpcMessage_.version = KM0_KM4_IPC_MSG_VERSION;
@@ -213,6 +215,7 @@ int Km0Km4IpcClass::sendResponse(uint16_t reqId, void* data, uint32_t len) {
 
 int Km0Km4IpcClass::onRequestReceived(km0_km4_ipc_msg_type_t type, km0_km4_ipc_msg_callback_t callback, void* context) {
     Km0Km4IpcLock lock;
+    (void)lock;
     for (auto& handler : ipcRequestHandlers_) {
         if (handler.type == type)  {
             handler.callback = callback;

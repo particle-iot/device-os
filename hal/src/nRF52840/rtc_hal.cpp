@@ -87,7 +87,7 @@ void hal_rtc_init(void) {
         .osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL,
         .osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT,
         .clk_out_en = false,
-        .clk_out_freq = 0,
+        .clk_out_freq = Am18x5SqwFrequency::HZ_32768,
         .auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE
     };
     if (Am18x5::getInstance().setConfig(&config) == SYSTEM_ERROR_NONE) {

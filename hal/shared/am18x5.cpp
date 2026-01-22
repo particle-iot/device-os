@@ -135,7 +135,6 @@ bool Am18x5::isDefault() const {
 }
 
 int Am18x5::begin() {
-    Am18x5Lock lock;
     int ret = SYSTEM_ERROR_INTERNAL;
     SCOPE_GUARD ({
         if (ret != SYSTEM_ERROR_NONE) {
