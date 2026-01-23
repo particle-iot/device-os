@@ -51,7 +51,7 @@ async function patch(api, path, data) {
  */
 function devicePath(path, device) {
 	const prefix = `/v1/devices/${device}`;
-	return preix + path;
+	return prefix + path;
 }
 
 /**

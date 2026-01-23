@@ -138,12 +138,12 @@ test('12_check_product_env_vars_immediate_update', async function() {
 });
 
 test('13_start_device_env_vars_immediate_update', async function() {
-	await patch(api, productPath(`/env-vars/${deviceId}`, productId), {
+	await patch(api, `/v1/products/${productId}/env-vars/${deviceId}`, {
 		ops: [
 			{ op: 'Set', key: 'DEV_VAR1', value: testNonce + '_dev' }
 		]
 	});
-	await post(api, devicePath('/env-vars/rollout', deviceId), {
+	await post(api, `/v1/env-vars/${deviceId}/rollout`, {
 		when: 'Immediate'
 	});
 	await waitFlashStatusEvent(this, { status: 'success' });

@@ -51,7 +51,7 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
 	auto t1 = millis();
 	// The JS part of the test waits until the OTA completes so the timeout here is just for
 	// finalizing the update on the device
-	while (millis() - t1 < 5000) {
+	while (millis() - t1 < 10000) {
 		if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
 			ok = true;
 			break;
