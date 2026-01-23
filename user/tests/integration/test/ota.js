@@ -1,22 +1,69 @@
 const { setTimeout: delay } = require('node:timers/promises');
 
-async function flashDevice(testCtx, fwData, {
-	deviceId,
-	filename = 'firmware.bin',
-	timeout = 5 * 60 * 1000,
-	retries = 3,
-	backoff = 3000
-} = {}) {
-	const { instance: api, token: auth } = testCtx.particle.apiClient;
+const DEFAULT_FLASH_TIMEOUT = 5 * 60 * 1000;
 
+/**
+ * Wait for an OTA udpate status event.
+ *
+ * @param {object} testCtx `this` context of the test running.
+ * @param {object} [opts] Options.
+ * @param {string} [opts.deviceId] Device ID.
+ * @param {string} [opts.status] Expected status: `started`, `success`, `failed`.
+ * @param {number} [opts.timeout] Timeout in milliseconds.
+ * @returns {Promise<string>} Update status.
+ */
+async function waitFlashStatusEvent(testCtx, { deviceId, status, timeout = DEFAULT_FLASH_TIMEOUT } = {}) {
 	if (deviceId === undefined) {
 		deviceId = testCtx.particle.devices[0].id;
 	}
 
+	const timeoutAt = performance.now() + timeout;
+	for (;;) {
+		const statusTimeout = timeoutAt - performance.now();
+		if (statusTimeout <= 0) {
+			throw new Error('Timeout while waiting for flash status event');
+		}
+		// TODO: receiveEvent() should optionally take a device ID in case the test involves
+		// multiple devices
+		const data = await testCtx.particle.receiveEvent('spark/flash/status', { timeout: statusTimeout });
+		console.log('spark/flash/status', data);
+		const currentStatus = data.split(' ')[0]; // Ignore the filename
+		if (status === undefined || currentStatus === status) {
+			return currentStatus;
+		}
+	}
+}
+
+/**
+ * Send an OTA update to a device.
+ *
+ * Waits for the completion of the update.
+ *
+ * @param {object} testCtx `this` context of the test running.
+ * @param {Buffer} fwData Firmware module data.
+ * @param {object} [opts] Options.
+ * @param {string} [opts.deviceId] Device ID.
+ * @param {string} [opts.filename] Filename.
+ * @param {number} [opts.timeout] Timeout in milliseconds.
+ * @param {number} [opts.retries] Number of retries.
+ * @param {number} [opts.backoff] Initial backoff interval.
+ */
+async function flash(testCtx, fwData, {
+	deviceId,
+	filename = 'firmware.bin',
+	timeout = DEFAULT_FLASH_TIMEOUT,
+	retries = 3,
+	backoff = 3000
+} = {}) {
+	if (deviceId === undefined) {
+		deviceId = testCtx.particle.devices[0].id;
+	}
+	const { instance: api, token: auth } = testCtx.particle.apiClient;
+
 	// Flush any previously received status events
 	for (;;) {
 		try {
-			await testCtx.particle.receiveEvent('spark/flash/status', { timeout: 1 });
+			await waitFlashStatusEvent(testCtx, { timeout: 1 });
 		} catch (err) {
 			break;
 		}
@@ -26,21 +73,16 @@ async function flashDevice(testCtx, fwData, {
 
 	for (;;) {
 		try {
-			let timeoutAt = performance.now() + timeout;
+			const timeoutAt = performance.now() + timeout;
 			await api.flashDevice({ deviceId, files: { [filename]: fwData }, auth });
 
 			for (;;) {
-				const eventTimeout = timeoutAt - performance.now();
-				if (eventTimeout <= 0) {
-					throw new Error('Timeout while flashing device OTA');
-				}
-
-				const data = await testCtx.particle.receiveEvent('spark/flash/status', { timeout: eventTimeout });
-				console.log('spark/flash/status:', data);
-				if (data.startsWith('started')) {
+				const statusTimeout = timeoutAt - performance.now();
+				const status = await waitFlashStatusEvent(testCtx, { deviceId, timeout: statusTimeout });
+				if (status === 'started') {
 					continue;
 				}
-				if (data.startsWith('success')) {
+				if (status === 'success') {
 					break;
 				}
 				throw new Error('Failed to flash device OTA');
@@ -60,5 +102,6 @@ async function flashDevice(testCtx, fwData, {
 }
 
 module.exports = {
-	flashDevice
+	waitFlashStatusEvent,
+	flash
 };

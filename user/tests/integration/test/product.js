@@ -12,7 +12,7 @@ function randomProductVersion() {
  *
  * @param {string} deviceId Device ID.
  * @param {Particle} api API client.
- * @returns {number} Product ID.
+ * @returns {Promise<number>} Product ID.
  */
 async function getProductId({ deviceId, api }) {
 	let productId = productsByDeviceId.get(deviceId);
@@ -34,7 +34,7 @@ async function getProductId({ deviceId, api }) {
  *
  * @param {string} deviceId Device ID.
  * @param {Particle} api API client.
- * @returns {string} Group name.
+ * @returns {Promise<string>} Group name.
  */
 async function generateDeviceGroup({ deviceId, api }) {
 	let group = groupsByDeviceId.get(deviceId); // CI group
@@ -109,7 +109,7 @@ async function generateDeviceGroup({ deviceId, api }) {
  *
  * @param {string} deviceId Device ID.
  * @param {Particle} api API client.
- * @returns {number} Firmware version.
+ * @returns {Promise<number>} Firmware version.
  */
 async function generateProductVersion({ deviceId, api }) {
 	const group = await generateDeviceGroup({ deviceId, api });

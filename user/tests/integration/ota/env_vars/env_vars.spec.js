@@ -4,60 +4,110 @@ platform('gen3', 'gen4');
 systemThread('enabled'); // FIXME
 
 const { generateDeviceGroup, setDevelopmentMode, getProductId } = require('../../test/product');
-const { flashDevice } = require('../../test/ota');
+const { flash, waitFlashStatusEvent } = require('../../test/ota');
+const { get, post, patch, productPath, orgPath } = require('../../test/api');
 const { randomString } = require('../../test/random');
 
-const { createApplicationAndAssetBundle } = require('binary-version-reader');
+const { createEnvVarsAssetModule, createApplicationAndAssetBundle } = require('binary-version-reader');
 const Particle = require('particle-api-js');
+const tempy = require('tempy');
 
 const { readFile } = require('node:fs/promises');
 
-const ORG_ID = 'particle'; // Set to `undefined` to use the sandbox
+const ORG_ID = 'particle'; // Set to `undefined` to use the current user's sandbox
 
+let testNonce;
+let appBinary;
 let productId;
 let deviceGroup;
 let deviceId;
 let device;
 let api;
 
+// Ensures that the default env vars are set at org and product levels. These variables don't change
+async function initOrgAndProductEnvVars() {
+	const { env } = await get(api, productPath('/env-vars/render', productId));
+	if (!('DVOS_CI_ORG_VAR1' in env)) {
+		await patch(api, orgPath('/env-vars', ORG_ID), {
+			ops: [
+				{ op: 'Set', key: 'DVOS_CI_ORG_VAR1', value: 'pcT3RG9xr4' },
+			]
+		});
+		await post(api, orgPath('/env-vars/rollout', ORG_ID), {
+			when: 'Connect'
+		});
+	}
+	if (!('DVOS_CI_PROD_VAR1' in env)) {
+		await patch(api, productPath('/env-vars', productId), {
+			ops: [
+				{ op: 'Set', key: 'DVOS_CI_PROD_VAR1', value: 'wkWStqATwW' },
+			]
+		});
+		await post(api, productPath('/env-vars/rollout', productId), {
+			when: 'Connect'
+		});
+	}
+}
+
 before(async function() {
 	api = new Particle({
 		baseUrl: this.particle.apiClient.instance.baseUrl, // TODO: Expose as an ApiClient property
 		auth: this.particle.apiClient.token
 	});
+
 	device = this.particle.devices[0];
 	deviceId = device.id;
 	productId = await getProductId({ deviceId, api });
-	await setDevelopmentMode({ deviceId, api });
+	
+	await setDevelopmentMode({ deviceId, api }); // Env vars updates still work in development mode
 	deviceGroup = await generateDeviceGroup({ deviceId, api });
+	appBinary = await readFile(device.testAppBinFile);
+
+	await initOrgAndProductEnvVars();
 });
 
-test('01_clear_and_reset', async function() {
+test('01_init', async function() {
+	expect(device.mailBox).to.not.be.empty;
+	testNonce = device.mailBox.shift().d;
+	console.log('Test nonce:', testNonce);
 });
 
-test('02_init_and_connect', async function() {
-});
-
-test('03_start_app_env_vars_update', async function() {
-	const appBin = await readFile(device.testAppBinFile);
-	const randomStr = randomString(30);
-	const bundleZip = await createApplicationAndAssetBundle(appBin, [] /* assets */, {
-		APP_VAR1: 'abcdef',
-		APP_VAR2: '123',
-		APP_VAR3: '0',
-		APP_VAR4: 'true',
-		APP_VAR5: 'false',
-		// This is to ensure the resulting asset module gets a unique checksum and cause the device
-		// to enter safe mode even if it happens to have an asset with env vars from a prior run of
-		// this test
-		RAND_VAR1: randomStr,
-		RAND_VAR2: randomStr
+test('02_start_env_vars_local_update', async function() {
+	// XXX: This will update the app env vars on the device even though the test app has no 
+	// dependency on an env var asset
+	const assetData = await createEnvVarsAssetModule({
+		APP_VAR1: 'abcdef'
 	});
-	await flashDevice(this, bundleZip, { filename: 'bundle.zip' });
+	// TODO: Update Device#flash to optionally take module data instead of a path
+	const assetPath = await tempy.write(assetData, { name: 'env_vars.bin' });
+	await device.flash(assetPath);
 });
 
-test('04_complete_app_env_vars_update', async function() {
+test('03_check_env_vars_local_update', async function() {
 });
 
-test('05_check_app_env_vars_update', async function() {
+test('04_start_env_vars_on_connect_update', async function() {
+	// Should start automatically
+	await waitFlashStatusEvent(this, { status: 'success' });
+});
+
+test('05_complete_env_vars_on_connect_update', async function() {
+});
+
+test('06_check_env_vars_on_connect_update', async function() {
+});
+
+test('07_start_env_vars_ad_hoc_update', async function() {
+	const bundleZip = await createApplicationAndAssetBundle(appBinary, [] /* assets */, {
+		APP_VAR1: 'abcde',
+		APP_VAR2: '123',
+		APP_VAR3: testNonce // Random string
+	});
+	await flash(this, bundleZip, { filename: 'bundle.zip' });
+});
+
+test('08_complete_env_vars_ad_hoc_update', async function() {
+});
+
+test('09_check_env_vars_ad_hoc_update', async function() {
 });

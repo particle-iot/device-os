@@ -1,4 +1,6 @@
 #include "application.h"
+#include "random.h"
+
 #include "unit-test/unit-test.h"
 
 namespace {
@@ -12,6 +14,7 @@ enum class FirmwareUpdateStatus {
 	ERROR
 };
 
+retained char testNonce[32] = {};
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
 
 void firmwareUpdateEventHandler(system_event_t, int data, void*) {
@@ -60,78 +63,69 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
     System.enableReset();
 }
 
-} // namespace
-
-test(01_clear_and_reset) {
-	assertMoreOrEqual(System.clearEnvVars(), 0);
-
-	expectSystemReset();
-	System.reset();
-}
-
-test(02_init_and_connect) {
-	Vector<const char*> vars;
-	assertEqual(System.listEnvVars(vars), 0);
-	assertEqual(vars.size(), 0);
-
+void connect() {
 	Particle.connect();
 	assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
-test(03_start_app_env_vars_update) {
+} // namespace
+
+test(01_init) {
+	// Generate a random string for this test suite run
+	Random rand;
+	rand.genBase32(testNonce, sizeof(testNonce) - 1);
+	testNonce[sizeof(testNonce) - 1] = '\0';
+	pushMailboxMsg(testNonce, 5000 /* wait */);
+
+	// Clear the env vars and reset to apply the changes
+	assertMoreOrEqual(System.clearEnvVars(), 0);
+	expectSystemReset();
+	System.reset();
+}
+
+test(02_start_env_vars_local_update) {
+	// Validate that no env vars are defined
+	Vector<const char*> vars;
+	assertEqual(System.listEnvVars(vars), 0);
+	assertEqual(vars.size(), 0);
+}
+
+test(03_check_env_vars_local_update) {
+	assertTrue(System.envVar("APP_VAR1") == "abcdef");
+	// TODO: Add the API tests from the Nick's branch here
+
+	// Clear the env vars and reset to apply the changes
+	assertMoreOrEqual(System.clearEnvVars(), 0);
+	expectSystemReset();
+	System.reset();
+}
+
+test(04_start_env_vars_on_connect_update) {
+	prepareForFirmwareUpdate();
+	connect();
+}
+
+test(05_complete_env_vars_on_connect_update) {
+	completeFirmwareUpdate();
+}
+
+test(06_check_env_vars_on_connect_update) {
+	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "pcT3RG9xr4");
+	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "wkWStqATwW");
+
+	connect();
+}
+
+test(07_start_env_vars_ad_hoc_update) {
     prepareForFirmwareUpdate();
 }
 
-test(04_complete_app_env_vars_update) {
+test(08_complete_env_vars_ad_hoc_update) {
 	completeFirmwareUpdate(true /* expectSafeMode */);
 }
 
-test(05_check_app_env_vars_update) {
-	// Original values
-	assertTrue(System.envVar("APP_VAR1") == "abcdef");
+test(09_check_env_vars_ad_hoc_update) {
+	assertTrue(System.envVar("APP_VAR1") == "abcde");
 	assertTrue(System.envVar("APP_VAR2") == "123");
-	assertTrue(System.envVar("APP_VAR3") == "0");
-	assertTrue(System.envVar("APP_VAR4") == "true");
-	assertTrue(System.envVar("APP_VAR5") == "false");
-
-	auto randVar1 = System.envVar("RAND_VAR1");
-	assertEqual(randVar1.length(), 30);
-	assertTrue(System.envVar("RAND_VAR2") == randVar1);
-
-	// Type conversions
-	assertTrue(System.envVar("APP_VAR1", -1) == -1); // Conversion error
-	assertTrue(System.envVar("APP_VAR2", -2) == 123);
-	assertTrue(System.envVar("APP_VAR3", -3) == 0);
-	assertTrue(System.envVar("APP_VAR4", -4) == -4); // Error
-	assertTrue(System.envVar("APP_VAR5", -5) == -5); // Error
-
-	assertTrue(System.envVar("APP_VAR1", true) == true); // Error
-	assertTrue(System.envVar("APP_VAR1", false) == false); // Error
-	assertTrue(System.envVar("APP_VAR2", false) == true);
-	assertTrue(System.envVar("APP_VAR3", true) == false);
-	assertTrue(System.envVar("APP_VAR4", false) == true);
-	assertTrue(System.envVar("APP_VAR5", true) == false);
-
-	// Variable names
-	Vector<String> names;
-	for (const auto& name: System.listEnvVars()) {
-		names.append(name); // const char* -> String
-	}
-	assertEqual(names.size(), 7);
-	assertTrue(names.contains("APP_VAR1"));
-	assertTrue(names.contains("APP_VAR2"));
-	assertTrue(names.contains("APP_VAR3"));
-	assertTrue(names.contains("APP_VAR4"));
-	assertTrue(names.contains("APP_VAR5"));
-	assertTrue(names.contains("RAND_VAR1"));
-	assertTrue(names.contains("RAND_VAR2"));
-
-	assertTrue(System.hasEnvVar("APP_VAR1"));
-	assertTrue(System.hasEnvVar("APP_VAR2"));
-	assertTrue(System.hasEnvVar("APP_VAR3"));
-	assertTrue(System.hasEnvVar("APP_VAR4"));
-	assertTrue(System.hasEnvVar("APP_VAR5"));
-	assertFalse(System.hasEnvVar("APP_VAR6")); // Not defined
-	assertTrue(System.hasEnvVar("RAND_VAR1"));
-	assertTrue(System.hasEnvVar("RAND_VAR2"));
+	assertTrue(System.envVar("APP_VAR3") == testNonce);
 }
