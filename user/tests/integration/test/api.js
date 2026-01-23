@@ -43,6 +43,18 @@ async function patch(api, path, data) {
 }
 
 /**
+ * Get an URI path for a device API endpoint.
+ *
+ * @param {string} path Path suffix.
+ * @param {string} device Device ID or name.
+ * @returns {string}
+ */
+function devicePath(path, device) {
+	const prefix = `/v1/devices/${device}`;
+	return preix + path;
+}
+
+/**
  * Get an URI path for a product API endpoint.
  *
  * @param {string} path Path suffix.
@@ -81,6 +93,7 @@ module.exports = {
 	get,
 	post,
 	patch,
+	devicePath,
 	productPath,
 	orgPath
 };

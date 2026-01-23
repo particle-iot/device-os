@@ -17,6 +17,15 @@ enum class FirmwareUpdateStatus {
 retained char testNonce[32] = {};
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
 
+bool hasEnvVarWithValue(const String& val) {
+	for (const auto& name: System.listEnvVars()) {
+		if (System.envVar(name) == val) {
+			return true;
+		}
+	}
+	return false;
+}
+
 void firmwareUpdateEventHandler(system_event_t, int data, void*) {
 	switch (data) {
     case firmware_update_begin:
@@ -112,12 +121,11 @@ test(05_complete_env_vars_on_connect_update) {
 test(06_check_env_vars_on_connect_update) {
 	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "pcT3RG9xr4");
 	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "wkWStqATwW");
-
-	connect();
 }
 
 test(07_start_env_vars_ad_hoc_update) {
     prepareForFirmwareUpdate();
+    connect();
 }
 
 test(08_complete_env_vars_ad_hoc_update) {
@@ -128,4 +136,30 @@ test(09_check_env_vars_ad_hoc_update) {
 	assertTrue(System.envVar("APP_VAR1") == "abcde");
 	assertTrue(System.envVar("APP_VAR2") == "123");
 	assertTrue(System.envVar("APP_VAR3") == testNonce);
+}
+
+test(10_start_product_env_vars_immediate_update) {
+	prepareForFirmwareUpdate();
+	connect();
+}
+
+test(11_complete_product_env_vars_immediate_update) {
+	completeFirmwareUpdate();
+}
+
+test(12_check_product_env_vars_immediate_update) {
+	assertTrue(hasEnvVarWithValue(String(testNonce) + "_prod"));
+}
+
+test(13_start_device_env_vars_immediate_update) {
+	prepareForFirmwareUpdate();
+	connect();
+}
+
+test(14_complete_device_env_vars_immediate_update) {
+	completeFirmwareUpdate();
+}
+
+test(15_check_device_env_vars_immediate_update) {
+	assertTrue(System.envVar("DEV_VAR1") == String(testNonce) + "_dev");
 }
