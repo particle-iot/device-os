@@ -93,13 +93,13 @@ enum class Am18x5Register : uint8_t {
     EXTENSION_RAM_ADDRESS           = 0x3F
 };
 
-enum class HourFormat {
+enum class HourFormat : uint8_t {
     HOUR24,
     HOUR12_AM,
     HOUR12_PM
 };
 
-enum class Weekday {
+enum class Weekday : uint8_t {
     MONDAY = 0,
     TUESDAY = 1,
     WEDNESDAY = 2,
@@ -109,29 +109,29 @@ enum class Weekday {
     SUNDAY = 6
 };
 
-enum class Am18x5Oscillator {
+enum class Am18x5Oscillator : uint8_t {
     INTERNAL_RC = 0x00,
     EXTERNAL_CRYSTAL = 0x01
 };
 
-enum class Am18x5WatchdogFrequency {
+enum class Am18x5WatchdogFrequency : uint8_t {
     HZ_16 = 0x00,
     HZ_4 = 0x01,
     HZ_1 = 0x02,
     HZ_1_4 = 0x03
 };
 
-enum class Am18x5TimerFrequency {
+enum class Am18x5TimerFrequency : uint8_t {
     HZ_4096 = 0x00,
     HZ_64 = 0x01,
     HZ_1 = 0x02,
     HZ_1_60 = 0x03
 };
 
-enum class Am18x5ExtiPolarity {
-    NONE,
-    FALLING,
-    RISING
+enum class Am18x5ExtiPolarity : uint8_t {
+    NONE = 0,
+    FALLING = 1,
+    RISING = 2
 };
 
 enum class Am18x5SqwFrequency : uint8_t {
@@ -152,11 +152,19 @@ enum class Am18x5SqwFrequency : uint8_t {
     HZ_1 = 0x0F,
     // TODO: Add more values
 };
-enum class Am18x5AutoCalibration {
+
+enum class Am18x5AutoCalibration : uint8_t {
     AUTO_CAL_DISABLE = 0x00,
     AUTO_CAL_EVERY_1024_SEC = 0x02,
     AUTO_CAL_EVERY_512_SEC = 0x03,
 };
+
+enum Am18x5OscEvent : uint8_t {
+    XT_OSC_FAILURE = 0x01,
+    AUTO_CAL_FAILURE = 0x02
+};
+
+typedef void (*Am18x5OscEventHandler)(uint8_t event, void* context);
 
 typedef struct hal_am18x5_config_t {
     uint16_t version;
@@ -172,7 +180,7 @@ typedef struct hal_am18x5_config_t {
     uint8_t clk_out_en;
     Am18x5SqwFrequency clk_out_freq;
     Am18x5AutoCalibration auto_calibration;
-} hal_am18x5_config_t;
+} __attribute__((packed)) hal_am18x5_config_t;
 
 typedef struct hal_am18x5_sleep_config_t {
     uint16_t version;
@@ -214,24 +222,8 @@ public:
 
     int getIdString(char* id, size_t len) const;
 
-    /*
-     * The XT oscillator calibration value is determined by the following process:
-     * 1. Set the OFFSETX, CMDX and XTCAL register fields to 0 to ensure calibration is not occurring.
-     * 2. Select the XT oscillator by setting the OSEL bit to 0.
-     * 3. Configure a 32768 Hz frequency square wave output on one of the output pins.
-     * 4. Precisely measure the exact frequency, Fmeas, at the output pin in Hz.
-     * 5. Compute the adjustment value required in ppm as ((32768 – Fmeas)*1000000)/32768 = PAdj
-     * 6. Compute the adjustment value in steps as PAdj/(1000000/2^19) = PAdj/(1.90735) = Adj
-     * 7. If Adj < -320, the XT frequency is too high to be calibrated
-     * 8. Else if Adj < -256, set XTCAL = 3, CMDX = 1, OFFSETX = (Adj + 192) / 2
-     * 9. Else if Adj < -192, set XTCAL = 3, CMDX = 0, OFFSETX = Adj + 192
-     * 10. Else if Adj < -128, set XTCAL = 2, CMDX = 0, OFFSETX = Adj + 128
-     * 11. Else if Adj < -64, set XTCAL = 1, CMDX = 0, OFFSETX = Adj + 64
-     * 12. Else if Adj < 64, set XTCAL = 0, CMDX = 0, OFFSETX = Adj
-     * 13. Else if Adj < 128, set XTCAL = 0, CMDX = 1, OFFSETX = Adj/2
-     * 14. Else the XT frequency is too low to be calibrated
-     */
-    int xtOscillatorDigitalCalibration(int adjVal) const;
+    int getOscillatorSource(Am18x5Oscillator* source);
+    int onOscillatorEvent(uint8_t events, Am18x5OscEventHandler handler, void* context);
 
     int lock();
     int unlock();
@@ -265,8 +257,24 @@ private:
     int getYears() const;
     int getWeekday() const;
 
-    int selectOscillator(Am18x5Oscillator oscillator) const;
-    int enableAutoSwitchOnBattery(bool enable) const;
+    /*
+     * The XT oscillator calibration value is determined by the following process:
+     * 1. Set the OFFSETX, CMDX and XTCAL register fields to 0 to ensure calibration is not occurring.
+     * 2. Select the XT oscillator by setting the OSEL bit to 0.
+     * 3. Configure a 32768 Hz frequency square wave output on one of the output pins.
+     * 4. Precisely measure the exact frequency, Fmeas, at the output pin in Hz.
+     * 5. Compute the adjustment value required in ppm as ((32768 – Fmeas)*1000000)/32768 = PAdj
+     * 6. Compute the adjustment value in steps as PAdj/(1000000/2^19) = PAdj/(1.90735) = Adj
+     * 7. If Adj < -320, the XT frequency is too high to be calibrated
+     * 8. Else if Adj < -256, set XTCAL = 3, CMDX = 1, OFFSETX = (Adj + 192) / 2
+     * 9. Else if Adj < -192, set XTCAL = 3, CMDX = 0, OFFSETX = Adj + 192
+     * 10. Else if Adj < -128, set XTCAL = 2, CMDX = 0, OFFSETX = Adj + 128
+     * 11. Else if Adj < -64, set XTCAL = 1, CMDX = 0, OFFSETX = Adj + 64
+     * 12. Else if Adj < 64, set XTCAL = 0, CMDX = 0, OFFSETX = Adj
+     * 13. Else if Adj < 128, set XTCAL = 0, CMDX = 1, OFFSETX = Adj/2
+     * 14. Else the XT frequency is too low to be calibrated
+     */
+    int xtOscillatorDigitalCalibration(int adjVal) const;
 
     int enableClkOut(Am18x5SqwFrequency freq);
     int disableClkOut();
@@ -293,6 +301,10 @@ private:
     hal_am18x5_config_t config_;
     uint8_t watchdogValue_;
     uint8_t ids_[AM18X5_ID_COUNT];
+
+    uint8_t subscribedOscEvents_;
+    Am18x5OscEventHandler oscEventHandler_;
+    void* oscEventHandlerContext_;
 }; // class Am18x5
 
 

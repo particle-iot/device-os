@@ -144,6 +144,7 @@
 #define OSC_STATUS_LKO2_SHIFT       (5)
 #define OSC_STATUS_OMODE_MASK       0x10
 #define OSC_STATUS_OF_MASK          0x02
+#define OSC_STATUS_OF_SHIFT         (2)
 #define OSC_STATUS_ACF_MASK         0x01
 
 // Trickle Bits Mask

@@ -490,6 +490,10 @@ test(system_power_management) {
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
+void am18x5OscEventHandler(uint8_t event, void* context) {
+}
+
 test(system_external_rtc) {
     SystemExternalRtcConfiguration config;
     config.defaultRtc(true)
@@ -534,5 +538,9 @@ test(system_external_rtc) {
     API_COMPILE({ auto latched = sleepConfig.extiTriggerLatched(); (void)latched; });
     API_COMPILE({ auto polarity = sleepConfig.extiPolarity(); (void)polarity; });
     API_COMPILE({ auto duration = sleepConfig.duration(); (void)duration; });
+
+    API_COMPILE(System.onExternalRtcOscEvents(Am18x5OscEvent::XT_OSC_FAILURE | Am18x5OscEvent::AUTO_CAL_FAILURE, am18x5OscEventHandler, nullptr));
+    Am18x5Oscillator oscSource;
+    API_COMPILE(System.getExternalRtcOscSource(&oscSource));
 }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

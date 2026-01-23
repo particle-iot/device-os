@@ -43,4 +43,12 @@ int hal_external_rtc_sleep(const hal_am18x5_sleep_config_t* conf, void* reserved
     return Am18x5::getInstance().sleep(conf);
 }
 
+int hal_external_rtc_on_osc_events(uint8_t events, Am18x5OscEventHandler handler, void* context, void* reserved) {
+    return Am18x5::getInstance().onOscillatorEvent(events, handler, context);
+}
+
+int hal_external_rtc_get_oscillator_source(particle::Am18x5Oscillator* source, void* reserved) {
+    return Am18x5::getInstance().getOscillatorSource(source);
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

@@ -33,6 +33,8 @@ int hal_external_rtc_get_config(particle::hal_am18x5_config_t* conf, void* reser
 int hal_external_rtc_get_id(char* buf, size_t len, void* reserved);
 bool hal_external_rtc_is_present(void* reserved);
 int hal_external_rtc_sleep(const particle::hal_am18x5_sleep_config_t* conf, void* reserved);
+int hal_external_rtc_on_osc_events(uint8_t events, particle::Am18x5OscEventHandler handler, void* context, void* reserved);
+int hal_external_rtc_get_oscillator_source(particle::Am18x5Oscillator* source, void* reserved);
 
 #ifdef __cplusplus
 }

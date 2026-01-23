@@ -65,7 +65,10 @@ Am18x5::Am18x5()
           alarmHandlerContext_(nullptr),
           exRtcWorkerThread_(nullptr),
           exRtcWorkerSemaphore_(nullptr),
-          exRtcWorkerThreadExit_(false)  {
+          exRtcWorkerThreadExit_(false),
+          subscribedOscEvents_(0),
+          oscEventHandler_(nullptr),
+          oscEventHandlerContext_(nullptr) {
     config_ = {};
     config_.version = HAL_AM18X5_CONFIG_VERSION;
     config_.size = sizeof(hal_am18x5_config_t);
@@ -243,11 +246,18 @@ int Am18x5::applyConfig() {
     } else {
         oscControl &= ~OSC_CONTROL_FOS_MASK;
     }
+    if (oscEventHandler_ && (config_.osc_src == Am18x5Oscillator::EXTERNAL_CRYSTAL) && (subscribedOscEvents_ & Am18x5OscEvent::XT_OSC_FAILURE)) {
+        oscControl |= OSC_CONTROL_OFIE_MASK;
+        // Clear the oscillator failure flag
+        CHECK(writeRegister(Am18x5Register::OSC_STATUS, 0, false, true, OSC_STATUS_OF_MASK, OSC_STATUS_OF_SHIFT));
+    } else {
+        oscControl &= ~OSC_CONTROL_OFIE_MASK;
+    }
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, oscControl));
 
     // Digital calibration to improve accuracy.
-    xtOscillatorDigitalCalibration(config_.osc_cal_xt);
+    CHECK(xtOscillatorDigitalCalibration(config_.osc_cal_xt));
 
     // Enable square wave output on the CLKOUT pin
     if (config_.clk_out_en) {
@@ -258,6 +268,41 @@ int Am18x5::applyConfig() {
 
     // Automatically clear interrupt flags after reading the the status register.
     CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_ARST_MASK, CONTROL1_ARST_SHIFT));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::getOscillatorSource(Am18x5Oscillator* source) {
+    Am18x5Lock lock;
+    CHECK_TRUE(source, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t oscStatus = 0;
+    CHECK(readRegister(Am18x5Register::OSC_STATUS, &oscStatus));
+    *source = (oscStatus & OSC_STATUS_OMODE_MASK) ? Am18x5Oscillator::INTERNAL_RC : Am18x5Oscillator::EXTERNAL_CRYSTAL;
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::onOscillatorEvent(uint8_t events, Am18x5OscEventHandler handler, void* context) {
+    Am18x5Lock lock;
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+    uint8_t oscControl = 0x00;
+    CHECK(readRegister(Am18x5Register::OSC_CONTROL, &oscControl));
+    if (handler && (config_.osc_src == Am18x5Oscillator::EXTERNAL_CRYSTAL) && (events & Am18x5OscEvent::XT_OSC_FAILURE)) {
+        oscControl |= OSC_CONTROL_OFIE_MASK;
+    } else {
+        oscControl &= ~OSC_CONTROL_OFIE_MASK;
+    }
+    if (handler && (events & Am18x5OscEvent::AUTO_CAL_FAILURE)) {
+        oscControl |= OSC_CONTROL_ACIE_MASK;
+    } else {
+        oscControl &= ~OSC_CONTROL_ACIE_MASK;
+    }
+    // Clear the oscillator failure flag
+    CHECK(writeRegister(Am18x5Register::OSC_STATUS, 0, false, true, OSC_STATUS_OF_MASK | OSC_STATUS_ACF_MASK, 0));
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
+    CHECK(writeRegister(Am18x5Register::OSC_CONTROL, oscControl));
+    subscribedOscEvents_ = events;
+    oscEventHandler_ = handler;
+    oscEventHandlerContext_ = context;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -831,24 +876,6 @@ int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::selectOscillator(Am18x5Oscillator oscillator) const {
-    Am18x5Lock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
-    uint8_t val = 0;
-    if (oscillator == Am18x5Oscillator::INTERNAL_RC) {
-        val = 1;
-    }
-    return writeRegister(Am18x5Register::OSC_CONTROL, val, false, true, OSC_CONTROL_OSEL_MASK, OSC_CONTROL_OSEL_SHIFT);
-}
-
-int Am18x5::enableAutoSwitchOnBattery(bool enable) const {
-    Am18x5Lock lock;
-    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
-    return writeRegister(Am18x5Register::OSC_CONTROL, enable, false, true, OSC_CONTROL_AOS_MASK, OSC_CONTROL_AOS_SHIFT);
-}
-
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
     Am18x5Lock lock;
     uint8_t currValue = 0x00;
@@ -945,6 +972,48 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
                     instance->setAlarm(false);
                     instance->alarmHandler_(instance->alarmHandlerContext_);
                 }
+            }
+
+            if (!(instance->subscribedOscEvents_) || !(instance->oscEventHandler_)) {
+                continue;
+            }
+            uint8_t oscControl = 0x00;
+            if (instance->readRegister(Am18x5Register::OSC_CONTROL, &oscControl) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            if (!(oscControl & OSC_CONTROL_OFIE_MASK) && !(oscControl & OSC_CONTROL_ACIE_MASK)) {
+                // No oscillator failure interrupts enabled
+                continue;
+            }
+            uint8_t oscStatus = 0x00;
+            if (instance->readRegister(Am18x5Register::OSC_STATUS, &oscStatus) != SYSTEM_ERROR_NONE) {
+                continue;
+            }
+            uint8_t events = 0x00;
+            if (instance->subscribedOscEvents_ & Am18x5OscEvent::XT_OSC_FAILURE) {
+                uint8_t stopped;
+                if (instance->readRegister(Am18x5Register::CONTROL1, &stopped, false, CONTROL1_STOP_MASK, CONTROL1_STOP_SHIFT) != SYSTEM_ERROR_NONE) {
+                    continue;
+                }
+                // When the STOP bit is set or the OSEL bit is set to 1 to select the RC Oscillator,
+                // OF will always be set
+                if (!stopped && !(oscControl & OSC_CONTROL_OSEL_MASK)) {
+                    if (oscStatus & OSC_STATUS_OF_MASK) {
+                        events |= Am18x5OscEvent::XT_OSC_FAILURE;
+                    }
+                }
+            }
+            if (instance->subscribedOscEvents_ & Am18x5OscEvent::AUTO_CAL_FAILURE) {
+                if (oscStatus & OSC_STATUS_ACF_MASK) {
+                    events |= Am18x5OscEvent::AUTO_CAL_FAILURE;
+                }
+            }
+            if (oscStatus & (OSC_STATUS_OF_MASK | OSC_STATUS_ACF_MASK)) {
+                // Clear the oscillator failure flag
+                instance->writeRegister(Am18x5Register::OSC_STATUS, 0, false, true, OSC_STATUS_OF_MASK | OSC_STATUS_ACF_MASK, 0);
+            }
+            if (events) {
+                instance->oscEventHandler_(events, instance->oscEventHandlerContext_);
             }
         }
     }

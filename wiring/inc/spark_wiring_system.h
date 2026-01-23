@@ -1151,6 +1151,14 @@ public:
     int powerGatedByExternalRtc(const particle::SystemExternalRtcSleepConfiguration& conf) {
         return hal_external_rtc_sleep(conf.config(), nullptr);
     }
+
+    int onExternalRtcOscEvents(uint8_t events, particle::Am18x5OscEventHandler handler, void* context) {
+        return hal_external_rtc_on_osc_events(events, handler, context, nullptr);
+    }
+
+    int getExternalRtcOscSource(particle::Am18x5Oscillator* source) {
+        return hal_external_rtc_get_oscillator_source(source, nullptr);
+    }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 private:
