@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,13 +20,14 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-
 #include "time.h"
-#include "static_recursive_mutex.h"
 #include "concurrent_hal.h"
 #include "i2c_hal.h"
+#include "gpio_hal.h"
+#include "enumclass.h"
 
+#define HAL_AM18X5_CONFIG_VERSION               1
+#define HAL_EXRTC_ID_STR_LEN                    18
 
 namespace particle {
 
@@ -89,13 +90,13 @@ enum class Am18x5Register : uint8_t {
     EXTENSION_RAM_ADDRESS           = 0x3F
 };
 
-enum class HourFormat {
+enum class HourFormat : uint8_t {
     HOUR24,
     HOUR12_AM,
     HOUR12_PM
 };
 
-enum class Weekday {
+enum class Weekday : uint8_t {
     MONDAY = 0,
     TUESDAY = 1,
     WEDNESDAY = 2,
@@ -105,48 +106,153 @@ enum class Weekday {
     SUNDAY = 6
 };
 
-enum class Am18x5Oscillator {
-    INTERNAL_RC,
-    EXTERNAL_CRYSTAL
+enum class Am18x5Oscillator : uint8_t {
+    INTERNAL_RC = 0x00,
+    EXTERNAL_CRYSTAL = 0x01
 };
 
-enum class Am18x5WatchdogFrequency {
+enum class Am18x5WatchdogFrequency : uint8_t {
     HZ_16 = 0x00,
     HZ_4 = 0x01,
     HZ_1 = 0x02,
     HZ_1_4 = 0x03
 };
 
-enum class Am18x5TimerFrequency {
+enum class Am18x5TimerFrequency : uint8_t {
+    HZ_4096 = 0x00,
     HZ_64 = 0x01,
     HZ_1 = 0x02,
     HZ_1_60 = 0x03
 };
 
+enum class Am18x5ExtiPolarity : uint8_t {
+    NONE = 0,
+    FALLING = 1,
+    RISING = 2
+};
+
+enum class Am18x5SqwFrequency : uint8_t {
+    HZ_32768 = 0x01,
+    HZ_8192 = 0x02,
+    HZ_4096 = 0x03,
+    HZ_2048 = 0x04,
+    HZ_1024 = 0x05,
+    HZ_512 = 0x06,
+    HZ_256 = 0x07,
+    HZ_128 = 0x08,
+    HZ_64 = 0x09,
+    HZ_32 = 0x0A,
+    HZ_16 = 0x0B,
+    HZ_8 = 0x0C,
+    HZ_4 = 0x0D,
+    HZ_2 = 0x0E,
+    HZ_1 = 0x0F,
+    // TODO: Add more values
+};
+
+enum class Am18x5AutoCalibration : uint8_t {
+    AUTO_CAL_DISABLE = 0x00,
+    AUTO_CAL_EVERY_1024_SEC = 0x02,
+    AUTO_CAL_EVERY_512_SEC = 0x03,
+};
+
+enum Am18x5OscEvent : uint8_t {
+    XT_OSC_FAILURE = 0x01,
+    AUTO_CAL_FAILURE = 0x02
+};
+
+typedef void (*Am18x5OscEventHandler)(uint8_t event, void* context);
+
+typedef struct hal_am18x5_config_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t default_rtc;
+    uint8_t wdi_pin;
+    uint8_t int_pin;
+    hal_i2c_interface_t i2c_if;
+    uint8_t rc_fallback;
+    uint8_t rc_on_battery;
+    Am18x5Oscillator osc_src;
+    int8_t osc_cal_xt;
+    uint8_t clk_out_en;
+    Am18x5SqwFrequency clk_out_freq;
+    Am18x5AutoCalibration auto_calibration;
+} __attribute__((packed)) hal_am18x5_config_t;
+
+typedef struct hal_am18x5_sleep_config_t {
+    uint16_t version;
+    uint16_t size;
+    Am18x5ExtiPolarity exti_polarity;
+    bool exti_trigger_latched;
+    system_tick_t duration; // in seconds
+} __attribute__((packed)) hal_am18x5_sleep_config_t;
+
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
+    int setConfig(const hal_am18x5_config_t* config);
+    int getConfig(hal_am18x5_config_t* config);
+
+    bool isDefault() const;
+    bool isPresent() const { return initialized_; }
     int begin();
     int end();
     int sync();
+    int reset();
 
     int setTime(const struct timeval* tv) const;
     int getTime(struct timeval* tv) const;
+    bool isTimeValid(struct timeval* tv = nullptr) const;
 
-    int setAlarm(const struct timeval* tv);
+    int setAlarm(bool enable, uint32_t flags = 0, const struct timeval* tv = nullptr, AlarmHandler handler = nullptr, void* context = nullptr);
     int getAlarm(struct timeval* tv) const;
-    int enableAlarm(bool enable, AlarmHandler handler, void* context);
 
-    int enableWatchdog(uint8_t value, Am18x5WatchdogFrequency frequency) const;
+    int enableWatchdog(system_tick_t ms);
     int disableWatchdog() const;
     int feedWatchdog() const;
+    void getWatchdogLimits(system_tick_t* low, system_tick_t* high) const;
+    bool isWatchdogStarted() const;
 
-    // TODO: woken up by alarm and watchdog timer.
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
-    int sleep(uint8_t ticks, Am18x5TimerFrequency frequency) const;
+    int sleep(const hal_am18x5_sleep_config_t* config);
 
-    int getPartNumber(uint16_t* id) const;
+    int getIdString(char* id, size_t len) const;
+
+    int getOscillatorSource(Am18x5Oscillator* source);
+    int onOscillatorEvent(uint8_t events, Am18x5OscEventHandler handler, void* context);
+
+    int lock();
+    int unlock();
+
+    static Am18x5& getInstance();
+
+private:
+    Am18x5();
+    ~Am18x5();
+
+    int detect();
+    int applyConfig();
+
+    int setPsw(bool val) const; // This is dangerous, make it private for now!
+
+    int setHundredths(uint8_t hundredths) const;
+    int setSeconds(uint8_t seconds) const;
+    int setMinutes(uint8_t minutes) const;
+    int setHours(uint8_t hours, HourFormat format) const;
+    int setDate(uint8_t datee) const;
+    int setMonths(uint8_t months) const;
+    int setYears(uint8_t years) const;
+    int setWeekday(uint8_t weekday) const;
+
+    int getHundredths() const;
+    int getSeconds() const;
+    int getMinutes() const;
+    int getHours(HourFormat* format) const;
+    int getDate() const;
+    int getMonths() const;
+    int getYears() const;
+    int getWeekday() const;
 
     /*
      * The XT oscillator calibration value is determined by the following process:
@@ -167,35 +273,8 @@ public:
      */
     int xtOscillatorDigitalCalibration(int adjVal) const;
 
-    int lock();
-    int unlock();
-
-    static Am18x5& getInstance();
-
-private:
-    Am18x5();
-    ~Am18x5();
-
-    int setHundredths(uint8_t hundredths) const;
-    int setSeconds(uint8_t seconds) const;
-    int setMinutes(uint8_t minutes) const;
-    int setHours(uint8_t hours, HourFormat format) const;
-    int setDate(uint8_t datee) const;
-    int setMonths(uint8_t months) const;
-    int setYears(uint8_t years) const;
-    int setWeekday(uint8_t weekday) const;
-
-    int getHundredths() const;
-    int getSeconds() const;
-    int getMinutes() const;
-    int getHours(HourFormat* format) const;
-    int getDate() const;
-    int getMonths() const;
-    int getYears() const;
-    int getWeekday() const;
-
-    int selectOscillator(Am18x5Oscillator oscillator) const;
-    int enableAutoSwitchOnBattery(bool enable) const;
+    int enableClkOut(Am18x5SqwFrequency freq);
+    int disableClkOut();
 
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
@@ -203,17 +282,26 @@ private:
     int readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
 
-    static constexpr uint16_t PART_NUMBER = 0x1805;
+    static constexpr uint16_t AM1805_PART_NUMBER = 0x1805;
+    static constexpr uint8_t AM18X5_I2C_ADDR = 0x69;
+    static constexpr uint8_t AM18X5_ID_COUNT = 7;
+    static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
-    uint8_t address_;
-    hal_i2c_interface_t wire_;
+    bool disableI2cOnEnded_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;
     os_thread_t exRtcWorkerThread_;
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
+    hal_am18x5_config_t config_;
+    uint8_t watchdogValue_;
+    uint8_t ids_[AM18X5_ID_COUNT];
+
+    uint8_t subscribedOscEvents_;
+    Am18x5OscEventHandler oscEventHandler_;
+    void* oscEventHandlerContext_;
 }; // class Am18x5
 
 
@@ -253,7 +341,5 @@ private:
 };
 
 } // namespace particle
-
-#endif // HAL_PLATFORM_EXTERNAL_RTC
 
 #endif // AM18X5_H

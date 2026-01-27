@@ -26,6 +26,7 @@
 #include "system_tick_hal.h"
 #include <stdint.h>
 #include <time.h>
+#include "am18x5.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,9 +48,11 @@ int hal_exrtc_feed_watchdog(void* reserved);
 
 int hal_exrtc_sleep_timer(system_tick_t ms, void* reserved);
 
-int hal_exrtc_calibrate_xt(int adjValue, void* reserved);
-
 void hal_exrtc_get_watchdog_limits(system_tick_t* low, system_tick_t* high, void* reserved);
+
+int hal_exrtc_set_config(const particle::hal_am18x5_config_t* conf, void* reserved);
+int hal_exrtc_get_config(particle::hal_am18x5_config_t* conf, void* reserved);
+int hal_exrtc_get_id(char* buf, size_t len, void* reserved);
 
 #ifdef __cplusplus
 }

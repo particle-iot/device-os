@@ -24,6 +24,8 @@
 #include "check.h"
 #include "system_error.h"
 #include "am18x5.h"
+#include "eeprom_hal.h"
+#include "service_debug.h"
 
 using namespace particle;
 
@@ -34,8 +36,33 @@ const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 } // anonymous
 
 int hal_exrtc_init(void* reserved) {
-    (void)Am18x5::getInstance();
-    return 0;
+    hal_am18x5_config_t config = {};
+    config.version = HAL_AM18X5_CONFIG_VERSION;
+    config.size = sizeof(hal_am18x5_config_t);
+    if (Am18x5::getInstance().getConfig(&config) != SYSTEM_ERROR_NONE) {
+        int8_t calValue = 0; 
+        size_t eepromSize = HAL_EEPROM_Length();
+        SPARK_ASSERT(eepromSize >= 4);
+        HAL_EEPROM_Get(eepromSize - 4, &calValue, sizeof(calValue));
+        if (calValue < -65 || calValue > -25) {
+            calValue = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+        }
+        config.default_rtc = false;
+        config.wdi_pin = RTC_WDI;
+        config.int_pin = RTC_INT;
+        config.i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C;
+        config.rc_fallback = false;
+        config.rc_on_battery = false;
+        config.osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL;
+        config.osc_cal_xt = calValue;
+        config.clk_out_en = false;
+        config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+        config.auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE;
+        if (Am18x5::getInstance().setConfig(&config) != SYSTEM_ERROR_NONE) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
+    return Am18x5::getInstance().begin();
 }
 
 int hal_exrtc_set_time(const struct timeval* tv, void* reserved) {
@@ -47,28 +74,11 @@ int hal_exrtc_get_time(struct timeval* tv, void* reserved) {
 }
 
 int hal_exrtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_exrtc_alarm_handler handler, void* context, void* reserved) {
-    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
-    struct timeval alarm = *tv;
-    if (flags & HAL_RTC_ALARM_FLAG_IN) {
-        struct timeval now;
-        CHECK(hal_exrtc_get_time(&now, nullptr));
-        timeradd(&now, tv, &alarm);
-    }
-    CHECK(Am18x5::getInstance().setAlarm(&alarm));
-    CHECK(Am18x5::getInstance().enableAlarm(true, handler, context));
-
-    int res = CHECK(Am18x5::getInstance().getAlarm(&alarm));
-    struct timeval now;
-    CHECK(hal_exrtc_get_time(&now, nullptr));
-    // If alarm time is in the past and it hasn't fired
-    if (timercmp(&alarm, &now, <) && res == 0) {
-        return SYSTEM_ERROR_TIMEOUT;
-    }
-    return 0;
+    return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context);
 }
 
 int hal_exrtc_cancel_alarm(void* reserved) {
-    return Am18x5::getInstance().enableAlarm(false, nullptr, nullptr);
+    return Am18x5::getInstance().setAlarm(false);
 }
 
 bool hal_exrtc_time_is_valid(void* reserved) {
@@ -80,25 +90,7 @@ bool hal_exrtc_time_is_valid(void* reserved) {
 }
 
 int hal_exrtc_enable_watchdog(system_tick_t ms, void* reserved) {
-    uint8_t value; // Maximum 31.
-    Am18x5WatchdogFrequency frequency;
-    if (ms < 1937) { // 31 * 1000 / 16
-        frequency = Am18x5WatchdogFrequency::HZ_16;
-        value = ms * 16 / 1000;
-    } else if (ms <= 7750) {
-        frequency = Am18x5WatchdogFrequency::HZ_4;
-        value = ms * 4 / 1000;
-    } else if (ms <= 31000) {
-        frequency = Am18x5WatchdogFrequency::HZ_1;
-        value = ms / 1000;
-    } else if (ms <= 124000) {
-        frequency = Am18x5WatchdogFrequency::HZ_1_4;
-        value = ms / 4 / 1000;
-    } else {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    CHECK_TRUE(value > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-    return Am18x5::getInstance().enableWatchdog(value, frequency);
+    return Am18x5::getInstance().enableWatchdog(ms);
 }
 
 int hal_exrtc_disable_watchdog(void* reserved) {
@@ -110,36 +102,30 @@ int hal_exrtc_feed_watchdog(void* reserved) {
 }
 
 int hal_exrtc_sleep_timer(system_tick_t ms, void* reserved) {
-    uint8_t ticks;
-    Am18x5TimerFrequency frequency;
-    if (ms <= 3984) { // 255 * 1000 / 64
-        frequency = Am18x5TimerFrequency::HZ_64;
-        ticks = ms * 64 / 1000;
-    } else if (ms <= 255000) {
-        frequency = Am18x5TimerFrequency::HZ_1;
-        ticks = ms / 1000;
-    } else if (ms <= 15300000) {
-        frequency = Am18x5TimerFrequency::HZ_1_60;
-        ticks = ms / 60 / 1000;
-    } else {
-        // TODO: use alarm or watchdog as the wakeup source
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-    CHECK_TRUE(ticks > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-    return Am18x5::getInstance().sleep(ticks, frequency);
-}
-
-int hal_exrtc_calibrate_xt(int adjValue, void* reserved) {
-    return Am18x5::getInstance().xtOscillatorDigitalCalibration(adjValue);
+    hal_am18x5_sleep_config_t sleepConfig = {
+        .version = HAL_AM18X5_CONFIG_VERSION,
+        .size = sizeof(hal_am18x5_sleep_config_t),
+        .exti_polarity = Am18x5ExtiPolarity::NONE,
+        .exti_trigger_latched = false,
+        .duration = ms / 1000
+    };
+    return Am18x5::getInstance().sleep(&sleepConfig);
 }
 
 void hal_exrtc_get_watchdog_limits(system_tick_t* low, system_tick_t* high, void* reserved) {
-    if (low) {
-        *low = 63; // round(Am18x5WatchdogFrequency::HZ_16 * 1)
-    }
-    if (high) {
-        *high = 124000; // // round(Am18x5WatchdogFrequency::HZ_1_4 * 31)
-    }
+    Am18x5::getInstance().getWatchdogLimits(low, high);
+}
+
+int hal_exrtc_set_config(const hal_am18x5_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().setConfig(conf);
+}
+
+int hal_exrtc_get_config(hal_am18x5_config_t* conf, void* reserved) {
+    return Am18x5::getInstance().getConfig(conf);
+}
+
+int hal_exrtc_get_id(char* buf, size_t len, void* reserved) {
+    return Am18x5::getInstance().getIdString(buf, len);
 }
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC
