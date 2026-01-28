@@ -107,7 +107,9 @@ DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t
 DYNALIB_FN(BASE_IDX + 29, hal, hal_exrtc_set_config, int(const particle::hal_am18x5_config_t*, void*))
 DYNALIB_FN(BASE_IDX + 30, hal, hal_exrtc_get_config, int(particle::hal_am18x5_config_t*, void*))
 DYNALIB_FN(BASE_IDX + 31, hal, hal_exrtc_get_id, int(char*, size_t, void*))
-#define BASE_IDX2 (BASE_IDX + 32)
+DYNALIB_FN(BASE_IDX + 32, hal, hal_exrtc_set_time, int(const struct timeval*, void*))
+DYNALIB_FN(BASE_IDX + 33, hal, hal_exrtc_get_time, int(struct timeval*, void*))
+#define BASE_IDX2 (BASE_IDX + 34)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)
 #endif
