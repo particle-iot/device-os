@@ -117,24 +117,6 @@ test(03_check_local_env_update) {
 	assertTrue(System.getEnv("APP_VAR5") == "false");
 	assertTrue(System.getEnv("RAND_VAR") == nonce);
 
-#if 0
-	// Int conversion with default value
-	assertTrue(System.getEnv("APP_VAR1", -1) == -1); // "abcdef" -> invalid int, return default
-	assertTrue(System.getEnv("APP_VAR2", -2) == 123); // "123" -> valid int
-	assertTrue(System.getEnv("APP_VAR3", -3) == 0);   // "0" -> valid int
-	assertTrue(System.getEnv("APP_VAR4", -4) == -4);  // "true" -> invalid int, return default
-	assertTrue(System.getEnv("APP_VAR5", -5) == -5);  // "false" -> invalid int, return default
-
-	// Bool conversion with default value
-	// Only "true" and "false" (case-sensitive, lowercase) are valid bools
-	assertTrue(System.getEnv("APP_VAR1", true) == true);   // "abcdef" -> invalid, return default
-	assertTrue(System.getEnv("APP_VAR1", false) == false); // "abcdef" -> invalid, return default
-	assertTrue(System.getEnv("APP_VAR2", false) == false); // "123" -> invalid bool (not "true"/"false"), return default
-	assertTrue(System.getEnv("APP_VAR3", true) == true);   // "0" -> invalid bool (not "true"/"false"), return default
-	assertTrue(System.getEnv("APP_VAR4", false) == true);  // "true" -> valid bool
-	assertTrue(System.getEnv("APP_VAR5", true) == false);  // "false" -> valid bool
-#endif
-
 	// New reference-based API: bool getEnv(name, bool& value)
 	// Returns true if found AND valid, only modifies value if valid
 	{

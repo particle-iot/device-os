@@ -201,28 +201,6 @@ bool SystemClass::getEnv(const char* name, bool& value) {
     return system_get_env_bool(name, &value, nullptr) == 0;
 }
 
-#if 0
-String SystemClass::getEnv(const char* name, const char* defaultVal) {
-    String val;
-    if (!getEnv(name, val)) {
-        return defaultVal;
-    }
-    return val;
-}
-
-int SystemClass::getEnv(const char* name, int defaultVal) {
-    int val = defaultVal;
-    system_get_env_int(name, &val, nullptr);
-    return val;
-}
-
-bool SystemClass::getEnv(const char* name, bool defaultVal) {
-    bool val = defaultVal;
-    system_get_env_bool(name, &val, nullptr);
-    return val;
-}
-#endif
-
 bool SystemClass::hasEnv(const char* name) {
     int r = system_get_env(name, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
     return r >= 0;

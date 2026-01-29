@@ -121,6 +121,16 @@ int Env::init() {
     return r; // 0 or SYSTEM_ENV_NEED_RESET
 }
 
+int Env::get(const char* name, char* buf, size_t bufSize) {
+    auto it = vars_.entries.find(name);
+    if (it == vars_.entries.end()) {
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
+    }
+    const auto& var = it->second;
+    CHECK(readValue(var, buf, bufSize));
+    return var.valSize;
+}
+
 int Env::get(const char* name, CString& val) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
@@ -134,16 +144,6 @@ int Env::get(const char* name, CString& val) {
     auto v = CString::wrap(buf); // Takes ownership over the buffer
     CHECK(readValue(var, buf, var.valSize + 1));
     val = std::move(v);
-    return var.valSize;
-}
-
-int Env::get(const char* name, char* buf, size_t bufSize) {
-    auto it = vars_.entries.find(name);
-    if (it == vars_.entries.end()) {
-        return SYSTEM_ERROR_ENV_NOT_FOUND;
-    }
-    const auto& var = it->second;
-    CHECK(readValue(var, buf, bufSize));
     return var.valSize;
 }
 
@@ -388,35 +388,6 @@ int Env::readVars(VarSource src, fs::File& file, Vars& vars) {
     }
     return 0;
 }
-
-#if 0
-CString getEnv(const char* name, const char* defaultVal) {
-    CString val;
-    int r = Env::instance().get(name, val);
-    if (r < 0) {
-        return defaultVal;
-    }
-    return val;
-}
-
-int getEnv(const char* name, int defaultVal) {
-    int val;
-    int r = Env::instance().get(name, val);
-    if (r < 0) {
-        return defaultVal;
-    }
-    return val;
-}
-
-bool getEnv(const char* name, bool defaultVal) {
-    bool val;
-    int r = Env::instance().get(name, val);
-    if (r < 0) {
-        return defaultVal;
-    }
-    return val;
-}
-#endif
 
 } // particle::system
 

@@ -43,12 +43,10 @@ public:
 
     int init();
 
-    int get(const char* name, CString& val);
     int get(const char* name, char* buf, size_t bufSize);
+    int get(const char* name, CString& val);
     int get(const char* name, int& val);
     int get(const char* name, bool& val);
-
-    int clear();
 
     bool has(const char* name) const {
         return vars_.entries.has(name);
@@ -93,6 +91,8 @@ public:
     bool hasSnapshot() const {
         return snapshotFile_.isOpen();
     }
+
+    int clear();
 
     // Reimplemented from SystemAssetHandler
     int updateAsset(const Asset& asset, InputStream& data) override;
@@ -151,16 +151,12 @@ private:
  *         `false` if the variable is not defined or an error occurred.
  *
  * Example:
- *
- * XXX (Sergey): This example and perhaps the API itself encourages a bad pattern that involves two
- * dynamic memory allocations
- *
  * ```
- * CString value = "default";
+ * CString value; // Do not assign a default value here to avoid unnecessary memory allocation
  * if (getEnv("MY_VAR", value)) {
  *     // value now contains the env var value
  * } else {
- *     // value still contains "default"
+ *     value = "default";
  * }
  * ```
  */
@@ -266,36 +262,6 @@ inline bool getEnv(const char* name, int& val) {
 inline bool hasEnv(const char* name) {
     return Env::instance().has(name);
 }
-
-#if 0
-// XXX (Sergey): The API taking a default value conflicts with the reference-based API
-/**
- * Get the value of an environment variable.
- *
- * @param name Variable name.
- * @param defaultVal Default value.
- * @return Variable value if defined, or the default value.
- */
-CString getEnv(const char* name, const char* defaultVal);
-
-/**
- * Get the value of an environment variable and convert it to `int`.
- *
- * @param name Variable name.
- * @param defaultVal Default value.
- * @return Variable value if defined and can be represented as an `int`, or the default value.
- */
-int getEnv(const char* name, int defaultVal);
-
-/**
- * Get the value of an environment variable and convert it to `bool`.
- *
- * @param name Variable name.
- * @param defaultVal Default value.
- * @return Variable value if defined and can be represented as a `bool`, or the default value.
- */
-bool getEnv(const char* name, bool defaultVal);
-#endif
 
 } // particle::system
 
