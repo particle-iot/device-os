@@ -1120,6 +1120,8 @@ public:
     }
 
 #if HAL_PLATFORM_ENV_VARS
+    static String getEnv(const char* name);
+
     // Primary string-first API - returns true if found, modifies value only on success
     static bool getEnv(const char* name, String& value);
 
@@ -1131,10 +1133,12 @@ public:
     // Returns true if found AND valid, modifies value only on success
     static bool getEnv(const char* name, int& value);
 
-    // Backward-compatible overloads with default values
-    static String getEnv(const char* name, const char* defaultVal = "");
+#if 0
+    // XXX (Sergey): The API taking a default value conflicts with the reference-based API
+    static String getEnv(const char* name, const char* defaultVal);
     static int getEnv(const char* name, int defaultVal);
     static bool getEnv(const char* name, bool defaultVal);
+#endif
 
     static bool hasEnv(const char* name);
 

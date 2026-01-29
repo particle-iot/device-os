@@ -24,10 +24,11 @@
 #include "spark_wiring_buffer.h"
 #include "spark_wiring_string.h"
 #include "ota_flash_hal.h"
-#include "stream.h"
 #include "asset_manager_api.h"
 
 namespace particle {
+
+class InputStream;
 
 enum class AssetType {
     DEFAULT = 0,
@@ -101,6 +102,7 @@ inline bool Asset::operator!=(const Asset& other) const {
 class AssetReader {
 public:
     AssetReader();
+    ~AssetReader();
 
     int init(InputStream* stream);
     int init(const char* filename);

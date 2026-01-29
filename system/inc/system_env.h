@@ -21,6 +21,8 @@
 
 #if HAL_PLATFORM_ENV_VARS
 
+#ifdef __cplusplus
+
 #include <memory>
 
 #include "asset_manager.h"
@@ -32,12 +34,12 @@
 
 namespace particle::system {
 
-class EnvVars: public SystemAssetHandler {
+class Env: public SystemAssetHandler {
 public:
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
-    EnvVars(const EnvVars&) = delete;
-    ~EnvVars();
+    Env(const Env&) = delete;
+    ~Env();
 
     int init();
 
@@ -97,9 +99,9 @@ public:
     int removeAsset(const Asset& asset) override;
     AssetStorageOption storageOptionForAsset(const Asset& asset) override;
 
-    EnvVars& operator=(const EnvVars&) = delete;
+    Env& operator=(const Env&) = delete;
 
-    static EnvVars& instance();
+    static Env& instance();
 
 private:
     enum VarSource {
@@ -124,7 +126,7 @@ private:
     fs::File appFile_;
     fs::File snapshotFile_;
 
-    EnvVars() = default; // Use instance()
+    Env() = default; // Use instance()
 
     int updateBootloaderVars();
     int readValue(const VarEntry& var, char* buf, size_t bufSize);
@@ -149,6 +151,10 @@ private:
  *         `false` if the variable is not defined or an error occurred.
  *
  * Example:
+ *
+ * XXX (Sergey): This example and perhaps the API itself encourages a bad pattern that involves two
+ * dynamic memory allocations
+ *
  * ```
  * CString value = "default";
  * if (getEnv("MY_VAR", value)) {
@@ -159,7 +165,7 @@ private:
  * ```
  */
 inline bool getEnv(const char* name, CString& val) {
-    return EnvVars::instance().get(name, val) >= 0;
+    return Env::instance().get(name, val) >= 0;
 }
 
 /**
@@ -178,7 +184,7 @@ inline bool getEnv(const char* name, CString& val) {
  *         `false` if the variable is not defined or an error occurred.
  */
 inline bool getEnv(const char* name, char* buf, size_t bufSize) {
-    return EnvVars::instance().get(name, buf, bufSize) >= 0;
+    return Env::instance().get(name, buf, bufSize) >= 0;
 }
 
 /**
@@ -213,7 +219,7 @@ inline bool getEnv(const char* name, char* buf, size_t bufSize) {
  * ```
  */
 inline bool getEnv(const char* name, bool& val) {
-    return EnvVars::instance().get(name, val) == 0;
+    return Env::instance().get(name, val) == 0;
 }
 
 /**
@@ -248,7 +254,7 @@ inline bool getEnv(const char* name, bool& val) {
  * ```
  */
 inline bool getEnv(const char* name, int& val) {
-    return EnvVars::instance().get(name, val) == 0;
+    return Env::instance().get(name, val) == 0;
 }
 
 /**
@@ -258,9 +264,11 @@ inline bool getEnv(const char* name, int& val) {
  * @return `true` if the variable is defined, otherwise `false`.
  */
 inline bool hasEnv(const char* name) {
-    return EnvVars::instance().has(name);
+    return Env::instance().has(name);
 }
 
+#if 0
+// XXX (Sergey): The API taking a default value conflicts with the reference-based API
 /**
  * Get the value of an environment variable.
  *
@@ -287,7 +295,87 @@ int getEnv(const char* name, int defaultVal);
  * @return Variable value if defined and can be represented as a `bool`, or the default value.
  */
 bool getEnv(const char* name, bool defaultVal);
+#endif
 
 } // particle::system
+
+extern "C" {
+#endif // defined(__cplusplus)
+
+#include <stdbool.h>
+
+#define SYSTEM_ENV_NEED_RESET 1
+
+/**
+ * Get the value of an environment variable.
+ *
+ * The output is always null-terminated unless the size of the output buffer is 0.
+ *
+ * @param name Variable name.
+ * @param buf Output buffer.
+ * @param buf_size Size of the output buffer.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the actual length of the variable value, not including `\0`, otherwise an
+ *         error code defined by `system_error_t`. The returned length can be greater than the size
+ *         of the output buffer. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is not defined.
+ */
+int system_get_env(const char* name, char* buf, size_t buf_size, void* reserved);
+
+/**
+ * Get the value of an environment variable and convert it to an integer.
+ *
+ * Only decimal digits with an optional leading minus sign are valid.
+ *
+ * @param name Variable name.
+ * @param[out] val Output value. Only modified if the variable is defined and valid.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 if the variable is defined and contains a valid integer, otherwise an error code
+ *         defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is not
+ *         defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid integer or is
+ *         not in the range representable by `int`.
+ */
+int system_get_env_int(const char* name, int* val, void* reserved);
+
+/**
+ * Get the value of an environment variable and convert it to a boolean.
+ *
+ * Only `true` and `false` (case-sensitive, lowercase only) are valid.
+ *
+ * @param name Variable name.
+ * @param[out] val Output value. Only modified if the variable is defined and valid.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 if the variable is defined and contains a valid boolean value, otherwise an error code
+ *         defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is not
+ *         defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid boolean.
+ */
+int system_get_env_bool(const char* name, bool* val, void* reserved);
+
+/**
+ * List all defined environment variables.
+ *
+ * @param[out] names Array to store the variable names.
+ * @param count Maximum number of elements that can be stored in the array.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return On success, the actual number of defined variables, otherwise an error code defined by
+ *         `system_error_t`. The returned number of variables can be greater than the size of the
+ *         output array.
+ */
+int system_list_env(const char* names[], size_t count, void* reserved);
+
+/**
+ * Clear all defined environment variables.
+ *
+ * The variables will be cleared next time the device boots.
+ *
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 or `SYSTEM_ENV_NEED_RESET` on success, otherwise an error code defined by
+ *         `system_error_t`. `SYSTEM_ENV_NEED_RESET` indicates that a system reset is needed for
+ *         the changes to take effect.
+ */
+int system_clear_env(void* reserved);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // HAL_PLATFORM_ENV_VARS

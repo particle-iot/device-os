@@ -30,10 +30,10 @@
 #include "flash_mal.h"
 #include "endian_util.h"
 #include "scope_guard.h"
+#include "system_env.h"
 #include "system_cache.h"
 #include "system_defs.h"
 #include "ota_module.h"
-#include "env_vars.h"
 
 namespace particle {
 
@@ -430,7 +430,7 @@ SystemAssetHandler* AssetManager::systemHandlerForAssetType(AssetType type) {
 #if HAL_PLATFORM_ENV_VARS
     case AssetType::ENV_VARS_APP:
     case AssetType::ENV_VARS_SNAPSHOT: {
-        handler = &EnvVars::instance();
+        handler = &Env::instance();
         break;
     }
 #endif // HAL_PLATFORM_ENV_VARS
@@ -452,6 +452,9 @@ AssetReader::AssetReader()
           originalSize_(0),
           dataOffset_(0),
           dataSize_(0) {
+}
+
+AssetReader::~AssetReader() {
 }
 
 int AssetReader::init(const char* filename) {

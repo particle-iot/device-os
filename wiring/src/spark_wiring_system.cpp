@@ -7,7 +7,7 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
-#include "system_config.h"
+#include "system_env.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -165,6 +165,12 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
 
 #if HAL_PLATFORM_ENV_VARS
 
+String SystemClass::getEnv(const char* name) {
+    String s;
+    getEnv(name, s);
+    return s;
+}
+
 bool SystemClass::getEnv(const char* name, String& value) {
     char buf[128] = {};
     int n = system_get_env(name, buf, sizeof(buf), nullptr /* reserved */);
@@ -178,7 +184,7 @@ bool SystemClass::getEnv(const char* name, String& value) {
     if (n < (int)sizeof(buf)) {
         std::memcpy(&s[0u], buf, n);
     } else {
-        int r = system_get_env_var(name, &s[0u], n, nullptr /* reserved */);
+        int r = system_get_env(name, &s[0u], n, nullptr /* reserved */);
         if (r < 0) {
             return false;
         }
@@ -195,7 +201,8 @@ bool SystemClass::getEnv(const char* name, bool& value) {
     return system_get_env_bool(name, &value, nullptr) == 0;
 }
 
-String SystemClass::envVar(const char* name, const char* defaultVal) {
+#if 0
+String SystemClass::getEnv(const char* name, const char* defaultVal) {
     String val;
     if (!getEnv(name, val)) {
         return defaultVal;
@@ -203,17 +210,18 @@ String SystemClass::envVar(const char* name, const char* defaultVal) {
     return val;
 }
 
-int SystemClass::envVar(const char* name, int defaultVal) {
+int SystemClass::getEnv(const char* name, int defaultVal) {
     int val = defaultVal;
     system_get_env_int(name, &val, nullptr);
     return val;
 }
 
-bool SystemClass::envVar(const char* name, bool defaultVal) {
+bool SystemClass::getEnv(const char* name, bool defaultVal) {
     bool val = defaultVal;
     system_get_env_bool(name, &val, nullptr);
     return val;
 }
+#endif
 
 bool SystemClass::hasEnv(const char* name) {
     int r = system_get_env(name, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
@@ -226,7 +234,7 @@ Vector<const char*> SystemClass::listEnv() {
     return names;
 }
 
-int SystemClass::listEnv(Vector<const char*>& names) {
+int SystemClass::listEnv(Vector<const char*>& namesArg) {
     size_t n = CHECK(system_list_env(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
     Vector<const char*> names;
     if (!names.resize(n)) {

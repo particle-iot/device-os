@@ -39,7 +39,7 @@
 #include "system_setup.h"
 #include "system_power.h"
 #include "system_ble_prov.h"
-#include "system_config.h"
+#include "system_env.h"
 #endif
 
 DYNALIB_BEGIN(system)

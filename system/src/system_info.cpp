@@ -18,6 +18,7 @@
 #include "system_info.h"
 #include "system_cloud_internal.h"
 #include "system_info_encoding.h"
+#include "system_env.h"
 #include "check.h"
 #include "scope_guard.h"
 #include "bytes2hexbuf.h"
@@ -37,8 +38,6 @@ using particle::control::common::EncodedString;
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
 #endif // HAL_PLATFORM_ASSETS
-
-#include "env_vars.h"
 
 #define PB(name) particle_cloud_##name
 
@@ -503,11 +502,11 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
 #endif // HAL_PLATFORM_ASSETS
 
 #if HAL_PLATFORM_ENV_VARS
-    auto envVarsHash = EnvVars::instance().snapshotHash();
-    if (envVarsHash) {
-        static_assert(sizeof(pbDesc.env_vars_hash.bytes) >= EnvVars::SNAPSHOT_HASH_SIZE);
-        std::memcpy(pbDesc.env_vars_hash.bytes, envVarsHash, EnvVars::SNAPSHOT_HASH_SIZE);
-        pbDesc.env_vars_hash.size = EnvVars::SNAPSHOT_HASH_SIZE;
+    auto envSnapshotHash = Env::instance().snapshotHash();
+    if (envSnapshotHash) {
+        static_assert(sizeof(pbDesc.env_vars_hash.bytes) >= Env::SNAPSHOT_HASH_SIZE);
+        std::memcpy(pbDesc.env_vars_hash.bytes, envSnapshotHash, Env::SNAPSHOT_HASH_SIZE);
+        pbDesc.env_vars_hash.size = Env::SNAPSHOT_HASH_SIZE;
         pbDesc.has_env_vars_hash = true;
     }
 #endif // HAL_PLATFORM_ENV_VARS

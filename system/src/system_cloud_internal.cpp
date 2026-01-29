@@ -58,9 +58,9 @@
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
+#include "system_env.h"
 #include "firmware_update.h"
 #include "server_config.h"
-#include "env_vars.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -435,8 +435,8 @@ uint32_t compute_describe_system_checksum()
 	}
 	HAL_System_Info(&info, false, NULL);
 #if HAL_PLATFORM_ENV_VARS
-    if (EnvVars::instance().hasSnapshot()) {
-        checksum += crc(EnvVars::instance().snapshotHash(), EnvVars::SNAPSHOT_HASH_SIZE);
+    if (Env::instance().hasSnapshot()) {
+        checksum += crc(Env::instance().snapshotHash(), Env::SNAPSHOT_HASH_SIZE);
     }
 #endif
     return checksum;

@@ -45,6 +45,7 @@
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
+#include "system_env.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
@@ -71,7 +72,6 @@
 #include "system_network_manager.h"
 #include "ledger/ledger_manager.h"
 #include "ledger/ledger.h"
-#include "env_vars.h"
 
 #include "ota_module.h"
 #include "user_hal.h"
@@ -810,7 +810,7 @@ void app_setup_and_loop(void)
 {
 #if HAL_PLATFORM_ENV_VARS
     // Initialize the env vars as early as possible
-    int r = system::EnvVars::instance().init();
+    int r = system::Env::instance().init();
     if (r == SYSTEM_ENV_NEED_RESET) {
         HAL_Core_System_Reset_Ex(RESET_REASON_CONFIG_UPDATE, 0 /* data */, nullptr /* reserved */);
     }

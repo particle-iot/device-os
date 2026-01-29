@@ -1,4 +1,6 @@
 #include "application.h"
+
+#include "system_env.h"
 #include "random.h"
 
 #include "unit-test/unit-test.h"
@@ -118,6 +120,7 @@ test(03_check_local_env_update) {
 	assertEqual(randVar1.length(), 30);
 	assertTrue(System.getEnv("RAND_VAR2") == randVar1);
 
+#if 0
 	// Int conversion with default value
 	assertTrue(System.getEnv("APP_VAR1", -1) == -1); // "abcdef" -> invalid int, return default
 	assertTrue(System.getEnv("APP_VAR2", -2) == 123); // "123" -> valid int
@@ -133,6 +136,7 @@ test(03_check_local_env_update) {
 	assertTrue(System.getEnv("APP_VAR3", true) == true);   // "0" -> invalid bool (not "true"/"false"), return default
 	assertTrue(System.getEnv("APP_VAR4", false) == true);  // "true" -> valid bool
 	assertTrue(System.getEnv("APP_VAR5", true) == false);  // "false" -> valid bool
+#endif
 
 	// New reference-based API: bool getEnv(name, bool& value)
 	// Returns true if found AND valid, only modifies value if valid

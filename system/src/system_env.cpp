@@ -15,12 +15,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "env_vars.h"
+#include "system_env.h"
 
 #if HAL_PLATFORM_ENV_VARS
 
 #include <algorithm>
 #include <charconv>
+#include <limits>
 #include <cstdlib>
 #include <cstring>
 
@@ -66,10 +67,10 @@ int createEmptyFile(const char* path) {
 
 } // unnamed
 
-EnvVars::~EnvVars() {
+Env::~Env() {
 }
 
-int EnvVars::init() {
+int Env::init() {
     fs::FsLock lock;
     CHECK(fs::mount());
 
@@ -120,7 +121,7 @@ int EnvVars::init() {
     return r; // 0 or SYSTEM_ENV_NEED_RESET
 }
 
-int EnvVars::get(const char* name, CString& val) {
+int Env::get(const char* name, CString& val) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
@@ -136,7 +137,7 @@ int EnvVars::get(const char* name, CString& val) {
     return var.valSize;
 }
 
-int EnvVars::get(const char* name, char* buf, size_t bufSize) {
+int Env::get(const char* name, char* buf, size_t bufSize) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
@@ -146,7 +147,7 @@ int EnvVars::get(const char* name, char* buf, size_t bufSize) {
     return var.valSize;
 }
 
-int EnvVars::get(const char* name, int& val) {
+int Env::get(const char* name, int& val) {
     char buf[16] = {};
     size_t n = CHECK(get(name, buf, sizeof(buf)));
     if (n >= sizeof(buf)) {
@@ -162,7 +163,7 @@ int EnvVars::get(const char* name, int& val) {
     return 0;
 }
 
-int EnvVars::get(const char* name, bool& val) {
+int Env::get(const char* name, bool& val) {
     char buf[16] = {};
     size_t n = CHECK(get(name, buf, sizeof(buf)));
     if (n >= sizeof(buf)) {
@@ -178,7 +179,7 @@ int EnvVars::get(const char* name, bool& val) {
     return 0;
 }
 
-int EnvVars::clear() {
+int Env::clear() {
     if (vars_.entries.isEmpty()) {
         return 0;
     }
@@ -189,7 +190,7 @@ int EnvVars::clear() {
     return SYSTEM_ENV_NEED_RESET;
 }
 
-int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
+int Env::updateAsset(const Asset& asset, InputStream& data) {
     fs::FsLock lock;
 
     const char* path = stagedPathForAssetType(asset.type());
@@ -200,7 +201,7 @@ int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
     return 0;
 }
 
-int EnvVars::removeAsset(const Asset& asset) {
+int Env::removeAsset(const Asset& asset) {
     fs::FsLock lock;
 
     const char* path = stagedPathForAssetType(asset.type());
@@ -212,7 +213,7 @@ int EnvVars::removeAsset(const Asset& asset) {
     return 0;
 }
 
-AssetStorageOption EnvVars::storageOptionForAsset(const Asset& asset) {
+AssetStorageOption Env::storageOptionForAsset(const Asset& asset) {
     if (asset.type() == AssetType::ENV_VARS_SNAPSHOT) {
         // Apps don't depend on snapshot env vars so those are not stored as normal assets
         return AssetStorageOption::DONT_STORE;
@@ -220,18 +221,18 @@ AssetStorageOption EnvVars::storageOptionForAsset(const Asset& asset) {
     return AssetStorageOption::DEFAULT;
 }
 
-EnvVars& EnvVars::instance() {
-    static EnvVars envVars;
-    return envVars;
+Env& Env::instance() {
+    static Env env;
+    return env;
 }
 
-int EnvVars::updateBootloaderVars() {
+int Env::updateBootloaderVars() {
     // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
     // apply the changes and return SYSTEM_ENV_NEED_RESET
     return 0;
 }
 
-int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) {
+int Env::readValue(const VarEntry& var, char* buf, size_t bufSize) {
     if (!bufSize) {
         return 0;
     }
@@ -246,7 +247,7 @@ int EnvVars::readValue(const VarEntry& var, char* buf, size_t bufSize) {
     return 0;
 }
 
-int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged) {
+int Env::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged) {
     // Load the variables bundled with the app
     CHECK(loadVarsForSource(tryStaged, VarSource::APP, appFile, vars, hasStaged));
 
@@ -255,7 +256,7 @@ int EnvVars::loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile,
     return 0;
 }
 
-int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged) {
+int Env::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged) {
     if (tryStaged) {
         auto path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
         int r = loadVarsFile(path, src, file, vars);
@@ -287,7 +288,7 @@ int EnvVars::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Va
     return 0;
 }
 
-int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars) {
+int Env::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars) {
     fs::File f;
     CHECK(f.open(path, LFS_O_RDONLY));
     size_t size = CHECK(f.size());
@@ -303,7 +304,7 @@ int EnvVars::loadVarsFile(const char* path, VarSource src, fs::File& file, Vars&
     return 0;
 }
 
-int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
+int Env::readVars(VarSource src, fs::File& file, Vars& vars) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
@@ -388,9 +389,10 @@ int EnvVars::readVars(VarSource src, fs::File& file, Vars& vars) {
     return 0;
 }
 
+#if 0
 CString getEnv(const char* name, const char* defaultVal) {
     CString val;
-    int r = EnvVars::instance().get(name, val);
+    int r = Env::instance().get(name, val);
     if (r < 0) {
         return defaultVal;
     }
@@ -399,7 +401,7 @@ CString getEnv(const char* name, const char* defaultVal) {
 
 int getEnv(const char* name, int defaultVal) {
     int val;
-    int r = EnvVars::instance().get(name, val);
+    int r = Env::instance().get(name, val);
     if (r < 0) {
         return defaultVal;
     }
@@ -408,13 +410,47 @@ int getEnv(const char* name, int defaultVal) {
 
 bool getEnv(const char* name, bool defaultVal) {
     bool val;
-    int r = EnvVars::instance().get(name, val);
+    int r = Env::instance().get(name, val);
     if (r < 0) {
         return defaultVal;
     }
     return val;
 }
+#endif
 
 } // particle::system
+
+using namespace particle::system;
+
+int system_get_env(const char* name, char* buf, size_t bufSize, void* reserved) {
+    return Env::instance().get(name, buf, bufSize);
+}
+
+int system_get_env_int(const char* name, int* val, void* reserved) {
+    return Env::instance().get(name, *val);
+}
+
+int system_get_env_bool(const char* name, bool* val, void* reserved) {
+    return Env::instance().get(name, *val);
+}
+
+int system_list_env(const char* names[], size_t count, void* reserved) {
+    size_t i = 0;
+    int r = Env::instance().forEach([&](const char* name) -> int {
+        if (i >= count) {
+            return std::numeric_limits<int>::min(); // Break the loop
+        }
+        names[i++] = name;
+        return 0;
+    });
+    if (r < 0 && r != std::numeric_limits<int>::min()) {
+        return r;
+    }
+    return Env::instance().count();
+}
+
+int system_clear_env(void* reserved) {
+    return Env::instance().clear();
+}
 
 #endif // HAL_PLATFORM_ENV_VARS
