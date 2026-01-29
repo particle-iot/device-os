@@ -47,7 +47,6 @@ add_executable( ${target_name}
   string_interpolate.cpp
   usb_control_request_channel.cpp
   server_config.cpp
-  env_vars.cpp
 )
 
 file(STRINGS "${DEVICE_OS_DIR}/build/version.mk" VERSION_STRING REGEX "^VERSION_STRING[ \t\r\n]*=[ \t\r\n]*(.*)$")
