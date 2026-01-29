@@ -811,7 +811,7 @@ void app_setup_and_loop(void)
 #if HAL_PLATFORM_ENV_VARS
     // Initialize the env vars as early as possible
     int r = system::EnvVars::instance().init();
-    if (r == system::EnvVars::NEED_RESET) {
+    if (r == SYSTEM_ENV_NEED_RESET) {
         HAL_Core_System_Reset_Ex(RESET_REASON_CONFIG_UPDATE, 0 /* data */, nullptr /* reserved */);
     }
 #endif // HAL_PLATFORM_ENV_VARS

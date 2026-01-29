@@ -1,5 +1,3 @@
-#include <charconv>
-
 #include "core_hal.h"
 #include "rtc_hal.h"
 #include "rgbled.h"
@@ -167,101 +165,76 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
 
 #if HAL_PLATFORM_ENV_VARS
 
-String SystemClass::envVar(const char* name, const char* defaultVal) {
+bool SystemClass::getEnv(const char* name, String& value) {
+    char buf[128] = {};
+    int n = system_get_env(name, buf, sizeof(buf), nullptr /* reserved */);
+    if (n < 0) {
+        return false;
+    }
     String s;
-    bool found = false;
-    int r = getEnvVar(name, s, &found);
-    if (r < 0 || !found) {
+    if (!s.resize(n)) {
+        return false;
+    }
+    if (n < (int)sizeof(buf)) {
+        std::memcpy(&s[0u], buf, n);
+    } else {
+        int r = system_get_env_var(name, &s[0u], n, nullptr /* reserved */);
+        if (r < 0) {
+            return false;
+        }
+    }
+    value = std::move(s);
+    return true;
+}
+
+bool SystemClass::getEnv(const char* name, int& value) {
+    return system_get_env_int(name, &value, nullptr) == 0;
+}
+
+bool SystemClass::getEnv(const char* name, bool& value) {
+    return system_get_env_bool(name, &value, nullptr) == 0;
+}
+
+String SystemClass::envVar(const char* name, const char* defaultVal) {
+    String val;
+    if (!getEnv(name, val)) {
         return defaultVal;
     }
-    return s;
+    return val;
 }
 
 int SystemClass::envVar(const char* name, int defaultVal) {
-    char buf[32] = {};
-    int found = 0;
-    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
-    if (n < 0 || !found) {
-        return defaultVal;
-    }
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
-        return defaultVal;
-    }
+    int val = defaultVal;
+    system_get_env_int(name, &val, nullptr);
     return val;
 }
 
 bool SystemClass::envVar(const char* name, bool defaultVal) {
-    char buf[32] = {};
-    int found = 0;
-    int n = system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */);
-    if (n < 0 || !found) {
-        return defaultVal;
-    }
-    if (std::strcmp(buf, "true") == 0) {
-        return true;
-    }
-    if (std::strcmp(buf, "false") == 0) {
-        return false;
-    }
-    // Try parsing as a number
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
-        return defaultVal;
-    }
+    bool val = defaultVal;
+    system_get_env_bool(name, &val, nullptr);
     return val;
 }
 
-bool SystemClass::hasEnvVar(const char* name) {
-    int found = 0;
-    int r = system_get_env_var(name, nullptr /* buf */, 0 /* buf_size */, &found, nullptr /* reserved */);
-    if (r < 0) {
-        return false;
-    }
-    return found;
+bool SystemClass::hasEnv(const char* name) {
+    int r = system_get_env(name, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
+    return r >= 0;
 }
 
-Vector<const char*> SystemClass::listEnvVars() {
+Vector<const char*> SystemClass::listEnv() {
     Vector<const char*> names;
-    listEnvVars(names);
+    listEnv(names);
     return names;
 }
 
-int SystemClass::getEnvVar(const char* name, String& val, bool* foundArg) {
-    char buf[128] = {};
-    int found = 0;
-    size_t n = CHECK(system_get_env_var(name, buf, sizeof(buf), &found, nullptr /* reserved */));
-    String s;
-    if (!s.resize(n)) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    if (n < sizeof(buf)) {
-        std::memcpy(&s[0u], buf, n);
-    } else {
-        CHECK(system_get_env_var(name, &s[0u], n, nullptr /* found */, nullptr /* reserved */));
-    }
-    if (foundArg) {
-        *foundArg = found;
-    }
-    val = std::move(s);
-    return 0;
-}
-
-int SystemClass::listEnvVars(Vector<const char*>& namesArg) {
-    size_t n = CHECK(system_list_env_vars(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
+int SystemClass::listEnv(Vector<const char*>& names) {
+    size_t n = CHECK(system_list_env(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
     Vector<const char*> names;
     if (!names.resize(n)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(system_list_env_vars(names.data(), n, nullptr /* reserved */));
+    CHECK(system_list_env(names.data(), n, nullptr /* reserved */));
     namesArg = std::move(names);
     return 0;
-}
-
-int SystemClass::clearEnvVars() {
-    return system_clear_env_vars(nullptr /* reserved */);
 }
 
 #endif // HAL_PLATFORM_ENV_VARS

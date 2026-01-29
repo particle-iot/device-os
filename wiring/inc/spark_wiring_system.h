@@ -1120,16 +1120,25 @@ public:
     }
 
 #if HAL_PLATFORM_ENV_VARS
-    static String envVar(const char* name, const char* defaultVal = "");
-    static int envVar(const char* name, int defaultVal);
-    static bool envVar(const char* name, bool defaultVal);
-    static bool hasEnvVar(const char* name);
-    static Vector<const char*> listEnvVars();
+    // Primary string-first API - returns true if found, modifies value only on success
+    static bool getEnv(const char* name, String& value);
 
-    // Methods with explicit error handling
-    static int getEnvVar(const char* name, String& val, bool* found = nullptr);
-    static int listEnvVars(Vector<const char*>& names);
-    static int clearEnvVars();
+    // Validates if the env is exactly "true" or "false" (case-sensitive, lowercase only)
+    // Returns true if found AND valid, modifies value only on success
+    static bool getEnv(const char* name, bool& value);
+
+    // Validates if the env is a valid integer (32-bit, signed, decimal only)
+    // Returns true if found AND valid, modifies value only on success
+    static bool getEnv(const char* name, int& value);
+
+    // Backward-compatible overloads with default values
+    static String getEnv(const char* name, const char* defaultVal = "");
+    static int getEnv(const char* name, int defaultVal);
+    static bool getEnv(const char* name, bool defaultVal);
+
+    static bool hasEnv(const char* name);
+
+    static Vector<const char*> listEnv();
 #endif // HAL_PLATFORM_ENV_VARS
 
 private:
@@ -1176,6 +1185,10 @@ private:
         }
         handler(events, data, pointer);
     }
+
+#if HAL_PLATFORM_ENV_VARS
+    static int listEnv(Vector<const char*>& names);
+#endif // HAL_PLATFORM_ENV_VARS
 };
 
 extern SystemClass System;

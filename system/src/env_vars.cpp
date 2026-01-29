@@ -117,43 +117,65 @@ int EnvVars::init() {
         // the bootloader
         r = 0;
     }
-    return r; // 0 or Result::NEED_RESET
+    return r; // 0 or SYSTEM_ENV_NEED_RESET
 }
 
 int EnvVars::get(const char* name, CString& val) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
-        val = CString();
-        return 0;
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
     const auto& var = it->second;
     auto buf = (char*)std::malloc(var.valSize + 1);
     if (!buf) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    auto s = CString::wrap(buf); // Takes ownership over the buffer
+    auto v = CString::wrap(buf); // Takes ownership over the buffer
     CHECK(readValue(var, buf, var.valSize + 1));
-    val = std::move(s);
-    return 0;
+    val = std::move(v);
+    return var.valSize;
 }
 
-int EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found) {
+int EnvVars::get(const char* name, char* buf, size_t bufSize) {
     auto it = vars_.entries.find(name);
     if (it == vars_.entries.end()) {
-        if (bufSize > 0) {
-            buf[0] = '\0';
-        }
-        if (found) {
-            *found = false;
-        }
-        return 0;
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
     const auto& var = it->second;
     CHECK(readValue(var, buf, bufSize));
-    if (found) {
-        *found = true;
-    }
     return var.valSize;
+}
+
+int EnvVars::get(const char* name, int& val) {
+    char buf[16] = {};
+    size_t n = CHECK(get(name, buf, sizeof(buf)));
+    if (n >= sizeof(buf)) {
+        return SYSTEM_ERROR_ENV_INVALID_VALUE;
+    }
+    int v = 0;
+    auto r = std::from_chars(buf, buf + n, v);
+    if (r.ec != std::errc() || r.ptr != buf + n) {
+        // Not a valid integer, or has trailing characters
+        return SYSTEM_ERROR_ENV_INVALID_VALUE;
+    }
+    val = v;
+    return 0;
+}
+
+int EnvVars::get(const char* name, bool& val) {
+    char buf[16] = {};
+    size_t n = CHECK(get(name, buf, sizeof(buf)));
+    if (n >= sizeof(buf)) {
+        return SYSTEM_ERROR_ENV_INVALID_VALUE;
+    }
+    if (std::strcmp(buf, "true") == 0) {
+        val = true;
+    } else if (std::strcmp(buf, "false") == 0) {
+        val = false;
+    } else {
+        return SYSTEM_ERROR_ENV_INVALID_VALUE;
+    }
+    return 0;
 }
 
 int EnvVars::clear() {
@@ -164,7 +186,7 @@ int EnvVars::clear() {
     // Create empty staged files for app and snapshot env vars
     CHECK(createEmptyFile(APP_FILE_STAGED));
     CHECK(createEmptyFile(SNAPSHOT_FILE_STAGED));
-    return Result::NEED_RESET;
+    return SYSTEM_ENV_NEED_RESET;
 }
 
 int EnvVars::updateAsset(const Asset& asset, InputStream& data) {
@@ -205,7 +227,7 @@ EnvVars& EnvVars::instance() {
 
 int EnvVars::updateBootloaderVars() {
     // TODO: Check if any variables used by the bootloader changed (none are defined as of now),
-    // apply the changes and return Result::NEED_RESET
+    // apply the changes and return SYSTEM_ENV_NEED_RESET
     return 0;
 }
 
@@ -376,52 +398,21 @@ CString getEnv(const char* name, const char* defaultVal) {
 }
 
 int getEnv(const char* name, int defaultVal) {
-    char buf[32] = {};
-    bool found = false;
-    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
-    if (n < 0 || !found) {
-        return defaultVal;
-    }
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
+    int val;
+    int r = EnvVars::instance().get(name, val);
+    if (r < 0) {
         return defaultVal;
     }
     return val;
 }
 
 bool getEnv(const char* name, bool defaultVal) {
-    char buf[32] = {};
-    bool found = false;
-    int n = EnvVars::instance().get(name, buf, sizeof(buf), &found);
-    if (n < 0 || !found) {
-        return defaultVal;
-    }
-    if (std::strcmp(buf, "true") == 0) {
-        return true;
-    }
-    if (std::strcmp(buf, "false") == 0) {
-        return false;
-    }
-    // Try parsing as a number
-    int val = 0;
-    auto r = std::from_chars(buf, buf + n, val);
-    if (r.ec != std::errc() || r.ptr != buf + n) {
+    bool val;
+    int r = EnvVars::instance().get(name, val);
+    if (r < 0) {
         return defaultVal;
     }
     return val;
-}
-
-int getEnv(const char* name, CString& val) {
-    return EnvVars::instance().get(name, val);
-}
-
-int getEnv(const char* name, char* buf, size_t bufSize, bool* found) {
-    return EnvVars::instance().get(name, buf, bufSize, found);
-}
-
-bool hasEnv(const char* name) {
-    return EnvVars::instance().has(name);
 }
 
 } // particle::system

@@ -126,7 +126,9 @@
         (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
         (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010), \
         (LEDGER_INVALID_RESPONSE, "Invalid response from server", -2011), \
-        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000) /* -3099 ... -3000: HAL errors */
+        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000), /* -3099 ... -3000: HAL errors */ \
+        (ENV_NOT_FOUND, "Variable not found", -4000), /* -4099 ... -4000: Configuration errors */ \
+        (ENV_INVALID_VALUE, "Invalid variable value", -4001)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

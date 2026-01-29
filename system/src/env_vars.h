@@ -29,7 +29,6 @@
 #include "c_string.h"
 
 #include "spark_wiring_map.h"
-#include "spark_wiring_vector.h"
 
 namespace particle::system {
 
@@ -37,17 +36,15 @@ class EnvVars: public SystemAssetHandler {
 public:
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
-    enum Result {
-        NEED_RESET = 1
-    };
-
     EnvVars(const EnvVars&) = delete;
     ~EnvVars();
 
     int init();
 
     int get(const char* name, CString& val);
-    int get(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
+    int get(const char* name, char* buf, size_t bufSize);
+    int get(const char* name, int& val);
+    int get(const char* name, bool& val);
 
     int clear();
 
@@ -139,6 +136,132 @@ private:
 };
 
 /**
+ * Get the value of an environment variable as a string.
+ *
+ * Only modifies the output parameter if the variable is found. If the variable
+ * is not found, the output parameter is left unchanged, allowing callers to
+ * pre-set a default value.
+ *
+ * @param name Variable name.
+ * @param[in,out] val On input, may contain a default value.
+ *                    On output, the variable value if found, otherwise unchanged.
+ * @return `true` if the variable is defined and was retrieved successfully,
+ *         `false` if the variable is not defined or an error occurred.
+ *
+ * Example:
+ * ```
+ * CString value = "default";
+ * if (getEnv("MY_VAR", value)) {
+ *     // value now contains the env var value
+ * } else {
+ *     // value still contains "default"
+ * }
+ * ```
+ */
+inline bool getEnv(const char* name, CString& val) {
+    return EnvVars::instance().get(name, val) >= 0;
+}
+
+/**
+ * Get the value of an environment variable into a character buffer.
+ *
+ * Only modifies the output buffer if the variable is found. If the variable
+ * is not found, the buffer is left unchanged.
+ *
+ * The output is always null-terminated if the variable is found and bufSize > 0.
+ * If the buffer is too small, the value is truncated but still null-terminated.
+ *
+ * @param name Variable name.
+ * @param[out] buf Output buffer. Left unchanged if variable not found.
+ * @param bufSize Size of the output buffer.
+ * @return `true` if the variable is defined and was retrieved successfully,
+ *         `false` if the variable is not defined or an error occurred.
+ */
+inline bool getEnv(const char* name, char* buf, size_t bufSize) {
+    return EnvVars::instance().get(name, buf, bufSize) >= 0;
+}
+
+/**
+ * Get the value of an environment variable and validate it as a boolean.
+ *
+ * Validates that the environment variable contains exactly "true" or "false"
+ * (case-sensitive, lowercase only). Any other value is considered invalid.
+ *
+ * Only modifies the output parameter if the variable is found AND contains
+ * a valid boolean value. If the variable is not found or contains an invalid
+ * value, the output parameter is left unchanged.
+ *
+ * @param name Variable name.
+ * @param[in,out] val On input, may contain a default value.
+ *                    On output, `true` if value is "true",
+ *                    `false` if value is "false",
+ *                    otherwise unchanged.
+ * @return `true` if the variable is defined AND contains a valid boolean value,
+ *         `false` if the variable is not defined, empty, or contains an invalid value.
+ *
+ * Valid values: "true", "false" (lowercase only, case-sensitive)
+ * Invalid values: "TRUE", "FALSE", "True", "1", "0", "yes", "no", "", or any other string
+ *
+ * Example:
+ * ```
+ * bool enabled = true;  // default
+ * if (getEnv("FEATURE_ENABLE", enabled)) {
+ *     // enabled now contains the parsed boolean
+ * } else {
+ *     // enabled still contains true (default)
+ * }
+ * ```
+ */
+inline bool getEnv(const char* name, bool& val) {
+    return EnvVars::instance().get(name, val) == 0;
+}
+
+/**
+ * Get the value of an environment variable and validate it as a 32-bit signed integer.
+ *
+ * Validates that the environment variable contains a valid decimal integer that
+ * fits within int32_t range (-2147483648 to 2147483647). Only decimal digits
+ * with an optional leading minus sign are accepted.
+ *
+ * Only modifies the output parameter if the variable is found AND contains
+ * a valid integer value. If the variable is not found or contains an invalid
+ * value, the output parameter is left unchanged.
+ *
+ * @param name Variable name.
+ * @param[in,out] val On input, may contain a default value.
+ *                    On output, the parsed integer if valid, otherwise unchanged.
+ * @return `true` if the variable is defined AND contains a valid 32-bit signed integer,
+ *         `false` if the variable is not defined, empty, contains non-numeric characters,
+ *         or the value overflows int32_t range.
+ *
+ * Valid values: "0", "123", "-456", "2147483647", "-2147483648"
+ * Invalid values: "", "12.34", "0x1F", "12abc", " 123", "123 ", overflow values
+ *
+ * Example:
+ * ```
+ * int timeout = 30;  // default
+ * if (getEnv("TIMEOUT_SEC", timeout)) {
+ *     // timeout now contains the parsed integer
+ * } else {
+ *     // timeout still contains 30 (default)
+ * }
+ * ```
+ */
+inline bool getEnv(const char* name, int& val) {
+    return EnvVars::instance().get(name, val) == 0;
+}
+
+/**
+ * Check if an environment variable is defined.
+ *
+ * @param name Variable name.
+ * @return `true` if the variable is defined, otherwise `false`.
+ */
+inline bool hasEnv(const char* name) {
+    return EnvVars::instance().has(name);
+}
+
+/**
  * Get the value of an environment variable.
  *
  * @param name Variable name.
@@ -152,7 +275,7 @@ CString getEnv(const char* name, const char* defaultVal);
  *
  * @param name Variable name.
  * @param defaultVal Default value.
- * @return Variable value if defined, or the default value.
+ * @return Variable value if defined and can be represented as an `int`, or the default value.
  */
 int getEnv(const char* name, int defaultVal);
 
@@ -161,48 +284,9 @@ int getEnv(const char* name, int defaultVal);
  *
  * @param name Variable name.
  * @param defaultVal Default value.
- * @return Variable value if defined, or the default value.
+ * @return Variable value if defined and can be represented as a `bool`, or the default value.
  */
 bool getEnv(const char* name, bool defaultVal);
-
-/**
- * Get the value of an environment variable.
- *
- * Alias for `EnvVars::get(const char* name, CString& val)`.
- *
- * @param name Variable name.
- * @param[out] val Variable value. Will be set to a null-initialized string if the variable is
- *             not defined.
- * @return 0 on success, or an error code defined by `system_error_t`.
- */
-int getEnv(const char* name, CString& val);
-
-/**
- * Get the value of an environment variable.
- *
- * The output is always null-terminated unless the size of the output buffer is 0.
- *
- * Alias for `EnvVars::get(const char* name, char* buf, size_t bufSize, bool* found)`.
- *
- * @param name Variable name.
- * @param buf Output buffer.
- * @param bufSize Size of the output buffer.
- * @param[out] found Will be set to `true` if the variable is defined, otherwise to `false`.
- * @return On success, the actual length of the variable value, not including `\0`, or 0 if the
- *         variable is not defined. On failure, an error code defined by `system_error_t`. The
- *         returned length can be greater than the size of the output buffer.
- */
-int getEnv(const char* name, char* buf, size_t bufSize, bool* found = nullptr);
-
-/**
- * Check if an environment variable is defined.
- *
- * Alias for `EnvVars::has(const char* name)`.
- *
- * @param name Variable name.
- * @return `true` if the variable is defined, otherwise `false`.
- */
-bool hasEnv(const char* name);
 
 } // particle::system
 
