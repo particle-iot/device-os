@@ -48,6 +48,7 @@ const unsigned CLOUD_SOCKET_HALF_CLOSED_WAIT_TIMEOUT = 5000;
 } /* anonymous */
 
 int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo, network_handle_t interface, bool flushDnsCache) {
+    int r = 0;
     CHECK_TRUE(info, SYSTEM_ERROR_INVALID_ARGUMENT);
 
     *type = CLOUD_SERVER_ADDRESS_TYPE_NONE;
@@ -125,7 +126,7 @@ int system_cloud_resolv_address(int protocol, const ServerAddress* address, sock
                     if_get_by_index(interface, &iface);
                 }
                 LOG(TRACE, "Resolving %s#%s cache=%d iface=%d", tmphost, tmpserv, !flushDnsCache, interface);
-                netdb_getaddrinfo_ex(tmphost, tmpserv, &hints, info, iface);
+                r = netdb_getaddrinfo_ex(tmphost, tmpserv, &hints, info, iface);
                 *type = CLOUD_SERVER_ADDRESS_TYPE_NEW_ADDRINFO;
                 break;
             }
@@ -133,7 +134,7 @@ int system_cloud_resolv_address(int protocol, const ServerAddress* address, sock
     }
 
     if (*info == nullptr) {
-        LOG(ERROR, "Failed to determine server address");
+        LOG(ERROR, "Failed to determine server address: %d", r);
         return SYSTEM_ERROR_NOT_FOUND;
     }
 
