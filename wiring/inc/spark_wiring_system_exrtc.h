@@ -29,7 +29,7 @@ public:
 
     SystemExternalRtcConfiguration()
             : conf_{} {
-        conf_.version = HAL_AM18X5_CONFIG_VERSION;
+        conf_.version = HAL_EXRTC_API_VERSION;
         conf_.size = sizeof(conf_);
         conf_.wdi_pin = PIN_INVALID;
         conf_.int_pin = PIN_INVALID;
@@ -151,7 +151,7 @@ public:
 
     SystemExternalRtcSleepConfiguration()
             : conf_{} {
-        conf_.version = HAL_AM18X5_CONFIG_VERSION;
+        conf_.version = HAL_EXRTC_API_VERSION;
         conf_.size = sizeof(conf_);
         conf_.exti_polarity = Am18x5ExtiPolarity::NONE;
         conf_.exti_trigger_latched = false;

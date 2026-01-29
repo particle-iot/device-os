@@ -74,26 +74,28 @@ void hal_rtc_init(void) {
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     bool exRtcPresent = false;
 #if HAL_PLATFORM_EXTERNAL_RTC
-    // FIXME: Tracker platform specific as for now
-    hal_am18x5_config_t config = {
-        .version = HAL_AM18X5_CONFIG_VERSION,
-        .size = sizeof(hal_am18x5_config_t),
-        .default_rtc = false,
-        .wdi_pin = RTC_WDI,
-        .int_pin = RTC_INT,
-        .i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C,
-        .rc_fallback = true,
-        .rc_on_battery = false,
-        .osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL,
-        .osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT,
-        .clk_out_en = false,
-        .clk_out_freq = Am18x5SqwFrequency::HZ_32768,
-        .auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE
-    };
-    if (Am18x5::getInstance().setConfig(&config) == SYSTEM_ERROR_NONE) {
-        if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
-            exRtcPresent = true;
-        }
+    hal_am18x5_config_t config = {};
+    config.size = sizeof(hal_am18x5_config_t);
+    if (Am18x5::getInstance().getConfig(&config) != SYSTEM_ERROR_NONE) {
+        config.version = HAL_EXRTC_API_VERSION;
+        config.size = sizeof(hal_am18x5_config_t);
+        config.default_rtc = false;
+        config.wdi_pin = RTC_WDI;
+        config.int_pin = RTC_INT;
+        config.i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C;
+        config.rc_fallback = false;
+        config.rc_on_battery = false;
+        config.osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL;
+        config.osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+        config.clk_out_en = false;
+        config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+        config.auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE;
+        config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+        config.mfg_osc_cal_xt = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+        Am18x5::getInstance().setConfig(&config);
+    }
+    if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+        exRtcPresent = true;
     }
 #else
     if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {

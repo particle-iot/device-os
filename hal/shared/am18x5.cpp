@@ -70,7 +70,7 @@ Am18x5::Am18x5()
           oscEventHandler_(nullptr),
           oscEventHandlerContext_(nullptr) {
     config_ = {};
-    config_.version = HAL_AM18X5_CONFIG_VERSION;
+    config_.version = HAL_EXRTC_API_VERSION;
     config_.size = sizeof(hal_am18x5_config_t);
 }
 
@@ -83,43 +83,100 @@ Am18x5& Am18x5::getInstance() {
     return am18x5;
 }
 
+// Version takes the precedence in case of upgrading/downgrading DVOS firmware
+// The size of the config should keep/increase on version bumped
 int Am18x5::setConfig(const hal_am18x5_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-    if (config->size == 0 || config->i2c_if >= HAL_PLATFORM_I2C_NUM) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    CHECK_TRUE(config->size > 0 && config->i2c_if < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_ARGUMENT);
+    hal_am18x5_config_t cachedConfig = {};
+    int ret = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(hal_am18x5_config_t));
+    if (ret != SYSTEM_ERROR_NOT_FOUND) {
+        CHECK(ret);
     }
-    hal_am18x5_config_t tempData = {};
-    tempData.size = sizeof(hal_am18x5_config_t);
-    tempData.version = HAL_AM18X5_CONFIG_VERSION;
-    int result = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&tempData, sizeof(tempData));
-    if (result != std::min(tempData.size, config->size) ||
-            memcmp(&tempData, config, std::min(tempData.size, config->size)) != 0) {
-        result = SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)config, config->size);
-        if (result < 0) {
-            return result;
+    if (ret == SYSTEM_ERROR_NOT_FOUND) {
+        cachedConfig.size = sizeof(hal_am18x5_config_t);
+        memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
+        cachedConfig.version = HAL_EXRTC_API_VERSION;
+        cachedConfig.size = sizeof(hal_am18x5_config_t);
+        if (cachedConfig.mfg_magic != HAL_EXRTC_MFG_MAGIC) {
+            // Use the runtime calibration value as the MFG value
+            cachedConfig.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+            cachedConfig.mfg_osc_cal_xt = cachedConfig.osc_cal_xt;
+            LOG(TRACE, "EXRTC MFG calibration value is not set. Copy it: %d", cachedConfig.mfg_osc_cal_xt);
         }
+        CHECK(SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, cachedConfig.size));
+        LOG(INFO, "Successfully created EXRTC config, version: %d, size: %d", cachedConfig.version, cachedConfig.size);
+    } else {
+        LOG(INFO, "Existing EXRTC config version: %d, size: %d", cachedConfig.version, cachedConfig.size);
+        int8_t mfgOscCalXt;
+        if (cachedConfig.version >= 2) {
+            SPARK_ASSERT(cachedConfig.mfg_magic == HAL_EXRTC_MFG_MAGIC);
+            mfgOscCalXt = cachedConfig.mfg_osc_cal_xt;
+        } else {
+            // Use the runtime calibration value as the MFG value
+            mfgOscCalXt = cachedConfig.osc_cal_xt;
+        }
+        if (config->version >= 2 && config->mfg_magic == HAL_EXRTC_MFG_MAGIC) {
+            if (mfgOscCalXt != config->mfg_osc_cal_xt) {
+                // Allow to update MFG value through HAL API only. This may happen during MFG process or after the crystal is replaced.
+                // Wiring layer doesn't have write access to this field
+                mfgOscCalXt = config->mfg_osc_cal_xt;
+                LOG(TRACE, "Update EXRTC MFG calibration value: %d", mfgOscCalXt);
+            }
+        }
+        hal_am18x5_config_t* pNewConfig = nullptr;
+        uint8_t* configBuff = nullptr;
+        SCOPE_GUARD ({
+            if (configBuff) {
+                free(configBuff);
+            }
+        });
+        if (cachedConfig.version >= config->version) {
+            SPARK_ASSERT(cachedConfig.size >= config->size);
+            configBuff = (uint8_t*)malloc(cachedConfig.size);
+            CHECK_TRUE(configBuff, SYSTEM_ERROR_NO_MEMORY);
+            // Read out full config
+            CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, configBuff, cachedConfig.size));
+            memcpy(configBuff, config, config->size);
+            hal_am18x5_config_t* pConfig = reinterpret_cast<hal_am18x5_config_t*>(configBuff);
+            // Restore the version, size and mfg_osc_cal_xt fields
+            pConfig->version = cachedConfig.version;
+            pConfig->size = cachedConfig.size;
+            pNewConfig = pConfig;
+        } else {
+            SPARK_ASSERT(config->size >= cachedConfig.size);
+            cachedConfig.size = sizeof(hal_am18x5_config_t);
+            memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
+            pNewConfig = &cachedConfig;
+            // version and size fields are bumped
+        }
+        SPARK_ASSERT(pNewConfig != nullptr);
+        // Restore the mfg_osc_cal_xt field
+        pNewConfig->mfg_magic = HAL_EXRTC_MFG_MAGIC;
+        pNewConfig->mfg_osc_cal_xt = mfgOscCalXt;
+        CHECK(SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)pNewConfig, pNewConfig->size));
+        LOG(INFO, "Successfully updated EXRTC config, version: %d, size: %d", pNewConfig->version, pNewConfig->size);
+    }
+
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-        if (config->default_rtc && !HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
+    if (config->default_rtc && !HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
 #endif
-        if (config->default_rtc || initialized_) {
-            CHECK(begin());
-        }
+    LOG(INFO, "Try (re)starting the external RTC...");
+    ret = begin();
+    if (config->default_rtc || initialized_) {
+        CHECK(ret);
     }
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::getConfig(hal_am18x5_config_t* config) {
-    CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
-    hal_am18x5_config_t tempData = {};
-    tempData.size = sizeof(hal_am18x5_config_t);
-    tempData.version = HAL_AM18X5_CONFIG_VERSION;
-    int result = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&tempData, sizeof(tempData));
-    if (result != std::min(tempData.size, config->size)) {
-        return SYSTEM_ERROR_NOT_FOUND;
-    }
-    memcpy(config, &tempData, std::min(tempData.size, config->size));
+    CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
+    hal_am18x5_config_t cachedConfig = {};
+    CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(hal_am18x5_config_t)));
+    memcpy(config, &cachedConfig, std::min(cachedConfig.size, config->size));
+    LOG(INFO, "Get EXRTC config version: %d, size: %d", cachedConfig.version, cachedConfig.size);
     return SYSTEM_ERROR_NONE;
 }
 
