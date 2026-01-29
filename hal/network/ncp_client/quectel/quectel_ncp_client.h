@@ -129,6 +129,12 @@ private:
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
     int checkNetConfForImsi();
+    int setupBands();
+    int parseEfSize(unsigned int fid, unsigned int& size);
+    int readAndClearEfByFid(unsigned int fid);
+    int clearAllUserPlmn();
+    int syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmnCount);
+    int configurePlmn();
     int selectSimCard();
     int checkSimCard();
     int getModuleFunctionality();

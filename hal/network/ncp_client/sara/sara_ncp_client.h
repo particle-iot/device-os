@@ -142,6 +142,9 @@ private:
     int selectNetworkProf(ModemState& state);
     int checkSimCard(bool* failure = nullptr);
     int configureApn(const CellularNetworkConfig& conf);
+    int clearAllUserPlmn();
+    int syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmnCount);
+    int configurePlmn();
     int registerNet();
     int changeBaudRate(unsigned int baud);
     static int muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelState oldState,
