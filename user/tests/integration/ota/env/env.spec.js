@@ -1,7 +1,7 @@
 suite('Env vars');
 
 platform('gen3', 'gen4');
-systemThread('enabled'); // FIXME
+// systemThread('enabled');
 
 const { generateDeviceGroup, setDevelopmentMode, getProductId } = require('../../test/product');
 const { flash, waitFlashStatusEvent } = require('../../test/ota');

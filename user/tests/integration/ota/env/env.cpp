@@ -115,10 +115,7 @@ test(03_check_local_env_update) {
 	assertTrue(System.getEnv("APP_VAR3") == "0");
 	assertTrue(System.getEnv("APP_VAR4") == "true");
 	assertTrue(System.getEnv("APP_VAR5") == "false");
-
-	auto randVar1 = System.getEnv("RAND_VAR1");
-	assertEqual(randVar1.length(), 30);
-	assertTrue(System.getEnv("RAND_VAR2") == randVar1);
+	assertTrue(System.getEnv("RAND_VAR") == nonce);
 
 #if 0
 	// Int conversion with default value
@@ -337,8 +334,8 @@ test(03_check_local_env_update) {
 	for (const auto& name: System.listEnv()) {
 		names.append(name); // const char* -> String
 	}
-	// Count: 5 APP_VAR + 2 RAND_VAR + 4 BOOL_CASE + 6 BOOL_INVALID + 13 INT + 1 EMPTY = 31 total
-	assertEqual(names.size(), 31);
+	// Count: 5 APP_VAR + 1 RAND_VAR + 4 BOOL_CASE + 6 BOOL_INVALID + 13 INT + 1 EMPTY = 30 total
+	assertEqual(names.size(), 30);
 
 	// Original vars
 	assertTrue(names.contains("APP_VAR1"));
@@ -346,8 +343,7 @@ test(03_check_local_env_update) {
 	assertTrue(names.contains("APP_VAR3"));
 	assertTrue(names.contains("APP_VAR4"));
 	assertTrue(names.contains("APP_VAR5"));
-	assertTrue(names.contains("RAND_VAR1"));
-	assertTrue(names.contains("RAND_VAR2"));
+	assertTrue(names.contains("RAND_VAR"));
 	// Bool case sensitivity vars
 	assertTrue(names.contains("BOOL_UPPER_TRUE"));
 	assertTrue(names.contains("BOOL_UPPER_FALSE"));
@@ -385,8 +381,7 @@ test(03_check_local_env_update) {
 	assertTrue(System.hasEnv("APP_VAR5"));
 	assertFalse(System.hasEnv("APP_VAR6")); // Not defined
 	assertFalse(System.hasEnv("NONEXISTENT")); // Not defined
-	assertTrue(System.hasEnv("RAND_VAR1"));
-	assertTrue(System.hasEnv("RAND_VAR2"));
+	assertTrue(System.hasEnv("RAND_VAR"));
 	assertTrue(System.hasEnv("EMPTY_VAR")); // Empty value still exists
 
 	// Clear the env vars and reset to apply the changes
