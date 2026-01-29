@@ -1,3 +1,20 @@
+## 6.3.5
+
+### BUGFIXES
+
+- Fixes MCP23S17 lock issue [#2886](https://github.com/particle-iot/device-os/pull/2886)
+- [b5som][eg91nax][quectel] fixes policyman/svc_mode setting preventing IMSI switching [#2891](https://github.com/particle-iot/device-os/pull/2891)
+- [fuelgauge] fixes access when i2c unintentionally disabled [#2890](https://github.com/particle-iot/device-os/pull/2890)
+- Adds support for `I2C::setSpeed()` from 10kHz to 99kHz in 1kHz increments [#2893](https://github.com/particle-iot/device-os/pull/2893)
+
+### ENHANCEMENTS
+
+- [gen4] Optimize boot time [#2887](https://github.com/particle-iot/device-os/pull/2887)
+
+### INTERNAL
+
+- [tests] Adds `00_before` and `zz_after` HIL integration test suites [#2884](https://github.com/particle-iot/device-os/pull/2884)
+
 ## 6.3.4
 
 ### BUGFIXES

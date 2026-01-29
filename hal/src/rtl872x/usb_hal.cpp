@@ -81,7 +81,10 @@ void HAL_USB_Init(void) {
 
         ControlInterfaceClassDriver::instance()->enable(true);
         // Only enabled if HAL_USB_USART_Init() was called to configure buffers
-        // getCdcClassDriver().enable(true);
+#if defined (START_DFU_FLASHER_SERIAL_SPEED)
+        HAL_USB_USART_Init(HAL_USB_USART_SERIAL, nullptr);
+        getCdcClassDriver().enable(true);
+#endif
         HAL_USB_Attach();
     });
 }

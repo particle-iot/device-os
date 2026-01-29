@@ -37,7 +37,7 @@ T divRoundClosest(T n, DT d) {
 template <typename T>
 T bisect(T value, T& min, T& max, bool forward) {
     if (forward) {
-        size_t halfInterval = divRoundClosest(max - value, 2);
+        size_t halfInterval = divRoundClosest(max + 1 - value, 2);
         min = value;
         return value + halfInterval;
     } else {
@@ -51,18 +51,15 @@ bool udpEchoTest(UDP* udp, const IPAddress& ip, uint16_t port, const uint8_t* se
     while (retries-- > 0) {
         auto snd = udp->sendPacket(sendBuf, len, ip, port);
         if (snd == (int)len) {
-            while (true) {
-                auto recvd = udp->parsePacket(timeout);
+            auto start = millis();
+            while (millis() - start <= timeout) {
+                auto recvd = udp->parsePacket(10);
                 if (recvd == (int)len) {
                     auto same = !memcmp(udp->buffer(), sendBuf, len);
                     if (same) {
                         return true;
                     }
                 }
-                if (recvd == 0 && timeout == 0) {
-                    break;
-                }
-                timeout = 0;
             }
             // Failed to receive reply, retry
         } else {
@@ -94,15 +91,19 @@ const char udpEchoServerHostname[] = stringify(UDP_ECHO_SERVER_HOSTNAME);
 test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     // If server not defined, skip test
     if (!strcmp(udpEchoServerHostname, "not_defined") || !strcmp(udpEchoServerHostname, "")) {
+#ifdef PARTICLE_TEST_RUNNER
         assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d, \"skipped\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
+#endif
         Serial.printlnf("Command line option UDP_ECHO_SERVER_HOSTNAME not defined! Usage: UDP_ECHO_SERVER_HOSTNAME=hostname make clean all TEST=...");
         skip();
         return;
     }
     Serial.printlnf("Using Echo Server: [%s]", udpEchoServerHostname);
+#ifdef PARTICLE_TEST_RUNNER
     NAMED_SCOPE_GUARD(sg, {
         assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d, \"error\": true, \"server\": \"%s\"}", 0, udpEchoServerHostname), 30000 /* wait */));
     });
+#endif
 
     // 15 min gives the device time to go through a 10 min timeout & power cycle
     const system_tick_t WAIT_TIMEOUT = 15 * 60 * 1000;
@@ -132,10 +133,10 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     const size_t IPV4_HEADER_LENGTH = 20;
     const size_t UDP_HEADER_LENGTH = 8;
     const size_t IPV4_PLUS_UDP_HEADER_LENGTH = IPV4_HEADER_LENGTH + UDP_HEADER_LENGTH;
-    // Start a bit lower than standard 1500
-    const size_t MAX_MTU = 1400;
+    const size_t STARTING_MTU = 990;
+    const size_t MAX_MTU = 1500;
     const size_t MIN_MTU = IPV4_PLUS_UDP_HEADER_LENGTH;
-    const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 10000;
+    const system_tick_t UDP_ECHO_REPLY_WAIT_TIME = 5000;
     const unsigned UDP_ECHO_RETRIES = 5;
     const system_tick_t MINIMUM_TEST_TIME = 60000;
 
@@ -153,6 +154,10 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     }
     assertTrue(udpEchoIp);
 
+    Serial.print("IP: [");
+    Serial.print(udpEchoIp);
+    Serial.println("]");
+
     // Create UDP client
     std::unique_ptr<UDP> udp(new UDP());
     assertTrue((bool)udp);
@@ -169,22 +174,27 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     system_tick_t start = millis();
 
     udp->begin(UDP_ECHO_PORT);
-    size_t mtu = MAX_MTU;
+    size_t mtu = STARTING_MTU;
     size_t minMtu = MIN_MTU;
     size_t maxMtu = MAX_MTU;
     while (mtu > IPV4_PLUS_UDP_HEADER_LENGTH) {
         Particle.process();
-        // Fille send buffer with random data
+        // Fill send buffer with random data
         const size_t payloadSize = mtu - IPV4_PLUS_UDP_HEADER_LENGTH;
         rand.gen((char*)sendBuffer.get(), payloadSize);
         auto res = udpEchoTest(udp.get(), udpEchoIp, UDP_ECHO_PORT, sendBuffer.get(), payloadSize, UDP_ECHO_RETRIES, UDP_ECHO_REPLY_WAIT_TIME);
-        Serial.printlnf("Test MTU: %u (%s)", mtu, res ? "OK" : "FAIL");
         size_t newMtu = bisect(mtu, minMtu, maxMtu, res);
-        if (std::abs((int)newMtu - (int)mtu) <= 1 && res) {
+        Serial.printlnf("Test MTU: %u (%s), newMtu: %u, abs: %u, res: %u", mtu, res ? "OK" : "FAIL", newMtu, std::abs( (int)newMtu - (int)mtu ), res );
+        // If we run out of target MTU and failing, bail
+        if (!res) {
+            assertFalse((int)newMtu == (int)mtu);
+        }
+        if ( (std::abs((int)newMtu - (int)mtu) <= 1) && res ) {
             // Converged
             break;
         }
         mtu = newMtu;
+        delay(100);
     }
 
     Serial.printlnf("Resolved MTU: %u", mtu);
@@ -243,14 +253,19 @@ test(NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu) {
     if (now < end) {
         delay(end - now);
     }
+    for (int i = 0; i < 5; i++) {
+        Particle.process();
+        delay(100);
+    }
     assertFalse((bool)networkState.disconnected);
 
     assertMoreOrEqual(replies, 100 * 10 / 2);
     assertFalse((bool)networkState.disconnected);
 
+#ifdef PARTICLE_TEST_RUNNER
     sg.dismiss();
-
     assertEqual(0, pushMailboxMsg(String::format("{\"mtu\": %d}", mtu), 30000 /* wait */));
+#endif
 }
 
 #if HAL_PLATFORM_NCP_AT || HAL_PLATFORM_CELLULAR

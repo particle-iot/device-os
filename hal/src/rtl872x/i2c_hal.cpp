@@ -78,6 +78,8 @@ extern "C" {
     res;                                                                        \
 })
 
+#define CEIL_DIV(A, B)      (((A) + (B) - 1) / (B))
+
 class I2cClass {
 public:
     bool isConfigured() const {
@@ -284,8 +286,9 @@ public:
             I2C_Cmd(i2cDev_, DISABLE);
             state_ = HAL_I2C_STATE_DISABLED;
         }
-        i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_100KHZ) ? I2C_SS_MODE : I2C_FS_MODE);
-        i2cInitStruct_.I2CClk    = ((speed == CLOCK_SPEED_100KHZ) ? 100 : 400);
+        i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_400KHZ) ? I2C_FS_MODE : I2C_SS_MODE );
+        i2cInitStruct_.I2CClk    = ((speed == CLOCK_SPEED_100KHZ) ? 100 :
+                                    (speed < CLOCK_SPEED_100KHZ && speed >= CLOCK_SPEED_10KHZ) ? CEIL_DIV(speed, 1000) : 400);
         if (enabled) {
             I2C_Init(i2cDev_, &i2cInitStruct_);
             I2C_Cmd(i2cDev_, ENABLE);
@@ -816,7 +819,26 @@ private:
 
 int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    return instance->init(config);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    bool wasEnabled = instance->isEnabled();
+#endif // #if HAL_PLATFORM_PMIC_BQ24195
+
+    auto ret = instance->init(config);
+
+// sc-137389
+#if HAL_PLATFORM_PMIC_BQ24195
+    if (ret == SYSTEM_ERROR_NONE) {
+        if (i2c == HAL_PLATFORM_PMIC_BQ24195_I2C) {
+            if (wasEnabled) {
+                ret = instance->begin(I2C_MODE_MASTER, 0x00);
+            }
+        }
+    }
+#endif // #if HAL_PLATFORM_PMIC_BQ24195
+
+    return ret;
 }
 
 void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved) {

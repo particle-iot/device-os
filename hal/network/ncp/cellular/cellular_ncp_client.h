@@ -111,6 +111,12 @@ enum class CellularFunctionality {
 
 PARTICLE_DEFINE_ENUM_COMPARISON_OPERATORS(CellularFunctionality);
 
+enum class CellularPolicymanServiceMode {
+    NONE = -1,
+    NO_SERVICE = 0,
+    FULL_SERVICE = 2,
+};
+
 enum class CellularStrengthUnits {
     NONE = 0,
     RXLEV = 1,

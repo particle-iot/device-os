@@ -1,0 +1,73 @@
+/*
+ * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#define PARTICLE_USE_UNSTABLE_API
+
+#include "application.h"
+#include "test.h"
+#include "softcrc32.h"
+#include "check.h"
+#include "storage_hal.h"
+
+namespace {
+
+    bool getFactoryModule(hal_module_t* factoryModule) {
+        // Search the platform modules for the factory module
+        hal_system_info_t info = {};
+        info.size = sizeof(info);
+        const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
+        if (r != 0) {
+            return false;
+        }
+        SCOPE_GUARD({
+            system_info_free_unstable(&info, nullptr /* reserved */);
+        });
+
+        for (size_t i = 0; i < info.module_count; ++i) {
+            const auto& module = info.modules[i];
+            if (module.bounds.store == MODULE_STORE_FACTORY) {
+                *factoryModule = module;
+                return true;
+            }
+        }
+        return false;
+    }
+
+} // namespace
+
+test(01_erase_factory_module) {
+    // Determine the factory reset module start address from the platform flash modules
+    hal_module_t factoryModule = {};
+    bool isFactoryModule = getFactoryModule(&factoryModule);
+    // Log.info("getFactoryModule(): %d", isFactoryModule);
+
+    if (isFactoryModule) {
+#if HAL_PLATFORM_NRF52840 // FIXME for RTL872x-based platforms
+        // Erase entire Factory Module
+        hal_storage_erase(HAL_STORAGE_ID_EXTERNAL_FLASH, EXTERNAL_FLASH_FAC_ADDRESS, EXTERNAL_FLASH_FAC_LENGTH);
+#endif // HAL_PLATFORM_NRF52840
+    }
+}
+
+test(02_remove_static_ip) {
+    // Easiest way to erase all NETWORK_CONFIG settings, and default to dynamic IP
+    unlink("/sys/network.dat");
+}
+
+test(03_enable_listening_mode) {
+    System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+}

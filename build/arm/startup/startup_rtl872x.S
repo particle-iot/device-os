@@ -134,52 +134,18 @@ Reset_Handler:
 .L_loop3_done:
 #endif /* __STARTUP_CLEAR_BSS */
 
-/* Load PSRAM code */
-    ldr r1, =link_psram_code_flash_start
-    ldr r2, =link_psram_code_start
-    ldr r3, =link_psram_code_end
+    bl SystemInit
+    ldr r0, =Jump_To_Main
+    bx r0
 
-    subs r3, r2
-    ble .L_loop4_done
-
-.L_loop4:
-    subs r3, #4
-    ldr r0, [r1,r3]
-    str r0, [r2,r3]
-    bgt .L_loop4
-
-.L_loop4_done:
-/* Load dynalib into PSRAM */
-    ldr r1, =link_dynalib_flash_start
-    ldr r2, =link_dynalib_start
-    ldr r3, =link_dynalib_end
-
-    subs r3, r2
-    ble .L_loop5_done
-
-.L_loop5:
-    subs r3, #4
-    ldr r0, [r1,r3]
-    str r0, [r2,r3]
-    bgt .L_loop5
-
-.L_loop5_done:
-    ldr r0, =Jump_To_Psram
-    blx r0
-
-/* Jump to psram */
     .text
     .thumb
     .thumb_func
     .align 1
     .section .text,"a",%progbits
-    .globl Jump_To_Psram
-    .type Jump_To_Psram, %function
-Jump_To_Psram:
-
-/* Execute SystemInit function. */
-    bl SystemInit
-
+    .globl Jump_To_Main
+    .type Jump_To_Main, %function
+Jump_To_Main:
 /* Call _start function provided by libraries.
  * If those libraries are not accessible, define __START as your entry point.
  */
