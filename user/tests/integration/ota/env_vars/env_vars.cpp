@@ -14,16 +14,22 @@ enum class FirmwareUpdateStatus {
 	ERROR
 };
 
-retained char testNonce[32] = {};
+// Unique variable names specific to the device
+retained char deviceVar1[128] = {};
+retained char deviceVar2[128] = {};
+
+// Random string generated for each test suite run
+retained char nonce[11] = {};
+
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
 
-bool hasEnvVarWithValue(const String& val) {
+String findVarWithValue(const String& val) {
 	for (const auto& name: System.listEnvVars()) {
 		if (System.envVar(name) == val) {
-			return true;
+			return name;
 		}
 	}
-	return false;
+	return String();
 }
 
 void firmwareUpdateEventHandler(system_event_t, int data, void*) {
@@ -34,7 +40,9 @@ void firmwareUpdateEventHandler(system_event_t, int data, void*) {
     case firmware_update_complete:
     	firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
     	break;
-    case (int)firmware_update_failed: // Defined as (uint32_t)-1 in system_event.h
+    case firmware_update_progress:
+    	break;
+    default:
     	firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
     	break;
 	}
@@ -82,9 +90,9 @@ void connect() {
 test(01_init) {
 	// Generate a random string for this test suite run
 	Random rand;
-	rand.genBase32(testNonce, sizeof(testNonce) - 1);
-	testNonce[sizeof(testNonce) - 1] = '\0';
-	pushMailboxMsg(testNonce, 5000 /* wait */);
+	rand.genBase32(nonce, sizeof(nonce) - 1);
+	nonce[sizeof(nonce) - 1] = '\0';
+	pushMailboxMsg(nonce, 5000 /* wait */);
 
 	// Clear the env vars and reset to apply the changes
 	assertMoreOrEqual(System.clearEnvVars(), 0);
@@ -92,15 +100,15 @@ test(01_init) {
 	System.reset();
 }
 
-test(02_start_env_vars_local_update) {
+test(02_start_local_env_update) {
 	// Validate that no env vars are defined
 	Vector<const char*> vars;
 	assertEqual(System.listEnvVars(vars), 0);
 	assertEqual(vars.size(), 0);
 }
 
-test(03_check_env_vars_local_update) {
-	assertTrue(System.envVar("APP_VAR1") == "abcdef");
+test(03_check_local_env_update) {
+	assertTrue(System.envVar("VAR1") == "abcdef");
 	// TODO: Add the API tests from the Nick's branch here
 
 	// Clear the env vars and reset to apply the changes
@@ -109,57 +117,89 @@ test(03_check_env_vars_local_update) {
 	System.reset();
 }
 
-test(04_start_env_vars_on_connect_update) {
+test(04_start_on_connect_env_update) {
 	prepareForFirmwareUpdate();
 	connect();
 }
 
-test(05_complete_env_vars_on_connect_update) {
+test(05_complete_on_connect_env_update) {
 	completeFirmwareUpdate();
 }
 
-test(06_check_env_vars_on_connect_update) {
-	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "pcT3RG9xr4");
-	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "wkWStqATwW");
+test(06_check_on_connect_env_update) {
+	// The contents of the snapshot can be anything at this point so only check the predefined
+	// org/product variables here
+	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
+	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
 }
 
-test(07_start_env_vars_ad_hoc_update) {
+test(07_start_ad_hoc_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(08_complete_env_vars_ad_hoc_update) {
+test(08_complete_ad_hoc_env_update) {
 	completeFirmwareUpdate(true /* expectSafeMode */);
 }
 
-test(09_check_env_vars_ad_hoc_update) {
-	assertTrue(System.envVar("APP_VAR1") == "abcde");
-	assertTrue(System.envVar("APP_VAR2") == "123");
-	assertTrue(System.envVar("APP_VAR3") == testNonce);
+test(09_check_ad_hoc_env_update) {
+	// Application variables
+	assertTrue(System.envVar("APP_VAR1") == String("app 1 ") + nonce);
+	assertTrue(System.envVar("APP_VAR2") == String("app 2 ") + nonce);
+
+	// Predefined org/product variables
+	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
+	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
 }
 
-test(10_start_product_env_vars_immediate_update) {
+test(10_start_immediate_product_env_update) {
 	prepareForFirmwareUpdate();
 	connect();
 }
 
-test(11_complete_product_env_vars_immediate_update) {
+test(11_complete_immediate_product_env_update) {
 	completeFirmwareUpdate();
 }
 
-test(12_check_product_env_vars_immediate_update) {
-	assertTrue(hasEnvVarWithValue(String(testNonce) + "_prod"));
+test(12_check_immediate_product_env_update) {
+	// Product variables
+	auto var1 = findVarWithValue(String("prod 1 ") + nonce);
+	assertTrue(var1.length() > 0 && var1.length() < sizeof(deviceVar1));
+	std::memcpy(deviceVar1, var1.c_str(), var1.length() + 1); // Include '\0'
+
+	auto var2 = var1 + "_2";
+	assertTrue(System.envVar(var2.c_str()) == String("prod 2 ") + nonce);
+	assertTrue(var2.length() < sizeof(deviceVar2));
+	std::memcpy(deviceVar2, var2.c_str(), var2.length() + 1);
+
+	// Application variables
+	assertTrue(System.envVar("APP_VAR1") == String("app 1 ") + nonce);
+	assertTrue(System.envVar("APP_VAR2") == String("app 2 ") + nonce);
+
+	// Predefined org/product variables
+	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
+	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
 }
 
-test(13_start_device_env_vars_immediate_update) {
+test(13_start_immediate_device_env_update) {
 	prepareForFirmwareUpdate();
 	connect();
 }
 
-test(14_complete_device_env_vars_immediate_update) {
+test(14_complete_immediate_device_env_update) {
 	completeFirmwareUpdate();
 }
 
-test(15_check_device_env_vars_immediate_update) {
-	assertTrue(System.envVar("DEV_VAR1") == String(testNonce) + "_dev");
+test(15_check_immediate_device_env_update) {
+	// Product variables
+	assertTrue(System.envVar(deviceVar1) == String("prod 1 ") + nonce);
+	assertTrue(System.envVar(deviceVar2) == String("dev prod 2 ") + nonce); // Overridden
+
+	// Application variables
+	assertTrue(System.envVar("APP_VAR1") == String("app 1 ") + nonce);
+	assertTrue(System.envVar("APP_VAR2") == String("dev app 2 ") + nonce); // Overridden
+
+	// Predefined org/product variables
+	assertTrue(System.envVar("DVOS_CI_ORG_VAR1") == String("dev org 1") + nonce); // Overridden
+	assertTrue(System.envVar("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
 }
