@@ -42,6 +42,7 @@ LOG_SOURCE_CATEGORY("system.ctrl.ble")
 
 #include "ble_provisioning_mode_handler.h"
 #include "system_event.h"
+#include "unique_lock.h"
 
 #undef DEBUG // Legacy logging macro
 
@@ -766,7 +767,7 @@ void BleControlRequestChannel::resetChannel() {
     aesCcm_.reset();
 #endif
     packetBuf_.reset();
-    std::unique_lock<Mutex> lock(readyReqsLock_);
+    particle::UniqueLock<Mutex> lock(readyReqsLock_);
     while (Request* req = readyReqs_.popFront()) {
         freeRequest(req);
     }
@@ -829,7 +830,7 @@ int BleControlRequestChannel::receiveRequest() {
 }
 
 int BleControlRequestChannel::sendReply() {
-    std::unique_lock<Mutex> lock(readyReqsLock_);
+    particle::UniqueLock<Mutex> lock(readyReqsLock_);
     Request* req = nullptr;
     while ((req = readyReqs_.popFront())) {
         if (req->connId == connId_) {

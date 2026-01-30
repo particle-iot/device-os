@@ -46,6 +46,8 @@ extern "C" {
 #include "freertos/wrapper.h"
 #include "bt_intf.h"
 #include "system_error.h"
+#include "unique_lock.h"
+#include "call_once.h"
 
 extern "C" {
 
@@ -180,7 +182,7 @@ void rtwCoexStop() {
 void rtwRadioReset() {
     // XXX: the order of the locks has to be BLE -> radioMutex
     hal_ble_lock(nullptr);
-    std::unique_lock<RecursiveMutex> lk(radioMutex);
+    particle::UniqueLock<RecursiveMutex> lk(radioMutex);
     bool bleInitialized = hal_ble_is_initialized(nullptr);
     bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                        hal_ble_gap_is_connecting(nullptr, nullptr) ||
@@ -371,8 +373,8 @@ void rtwRadioAcquire(RtwRadio r) {
         return;
     }
     if (radioStatus != RTW_RADIO_NONE) {
-        static std::once_flag once;
-        std::call_once(once, [](){
+        static particle::OnceFlag once;
+        particle::CallOnce(once, [](){
             static rtl_wifi_fw_ram_alloc __attribute__((aligned(32))) info;
             info.size = sizeof(info);
             info.start = (uint32_t)&link_prebootloader_wifi_fw_ram_start;

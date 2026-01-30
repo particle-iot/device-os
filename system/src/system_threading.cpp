@@ -112,8 +112,9 @@ namespace std {
             while (!startup.started) os_thread_yield();
         }
     }
-#endif // 0
 
+    // std::call_once is disabled to avoid bringing system_error/exceptions etc into system
+    // to reduce flash usage. See services/inc/call_once.h for replacement.
     function<void()> __once_functor;
 
     mutex& __get_once_mutex() {
@@ -131,6 +132,7 @@ namespace std {
     {
         __get_once_functor_lock_ptr() = __ptr;
     }
+#endif // 0
 }
 
 #endif // PLATFORM_THREADING

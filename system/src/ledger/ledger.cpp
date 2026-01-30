@@ -40,6 +40,7 @@ LOG_SOURCE_CATEGORY("system.ledger");
 #include "str_compat.h"
 #include "scope_guard.h"
 #include "check.h"
+#include "unique_lock.h"
 
 #include "cloud/ledger.pb.h" // Cloud protocol definitions
 #include "ledger.pb.h" // Internal definitions
@@ -475,7 +476,7 @@ int Ledger::notifyReaderClosed(bool staged) {
 }
 
 int Ledger::notifyWriterClosed(const LedgerInfo& info, int tempSeqNum) {
-    std::unique_lock lock(*this);
+    particle::UniqueLock lock(*this);
     FsLock fs;
     // Move the file where appropriate
     bool newStagedFile = false;
@@ -816,7 +817,7 @@ int LedgerWriter::close(bool discard) {
     open_ = false;
     // Lock the ledger instance first then the filesystem, otherwise a deadlock is possible if the
     // LedgerManager has locked the ledger instance already but is waiting on the filesystem lock
-    std::unique_lock lock(*ledger_);
+    particle::UniqueLock lock(*ledger_);
     FsLock fs;
     if (discard) {
         // Remove the temporary file

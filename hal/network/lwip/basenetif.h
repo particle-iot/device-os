@@ -22,6 +22,7 @@
 #include <lwip/netif.h>
 #include "ifapi.h"
 #include "spark_wiring_vector.h"
+#include "call_once.h"
 
 namespace particle { namespace net {
 
@@ -61,7 +62,7 @@ private:
     netif_ext_callback_t netifEventHandlerCookie_;
     if_event_handler_cookie_t eventHandlerCookie_ = nullptr;
     static uint8_t clientDataId_;
-    static std::once_flag once_;
+    static particle::OnceFlag once_;
 };
 
 } } /* particle::net */

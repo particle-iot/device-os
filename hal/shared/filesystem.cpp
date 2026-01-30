@@ -31,6 +31,7 @@ using particle::fs::FsLock;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 #include "static_recursive_mutex.h"
+#include "call_once.h"
 
 namespace {
 
@@ -389,8 +390,8 @@ void filesystem_config(filesystem_t* fs) {
 filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved) {
     (void)reserved;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, []() {
+    static particle::OnceFlag onceFlag;
+    particle::CallOnce(onceFlag, []() {
 #else
     static int onceFlag = 0;
     if (!onceFlag) ({

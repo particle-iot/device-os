@@ -47,6 +47,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "enumclass.h"
 
 #include "system_cache.h"
+#include "call_once.h"
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -2682,8 +2683,8 @@ int SaraNcpClient::modemPowerOff() {
         return SYSTEM_ERROR_NONE;
     }
 
-    static std::once_flag f;
-    std::call_once(f, [this]() {
+    static particle::OnceFlag f;
+    particle::CallOnce(f, [this]() {
         if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510 && modemPowerState()) {
             // U201 will auto power-on when it detects a rising VIN
             // If we perform a power-off sequence immediately after it just started

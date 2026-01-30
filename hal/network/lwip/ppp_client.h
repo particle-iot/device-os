@@ -32,6 +32,7 @@ extern "C" {
 #include <mutex>
 #include <atomic>
 #include "stream.h"
+#include "call_once.h"
 
 #ifdef __cplusplus
 
@@ -199,7 +200,7 @@ private:
   std::atomic_bool running_;
   std::atomic_bool exit_;
 
-  static std::once_flag once_;
+  static particle::OnceFlag once_;
   static netif_ext_callback_t netifCb_;
   static int netifClientDataIdx_;
   bool server_ = false;

@@ -33,6 +33,7 @@
 #include <type_traits>
 #include <memory>
 #include "delay_hal.h"
+#include "unique_lock.h"
 
 typedef std::function<os_thread_return_t(void)> wiring_thread_fn_t;
 
@@ -51,7 +52,7 @@ public:
 
 #define SINGLE_THREADED_BLOCK() for (bool __todo = true; __todo; ) for (SingleThreadedSection __cs; __todo; __todo=0)
 #define WITH_LOCK(lock) for (bool __todo = true; __todo;) for (std::lock_guard<decltype(lock)> __lock((lock)); __todo; __todo=0)
-#define TRY_LOCK(lock) for (bool __todo = true; __todo; ) for (std::unique_lock<typename std::remove_reference<decltype(lock)>::type> __lock##lock((lock), std::try_to_lock); __todo &= bool(__lock##lock); __todo=0)
+#define TRY_LOCK(lock) for (bool __todo = true; __todo; ) for (particle::UniqueLock<typename std::remove_reference<decltype(lock)>::type> __lock##lock((lock), std::try_to_lock); __todo &= bool(__lock##lock); __todo=0)
 
 #else
 #define SINGLE_THREADED_SECTION()

@@ -23,6 +23,7 @@
 #include "static_event_group.h"
 #include "concurrent_hal.h"
 #include <mutex>
+#include "unique_lock.h"
 
 /* __guard type is already defined in cxxabi_tweaks.h for each architecture */
 using __cxxabiv1::__guard;
@@ -67,7 +68,7 @@ int __cxa_guard_acquire(__guard* g) {
     SPARK_ASSERT(!hal_interrupt_is_isr());
 
     /* Acquire mutex */
-    std::unique_lock<StaticRecursiveMutex> lk(s_mutex);
+    particle::UniqueLock<StaticRecursiveMutex> lk(s_mutex);
 
     while (true) {
         // Nothing to do here, already initialized
@@ -104,7 +105,7 @@ void __cxa_guard_release(__guard* g) {
     guard_t* guard = reinterpret_cast<guard_t*>(g);
     SPARK_ASSERT(!hal_interrupt_is_isr());
 
-    std::unique_lock<StaticRecursiveMutex> lk(s_mutex);
+    particle::UniqueLock<StaticRecursiveMutex> lk(s_mutex);
     guard->init &= ~(guard_t::PENDING);
     guard->done = guard_t::COMPLETE;
     guard->init |= guard_t::COMPLETE;

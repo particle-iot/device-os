@@ -29,6 +29,7 @@
 #include <mutex>
 #include "usart_hal_private.h"
 #include "hal_platform.h"
+#include "unique_lock.h"
 
 namespace gsm0710 {
 namespace portable {
@@ -54,6 +55,9 @@ const auto taskPriority = OS_THREAD_PRIORITY_NETWORK;
 #endif // HAL_PLATFORM_WIFI
 
 #define GSM0710_RELAX_WHEN_CHANNEL_IN_FLOW_CONTROL (15)
+
+template <typename T>
+using unique_lock = ::particle::UniqueLock<T>;
 
 } // portable
 } // gsm0710
