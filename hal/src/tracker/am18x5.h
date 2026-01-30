@@ -26,8 +26,9 @@
 #include "gpio_hal.h"
 #include "enumclass.h"
 
-#define HAL_AM18X5_CONFIG_VERSION               1
+#define HAL_EXRTC_API_VERSION                   2
 #define HAL_EXRTC_ID_STR_LEN                    18
+#define HAL_EXRTC_MFG_MAGIC                     (0xC36AE15D)
 
 namespace particle {
 
@@ -177,6 +178,9 @@ typedef struct hal_am18x5_config_t {
     uint8_t clk_out_en;
     Am18x5SqwFrequency clk_out_freq;
     Am18x5AutoCalibration auto_calibration;
+    uint32_t mfg_magic;
+    int8_t mfg_osc_cal_xt; // Read only
+    uint8_t reserved[12];
 } __attribute__((packed)) hal_am18x5_config_t;
 
 typedef struct hal_am18x5_sleep_config_t {
@@ -185,6 +189,7 @@ typedef struct hal_am18x5_sleep_config_t {
     Am18x5ExtiPolarity exti_polarity;
     bool exti_trigger_latched;
     system_tick_t duration; // in seconds
+    uint8_t reserved[6];
 } __attribute__((packed)) hal_am18x5_sleep_config_t;
 
 class Am18x5 {

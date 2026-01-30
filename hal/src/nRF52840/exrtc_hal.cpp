@@ -37,27 +37,35 @@ const auto UNIX_TIME_201801010000 = 1514764800; // 2018/01/01 00:00:00
 
 int hal_exrtc_init(void* reserved) {
     hal_am18x5_config_t config = {};
-    config.version = HAL_AM18X5_CONFIG_VERSION;
+    config.version = HAL_EXRTC_API_VERSION;
     config.size = sizeof(hal_am18x5_config_t);
-    if (Am18x5::getInstance().getConfig(&config) != SYSTEM_ERROR_NONE) {
-        int8_t calValue = 0; 
-        size_t eepromSize = HAL_EEPROM_Length();
-        SPARK_ASSERT(eepromSize >= 4);
-        HAL_EEPROM_Get(eepromSize - 4, &calValue, sizeof(calValue));
-        if (calValue < -65 || calValue > -25) {
-            calValue = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+    int ret = Am18x5::getInstance().getConfig(&config);
+    if (ret == SYSTEM_ERROR_NOT_FOUND || config.version < 2) {
+        if (ret == SYSTEM_ERROR_NOT_FOUND) {
+            int8_t calValue = 0; 
+            size_t eepromSize = HAL_EEPROM_Length();
+            SPARK_ASSERT(eepromSize >= 4);
+            HAL_EEPROM_Get(eepromSize - 4, &calValue, sizeof(calValue));
+            if (calValue < -100 || calValue > -10) {
+                calValue = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+            }
+            config.default_rtc = false;
+            config.wdi_pin = RTC_WDI;
+            config.int_pin = RTC_INT;
+            config.i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C;
+            config.rc_fallback = false;
+            config.rc_on_battery = false;
+            config.osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL;
+            config.osc_cal_xt = calValue;
+            config.clk_out_en = false;
+            config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+            config.auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE;
+            config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+            config.mfg_osc_cal_xt = calValue;
+        } else {
+            config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+            config.mfg_osc_cal_xt = config.osc_cal_xt;
         }
-        config.default_rtc = false;
-        config.wdi_pin = RTC_WDI;
-        config.int_pin = RTC_INT;
-        config.i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C;
-        config.rc_fallback = false;
-        config.rc_on_battery = false;
-        config.osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL;
-        config.osc_cal_xt = calValue;
-        config.clk_out_en = false;
-        config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
-        config.auto_calibration = Am18x5AutoCalibration::AUTO_CAL_DISABLE;
         if (Am18x5::getInstance().setConfig(&config) != SYSTEM_ERROR_NONE) {
             return SYSTEM_ERROR_INTERNAL;
         }
@@ -102,13 +110,12 @@ int hal_exrtc_feed_watchdog(void* reserved) {
 }
 
 int hal_exrtc_sleep_timer(system_tick_t ms, void* reserved) {
-    hal_am18x5_sleep_config_t sleepConfig = {
-        .version = HAL_AM18X5_CONFIG_VERSION,
-        .size = sizeof(hal_am18x5_sleep_config_t),
-        .exti_polarity = Am18x5ExtiPolarity::NONE,
-        .exti_trigger_latched = false,
-        .duration = ms / 1000
-    };
+    hal_am18x5_sleep_config_t sleepConfig = {};
+    sleepConfig.version = HAL_EXRTC_API_VERSION;
+    sleepConfig.size = sizeof(hal_am18x5_sleep_config_t);
+    sleepConfig.exti_polarity = Am18x5ExtiPolarity::NONE;
+    sleepConfig.exti_trigger_latched = false;
+    sleepConfig.duration = ms / 1000;
     return Am18x5::getInstance().sleep(&sleepConfig);
 }
 
