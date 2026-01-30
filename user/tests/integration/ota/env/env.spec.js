@@ -100,30 +100,17 @@ test('01_init', async function() {
 });
 
 test('02_start_local_env_update', async function() {
-	// XXX: This will update the app env vars on the device even though the test app has no
-	// dependency on an env var asset
+	// This will update the app env vars on the device even though the test app has no dependency
+	// on an env asset
 	const assetData = await createEnvVarsAssetModule({
-		// Basic string and numeric values
-		APP_VAR1: 'abcdef',
-		APP_VAR2: '123',
-		APP_VAR3: '0',
-		APP_VAR4: 'true',
-		APP_VAR5: 'false',
-		// Bool case sensitivity tests (all invalid - only lowercase "true"/"false" valid)
-		BOOL_UPPER_TRUE: 'TRUE',
-		BOOL_UPPER_FALSE: 'FALSE',
-		BOOL_MIXED_TRUE: 'True',
-		BOOL_MIXED_FALSE: 'False',
-		// Bool invalid values (not "true" or "false")
-		BOOL_ONE: '1',
-		BOOL_ZERO: '0',
-		BOOL_YES: 'yes',
-		BOOL_NO: 'no',
-		BOOL_LEADING_SPACE: ' true',
-		BOOL_TRAILING_SPACE: 'true ',
-		// Int edge cases
+		STR_SHORT: 'abc',
+		STR_LONG: 'a'.repeat(1000),
+		STR_RANDOM: nonce,
+		STR_EMPTY: '',
+		INT_POSITIVE: '123',
 		INT_NEGATIVE: '-456',
 		INT_LEADING_ZEROS: '00123',
+		INT_ZERO: '0',
 		INT_NEGATIVE_ZERO: '-0',
 		INT_PLUS_SIGN: '+123',
 		INT_MAX: '2147483647',
@@ -135,10 +122,18 @@ test('02_start_local_env_update', async function() {
 		INT_TRAILING_SPACE: '123 ',
 		INT_HEX: '0x1F',
 		INT_WITH_CHARS: '123abc',
-		// Empty value test
-		EMPTY_VAR: '',
-		// This is to ensure the resulting asset module gets a unique checksum
-		RAND_VAR: nonce
+		BOOL_TRUE: 'true',
+		BOOL_FALSE: 'false',
+		BOOL_UPPER_TRUE: 'TRUE',
+		BOOL_UPPER_FALSE: 'FALSE',
+		BOOL_MIXED_TRUE: 'True',
+		BOOL_MIXED_FALSE: 'False',
+		BOOL_ONE: '1',
+		BOOL_ZERO: '0',
+		BOOL_YES: 'yes',
+		BOOL_NO: 'no',
+		BOOL_LEADING_SPACE: ' false',
+		BOOL_TRAILING_SPACE: 'false '
 	});
 	// TODO: Update Device#flash to optionally take module data instead of a path
 	const assetPath = await tempy.write(assetData, { name: 'env_vars.bin' });

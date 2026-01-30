@@ -1,3 +1,5 @@
+#include <limits>
+
 #include "application.h"
 
 #include "system_env.h"
@@ -109,239 +111,63 @@ test(02_start_local_env_update) {
 }
 
 test(03_check_local_env_update) {
-	// Original string values
-	assertTrue(System.getEnv("APP_VAR1") == "abcdef");
-	assertTrue(System.getEnv("APP_VAR2") == "123");
-	assertTrue(System.getEnv("APP_VAR3") == "0");
-	assertTrue(System.getEnv("APP_VAR4") == "true");
-	assertTrue(System.getEnv("APP_VAR5") == "false");
-	assertTrue(System.getEnv("RAND_VAR") == nonce);
-
-	// New reference-based API: bool getEnv(name, bool& value)
-	// Returns true if found AND valid, only modifies value if valid
-	{
-		bool val = true;
-		assertTrue(System.getEnv("APP_VAR4", val));  // "true" -> valid
-		assertTrue(val == true);
-
-		val = true;
-		assertTrue(System.getEnv("APP_VAR5", val));  // "false" -> valid
-		assertTrue(val == false);
-
-		val = true;
-		assertFalse(System.getEnv("APP_VAR1", val)); // "abcdef" -> invalid
-		assertTrue(val == true); // Unchanged
-
-		val = false;
-		assertFalse(System.getEnv("APP_VAR2", val)); // "123" -> invalid (not "true"/"false")
-		assertTrue(val == false); // Unchanged
-
-		val = true;
-		assertFalse(System.getEnv("NONEXISTENT", val)); // Not found
-		assertTrue(val == true); // Unchanged
+	String longStr;
+	assertTrue(longStr.resize(1000));
+	for (unsigned i = 0; i < longStr.length(); ++i) {
+		longStr[i] = 'a';
 	}
 
-	// New reference-based API: bool getEnv(name, int& value)
-	// Returns true if found AND valid, only modifies value if valid
-	{
-		int val = 999;
-		assertTrue(System.getEnv("APP_VAR2", val));  // "123" -> valid
-		assertTrue(val == 123);
-
-		val = 999;
-		assertTrue(System.getEnv("APP_VAR3", val));  // "0" -> valid
-		assertTrue(val == 0);
-
-		val = 999;
-		assertFalse(System.getEnv("APP_VAR1", val)); // "abcdef" -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		val = 999;
-		assertFalse(System.getEnv("APP_VAR4", val)); // "true" -> invalid int
-		assertTrue(val == 999); // Unchanged
-
-		val = 999;
-		assertFalse(System.getEnv("NONEXISTENT", val)); // Not found
-		assertTrue(val == 999); // Unchanged
-	}
-
-	// New reference-based API: bool getEnv(name, String& value)
-	// Returns true if found, only modifies value if found
-	{
-		String val = "default";
-		assertTrue(System.getEnv("APP_VAR1", val));
-		assertTrue(val == "abcdef");
-
-		val = "default";
-		assertTrue(System.getEnv("APP_VAR4", val));
-		assertTrue(val == "true");
-
-		val = "default";
-		assertFalse(System.getEnv("NONEXISTENT", val)); // Not found
-		assertTrue(val == "default"); // Unchanged
-	}
-
-	// Bool case sensitivity tests - only lowercase "true"/"false" are valid
-	{
-		bool val = false;
-		assertFalse(System.getEnv("BOOL_UPPER_TRUE", val));  // "TRUE" -> invalid
-		assertTrue(val == false); // Unchanged
-
-		val = true;
-		assertFalse(System.getEnv("BOOL_UPPER_FALSE", val)); // "FALSE" -> invalid
-		assertTrue(val == true); // Unchanged
-
-		val = false;
-		assertFalse(System.getEnv("BOOL_MIXED_TRUE", val));  // "True" -> invalid
-		assertTrue(val == false); // Unchanged
-
-		val = true;
-		assertFalse(System.getEnv("BOOL_MIXED_FALSE", val)); // "False" -> invalid
-		assertTrue(val == true); // Unchanged
-	}
-
-	// Bool invalid value tests - numeric and other common alternatives not valid
-	{
-		bool val = false;
-		assertFalse(System.getEnv("BOOL_ONE", val));  // "1" -> invalid
-		assertTrue(val == false); // Unchanged
-
-		val = true;
-		assertFalse(System.getEnv("BOOL_ZERO", val)); // "0" -> invalid
-		assertTrue(val == true); // Unchanged
-
-		val = false;
-		assertFalse(System.getEnv("BOOL_YES", val));  // "yes" -> invalid
-		assertTrue(val == false); // Unchanged
-
-		val = true;
-		assertFalse(System.getEnv("BOOL_NO", val));   // "no" -> invalid
-		assertTrue(val == true); // Unchanged
-
-		val = false;
-		assertFalse(System.getEnv("BOOL_LEADING_SPACE", val));  // " true" -> invalid
-		assertTrue(val == false); // Unchanged
-
-		val = false;
-		assertFalse(System.getEnv("BOOL_TRAILING_SPACE", val)); // "true " -> invalid
-		assertTrue(val == false); // Unchanged
-	}
-
-	// Int edge case tests
-	{
-		int val = 999;
-
-		// Valid negative
-		assertTrue(System.getEnv("INT_NEGATIVE", val));  // "-456" -> valid
-		assertTrue(val == -456);
-
-		// Valid INT_MAX
-		val = 999;
-		assertTrue(System.getEnv("INT_MAX", val));  // "2147483647" -> valid
-		assertTrue(val == 2147483647);
-
-		// Valid INT_MIN
-		val = 999;
-		assertTrue(System.getEnv("INT_MIN", val));  // "-2147483648" -> valid
-		assertTrue(val == (-2147483647 - 1)); // INT_MIN
-
-		// Invalid: overflow
-		val = 999;
-		assertFalse(System.getEnv("INT_OVERFLOW", val));  // "2147483648" -> overflow
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: underflow
-		val = 999;
-		assertFalse(System.getEnv("INT_UNDERFLOW", val)); // "-2147483649" -> underflow
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: float
-		val = 999;
-		assertFalse(System.getEnv("INT_FLOAT", val));  // "12.34" -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: leading space
-		val = 999;
-		assertFalse(System.getEnv("INT_LEADING_SPACE", val)); // " 123" -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: trailing space
-		val = 999;
-		assertFalse(System.getEnv("INT_TRAILING_SPACE", val)); // "123 " -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: hex prefix
-		val = 999;
-		assertFalse(System.getEnv("INT_HEX", val)); // "0x1F" -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		// Invalid: trailing characters
-		val = 999;
-		assertFalse(System.getEnv("INT_WITH_CHARS", val)); // "123abc" -> invalid
-		assertTrue(val == 999); // Unchanged
-
-		// Valid: leading zeros (parsed as decimal)
-		val = 999;
-		assertTrue(System.getEnv("INT_LEADING_ZEROS", val)); // "00123" -> valid, parsed as 123
-		assertTrue(val == 123);
-
-		// Valid: negative zero
-		val = 999;
-		assertTrue(System.getEnv("INT_NEGATIVE_ZERO", val)); // "-0" -> valid, parsed as 0
-		assertTrue(val == 0);
-
-		// Invalid: explicit plus sign
-		val = 999;
-		assertFalse(System.getEnv("INT_PLUS_SIGN", val)); // "+123" -> invalid
-		assertTrue(val == 999); // Unchanged
-	}
-
-	// Empty string tests
-	{
-		String strVal = "default";
-		assertTrue(System.getEnv("EMPTY_VAR", strVal)); // Empty string is still "found"
-		assertTrue(strVal == ""); // Value is empty string
-
-		bool boolVal = true;
-		assertFalse(System.getEnv("EMPTY_VAR", boolVal)); // Empty is not valid bool
-		assertTrue(boolVal == true); // Unchanged
-
-		int intVal = 999;
-		assertFalse(System.getEnv("EMPTY_VAR", intVal)); // Empty is not valid int
-		assertTrue(intVal == 999); // Unchanged
-	}
+	// Original values
+	assertTrue(System.getEnv("STR_SHORT") == "abc");
+	assertTrue(System.getEnv("STR_LONG") == longStr);
+	assertTrue(System.getEnv("STR_RANDOM") == nonce);
+	assertTrue(System.getEnv("STR_EMPTY") == "");
+	assertTrue(System.getEnv("INT_POSITIVE") == "123");
+	assertTrue(System.getEnv("INT_NEGATIVE") == "-456");
+	assertTrue(System.getEnv("INT_LEADING_ZEROS") == "00123");
+	assertTrue(System.getEnv("INT_ZERO") == "0");
+	assertTrue(System.getEnv("INT_NEGATIVE_ZERO") == "-0");
+	assertTrue(System.getEnv("INT_PLUS_SIGN") == "+123");
+	assertTrue(System.getEnv("INT_MAX") == "2147483647");
+	assertTrue(System.getEnv("INT_MIN") == "-2147483648");
+	assertTrue(System.getEnv("INT_OVERFLOW") == "2147483648");
+	assertTrue(System.getEnv("INT_UNDERFLOW") == "-2147483649");
+	assertTrue(System.getEnv("INT_FLOAT") == "12.34");
+	assertTrue(System.getEnv("INT_LEADING_SPACE") == " 123");
+	assertTrue(System.getEnv("INT_TRAILING_SPACE") == "123 ");
+	assertTrue(System.getEnv("INT_HEX") == "0x1F");
+	assertTrue(System.getEnv("INT_WITH_CHARS") == "123abc");
+	assertTrue(System.getEnv("BOOL_TRUE") == "true");
+	assertTrue(System.getEnv("BOOL_FALSE") == "false");
+	assertTrue(System.getEnv("BOOL_UPPER_TRUE") == "TRUE");
+	assertTrue(System.getEnv("BOOL_UPPER_FALSE") == "FALSE");
+	assertTrue(System.getEnv("BOOL_MIXED_TRUE") == "True");
+	assertTrue(System.getEnv("BOOL_MIXED_FALSE") == "False");
+	assertTrue(System.getEnv("BOOL_ONE") == "1");
+	assertTrue(System.getEnv("BOOL_ZERO") == "0");
+	assertTrue(System.getEnv("BOOL_YES") == "yes");
+	assertTrue(System.getEnv("BOOL_NO") == "no");
+	assertTrue(System.getEnv("BOOL_LEADING_SPACE") == " false");
+	assertTrue(System.getEnv("BOOL_TRAILING_SPACE") == "false ");
 
 	// Variable names
 	Vector<String> names;
 	for (const auto& name: System.listEnv()) {
 		names.append(name); // const char* -> String
 	}
-	// Count: 5 APP_VAR + 1 RAND_VAR + 4 BOOL_CASE + 6 BOOL_INVALID + 13 INT + 1 EMPTY = 30 total
-	assertEqual(names.size(), 30);
-
-	// Original vars
-	assertTrue(names.contains("APP_VAR1"));
-	assertTrue(names.contains("APP_VAR2"));
-	assertTrue(names.contains("APP_VAR3"));
-	assertTrue(names.contains("APP_VAR4"));
-	assertTrue(names.contains("APP_VAR5"));
-	assertTrue(names.contains("RAND_VAR"));
-	// Bool case sensitivity vars
-	assertTrue(names.contains("BOOL_UPPER_TRUE"));
-	assertTrue(names.contains("BOOL_UPPER_FALSE"));
-	assertTrue(names.contains("BOOL_MIXED_TRUE"));
-	assertTrue(names.contains("BOOL_MIXED_FALSE"));
-	// Bool invalid value vars
-	assertTrue(names.contains("BOOL_ONE"));
-	assertTrue(names.contains("BOOL_ZERO"));
-	assertTrue(names.contains("BOOL_YES"));
-	assertTrue(names.contains("BOOL_NO"));
-	assertTrue(names.contains("BOOL_LEADING_SPACE"));
-	assertTrue(names.contains("BOOL_TRAILING_SPACE"));
-	// Int edge case vars
+	assertEqual(names.size(), 31);
+	assertTrue(names.contains("STR_SHORT"));
+	assertTrue(names.contains("STR_LONG"));
+	assertTrue(names.contains("STR_RANDOM"));
+	assertTrue(names.contains("STR_EMPTY"));
+	assertTrue(names.contains("INT_POSITIVE"));
 	assertTrue(names.contains("INT_NEGATIVE"));
+	assertTrue(names.contains("INT_LEADING_ZEROS"));
+	assertTrue(names.contains("INT_ZERO"));
+	assertTrue(names.contains("INT_NEGATIVE_ZERO"));
+	assertTrue(names.contains("INT_PLUS_SIGN"));
 	assertTrue(names.contains("INT_MAX"));
-	assertTrue(names.contains("INT_MIN"));
+	assertTrue(names.contains("INT_MAX"));
 	assertTrue(names.contains("INT_OVERFLOW"));
 	assertTrue(names.contains("INT_UNDERFLOW"));
 	assertTrue(names.contains("INT_FLOAT"));
@@ -349,22 +175,190 @@ test(03_check_local_env_update) {
 	assertTrue(names.contains("INT_TRAILING_SPACE"));
 	assertTrue(names.contains("INT_HEX"));
 	assertTrue(names.contains("INT_WITH_CHARS"));
-	assertTrue(names.contains("INT_LEADING_ZEROS"));
-	assertTrue(names.contains("INT_NEGATIVE_ZERO"));
-	assertTrue(names.contains("INT_PLUS_SIGN"));
-	// Empty var
-	assertTrue(names.contains("EMPTY_VAR"));
+	assertTrue(names.contains("BOOL_TRUE"));
+	assertTrue(names.contains("BOOL_FALSE"));
+	assertTrue(names.contains("BOOL_UPPER_TRUE"));
+	assertTrue(names.contains("BOOL_UPPER_FALSE"));
+	assertTrue(names.contains("BOOL_MIXED_TRUE"));
+	assertTrue(names.contains("BOOL_MIXED_FALSE"));
+	assertTrue(names.contains("BOOL_ONE"));
+	assertTrue(names.contains("BOOL_ZERO"));
+	assertTrue(names.contains("BOOL_YES"));
+	assertTrue(names.contains("BOOL_NO"));
+	assertTrue(names.contains("BOOL_LEADING_SPACE"));
+	assertTrue(names.contains("BOOL_TRAILING_SPACE"));
 
-	// hasEnv tests
-	assertTrue(System.hasEnv("APP_VAR1"));
-	assertTrue(System.hasEnv("APP_VAR2"));
-	assertTrue(System.hasEnv("APP_VAR3"));
-	assertTrue(System.hasEnv("APP_VAR4"));
-	assertTrue(System.hasEnv("APP_VAR5"));
-	assertFalse(System.hasEnv("APP_VAR6")); // Not defined
-	assertFalse(System.hasEnv("NONEXISTENT")); // Not defined
-	assertTrue(System.hasEnv("RAND_VAR"));
-	assertTrue(System.hasEnv("EMPTY_VAR")); // Empty value still exists
+	// System.hasEnv()
+	for (int i = 0; i < names.size(); ++i) {
+		assertTrue(System.hasEnv(names[i].c_str()));
+	}
+	assertTrue(System.hasEnv("STR_EMPTY")); // Empty value still exists
+	assertFalse(System.hasEnv("NON_EXISTENT"));
+
+	// System.getEnv(..., String&)
+	{
+		String val = "default";
+		assertTrue(System.getEnv("STR_SHORT", val));
+		assertTrue(val == "abc");
+
+		val = "default";
+		assertTrue(System.getEnv("STR_LONG", val));
+		assertTrue(val == longStr);
+
+		val = "default";
+		assertTrue(System.getEnv("STR_RANDOM", val));
+		assertTrue(val == nonce);
+
+		val = "default";
+		assertTrue(System.getEnv("STR_EMPTY", val));
+		assertTrue(val == "");
+
+		val = "default";
+		assertTrue(System.getEnv("INT_ZERO", val));
+		assertTrue(val == "0");
+
+		val = "default";
+		assertTrue(System.getEnv("BOOL_FALSE", val));
+		assertTrue(val == "false");
+
+		val = "default";
+		assertFalse(System.getEnv("NON_EXISTENT", val)); // Not found
+		assertTrue(val == "default"); // Unchanged
+	}
+
+	// System.getEnv(..., int&)
+	{
+		int val = 999;
+		assertTrue(System.getEnv("INT_POSITIVE", val));
+		assertTrue(val == 123);
+
+		val = 999;
+		assertTrue(System.getEnv("INT_NEGATIVE", val));
+		assertTrue(val == -456);
+
+		val = 999;
+		assertTrue(System.getEnv("INT_LEADING_ZEROS", val));
+		assertTrue(val == 123);
+
+		val = 999;
+		assertTrue(System.getEnv("INT_ZERO", val));
+		assertTrue(val == 0);
+
+		val = 999;
+		assertTrue(System.getEnv("INT_NEGATIVE_ZERO", val));
+		assertTrue(val == 0);
+
+		val = 999;
+		assertFalse(System.getEnv("INT_PLUS_SIGN", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertTrue(System.getEnv("INT_MAX", val));
+		assertTrue(val == std::numeric_limits<int>::max());
+
+		val = 999;
+		assertTrue(System.getEnv("INT_MIN", val));
+		assertTrue(val == std::numeric_limits<int>::min());
+
+		val = 999;
+		assertFalse(System.getEnv("INT_OVERFLOW", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_UNDERFLOW", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_FLOAT", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_LEADING_SPACE", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_TRAILING_SPACE", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_HEX", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("INT_WITH_CHARS", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("STR_EMPTY", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("BOOL_TRUE", val)); // Invalid
+		assertTrue(val == 999); // Unchanged
+
+		val = 999;
+		assertFalse(System.getEnv("NON_EXISTENT", val)); // Not found
+		assertTrue(val == 999); // Unchanged
+	}
+
+	// System.getEnv(..., bool&)
+	{
+		bool val = false;
+		assertTrue(System.getEnv("BOOL_TRUE", val));
+		assertTrue(val == true);
+
+		val = true;
+		assertTrue(System.getEnv("BOOL_FALSE", val));
+		assertTrue(val == false);
+
+		val = false;
+		assertFalse(System.getEnv("BOOL_UPPER_TRUE", val)); // Invalid
+		assertTrue(val == false);
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_UPPER_FALSE", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = false;
+		assertFalse(System.getEnv("BOOL_MIXED_TRUE", val)); // Invalid
+		assertTrue(val == false); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_MIXED_FALSE", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = false;
+		assertFalse(System.getEnv("BOOL_ONE", val)); // Invalid
+		assertTrue(val == false); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_ZERO", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = false;
+		assertFalse(System.getEnv("BOOL_YES", val)); // Invalid
+		assertTrue(val == false); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_NO", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_LEADING_SPACE", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("BOOL_TRAILING_SPACE", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("STR_EMPTY", val)); // Invalid
+		assertTrue(val == true); // Unchanged
+
+		val = true;
+		assertFalse(System.getEnv("NON_EXISTENT", val)); // Not found
+		assertTrue(val == true); // Unchanged
+	}
 
 	// Clear the env vars and reset to apply the changes
 	assertEqual(system_clear_env(nullptr /* reserved */), SYSTEM_ENV_NEED_RESET);

@@ -184,7 +184,7 @@ bool SystemClass::getEnv(const char* name, String& value) {
     if (n < (int)sizeof(buf)) {
         std::memcpy(&s[0u], buf, n);
     } else {
-        int r = system_get_env(name, &s[0u], n, nullptr /* reserved */);
+        int r = system_get_env(name, &s[0u], n + 1 /* for '\0' */, nullptr /* reserved */);
         if (r < 0) {
             return false;
         }
