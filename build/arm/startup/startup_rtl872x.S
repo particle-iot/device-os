@@ -133,8 +133,8 @@ Reset_Handler:
 
 .L_loop3_done:
 #endif /* __STARTUP_CLEAR_BSS */
-
-    bl SystemInit
+    ldr r0, =SystemInit
+    blx r0
     ldr r0, =Jump_To_Main
     bx r0
 
