@@ -15,13 +15,15 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("wiring.watchdog")
+
 #include "spark_wiring_watchdog.h"
 
 #if Wiring_Watchdog
 
 #include "check.h"
-#include "logging.h"
-LOG_SOURCE_CATEGORY("wiring.watchdog")
+
 
 namespace particle {
 
