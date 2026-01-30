@@ -33,6 +33,7 @@ extern "C" {
 #include <atomic>
 #include "stream.h"
 #include "call_once.h"
+#include "static_mutex.h"
 
 #ifdef __cplusplus
 
@@ -184,7 +185,7 @@ private:
   State state_ = STATE_NONE;
 
   os_thread_t thread_ = nullptr;
-  std::mutex mutex_;
+  StaticMutex mutex_;
   os_queue_t queue_ = nullptr;
 
   NotifyCallback cb_ = nullptr;

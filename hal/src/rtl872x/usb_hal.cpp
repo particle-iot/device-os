@@ -71,7 +71,7 @@ const uint8_t sDeviceDescriptor[] = {
 } // anonymous
 
 void HAL_USB_Init(void) {
-    static particle::CallOnce onceFlag;
+    static particle::OnceFlag onceFlag;
     particle::CallOnce(onceFlag, []() {
         getUsbDevice().setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
         getUsbDevice().registerDriver(RtlUsbDriver::instance());

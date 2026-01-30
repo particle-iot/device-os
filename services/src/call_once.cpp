@@ -15,13 +15,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "platforms.h"
+#include "module_info.h"
+
+#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL && PLATFORM_THREADING && \
+    MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "call_once.h"
 
 namespace particle {
 
-std::mutex& OnceMutex() {
-    static std::mutex m;
+StaticMutex& OnceMutex() {
+    static StaticMutex m;
     return m;
 }
 
 } // particle
+
+#endif // PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL && PLATFORM_THREADING && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER

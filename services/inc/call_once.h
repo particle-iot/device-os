@@ -24,10 +24,15 @@
 #include "delay_hal.h"
 #include "unique_lock.h"
 #include "service_debug.h"
+// FIXME: app_util.h unconditionally defines STATIC_ASSERT on Gen 3 platforms
+#ifdef STATIC_ASSERT
+#undef STATIC_ASSERT
+#endif
+#include "static_mutex.h"
 
 namespace particle {
 
-extern std::mutex& OnceMutex();
+extern StaticMutex& OnceMutex();
 
 enum class OnceState : uint8_t {
     NOT_INITIALIZED = 0,
