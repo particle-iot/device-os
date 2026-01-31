@@ -117,6 +117,10 @@ namespace particle {
 
 namespace fs {
 
+inline filesystem_t* defaultFs() {
+    return filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+}
+
 class FsLock {
 public:
     explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
