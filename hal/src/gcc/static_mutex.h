@@ -38,5 +38,5 @@ public:
     }
 
 private:
-    std::mutex mutex_;
+    std::timed_mutex mutex_;
 };
