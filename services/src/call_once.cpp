@@ -18,8 +18,7 @@
 #include "platforms.h"
 #include "module_info.h"
 
-#if PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL && PLATFORM_THREADING && \
-    MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "call_once.h"
 
 namespace particle {
@@ -31,4 +30,4 @@ StaticMutex& OnceMutex() {
 
 } // particle
 
-#endif // PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL && PLATFORM_THREADING && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
