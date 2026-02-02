@@ -43,11 +43,65 @@ public:
 
     int init();
 
+    /**
+     * Get the value of an environment variable.
+     *
+     * The output is always null-terminated unless an the size of the output buffer is 0.
+     *
+     * @param name Variable name.
+     * @param buf Output buffer. Only modified if the variable is defined.
+     * @param buf_size Size of the output buffer.
+     * @return On success, the actual length of the variable value, not including `\0`, otherwise
+     *         an error code defined by `system_error_t`. The returned length can be greater than
+     *         the size of the output buffer. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable
+     *         is not defined.
+     */
     int get(const char* name, char* buf, size_t bufSize);
+
+    /**
+     * Get the value of an environment variable as a `CString`.
+     *
+     * @param name Variable name.
+     * @param[out] val Variable value. Only modified if the variable is defined.
+     * @return On success, the length of the variable value, not including `\0`, otherwise an error
+     *         code defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable
+     *         is not defined.
+     */
     int get(const char* name, CString& val);
+
+    /**
+     * Get the value of an environment variable and convert it to an `int`.
+     *
+     * Only decimal digits with an optional leading minus sign are valid.
+     *
+     * @param name Variable name.
+     * @param[out] val Variable value. Only modified if the variable is defined and valid.
+     * @return 0 if the variable is defined and contains a valid integer, otherwise an error code
+     *         defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is
+     *         not defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid integer
+     *         in the range representable by `int`.
+     */
     int get(const char* name, int& val);
+
+    /**
+     * Get the value of an environment variable and convert it to a `bool`.
+     *
+     * Only `true` and `false` (case-sensitive, lowercase only) are valid.
+     *
+     * @param name Variable name.
+     * @param[out] val Variable value. Only modified if the variable is defined and valid.
+     * @return 0 if the variable is defined and contains a valid boolean value, otherwise an error
+     *         code defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable
+     *         is not defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid boolean.
+     */
     int get(const char* name, bool& val);
 
+    /**
+     * Check if an environment variable is defined.
+     *
+     * @param name Variable name.
+     * @return `true` if the variable is defined, otherwise `false`.
+     */
     bool has(const char* name) const {
         return vars_.entries.has(name);
     }
@@ -137,128 +191,24 @@ private:
     static int readVars(VarSource src, fs::File& file, Vars& vars);
 };
 
-/**
- * Get the value of an environment variable as a string.
- *
- * Only modifies the output parameter if the variable is found. If the variable
- * is not found, the output parameter is left unchanged, allowing callers to
- * pre-set a default value.
- *
- * @param name Variable name.
- * @param[in,out] val On input, may contain a default value.
- *                    On output, the variable value if found, otherwise unchanged.
- * @return `true` if the variable is defined and was retrieved successfully,
- *         `false` if the variable is not defined or an error occurred.
- *
- * Example:
- * ```
- * CString value; // Do not assign a default value here to avoid unnecessary memory allocation
- * if (getEnv("MY_VAR", value)) {
- *     // value now contains the env var value
- * } else {
- *     value = "default";
- * }
- * ```
- */
-inline bool getEnv(const char* name, CString& val) {
-    return Env::instance().get(name, val) >= 0;
-}
-
-/**
- * Get the value of an environment variable into a character buffer.
- *
- * Only modifies the output buffer if the variable is found. If the variable
- * is not found, the buffer is left unchanged.
- *
- * The output is always null-terminated if the variable is found and bufSize > 0.
- * If the buffer is too small, the value is truncated but still null-terminated.
- *
- * @param name Variable name.
- * @param[out] buf Output buffer. Left unchanged if variable not found.
- * @param bufSize Size of the output buffer.
- * @return `true` if the variable is defined and was retrieved successfully,
- *         `false` if the variable is not defined or an error occurred.
- */
+// Helper functions that return `true` if the variable is defined and valid, or `false` if the
+// variable is not defined or an error occurs when getting the variable value
 inline bool getEnv(const char* name, char* buf, size_t bufSize) {
     return Env::instance().get(name, buf, bufSize) >= 0;
 }
 
-/**
- * Get the value of an environment variable and validate it as a boolean.
- *
- * Validates that the environment variable contains exactly "true" or "false"
- * (case-sensitive, lowercase only). Any other value is considered invalid.
- *
- * Only modifies the output parameter if the variable is found AND contains
- * a valid boolean value. If the variable is not found or contains an invalid
- * value, the output parameter is left unchanged.
- *
- * @param name Variable name.
- * @param[in,out] val On input, may contain a default value.
- *                    On output, `true` if value is "true",
- *                    `false` if value is "false",
- *                    otherwise unchanged.
- * @return `true` if the variable is defined AND contains a valid boolean value,
- *         `false` if the variable is not defined, empty, or contains an invalid value.
- *
- * Valid values: "true", "false" (lowercase only, case-sensitive)
- * Invalid values: "TRUE", "FALSE", "True", "1", "0", "yes", "no", "", or any other string
- *
- * Example:
- * ```
- * bool enabled = true;  // default
- * if (getEnv("FEATURE_ENABLE", enabled)) {
- *     // enabled now contains the parsed boolean
- * } else {
- *     // enabled still contains true (default)
- * }
- * ```
- */
+inline bool getEnv(const char* name, CString& val) {
+    return Env::instance().get(name, val) >= 0;
+}
+
 inline bool getEnv(const char* name, bool& val) {
     return Env::instance().get(name, val) == 0;
 }
 
-/**
- * Get the value of an environment variable and validate it as a 32-bit signed integer.
- *
- * Validates that the environment variable contains a valid decimal integer that
- * fits within int32_t range (-2147483648 to 2147483647). Only decimal digits
- * with an optional leading minus sign are accepted.
- *
- * Only modifies the output parameter if the variable is found AND contains
- * a valid integer value. If the variable is not found or contains an invalid
- * value, the output parameter is left unchanged.
- *
- * @param name Variable name.
- * @param[in,out] val On input, may contain a default value.
- *                    On output, the parsed integer if valid, otherwise unchanged.
- * @return `true` if the variable is defined AND contains a valid 32-bit signed integer,
- *         `false` if the variable is not defined, empty, contains non-numeric characters,
- *         or the value overflows int32_t range.
- *
- * Valid values: "0", "123", "-456", "2147483647", "-2147483648"
- * Invalid values: "", "12.34", "0x1F", "12abc", " 123", "123 ", overflow values
- *
- * Example:
- * ```
- * int timeout = 30;  // default
- * if (getEnv("TIMEOUT_SEC", timeout)) {
- *     // timeout now contains the parsed integer
- * } else {
- *     // timeout still contains 30 (default)
- * }
- * ```
- */
 inline bool getEnv(const char* name, int& val) {
     return Env::instance().get(name, val) == 0;
 }
 
-/**
- * Check if an environment variable is defined.
- *
- * @param name Variable name.
- * @return `true` if the variable is defined, otherwise `false`.
- */
 inline bool hasEnv(const char* name) {
     return Env::instance().has(name);
 }
@@ -288,7 +238,7 @@ extern "C" {
 int system_get_env(const char* name, char* buf, size_t buf_size, void* reserved);
 
 /**
- * Get the value of an environment variable and convert it to an integer.
+ * Get the value of an environment variable and convert it to an `int`.
  *
  * Only decimal digits with an optional leading minus sign are valid.
  *
@@ -297,13 +247,13 @@ int system_get_env(const char* name, char* buf, size_t buf_size, void* reserved)
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return 0 if the variable is defined and contains a valid integer, otherwise an error code
  *         defined by `system_error_t`. Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is not
- *         defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid integer or is
- *         not in the range representable by `int`.
+ *         defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid integer in the
+ *         range representable by `int`.
  */
 int system_get_env_int(const char* name, int* val, void* reserved);
 
 /**
- * Get the value of an environment variable and convert it to a boolean.
+ * Get the value of an environment variable and convert it to a `bool`.
  *
  * Only `true` and `false` (case-sensitive, lowercase only) are valid.
  *
