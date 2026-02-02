@@ -197,23 +197,27 @@ int ConnectionManager::testConnections(bool background) {
     } else {
         // Background test
         testResultsActual_ = false;
+        auto backgroundTestPrepared = true;
         if (!backgroundTestInProgress_) {
             LOG_DEBUG(INFO, "Background reachability test started");
             backgroundTester_ = std::make_unique<ConnectionTester>();
             CHECK_TRUE(backgroundTester_, SYSTEM_ERROR_NO_MEMORY);
-            r = backgroundTester_->prepare(false /* full test*/);
+            r = backgroundTester_->prepare(false /* full test*/, lastTestFailed_);
             if (r == 0) {
                 backgroundTestInProgress_ = true;
-                r = backgroundTester_->runTest(0 /* non blocking */);
             } else {
                 lastTestFailed_ = true;
+                backgroundTestPrepared = false;
             }
         }
-        if (!r || r != SYSTEM_ERROR_BUSY) {
-            LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
-            backgroundTestInProgress_ = false;
-            metrics = backgroundTester_->getConnectionMetrics();
-            backgroundTester_.reset();
+        if (backgroundTestPrepared) {
+            r = backgroundTester_->runTest(0 /* non blocking */);
+            if (!r || r != SYSTEM_ERROR_BUSY) {
+                LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
+                backgroundTestInProgress_ = false;
+                metrics = backgroundTester_->getConnectionMetrics();
+                backgroundTester_.reset();
+            }
         }
     }
 
