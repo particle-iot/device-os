@@ -27,6 +27,7 @@
 
 #include <pb_decode.h>
 
+#include "stream.h"
 #include "file_util.h"
 #include "nanopb_misc.h"
 #include "logging.h"
@@ -46,6 +47,71 @@ const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 const size_t MAX_VARS_FILE_SIZE = 16 * 1024;
+
+class ValueStream: public InputStream {
+public:
+    ValueStream(fs::File& file, size_t offs, size_t size) :
+            file_(file),
+            begOffs_(offs),
+            endOffs_(offs + size),
+            curOffs_(offs) {
+    }
+
+    int read(char* data, size_t size) override {
+        CHECK(peek(data, size));
+        return skip(size);
+    }
+
+    int peek(char* data, size_t size) override {
+        size_t bytesToRead = std::min(size, endOffs_ - curOffs_);
+        if (!bytesToRead && size) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        fs::FsLock lock;
+        CHECK(file_.seek(curOffs_));
+        size_t bytesRead = CHECK(file_.read(data, bytesToRead));
+        if (bytesRead != bytesToRead) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        return bytesRead;
+    }
+
+    int skip(size_t size) override {
+        size_t bytesToSkip = std::min(size, endOffs_ - curOffs_);
+        if (!bytesToSkip && size) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        curOffs_ += bytesToSkip;
+        return bytesToSkip;
+    }
+
+    int availForRead() override {
+        return endOffs_ - curOffs_;
+    }
+
+    int seek(size_t offs) override {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    int waitEvent(unsigned flags, unsigned timeout) override {
+        if (!flags) {
+            return 0;
+        }
+        if (!(flags & InputStream::READABLE)) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+        if (curOffs_ == endOffs_) {
+            return SYSTEM_ERROR_END_OF_STREAM;
+        }
+        return InputStream::READABLE;
+    }
+
+private:
+    fs::File& file_;
+    size_t begOffs_;
+    size_t endOffs_;
+    size_t curOffs_;
+};
 
 const char* stagedPathForAssetType(AssetType type) {
     switch (type) {
@@ -176,6 +242,21 @@ int Env::get(const char* name, bool& val) {
     } else {
         return SYSTEM_ERROR_ENV_INVALID_VALUE;
     }
+    return 0;
+}
+
+int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
+    auto it = vars_.entries.find(name);
+    if (it == vars_.entries.end()) {
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
+    }
+    const auto& var = it->second;
+    auto& file = (var.src == VarSource::APP) ? appFile_ : snapshotFile_;
+    std::unique_ptr<ValueStream> s(new(std::nothrow) ValueStream(file, var.valOffs, var.valSize));
+    if (!s) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    stream = std::move(s);
     return 0;
 }
 

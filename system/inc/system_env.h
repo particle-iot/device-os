@@ -32,7 +32,11 @@
 
 #include "spark_wiring_map.h"
 
-namespace particle::system {
+namespace particle {
+
+class InputStream;
+
+namespace system {
 
 class Env: public SystemAssetHandler {
 public:
@@ -119,6 +123,16 @@ public:
      *         is not defined, or `SYSTEM_ERROR_ENV_INVALID_VALUE` if the value is not a valid boolean.
      */
     int get(const char* name, bool& val);
+
+    /**
+     * Get a stream for reading the value of an environment variable.
+     *
+     * @param name Variable name.
+     * @param[out] stream Stream for reading the variable value.
+     * @return 0 if the variable is defined, otherwise an error code defined by `system_error_t`.
+     *         Returns `SYSTEM_ERROR_ENV_NOT_FOUND` if the variable is not defined.
+     */
+    int get(const char* name, std::unique_ptr<InputStream>& stream);
 
     /**
      * Check if an environment variable is defined.
@@ -236,6 +250,8 @@ inline bool hasEnv(const char* name) {
 }
 
 } // particle::system
+
+} // particle
 
 extern "C" {
 #endif // defined(__cplusplus)

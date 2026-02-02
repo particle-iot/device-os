@@ -23,6 +23,7 @@
 #include "system_cloud_internal.h"
 #include "system_update.h"
 #include "system_network.h"
+#include "system_env.h"
 
 #include "deviceid_hal.h"
 #include "core_hal.h"
@@ -55,11 +56,7 @@
 #define PB(_name) particle_ctrl_##_name
 #define PB_FIELDS(_name) particle_ctrl_##_name##_fields
 
-namespace particle {
-
-namespace control {
-
-namespace config {
+namespace particle::control::config {
 
 namespace {
 
@@ -460,6 +457,18 @@ int echo(ctrl_request* req) {
     return 0;
 }
 
+#if HAL_PLATFORM_ENV
+
+int getEnv(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+}
+
+int clearEnv(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+}
+
+#endif // HAL_PLATFORM_ENV
+
 // TODO
 int handleSetSecurityKeyRequest(ctrl_request*) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
@@ -490,9 +499,5 @@ int handleSetSoftapSsidRequest(ctrl_request*) {
 }
 
 } // particle::control::config
-
-} // particle::control
-
-} // particle
 
 #endif // SYSTEM_CONTROL_ENABLED

@@ -19,9 +19,9 @@
 
 #include "system_control.h"
 
-namespace particle {
-namespace control {
-namespace config {
+#include "hal_platform.h"
+
+namespace particle::control::config {
 
 int getDeviceId(ctrl_request* req);
 int getSerialNumber(ctrl_request* req);
@@ -38,6 +38,12 @@ int setFeature(ctrl_request* req);
 int getFeature(ctrl_request* req);
 int echo(ctrl_request* req);
 
+#if HAL_PLATFORM_ENV
+int getEnv(ctrl_request* req);
+int clearEnv(ctrl_request* req);
+#endif
+
+// Deprecated
 int handleSetClaimCodeRequest(ctrl_request* req);
 int handleIsClaimedRequest(ctrl_request* req);
 int handleSetSecurityKeyRequest(ctrl_request* req);
@@ -50,4 +56,4 @@ int handleStartNyanRequest(ctrl_request* req);
 int handleStopNyanRequest(ctrl_request* req);
 int handleSetSoftapSsidRequest(ctrl_request* req);
 
-} } } /* namespace particle::control::config */
+} // particle::control::config

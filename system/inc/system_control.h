@@ -117,6 +117,9 @@ typedef enum ctrl_request_type {
     CTRL_REQUEST_CELLULAR_SET_ACTIVE_SIM = 552,
     CTRL_REQUEST_CELLULAR_GET_ACTIVE_SIM = 553,
     CTRL_REQUEST_CELLULAR_GET_ICCID = 554,
+    // Environment variables
+    CTRL_REQUEST_ENV_GET = 600,
+    CTRL_REQUEST_ENV_CLEAR = 601,
     // Mesh network management (Deprecated)
     // CTRL_REQUEST_MESH_AUTH = 1001,
     // CTRL_REQUEST_MESH_CREATE_NETWORK = 1002,
