@@ -204,11 +204,11 @@ int ConnectionManager::testConnections(bool background) {
             r = backgroundTester_->prepare(false /* full test*/);
             if (r == 0) {
                 backgroundTestInProgress_ = true;
+                r = backgroundTester_->runTest(0 /* non blocking */);
             } else {
                 lastTestFailed_ = true;
             }
         }
-        r = backgroundTester_->runTest(0 /* non blocking */);
         if (!r || r != SYSTEM_ERROR_BUSY) {
             LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
             backgroundTestInProgress_ = false;
@@ -216,6 +216,7 @@ int ConnectionManager::testConnections(bool background) {
             backgroundTester_.reset();
         }
     }
+
     if (r == 0) {
         bestNetworks_.clear();
         bool hasValidScore = false;
