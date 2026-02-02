@@ -51,7 +51,7 @@ void firmwareUpdateEventHandler(system_event_t, int data, void*) {
         ++firmwareUpdateProgressCount;
         break;
     default:
-        Test::out->printlnf("Unexpected firmware update status: 0x%08x", (unsigned)data);
+        Test::out->printlnf("Unexpected firmware update status: %d", data);
         firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
         break;
     }
