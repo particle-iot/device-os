@@ -1123,7 +1123,7 @@ public:
     // Returns an empty string if the variable is not defined
     static String getEnv(const char* name);
 
-    // Primary string-first API - returns true if found, modifies value only on success
+    // Returns true if found, modifies value only on success
     static bool getEnv(const char* name, String& value);
 
     // Validates if the env is exactly "true" or "false" (case-sensitive, lowercase only)
@@ -1137,6 +1137,10 @@ public:
     static bool hasEnv(const char* name);
 
     static Vector<const char*> listEnv();
+
+    // Returns true if a system reset is needed to apply the changes. If `reset` is true (default),
+    // resets the device automatically
+    static bool clearEnv(bool reset = true);
 #endif // HAL_PLATFORM_ENV
 
 private:

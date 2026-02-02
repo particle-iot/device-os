@@ -223,6 +223,17 @@ int SystemClass::listEnv(Vector<const char*>& namesArg) {
     return 0;
 }
 
+bool SystemClass::clearEnv(bool reset) {
+    int r = system_clear_env(nullptr /* reserved */);
+    if (r != SYSTEM_ENV_NEED_RESET) { // Error or no reset is needed
+        return false;
+    }
+    if (reset) {
+        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* data */, 0 /* flags */, nullptr /* reserved */);
+    }
+    return true;
+}
+
 #endif // HAL_PLATFORM_ENV
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {

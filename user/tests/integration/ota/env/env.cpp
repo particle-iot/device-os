@@ -3,7 +3,6 @@
 
 #include "application.h"
 
-#include "system_env.h"
 #include "random.h"
 
 #include "unit-test/unit-test.h"
@@ -112,7 +111,7 @@ test(01_init) {
     pushMailboxMsg(nonce, 5000 /* wait */);
 
     // Clear the env vars and reset to apply the changes
-    assertMoreOrEqual(system_clear_env(nullptr /* reserved */), 0);
+    System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
 }
@@ -374,7 +373,7 @@ test(03_check_local_env_update) {
     }
 
     // Clear the env vars and reset to apply the changes
-    assertEqual(system_clear_env(nullptr /* reserved */), SYSTEM_ENV_NEED_RESET);
+    assertTrue(System.clearEnv(false /* reset */));
     expectSystemReset();
     System.reset();
 }
