@@ -1,3 +1,4 @@
+#include <atomic>
 #include <limits>
 
 #include "application.h"
@@ -26,6 +27,7 @@ retained char deviceVar2[128] = {};
 retained char nonce[11] = {};
 
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+std::atomic<int> firmwareUpdateProgressCount;
 
 String findVarWithValue(const String& val) {
     for (const auto& name: System.listEnv()) {
@@ -39,23 +41,28 @@ String findVarWithValue(const String& val) {
 void firmwareUpdateEventHandler(system_event_t, int data, void*) {
     switch (data) {
     case firmware_update_begin:
+        Test::out->println("firmware_update_begin");
         firmwareUpdateStatus = FirmwareUpdateStatus::STARTED;
         break;
     case firmware_update_complete:
+        Test::out->println("firmware_update_complete");
         firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
         break;
     case firmware_update_progress:
+        ++firmwareUpdateProgressCount;
         break;
     default:
+        Test::out->printlnf("Unexpected firmware update status: 0x%08x", (unsigned)data);
         firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
         break;
     }
 }
 
 void prepareForFirmwareUpdate() {
-    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
-    System.on(firmware_update, firmwareUpdateEventHandler);
     System.disableReset();
+    System.on(firmware_update, firmwareUpdateEventHandler);
+    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+    firmwareUpdateProgressCount = 0;
 }
 
 void completeFirmwareUpdate(bool expectSafeMode = false) {
@@ -67,7 +74,7 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
             break;
         }
         if (firmwareUpdateStatus == FirmwareUpdateStatus::ERROR) {
-            Test::out->println("Firmware update error");
+            Test::out->println("Firmware update failed");
             break;
         }
         // The JS part of the test waits until the OTA completes so the timeout here is for
@@ -77,6 +84,7 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
             break;
         }
     }
+    Test::out->printlnf("firmware_update_progress count: %d", firmwareUpdateProgressCount.load());
     System.off(firmware_update);
     if (ok) {
         if (expectSafeMode) {
@@ -202,33 +210,33 @@ test(03_check_local_env_update) {
 
     // System.getEnv(..., String&)
     {
-        String val = "default";
+        String val = "xxx";
         assertTrue(System.getEnv("STR_SHORT", val));
         assertTrue(val == "abc");
 
-        val = "default";
+        val = "xxx";
         assertTrue(System.getEnv("STR_LONG", val));
         assertTrue(val == longStr);
 
-        val = "default";
+        val = "xxx";
         assertTrue(System.getEnv("STR_RANDOM", val));
         assertTrue(val == nonce);
 
-        val = "default";
+        val = "xxx";
         assertTrue(System.getEnv("STR_EMPTY", val));
         assertTrue(val == "");
 
-        val = "default";
+        val = "xxx";
         assertTrue(System.getEnv("INT_ZERO", val));
         assertTrue(val == "0");
 
-        val = "default";
+        val = "xxx";
         assertTrue(System.getEnv("BOOL_FALSE", val));
         assertTrue(val == "false");
 
-        val = "default";
+        val = "xxx";
         assertFalse(System.getEnv("NON_EXISTENT", val)); // Not found
-        assertTrue(val == "default"); // Unchanged
+        assertTrue(val == "xxx"); // Unchanged
     }
 
     // System.getEnv(..., int&)

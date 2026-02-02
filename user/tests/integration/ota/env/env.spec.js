@@ -63,7 +63,7 @@ async function initDefaultEnv() {
 			ops: Object.entries(env).map(([key]) => ({ op: 'Unset', key }))
 		});
 		await post(api, `/v1/env/${deviceId}/rollout`, {
-			when: 'Immediate'
+			when: 'Connect'
 		});
 	}
 }
@@ -81,7 +81,7 @@ before(async function() {
 	await setDevelopmentMode({ deviceId, api }); // Env vars updates still work in development mode
 
 	deviceGroup = await generateDeviceGroup({ deviceId, api });
-	// Generate a few unique variable names based on the group name
+	// Generate a couple unique variable names based on the group name
 	deviceVar1 = _.snakeCase('DVOS_' + deviceGroup).toUpperCase(); // "ci_prod_ver-XXXX" -> "DVOS_CI_PROD_VER_XXXX"
 	deviceVar2 = deviceVar1 + '_2';
 	console.log('Device variable 1:', deviceVar1);
