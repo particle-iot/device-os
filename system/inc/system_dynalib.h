@@ -138,7 +138,7 @@ DYNALIB_FN(BASE_IDX2 + 9, system, system_ble_prov_set_company_id, int(uint16_t c
 
 DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
 DYNALIB_FN(BASE_IDX3 + 1, system, system_get_env, int(const char*, char*, size_t, void*))
 DYNALIB_FN(BASE_IDX3 + 2, system, system_get_env_int, int(const char*, int*, void*))
 DYNALIB_FN(BASE_IDX3 + 3, system, system_get_env_bool, int(const char*, bool*, void*))
@@ -147,7 +147,7 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 #define BASE_IDX4 (BASE_IDX3 + 6)
 #else
 #define BASE_IDX4 (BASE_IDX3 + 1)
-#endif  // HAL_PLATFORM_ENV_VARS
+#endif  // HAL_PLATFORM_ENV
 
 DYNALIB_END(system)
 

@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
 
 #ifdef __cplusplus
 
@@ -344,4 +344,4 @@ int system_clear_env(void* reserved);
 } // extern "C"
 #endif
 
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV

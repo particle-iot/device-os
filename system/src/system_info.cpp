@@ -501,7 +501,7 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
     EncodeAssets assets(&pbDesc.assets, AssetManager::instance().availableAssets());
 #endif // HAL_PLATFORM_ASSETS
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
     auto envSnapshotHash = Env::instance().snapshotHash();
     if (envSnapshotHash) {
         static_assert(sizeof(pbDesc.env_vars_hash.bytes) >= Env::SNAPSHOT_HASH_SIZE);
@@ -509,7 +509,7 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
         pbDesc.env_vars_hash.size = Env::SNAPSHOT_HASH_SIZE;
         pbDesc.has_env_vars_hash = true;
     }
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
 
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);

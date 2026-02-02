@@ -163,7 +163,7 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
 }
 #endif // HAL_PLATFORM_ASSET
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
 
 String SystemClass::getEnv(const char* name) {
     String s;
@@ -223,7 +223,7 @@ int SystemClass::listEnv(Vector<const char*>& namesArg) {
     return 0;
 }
 
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {

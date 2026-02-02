@@ -1119,7 +1119,7 @@ public:
         return security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
     }
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
     // Returns an empty string if the variable is not defined
     static String getEnv(const char* name);
 
@@ -1137,7 +1137,7 @@ public:
     static bool hasEnv(const char* name);
 
     static Vector<const char*> listEnv();
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
 
 private:
     SystemSleepResult systemSleepResult_;
@@ -1184,9 +1184,9 @@ private:
         handler(events, data, pointer);
     }
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
     static int listEnv(Vector<const char*>& names);
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
 };
 
 extern SystemClass System;

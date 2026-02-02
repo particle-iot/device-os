@@ -434,7 +434,7 @@ uint32_t compute_describe_system_checksum()
 		checksum += crc(info.modules[i].suffix.sha);
 	}
 	HAL_System_Info(&info, false, NULL);
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
     if (Env::instance().hasSnapshot()) {
         checksum += crc(Env::instance().snapshotHash(), Env::SNAPSHOT_HASH_SIZE);
     }

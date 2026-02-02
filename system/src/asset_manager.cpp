@@ -427,13 +427,13 @@ SystemAssetHandler* AssetManager::systemHandlerForAssetType(AssetType type) {
     SystemAssetHandler* handler = nullptr;
 
     switch (type) {
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
     case AssetType::ENV_VARS_APP:
     case AssetType::ENV_VARS_SNAPSHOT: {
         handler = &Env::instance();
         break;
     }
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
     case AssetType::DEFAULT:
         break;
     default:

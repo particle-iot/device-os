@@ -17,7 +17,7 @@
 
 #include "system_env.h"
 
-#if HAL_PLATFORM_ENV_VARS
+#if HAL_PLATFORM_ENV
 
 #include <algorithm>
 #include <charconv>
@@ -424,4 +424,4 @@ int system_clear_env(void* reserved) {
     return Env::instance().clear();
 }
 
-#endif // HAL_PLATFORM_ENV_VARS
+#endif // HAL_PLATFORM_ENV
