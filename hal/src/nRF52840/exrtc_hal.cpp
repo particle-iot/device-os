@@ -63,12 +63,20 @@ int hal_exrtc_init(void* reserved) {
             config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
             config.mfg_osc_cal_xt = calValue;
         } else {
+            // Bump config version
+            config.version = HAL_EXRTC_API_VERSION;
+            config.size = sizeof(hal_am18x5_config_t);
             config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
             config.mfg_osc_cal_xt = config.osc_cal_xt;
         }
-        if (Am18x5::getInstance().setConfig(&config) != SYSTEM_ERROR_NONE) {
-            return SYSTEM_ERROR_INTERNAL;
-        }
+        ret = Am18x5::getInstance().setConfig(&config);
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        hal_am18x5_config_t temp = {};
+        temp.size = sizeof(hal_am18x5_config_t);
+        ret = Am18x5::getInstance().getConfig(&temp);
+        SPARK_ASSERT(ret == SYSTEM_ERROR_NONE);
+        SPARK_ASSERT(temp.version >= 2);
+        SPARK_ASSERT(temp.mfg_magic == HAL_EXRTC_MFG_MAGIC);
     }
     return Am18x5::getInstance().begin();
 }
