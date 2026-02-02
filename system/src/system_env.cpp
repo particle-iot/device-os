@@ -407,11 +407,11 @@ int system_get_env_bool(const char* name, bool* val, void* reserved) {
 
 int system_list_env(const char* names[], size_t count, void* reserved) {
     size_t i = 0;
-    int r = Env::instance().forEach([&](const char* name) -> int {
+    int r = Env::instance().forEach([&](const auto& var) -> int {
         if (i >= count) {
             return std::numeric_limits<int>::min(); // Break the loop
         }
-        names[i++] = name;
+        names[i++] = var.name;
         return 0;
     });
     if (r < 0 && r != std::numeric_limits<int>::min()) {

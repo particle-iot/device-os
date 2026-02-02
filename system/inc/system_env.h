@@ -36,6 +36,30 @@ namespace particle::system {
 
 class Env: public SystemAssetHandler {
 public:
+    /**
+     * Variable info.
+     */
+    struct VarInfo {
+        /**
+         * Variable name.
+         */
+        const char* name;
+        /**
+         * Size of the variable value not including '\0'.
+         */
+        size_t size;
+        /**
+         * Whether this is an application variable.
+         */
+        bool isApp;
+
+        VarInfo(const char* name, size_t size, bool isApp) :
+                name(name),
+                size(size),
+                isApp(isApp) {
+        }
+    };
+
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     Env(const Env&) = delete;
@@ -110,27 +134,25 @@ public:
         return vars_.entries.size();
     }
 
-    // Invokes a callback for each variable name and value
+    // Invokes a callback taking a `VarInfo` for each defined variable
     template<typename F>
-    int forEach(char* buf, size_t bufSize, F fn) {
-        for (const auto& entry: vars_.entries) {
-            int r = get(entry.first, buf, bufSize);
-            if (r < 0) {
-                return r;
-            }
-            r = fn(entry.first.data(), buf);
-            if (r < 0) {
-                return r;
-            }
-        }
-        return vars_.entries.size();
+    int forEach(F&& fn) {
+        return forEach(nullptr /* buf */, 0 /* bufSize */, std::forward<F>(fn));
     }
 
-    // Invokes a callback for each variable name
+    // Invokes a callback taking a `VarInfo` for each defined variable. Stores the value of each
+    // variable in the provided buffer
     template<typename F>
-    int forEach(F fn) const {
+    int forEach(char* buf, size_t bufSize, F&& fn) {
         for (const auto& entry: vars_.entries) {
-            int r = fn(entry.first.data());
+            if (buf) {
+                int r = readValue(entry.second, buf, bufSize);
+                if (r < 0) {
+                    return r;
+                }
+            }
+            auto info = VarInfo(entry.first.data(), entry.second.valSize, entry.second.src == VarSource::APP);
+            int r = fn(info);
             if (r < 0) {
                 return r;
             }
