@@ -177,6 +177,21 @@ PB_BIND(particle_ctrl_StopNyanSignalRequest, particle_ctrl_StopNyanSignalRequest
 PB_BIND(particle_ctrl_StopNyanSignalReply, particle_ctrl_StopNyanSignalReply, AUTO)
 
 
+PB_BIND(particle_ctrl_GetEnvRequest, particle_ctrl_GetEnvRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_GetEnvReply, particle_ctrl_GetEnvReply, AUTO)
+
+
+PB_BIND(particle_ctrl_GetEnvReply_Var, particle_ctrl_GetEnvReply_Var, AUTO)
+
+
+PB_BIND(particle_ctrl_ClearEnvRequest, particle_ctrl_ClearEnvRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_ClearEnvReply, particle_ctrl_ClearEnvReply, AUTO)
+
+
 
 
 
