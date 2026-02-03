@@ -162,17 +162,17 @@ public:
      * The callback is expected to take a `VarInfo` argument and return 0 on success:
      * ```
      * Env::instance().forEach([](const VarInfo& var) {
-     *     LOG(INFO, "%s", info.name);
+     *     LOG(INFO, "%s", var.name);
      *     return 0;
      * });
      * ```
      *
-     * If the callback returns a negative value, the enumeration is interrupted and the value is
-     * returned to the caller of this method.
+     * If the callback returns a negative value, the enumeration stops and the value is returned to
+     * the caller of this method.
      *
      * @param fn Callback.
      * @return On success, the number of defined variables, otherwise an error code defined by
-     *         `system_error_t` or the value returned by the callback.
+     *         `system_error_t` or the negative value returned by the callback.
      */
     template<typename F>
     int forEach(F&& fn) {
@@ -186,20 +186,20 @@ public:
      * buffer will contain the value of the variable for which the callback is invoked:
      * ```
      * char val[128];
-     * Env::instance().forEach([val](val, sizeof(val), const VarInfo& var) {
-     *     LOG(INFO, "%s=%s", info.name, val);
+     * Env::instance().forEach(val, sizeof(val), [val](const VarInfo& var) {
+     *     LOG(INFO, "%s=%s", var.name, val);
      *     return 0;
      * });
      * ```
      *
-     * If the callback returns a negative value, the enumeration is interrupted and the value is
-     * returned to the caller of this method.
+     * If the callback returns a negative value, the enumeration stops and the value is returned to
+     * the caller of this method.
      *
      * @param buf Buffer for variable values.
      * @param bufSize Buffer size.
      * @param fn Callback.
      * @return On success, the number of defined variables, otherwise an error code defined by
-     *         `system_error_t` or the value returned by the callback.
+     *         `system_error_t` or the negative value returned by the callback.
      */
     template<typename F>
     int forEach(char* buf, size_t bufSize, F&& fn) {
