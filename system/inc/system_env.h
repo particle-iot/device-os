@@ -159,9 +159,9 @@ public:
     /**
      * Invoke a callback for each defined variable.
      *
-     * The callback is expected to take a `VarInfo` argument and return 0 on success:
+     * The callback must accept a `VarInfo` argument and return 0 on success:
      * ```
-     * Env::instance().forEach([](const VarInfo& var) {
+     * Env::instance().forEach([](const Env::VarInfo& var) {
      *     LOG(INFO, "%s", var.name);
      *     return 0;
      * });
@@ -176,26 +176,38 @@ public:
      */
     template<typename F>
     int forEach(F&& fn) {
-        return forEach(nullptr /* buf */, 0 /* bufSize */, std::forward<F>(fn));
+        for (const auto& entry: vars_.entries) {
+            const auto& name = entry.first;
+            const auto& var = entry.second;
+            int r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP));
+            if (r < 0) {
+                return r;
+            }
+        }
+        return vars_.entries.size();
     }
 
     /**
      * Invoke a callback for each defined variable.
      *
-     * The callback is expected to take a `VarInfo` argument and return 0 on success. The provided
-     * buffer will contain the value of the variable for which the callback is invoked:
+     * The callback must have the signature `int(const Env::VarInfo&, const char*)` and return 0 on
+     * success. The second argument is a pointer to the buffer provided by the caller where the value
+     * of the variable will be stored:
      * ```
      * char val[128];
-     * Env::instance().forEach(val, sizeof(val), [val](const VarInfo& var) {
+     * Env::instance().forEach(val, sizeof(val), [](const VarInfo& var, const char* val) {
      *     LOG(INFO, "%s=%s", var.name, val);
      *     return 0;
      * });
      * ```
      *
+     * Note that depending on the buffer size and the actual size of the variable value (`var.size`),
+     * the value in the buffer can be truncated (but still terminated with `\0`).
+     *
      * If the callback returns a negative value, the enumeration stops and the value is returned to
      * the caller of this method.
      *
-     * @param buf Buffer for variable values.
+     * @param buf Buffer for the variable value.
      * @param bufSize Buffer size.
      * @param fn Callback.
      * @return On success, the number of defined variables, otherwise an error code defined by
@@ -206,13 +218,11 @@ public:
         for (const auto& entry: vars_.entries) {
             const auto& name = entry.first;
             const auto& var = entry.second;
-            if (buf) {
-                int r = readValue(var, buf, bufSize);
-                if (r < 0) {
-                    return r;
-                }
+            int r = readValue(var, buf, bufSize);
+            if (r < 0) {
+                return r;
             }
-            int r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP));
+            r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP), buf);
             if (r < 0) {
                 return r;
             }
