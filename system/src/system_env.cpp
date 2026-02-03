@@ -58,8 +58,9 @@ public:
     }
 
     int read(char* data, size_t size) override {
-        CHECK(peek(data, size));
-        return skip(size);
+        size_t n = CHECK(peek(data, size));
+        curOffs_ += n;
+        return n;
     }
 
     int peek(char* data, size_t size) override {

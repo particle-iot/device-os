@@ -64,6 +64,9 @@ public:
         }
     };
 
+    /**
+     * Size of a snapshot hash in bytes.
+     */
     static const size_t SNAPSHOT_HASH_SIZE = 32;
 
     Env(const Env&) = delete;
@@ -144,29 +147,72 @@ public:
         return vars_.entries.has(name);
     }
 
+    /**
+     * Get the number of defined environment variables.
+     *
+     * @return Number of variables.
+     */
     size_t count() const {
         return vars_.entries.size();
     }
 
-    // Invokes a callback taking a `VarInfo` for each defined variable
+    /**
+     * Invoke a callback for each defined variable.
+     *
+     * The callback is expected to take a `VarInfo` argument and return 0 on success:
+     * ```
+     * Env::instance().forEach([](const VarInfo& var) {
+     *     LOG(INFO, "%s", info.name);
+     *     return 0;
+     * });
+     * ```
+     *
+     * If the callback returns a negative value, the enumeration is interrupted and the value is
+     * returned to the caller of this method.
+     *
+     * @param fn Callback.
+     * @return On success, the number of defined variables, otherwise an error code defined by
+     *         `system_error_t` or the value returned by the callback.
+     */
     template<typename F>
     int forEach(F&& fn) {
         return forEach(nullptr /* buf */, 0 /* bufSize */, std::forward<F>(fn));
     }
 
-    // Invokes a callback taking a `VarInfo` for each defined variable. Stores the value of each
-    // variable in the provided buffer
+    /**
+     * Invoke a callback for each defined variable.
+     *
+     * The callback is expected to take a `VarInfo` argument and return 0 on success. The provided
+     * buffer will contain the value of the variable for which the callback is invoked:
+     * ```
+     * char val[128];
+     * Env::instance().forEach([val](val, sizeof(val), const VarInfo& var) {
+     *     LOG(INFO, "%s=%s", info.name, val);
+     *     return 0;
+     * });
+     * ```
+     *
+     * If the callback returns a negative value, the enumeration is interrupted and the value is
+     * returned to the caller of this method.
+     *
+     * @param buf Buffer for variable values.
+     * @param bufSize Buffer size.
+     * @param fn Callback.
+     * @return On success, the number of defined variables, otherwise an error code defined by
+     *         `system_error_t` or the value returned by the callback.
+     */
     template<typename F>
     int forEach(char* buf, size_t bufSize, F&& fn) {
         for (const auto& entry: vars_.entries) {
+            const auto& name = entry.first;
+            const auto& var = entry.second;
             if (buf) {
-                int r = readValue(entry.second, buf, bufSize);
+                int r = readValue(var, buf, bufSize);
                 if (r < 0) {
                     return r;
                 }
             }
-            auto info = VarInfo(entry.first.data(), entry.second.valSize, entry.second.src == VarSource::APP);
-            int r = fn(info);
+            int r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP));
             if (r < 0) {
                 return r;
             }
