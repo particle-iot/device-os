@@ -35,8 +35,10 @@
 
 #include "eckeygen.h"
 #include "sha256.h"
+#include "stream.h"
 #include "random.h"
 #include "bytes2hexbuf.h"
+#include "str_compat.h"
 #include "endian_util.h"
 #include "check.h"
 
@@ -61,6 +63,7 @@ namespace particle::control::config {
 namespace {
 
 using namespace particle::control::common;
+using namespace particle::system;
 
 const size_t SECURITY_MODE_NONCE_SIZE = 32;
 
@@ -460,11 +463,102 @@ int echo(ctrl_request* req) {
 #if HAL_PLATFORM_ENV
 
 int getEnv(ctrl_request* req) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    PB(GetEnvReply) pbRep = {};
+
+    auto snapshotHash = Env::instance().snapshotHash();
+    if (snapshotHash) {
+        static_assert(Env::SNAPSHOT_HASH_SIZE <= sizeof(pbRep.snapshot_hash.bytes));
+        std::memcpy(pbRep.snapshot_hash.bytes, snapshotHash, Env::SNAPSHOT_HASH_SIZE);
+        pbRep.snapshot_hash.size = Env::SNAPSHOT_HASH_SIZE;
+        pbRep.has_snapshot_hash = true;
+    }
+
+    struct EncodeContext {
+        const Env::VarInfo* var;
+        int error;
+    };
+    EncodeContext ctx = { .var = nullptr, .error = 0 };
+
+    pbRep.vars.arg = &ctx;
+    pbRep.vars.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+        auto ctx = (EncodeContext*)*arg;
+
+        int r = Env::instance().forEach([&](const auto& var) -> int {
+            PB(GetEnvReply_Var) pbVar = {};
+
+            size_t n = strlcpy(pbVar.name, var.name, sizeof(pbVar.name));
+            if (n >= sizeof(pbVar.name)) {
+                return SYSTEM_ERROR_INTERNAL; // Too long variable name
+            }
+            pbVar.is_app = var.isApp;
+
+            ctx->var = &var;
+            pbVar.value.arg = &ctx;
+            pbVar.value.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+                auto ctx = (EncodeContext*)*arg;
+
+                // Get a stream for reading the variable value
+                std::unique_ptr<InputStream> val;
+                int r = Env::instance().get(ctx->var->name, val);
+                if (r < 0) {
+                    ctx->error = r;
+                    return false;
+                }
+
+                if (!pb_encode_tag_for_field(stream, field) || // Field type and tag
+                        !pb_encode_varint(stream, ctx->var->size)) { // String length
+                    return false;
+                }
+
+                // Write variable value
+                char buf[128];
+                while (val->availForRead() > 0) {
+                    int n = val->read(buf, sizeof(buf));
+                    if (n < 0) {
+                        if (n == SYSTEM_ERROR_END_OF_STREAM) {
+                            break;
+                        }
+                        ctx->error = n;
+                        return false;
+                    }
+                    if (!pb_write(stream, (const uint8_t*)buf, n)) {
+                        return false;
+                    }
+                }
+                return true;
+            };
+
+            if (!pb_encode_tag_for_field(stream, field) ||
+                    !pb_encode_submessage(stream, &PB(GetEnvReply_Var_msg), &pbVar)) {
+                return (ctx->error < 0) ? ctx->error : SYSTEM_ERROR_ENCODING_FAILED;
+            }
+            return 0;
+        });
+
+        if (r < 0) {
+            ctx->error = r;
+            return false;
+        }
+        return true;
+    };
+
+    int r = encodeReplyMessage(req, &PB(GetEnvReply_msg), &pbRep);
+    if (r < 0) {
+        return (ctx.error < 0) ? ctx.error : r;
+    }
+    return 0;
 }
 
 int clearEnv(ctrl_request* req) {
-    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+    PB(ClearEnvReply) pbRep = {};
+
+    int r = CHECK(Env::instance().clear());
+    if (r == SYSTEM_ENV_NEED_RESET) {
+        pbRep.need_reset = true;
+    }
+
+    CHECK(encodeReplyMessage(req, &PB(ClearEnvReply_msg), &pbRep));
+    return 0;
 }
 
 #endif // HAL_PLATFORM_ENV
