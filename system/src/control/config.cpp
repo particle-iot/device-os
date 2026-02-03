@@ -467,7 +467,7 @@ int getEnv(ctrl_request* req) {
 
     auto snapshotHash = Env::instance().snapshotHash();
     if (snapshotHash) {
-        static_assert(Env::SNAPSHOT_HASH_SIZE <= sizeof(pbRep.snapshot_hash.bytes));
+        static_assert(sizeof(pbRep.snapshot_hash.bytes) >= Env::SNAPSHOT_HASH_SIZE);
         std::memcpy(pbRep.snapshot_hash.bytes, snapshotHash, Env::SNAPSHOT_HASH_SIZE);
         pbRep.snapshot_hash.size = Env::SNAPSHOT_HASH_SIZE;
         pbRep.has_snapshot_hash = true;
@@ -493,7 +493,7 @@ int getEnv(ctrl_request* req) {
             pbVar.is_app = var.isApp;
 
             ctx->var = &var;
-            pbVar.value.arg = &ctx;
+            pbVar.value.arg = ctx;
             pbVar.value.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
                 auto ctx = (EncodeContext*)*arg;
 
