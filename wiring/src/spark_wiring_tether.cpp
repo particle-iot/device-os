@@ -26,16 +26,29 @@ TetherClass Tether;
 TetherSerialConfig::TetherSerialConfig()
         : serial_(USARTSerial::from(HAL_PLATFORM_PPP_SERVER_USART)),
           config_(HAL_PLATFORM_PPP_SERVER_USART_FLAGS),
-          baudrate_(HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE) {
+          baudrate_(HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE),
+          usbSerial_(Serial),
+          activeInterface_(TetherSerialInterface::USART) {
 }
 
 TetherSerialConfig& TetherSerialConfig::serial(USARTSerial& s) {
     serial_ = s;
+    activeInterface_ = TetherSerialInterface::USART;
+    return *this;
+}
+
+TetherSerialConfig& TetherSerialConfig::usbSerial(USBSerial& s) {
+    usbSerial_ = s;
+    activeInterface_ = TetherSerialInterface::USB;
     return *this;
 }
 
 USARTSerial& TetherSerialConfig::serial() const {
     return serial_;
+}
+
+USBSerial& TetherSerialConfig::usbSerial() const {
+    return usbSerial_;
 }
 
 TetherSerialConfig& TetherSerialConfig::config(unsigned conf) {
@@ -56,13 +69,30 @@ unsigned TetherSerialConfig::baudrate() const {
     return baudrate_;
 }
 
+TetherSerialInterface TetherSerialConfig::activeInterface() const {
+    return activeInterface_;
+}
+
 int TetherClass::bind(const TetherSerialConfig& config) {
     if_t iface = nullptr;
     if_get_by_index(*this, &iface);
     if (iface) {
-        if_req_ppp_server_uart_settings settings = {};
-        settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS;
-        settings.serial = config.serial().interface();
+        if_req_ppp_server_serial_settings settings = {};
+        settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
+
+        switch (config.activeInterface()) {
+            case TetherSerialInterface::USART:
+                settings.serial = config.serial().interface();
+                settings.usbserial = 0xFF;
+                break;
+            case TetherSerialInterface::USB:
+                settings.serial = 0xFF;
+                settings.usbserial = config.usbSerial(); // TODO: pass something other than serial reference? 
+                break;
+            default:
+                break;
+        }
+        
         settings.baud = config.baudrate();
         settings.config = config.config();
         return if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr);

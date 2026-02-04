@@ -24,11 +24,18 @@
 #include "spark_wiring_network.h"
 #include "system_network.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_usbserial.h"
 #include "ifapi.h"
 #include "scope_guard.h"
 #include "check.h"
 
 namespace particle {
+
+enum class TetherSerialInterface {
+    NONE,
+    USART,
+    USB
+};
 
 struct TetherSerialConfig {
     TetherSerialConfig();
@@ -36,16 +43,24 @@ struct TetherSerialConfig {
     TetherSerialConfig& serial(USARTSerial& s);
     USARTSerial& serial() const;
 
+    TetherSerialConfig& usbSerial(USBSerial& s = Serial);
+    USBSerial& usbSerial() const;
+
     TetherSerialConfig& config(unsigned conf);
     unsigned config() const;
 
     TetherSerialConfig& baudrate(unsigned baud);
     unsigned baudrate() const;
 
+    TetherSerialInterface activeInterface() const;
+
 private:
     USARTSerial& serial_;
     unsigned config_;
     unsigned baudrate_;
+
+    USBSerial& usbSerial_;
+    TetherSerialInterface activeInterface_;
 };
 
 class TetherClass : public spark::NetworkClass {
