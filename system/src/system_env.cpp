@@ -52,24 +52,23 @@ class ValueStream: public InputStream {
 public:
     ValueStream(fs::File& file, size_t offs, size_t size) :
             file_(file),
-            begOffs_(offs),
-            endOffs_(offs + size),
-            curOffs_(offs) {
+            offs_(offs),
+            end_(offs + size) {
     }
 
     int read(char* data, size_t size) override {
         size_t n = CHECK(peek(data, size));
-        curOffs_ += n;
+        offs_ += n;
         return n;
     }
 
     int peek(char* data, size_t size) override {
-        size_t bytesToRead = std::min(size, endOffs_ - curOffs_);
+        size_t bytesToRead = std::min(size, end_ - offs_);
         if (!bytesToRead && size) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         fs::FsLock lock;
-        CHECK(file_.seek(curOffs_));
+        CHECK(file_.seek(offs_));
         size_t bytesRead = CHECK(file_.read(data, bytesToRead));
         if (bytesRead != bytesToRead) {
             return SYSTEM_ERROR_BAD_DATA;
@@ -78,16 +77,16 @@ public:
     }
 
     int skip(size_t size) override {
-        size_t bytesToSkip = std::min(size, endOffs_ - curOffs_);
+        size_t bytesToSkip = std::min(size, end_ - offs_);
         if (!bytesToSkip && size) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
-        curOffs_ += bytesToSkip;
+        offs_ += bytesToSkip;
         return bytesToSkip;
     }
 
     int availForRead() override {
-        return endOffs_ - curOffs_;
+        return end_ - offs_;
     }
 
     int seek(size_t offs) override {
@@ -101,7 +100,7 @@ public:
         if (!(flags & InputStream::READABLE)) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
-        if (curOffs_ == endOffs_) {
+        if (offs_ == end_) {
             return SYSTEM_ERROR_END_OF_STREAM;
         }
         return InputStream::READABLE;
@@ -109,9 +108,8 @@ public:
 
 private:
     fs::File& file_;
-    size_t begOffs_;
-    size_t endOffs_;
-    size_t curOffs_;
+    size_t offs_;
+    size_t end_;
 };
 
 const char* stagedPathForAssetType(AssetType type) {
