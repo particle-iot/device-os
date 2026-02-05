@@ -48,6 +48,7 @@ struct OnceFlag {
 
 private:
     std::atomic<OnceState> state = OnceState::NOT_INITIALIZED;
+    static_assert(decltype(state)::is_always_lock_free);
 
     template<typename CallableT, typename... Args>
     friend void CallOnce(OnceFlag& once, CallableT&& callable, Args&&... args);

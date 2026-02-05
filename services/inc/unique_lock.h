@@ -38,7 +38,8 @@ public:
     }
 
     UniqueLock(MutexT& m, std::defer_lock_t)
-            : UniqueLock(m) {
+            : mutex_(std::addressof(m)),
+              locked_(false) {
     }
 
     UniqueLock(MutexT& m, std::try_to_lock_t)
