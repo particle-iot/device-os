@@ -352,9 +352,9 @@ int Env::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& 
         } else if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
             LOG(ERROR, "Error while reading %s: %d", path, r);
             hasStaged = true;
-            r = fs::remove(path);
-            if (r < 0) {
-                LOG(ERROR, "Error while removing %s: %d", path, r);
+            int r2 = fs::remove(path);
+            if (r2 < 0) {
+                LOG(ERROR, "Error while removing %s: %d", path, r2);
             }
             return r;
         }
