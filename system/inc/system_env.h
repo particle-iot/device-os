@@ -195,13 +195,13 @@ public:
      * of the variable will be stored:
      * ```
      * char val[128];
-     * Env::instance().forEach(val, sizeof(val), [](const VarInfo& var, const char* val) {
+     * Env::instance().forEach(val, sizeof(val), [](const Env::VarInfo& var, const char* val) {
      *     LOG(INFO, "%s=%s", var.name, val);
      *     return 0;
      * });
      * ```
      *
-     * Note that depending on the buffer size and the actual size of the variable value (`var.size`),
+     * Note that depending on the buffer size and the actual size of the variable value (`VarInfo::size`),
      * the value in the buffer can be truncated (but still terminated with `\0`).
      *
      * If the callback returns a negative value, the enumeration stops and the value is returned to
