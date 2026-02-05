@@ -363,6 +363,7 @@ int Env::loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& 
     auto path = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
     int r = loadVarsFile(path, src, file, vars);
     if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
+        LOG(ERROR, "Error while reading %s: %d", path, r);
         return r;
     }
     return 0;
