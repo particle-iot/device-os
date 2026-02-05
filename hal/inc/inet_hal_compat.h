@@ -26,14 +26,14 @@
 #ifndef DNS_HAL_H
 #define DNS_HAL_H
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 #include "static_assert.h"
 #include "hal_platform.h"
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
 
 #ifndef HAL_IPv6
 #define HAL_IPv6 0

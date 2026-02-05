@@ -3,7 +3,7 @@ set(target_name services)
 # Create test executable
 add_executable( ${target_name}
   ${TEST_DIR}/stub/filesystem.cpp
-  ${TEST_DIR}/mock/filesystem.cpp
+  ${TEST_DIR}/mock/filesystem_mock.cpp
   ${TEST_DIR}/util/random.cpp
   ${TEST_DIR}/util/random_old.cpp
   ${DEVICE_OS_DIR}/services/src/simple_file_storage.cpp

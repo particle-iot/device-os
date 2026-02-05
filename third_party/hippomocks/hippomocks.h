@@ -21,6 +21,11 @@
 #ifndef HIPPOMOCKS_H
 #define HIPPOMOCKS_H
 
+#ifndef _WIN32
+#include <sys/mman.h>
+#include <stdint.h>
+#endif // _WIN32
+
 // If you want to put all HippoMocks symbols into the global namespace, use the define below.
 //#define NO_HIPPOMOCKS_NAMESPACE
 
@@ -230,8 +235,6 @@ private:
   unsigned long oldprotect;
 };
 #else
-#include <sys/mman.h>
-#include <stdint.h>
 
 class Unprotect
 {

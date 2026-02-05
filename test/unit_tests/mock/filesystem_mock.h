@@ -17,7 +17,8 @@
 
 #pragma once
 
-#include "stub/filesystem.h"
+#include "filesystem.h"
+#include "stub/lfs.h"
 
 #include <hippomocks.h>
 
