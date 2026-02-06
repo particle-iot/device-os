@@ -17,6 +17,7 @@
 
 #include "asset_manager_api.h"
 #include "asset_manager.h"
+#include "stream.h"
 #include "check.h"
 #include "scope_guard.h"
 

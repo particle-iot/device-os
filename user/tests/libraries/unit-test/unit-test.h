@@ -219,6 +219,9 @@ public:
     int popOutboundMailbox();
     void flushMailbox();
 
+    void expectSystemReset();
+    void expectSafeMode();
+
     static TestRunner* instance();
 
 private:
@@ -827,6 +830,14 @@ void loop() {
   }
   int pushMailboxBuffer(const char* data, size_t size, system_tick_t wait = 0) {
     return ::particle::TestRunner::instance()->pushMailboxBuffer(data, size, wait);
+  }
+
+  void expectSystemReset() {
+    ::particle::TestRunner::instance()->expectSystemReset();
+  }
+
+  void expectSafeMode() {
+    ::particle::TestRunner::instance()->expectSafeMode();
   }
 
   // Construct a test with a given name and verbosity level

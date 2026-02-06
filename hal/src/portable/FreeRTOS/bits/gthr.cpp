@@ -21,6 +21,10 @@
 #include "gthr-default.h"
 #include "delay_hal.h"
 
+// std::call_once is disabled to avoid bringing system_error/exceptions etc into system
+// to reduce flash usage. See services/inc/call_once.h for replacement.
+#if 0
+
 extern "C" void __once_proxy(void) {
     std::__once_functor();
 }
@@ -66,3 +70,5 @@ extern "C" int __gthread_once (__gthread_once_t* once, void (*func) (void))
 
     return 0;
 }
+
+#endif // 0

@@ -1119,6 +1119,30 @@ public:
         return security_mode_get(nullptr) == MODULE_INFO_SECURITY_MODE_PROTECTED;
     }
 
+#if HAL_PLATFORM_ENV
+    // Returns an empty string if the variable is not defined
+    static String getEnv(const char* name);
+
+    // Returns true if found, modifies value only on success
+    static bool getEnv(const char* name, String& value);
+
+    // Validates if the env is exactly "true" or "false" (case-sensitive, lowercase only)
+    // Returns true if found AND valid, modifies value only on success
+    static bool getEnv(const char* name, bool& value);
+
+    // Validates if the env is a valid integer (32-bit, signed, decimal only)
+    // Returns true if found AND valid, modifies value only on success
+    static bool getEnv(const char* name, int& value);
+
+    static bool hasEnv(const char* name);
+
+    static Vector<const char*> listEnv();
+
+    // Returns true if a system reset is needed to apply the changes. If `reset` is true (default),
+    // resets the device automatically
+    static bool clearEnv(bool reset = true);
+#endif // HAL_PLATFORM_ENV
+
 private:
     SystemSleepResult systemSleepResult_;
 
@@ -1163,6 +1187,10 @@ private:
         }
         handler(events, data, pointer);
     }
+
+#if HAL_PLATFORM_ENV
+    static int listEnv(Vector<const char*>& names);
+#endif // HAL_PLATFORM_ENV
 };
 
 extern SystemClass System;

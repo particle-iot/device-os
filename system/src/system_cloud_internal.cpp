@@ -58,6 +58,7 @@
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #endif // HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "system_version.h"
+#include "system_env.h"
 #include "firmware_update.h"
 #include "server_config.h"
 
@@ -422,6 +423,7 @@ uint32_t compute_describe_app_checksum()
 
 uint32_t compute_describe_system_checksum()
 {
+    // TODO: Encode and hash the describe message rather than selected fields of the system info
     hal_system_info_t info;
     memset(&info, 0, sizeof(info));
     info.size = sizeof(info);
@@ -432,6 +434,11 @@ uint32_t compute_describe_system_checksum()
 		checksum += crc(info.modules[i].suffix.sha);
 	}
 	HAL_System_Info(&info, false, NULL);
+#if HAL_PLATFORM_ENV
+    if (Env::instance().hasSnapshot()) {
+        checksum += crc(Env::instance().snapshotHash(), Env::SNAPSHOT_HASH_SIZE);
+    }
+#endif
     return checksum;
 }
 

@@ -16,6 +16,8 @@
  */
 
 #include "filesystem.h"
+#include "filesystem_impl.h"
+#include "lfs.h"
 
 namespace particle {
 

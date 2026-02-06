@@ -72,6 +72,7 @@ typedef struct _particle_cloud_FirmwareModuleSecurity {
     pb_callback_t certificate_fingerprint; /* /< Certificate fingerprint (SHA-256) */
 } particle_cloud_FirmwareModuleSecurity;
 
+typedef PB_BYTES_ARRAY_T(32) particle_cloud_SystemDescribe_env_vars_hash_t;
 /* *
  System describe. */
 typedef struct _particle_cloud_SystemDescribe { 
@@ -81,6 +82,8 @@ typedef struct _particle_cloud_SystemDescribe {
     pb_callback_t modem_firmware_version; /* /< Modem firmware version (cellular platforms only) */
     pb_callback_t assets; /* /< List of valid assets currently present in device storage */
     bool protected_state; /* /< Protected state */
+    bool has_env_vars_hash;
+    particle_cloud_SystemDescribe_env_vars_hash_t env_vars_hash; /* /< Env vars snapshot hash. */
 } particle_cloud_SystemDescribe;
 
 /* *
@@ -128,12 +131,12 @@ extern "C" {
 #define particle_cloud_FirmwareModuleDependency_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
 #define particle_cloud_FirmwareModuleAsset_init_default {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define particle_cloud_FirmwareModule_init_default {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, particle_cloud_FirmwareModuleSecurity_init_default}
-#define particle_cloud_SystemDescribe_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
+#define particle_cloud_SystemDescribe_init_default {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, false, {0, {0}}}
 #define particle_cloud_FirmwareModuleSecurity_init_zero {_particle_cloud_FirmwareModuleSecurityMode_MIN, {{NULL}, NULL}}
 #define particle_cloud_FirmwareModuleDependency_init_zero {_particle_cloud_FirmwareModuleType_MIN, 0, 0}
 #define particle_cloud_FirmwareModuleAsset_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, 0, 0}
 #define particle_cloud_FirmwareModule_init_zero  {_particle_cloud_FirmwareModuleType_MIN, 0, 0, _particle_cloud_FirmwareModuleStore_MIN, 0, 0, 0, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, particle_cloud_FirmwareModuleSecurity_init_zero}
-#define particle_cloud_SystemDescribe_init_zero  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
+#define particle_cloud_SystemDescribe_init_zero  {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0, false, {0, {0}}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_cloud_FirmwareModuleAsset_hash_tag 1
@@ -151,6 +154,7 @@ extern "C" {
 #define particle_cloud_SystemDescribe_modem_firmware_version_tag 4
 #define particle_cloud_SystemDescribe_assets_tag 5
 #define particle_cloud_SystemDescribe_protected_state_tag 6
+#define particle_cloud_SystemDescribe_env_vars_hash_tag 7
 #define particle_cloud_FirmwareModule_type_tag   1
 #define particle_cloud_FirmwareModule_index_tag  2
 #define particle_cloud_FirmwareModule_version_tag 3
@@ -211,7 +215,8 @@ X(a, CALLBACK, OPTIONAL, STRING,   imei,              2) \
 X(a, CALLBACK, OPTIONAL, STRING,   iccid,             3) \
 X(a, CALLBACK, OPTIONAL, STRING,   modem_firmware_version,   4) \
 X(a, CALLBACK, REPEATED, MESSAGE,  assets,            5) \
-X(a, STATIC,   SINGULAR, BOOL,     protected_state,   6)
+X(a, STATIC,   SINGULAR, BOOL,     protected_state,   6) \
+X(a, STATIC,   OPTIONAL, BYTES,    env_vars_hash,     7)
 #define particle_cloud_SystemDescribe_CALLBACK pb_default_field_callback
 #define particle_cloud_SystemDescribe_DEFAULT NULL
 #define particle_cloud_SystemDescribe_firmware_modules_MSGTYPE particle_cloud_FirmwareModule

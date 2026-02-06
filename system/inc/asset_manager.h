@@ -24,18 +24,26 @@
 #include "spark_wiring_buffer.h"
 #include "spark_wiring_string.h"
 #include "ota_flash_hal.h"
-#include "stream.h"
 #include "asset_manager_api.h"
 
 namespace particle {
 
+class InputStream;
+
+enum class AssetType {
+    DEFAULT = 0,
+    ENV_VARS_APP = 1,
+    ENV_VARS_SNAPSHOT = 2
+};
+
 class Asset {
 public:
     Asset() = default;
-    Asset(const char* name, const AssetHash& hash, size_t size = 0, size_t storageSize = 0);
+    Asset(const char* name, const AssetHash& hash, AssetType type = AssetType::DEFAULT, size_t size = 0, size_t storageSize = 0);
 
     const String& name() const;
     const AssetHash& hash() const;
+    AssetType type() const;
     size_t size() const;
     size_t storageSize() const;
 
@@ -46,13 +54,15 @@ public:
 private:
     String name_;
     AssetHash hash_;
+    AssetType type_ = AssetType::DEFAULT;
     size_t size_ = 0;
     size_t storageSize_ = 0;
 };
 
-inline Asset::Asset(const char* name, const AssetHash& hash, size_t size, size_t storageSize)
+inline Asset::Asset(const char* name, const AssetHash& hash, AssetType type, size_t size, size_t storageSize)
         : name_(name),
           hash_(hash),
+          type_(type),
           size_(size),
           storageSize_(storageSize) {
 }
@@ -63,6 +73,10 @@ inline const String& Asset::name() const {
 
 inline const AssetHash& Asset::hash() const {
     return hash_;
+}
+
+inline AssetType Asset::type() const {
+    return type_;
 }
 
 inline size_t Asset::size() const {
@@ -88,6 +102,7 @@ inline bool Asset::operator!=(const Asset& other) const {
 class AssetReader {
 public:
     AssetReader();
+    ~AssetReader();
 
     int init(InputStream* stream);
     int init(const char* filename);
@@ -120,6 +135,26 @@ private:
 
     size_t dataOffset_;
     size_t dataSize_;
+};
+
+/**
+ * Asset storage option.
+ */
+enum class AssetStorageOption {
+    DEFAULT = 0, ///< Save the asset to the default storage normally.
+    DONT_STORE = 1 ///< Don't save the asset to the default storage.
+};
+
+/**
+ * Abstract system handler for special types of assets.
+ */
+class SystemAssetHandler {
+public:
+    virtual ~SystemAssetHandler() = default;
+
+    virtual int updateAsset(const Asset& asset, InputStream& data) = 0;
+    virtual int removeAsset(const Asset& asset) = 0;
+    virtual AssetStorageOption storageOptionForAsset(const Asset& asset) = 0;
 };
 
 class AssetManager {
@@ -158,6 +193,8 @@ private:
     Vector<Asset> availableAssets_;
     asset_manager_notify_hook hook_ = nullptr;
     void* hookContext_ = nullptr;
+
+    static SystemAssetHandler* systemHandlerForAssetType(AssetType type);
 };
 
 } // particle

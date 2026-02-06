@@ -2,6 +2,7 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 #include "scope_guard.h"
+#include "unique_lock.h"
 
 #if HAL_PLATFORM_FREERTOS
 #include <FreeRTOS.h>
@@ -378,13 +379,13 @@ test(CONCURRENT_MUTEX_01_priority_inheritance_two_threads)
         });
 
         // Acquire first mutex
-        std::unique_lock<Mutex> mutex1(state->mutex1);
+        particle::UniqueLock<Mutex> mutex1(state->mutex1);
         // Check that we are at the base priority and nothing has affected us
         auto prio = getThreadPriority();
         assertEqual(prio.base, prio.prio);
 
         // Keep holding the first mutex and acquire the second one
-        std::unique_lock<Mutex> mutex2(state->mutex2);
+        particle::UniqueLock<Mutex> mutex2(state->mutex2);
         // Somewhere at this point the second thread will try to acquire the second mutex
         // and because we are holding it and are of lower priority, our priority
         // should be bumped to that of thread2.
@@ -424,7 +425,7 @@ test(CONCURRENT_MUTEX_01_priority_inheritance_two_threads)
         // Attempt to acquire the second mutex, at this point the first thread
         // should be holding it. Because we are at higher priority, the priority
         // of the first thread should be bumped.
-        std::unique_lock<Mutex> mutex2(state->mutex2);
+        particle::UniqueLock<Mutex> mutex2(state->mutex2);
 
         // We've finally acquired the mutex and at this point the priority
         // of the first thread should have dropped back to the base priority
@@ -479,13 +480,13 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         });
 
         // Acquire first mutex
-        std::unique_lock<Mutex> mutex1(state->mutex1);
+        particle::UniqueLock<Mutex> mutex1(state->mutex1);
         // Check that we are at the base priority and nothing has affected us
         auto prio = getThreadPriority();
         assertEqual(prio.base, prio.prio);
 
         // Keep holding the first mutex and acquire the second one
-        std::unique_lock<Mutex> mutex2(state->mutex2);
+        particle::UniqueLock<Mutex> mutex2(state->mutex2);
         // Somewhere at this point the high priority thread will try to acquire the mutex2
         // and middle priority thread will try to acquire the mutex1, our priority should
         // be bumped to that of high priority thread.
@@ -542,7 +543,7 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         // Attempt to acquire the mutex1, at this point the low priority thread
         // should be holding it. Because we are at higher priority, the priority
         // of the low priority thread should be bumped.
-        std::unique_lock<Mutex> mutex1(state->mutex1);
+        particle::UniqueLock<Mutex> mutex1(state->mutex1);
 
         // We've finally acquired the mutex and at this point the priority
         // of the low priority thread should have dropped back to the base priority
@@ -586,7 +587,7 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
         // Attempt to acquire the second mutex, at this point the low priority thread
         // should be holding it. Because we are at higher priority, the priority
         // of the low priority thread should be bumped.
-        std::unique_lock<Mutex> mutex2(state->mutex2);
+        particle::UniqueLock<Mutex> mutex2(state->mutex2);
 
         // We've finally acquired the mutex and at this point the priority
         // of the low priority thread should have dropped back to the base priority

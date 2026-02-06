@@ -21,6 +21,7 @@
 
 #include "asset_manager.h"
 #include "storage_streams.h"
+#include "file_util.h"
 #include "check.h"
 #include "ota_flash_hal_impl.h"
 #include "user_hal.h"
@@ -29,6 +30,7 @@
 #include "flash_mal.h"
 #include "endian_util.h"
 #include "scope_guard.h"
+#include "system_env.h"
 #include "system_cache.h"
 #include "system_defs.h"
 #include "ota_module.h"
@@ -36,6 +38,8 @@
 namespace particle {
 
 namespace {
+
+using namespace system;
 
 const size_t FREE_BLOCKS_REQUIRED = 16;
 
@@ -78,6 +82,7 @@ int parseAssetDependencies(Vector<Asset>& assets, hal_storage_id storageId, uint
 int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
     Buffer nameExtBuf;
     AssetHash hash;
+    AssetType type = AssetType::DEFAULT;
     while (size > 0) {
         module_info_extension_t ext = {};
         CHECK(stream->peek((char*)&ext, sizeof(ext)));
@@ -93,6 +98,11 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
             module_info_hash_ext_t hashExt = {};
             CHECK(stream->peek((char*)&hashExt, sizeof(hashExt)));
             hash = AssetHash((const uint8_t*)hashExt.hash.hash, hashExt.hash.length, (AssetHash::Type)hashExt.hash.type);
+        } else if (ext.type == MODULE_INFO_EXTENSION_ASSET_TYPE) {
+            CHECK_TRUE(ext.length >= sizeof(module_info_asset_type_ext_t), SYSTEM_ERROR_BAD_DATA);
+            module_info_asset_type_ext_t typeExt = {};
+            CHECK(stream->peek((char*)&typeExt, sizeof(typeExt)));
+            type = (AssetType)typeExt.type;
         } else if (ext.type == MODULE_INFO_EXTENSION_END) {
             break;
         }
@@ -101,7 +111,7 @@ int parseAssetInfo(InputStream* stream, size_t size, Asset& asset) {
     }
     if (nameExtBuf.data() && hash.isValid()) {
         auto nameExt = (module_info_name_ext_t*)nameExtBuf.data();
-        asset = Asset(nameExt->name, hash);
+        asset = Asset(nameExt->name, hash, type);
         return 0;
     }
     return SYSTEM_ERROR_BAD_DATA;
@@ -294,6 +304,11 @@ int AssetManager::clearUnusedAssets() {
         CHECK_TRUE(fs, SYSTEM_ERROR_INVALID_STATE);
         const fs::FsLock lock(fs);
         CHECK_FS(lfs_remove(&fs->instance, asset.name().c_str()));
+
+        auto sysHandler = systemHandlerForAssetType(asset.type());
+        if (sysHandler) {
+            CHECK(sysHandler->removeAsset(asset));
+        }
     }
     return 0;
 }
@@ -312,39 +327,40 @@ int AssetManager::storeAsset(const hal_module_t* module) {
     auto info = reader.asset();
     LOG(INFO, "Storing asset %s (hash=%s) size=%u original size=%u", info.name().c_str(), info.hash().toString().c_str(), reader.size(), reader.originalSize());
 
-    CHECK(clearUnusedAssets());
-
-    CHECK(stream.seek(0));
-    char tmp[256];
-
-    const auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr);
-    CHECK_TRUE(fs, SYSTEM_ERROR_FILE);
-    fs::FsLock lock(fs);
-
-    // Unmount and remount in order to invalidate access to any of the currently opened assets
-    filesystem_unmount(fs);
-    availableAssets_.clear();
-    CHECK(filesystem_mount(fs));
-
-    lfs_file_t file = {};
-    lfs_remove(&fs->instance, info.name().c_str());
-    CHECK_FS(lfs_file_open(&fs->instance, &file, info.name().c_str(), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
-    SCOPE_GUARD({     
-        lfs_file_close(&fs->instance, &file);
-    });
-
-    while (stream.availForRead() > 0) {
-        int read = stream.read(tmp, sizeof(tmp));
-        if (read < 0 && read != SYSTEM_ERROR_END_OF_STREAM) {
-            return read;
-        }
-        if (read == SYSTEM_ERROR_END_OF_STREAM) {
-            break;
-        }
-        CHECK_FS(lfs_file_write(&fs->instance, &file, tmp, (size_t)read));
+    auto storageOpt = AssetStorageOption::DEFAULT;
+    auto sysHandler = systemHandlerForAssetType(info.type());
+    if (sysHandler) {
+        storageOpt = sysHandler->storageOptionForAsset(info);
     }
 
-    CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
+    if (storageOpt != AssetStorageOption::DONT_STORE) {
+        CHECK(clearUnusedAssets());
+
+        auto fs = filesystem_get_instance(FILESYSTEM_INSTANCE_ASSET_STORAGE, nullptr /* reserved */);
+        fs::FsLock lock(fs);
+
+        // Unmount and remount in order to invalidate access to any of the currently opened assets
+        fs::unmount(fs);
+        availableAssets_.clear();
+        CHECK(fs::mount(fs));
+
+        // Save the module to the asset filesystem
+        CHECK(stream.seek(0));
+        CHECK(saveToFile(stream, info.name().c_str(), fs));
+
+        CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
+    }
+
+    if (sysHandler) {
+        InputStream* stream = nullptr;
+        CHECK(reader.assetStream(stream));
+        CHECK(stream->seek(0)); // Just in case
+
+        // Invoke the system handler with the asset info and stream for reading the uncompressed
+        // asset data
+        CHECK(sysHandler->updateAsset(info, *stream));
+    }
+
     return 0;
 }
 
@@ -407,6 +423,26 @@ int AssetManager::formatStorage(bool remount) {
     return 0;
 }
 
+SystemAssetHandler* AssetManager::systemHandlerForAssetType(AssetType type) {
+    SystemAssetHandler* handler = nullptr;
+
+    switch (type) {
+#if HAL_PLATFORM_ENV
+    case AssetType::ENV_VARS_APP:
+    case AssetType::ENV_VARS_SNAPSHOT: {
+        handler = &Env::instance();
+        break;
+    }
+#endif // HAL_PLATFORM_ENV
+    case AssetType::DEFAULT:
+        break;
+    default:
+        LOG(WARN, "Unsupported asset type: %d", (int)type);
+        break;
+    }
+    return handler;
+}
+
 // AssetReader
 AssetReader::AssetReader()
         : stream_(nullptr),
@@ -416,6 +452,9 @@ AssetReader::AssetReader()
           originalSize_(0),
           dataOffset_(0),
           dataSize_(0) {
+}
+
+AssetReader::~AssetReader() {
 }
 
 int AssetReader::init(const char* filename) {
@@ -433,36 +472,37 @@ int AssetReader::init(InputStream* stream) {
 }
 
 int AssetReader::validate(bool full) {
-    // Sanity checks
     CHECK_TRUE(stream_, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(stream_->availForRead() > (int)(sizeof(module_info_t) + sizeof(compressed_module_header) + sizeof(module_info_suffix_base_t) + sizeof(uint32_t)),
-            SYSTEM_ERROR_NOT_ENOUGH_DATA);
     size_t moduleSize = CHECK(stream_->availForRead());
 
     // Prefix
     module_info_t prefix = {};
+    CHECK_TRUE(stream_->availForRead() >= (int)sizeof(prefix), SYSTEM_ERROR_NOT_ENOUGH_DATA);
     CHECK(stream_->read((char*)&prefix, sizeof(prefix)));
     CHECK_TRUE(prefix.module_function == MODULE_FUNCTION_ASSET, SYSTEM_ERROR_BAD_DATA);
     CHECK_TRUE(prefix.flags & MODULE_INFO_FLAG_DROP_MODULE_INFO, SYSTEM_ERROR_BAD_DATA);
     CHECK_FALSE(prefix.flags & MODULE_INFO_FLAG_PREFIX_EXTENSIONS, SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(moduleSize == ((uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + sizeof(uint32_t) /* CRC32 */), SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(moduleSize == (uintptr_t)prefix.module_end_address - (uintptr_t)prefix.module_start_address + 4 /* CRC32 */, SYSTEM_ERROR_BAD_DATA);
     bool compressed = prefix.flags & MODULE_INFO_FLAG_COMPRESSED;
 
-    // Comperssion header
+    // Compression header
     compressed_module_header compHeader = {};
     size_t origSize = 0;
     if (compressed) {
+        CHECK_TRUE(stream_->availForRead() >= (int)sizeof(compHeader), SYSTEM_ERROR_NOT_ENOUGH_DATA);
         CHECK(stream_->peek((char*)&compHeader, sizeof(compHeader)));
         CHECK_TRUE(compHeader.size >= sizeof(compHeader), SYSTEM_ERROR_BAD_DATA);
         CHECK_TRUE(compHeader.method == 0, SYSTEM_ERROR_BAD_DATA);
         origSize = compHeader.original_size;
     }
+
     // Base suffix
-    CHECK(stream_->seek(0));
-    CHECK_TRUE(stream_->availForRead() == (int)moduleSize, SYSTEM_ERROR_IO);
     module_info_suffix_base_t suffix = {};
-    CHECK(stream_->skipAll(stream_->availForRead() - sizeof(uint32_t) - sizeof(module_info_suffix_base_t)));
+    CHECK(stream_->seek(0));
+    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + compHeader.size + sizeof(suffix) + 4 /* CRC32 */, SYSTEM_ERROR_NOT_ENOUGH_DATA);
+    CHECK(stream_->skipAll(moduleSize - sizeof(suffix) - 4 /* CRC32 */));
     CHECK(stream_->read((char*)&suffix, sizeof(suffix)));
+
     // CRC and check integrity
     uint32_t crc = 0;
     CHECK(stream_->read((char*)&crc, sizeof(crc)));
@@ -472,22 +512,23 @@ int AssetReader::validate(bool full) {
         CHECK(calculateCrc(&calculatedCrc));
         CHECK_TRUE(calculatedCrc == bigEndianToNative(crc), SYSTEM_ERROR_BAD_DATA);
     }
-    CHECK(stream_->seek(0));
+
     // Suffix extensions
-    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + sizeof(compressed_module_header) + suffix.size + sizeof(uint32_t), SYSTEM_ERROR_BAD_DATA);
-    CHECK_TRUE(suffix.size >= sizeof(module_info_suffix_base_t) + 2 * sizeof(module_info_extension_t), SYSTEM_ERROR_BAD_DATA);
-    CHECK(stream_->seek(moduleSize - suffix.size - sizeof(uint32_t)));
+    CHECK_TRUE(suffix.size >= sizeof(module_info_suffix_base_t) + sizeof(module_info_extension_t) * 2 /* Name and hash extensions */, SYSTEM_ERROR_BAD_DATA);
+    CHECK_TRUE(moduleSize >= sizeof(module_info_t) + compHeader.size + suffix.size + 4 /* CRC32 */, SYSTEM_ERROR_BAD_DATA);
+    CHECK(stream_->seek(moduleSize - suffix.size - 4 /* CRC32 */));
     Asset asset;
     CHECK(parseAssetInfo(stream_, suffix.size - sizeof(module_info_suffix_base_t), asset));
     valid_ = true;
     compressed_ = compressed;
+    dataOffset_ = sizeof(module_info_t);
     if (compressed) {
-        dataOffset_ = sizeof(module_info_t) + compHeader.size;
+        dataOffset_ += compHeader.size;
     }
-    dataSize_ = moduleSize - suffix.size - sizeof(uint32_t) - dataOffset_;
+    dataSize_ = moduleSize - suffix.size - dataOffset_ - 4 /* CRC32 */;
     size_ = moduleSize;
-    originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - sizeof(uint32_t) - suffix.size);
-    asset_ = Asset(asset.name(), asset.hash(), originalSize_, moduleSize);
+    originalSize_ = compressed ? origSize : (moduleSize - sizeof(module_info_t) - suffix.size - 4 /* CRC32 */);
+    asset_ = Asset(asset.name(), asset.hash(), asset.type(), originalSize_, moduleSize);
     return 0;
 }
 

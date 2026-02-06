@@ -24,6 +24,7 @@ extern "C" {
 #include "thread_runner.h"
 #include "free_worker.h"
 #include <mutex>
+#include "call_once.h"
 
 using namespace particle;
 
@@ -49,8 +50,8 @@ extern "C" int rtw_if_wifi_thread(char *name);
 extern "C" int _freertos_create_task(struct task_struct *ptask, const char *name,
 	    u32  stack_size, u32 priority, thread_func_t func, void *thctx) {
 
-    static std::once_flag once;
-    std::call_once(once, []() {
+    static particle::OnceFlag once;
+    particle::CallOnce(once, []() {
         SPARK_ASSERT(freeRunnable.init(FREE_QUEUE_SIZE) == 0);
         ThreadRunnerOptions opts;
         opts.threadName("free_worker");

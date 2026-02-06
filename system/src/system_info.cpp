@@ -18,6 +18,7 @@
 #include "system_info.h"
 #include "system_cloud_internal.h"
 #include "system_info_encoding.h"
+#include "system_env.h"
 #include "check.h"
 #include "scope_guard.h"
 #include "bytes2hexbuf.h"
@@ -499,6 +500,17 @@ bool system_module_info_pb(appender_fn appender, void* append_data, void* reserv
 #if HAL_PLATFORM_ASSETS
     EncodeAssets assets(&pbDesc.assets, AssetManager::instance().availableAssets());
 #endif // HAL_PLATFORM_ASSETS
+
+#if HAL_PLATFORM_ENV
+    auto envSnapshotHash = Env::instance().snapshotHash();
+    if (envSnapshotHash) {
+        static_assert(sizeof(pbDesc.env_vars_hash.bytes) >= Env::SNAPSHOT_HASH_SIZE);
+        std::memcpy(pbDesc.env_vars_hash.bytes, envSnapshotHash, Env::SNAPSHOT_HASH_SIZE);
+        pbDesc.env_vars_hash.size = Env::SNAPSHOT_HASH_SIZE;
+        pbDesc.has_env_vars_hash = true;
+    }
+#endif // HAL_PLATFORM_ENV
+
     PbAppenderStream strm(appender, append_data);
     return pb_encode(&strm, &PB(SystemDescribe_msg), &pbDesc);
 }

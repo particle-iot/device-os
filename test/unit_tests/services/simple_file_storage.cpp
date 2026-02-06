@@ -18,7 +18,7 @@
 #include "simple_file_storage.h"
 #include "system_error.h"
 
-#include "mock/filesystem.h"
+#include "mock/filesystem_mock.h"
 #include "util/random.h"
 
 #include <catch2/catch.hpp>

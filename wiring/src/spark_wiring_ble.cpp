@@ -15,6 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "logging.h"
+LOG_SOURCE_CATEGORY("wiring.ble")
+
 #include "spark_wiring_ble.h"
 
 #if Wiring_BLE
@@ -26,9 +29,6 @@
 #include "scope_guard.h"
 #include "hex_to_bytes.h"
 #include "bytes2hexbuf.h"
-
-#include "logging.h"
-LOG_SOURCE_CATEGORY("wiring.ble")
 
 using namespace particle::ble;
 using namespace std::placeholders;

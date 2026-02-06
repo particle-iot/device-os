@@ -2,9 +2,10 @@
   "description": "Device OS Integration Tests",
   "private": true,
   "dependencies": {
-    "@particle/device-constants": "^3.5.0",
-    "binary-version-reader": "^2.4.0",
+    "@particle/device-constants": "^4.1.0",
+    "binary-version-reader": "^4.0.0",
     "chai-exclude": "^2.1.0",
+    "lodash": "^4.17.23",
     "particle-api-js": "^11.1.4",
     "tempy": "^1.0.1"
   }

@@ -1,4 +1,3 @@
-
 #include "core_hal.h"
 #include "rtc_hal.h"
 #include "rgbled.h"
@@ -8,7 +7,9 @@
 #include "system_task.h"
 #include "system_control.h"
 #include "system_network.h"
+#include "system_env.h"
 #include "scope_guard.h"
+#include "check.h"
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -161,6 +162,79 @@ int SystemClass::onAssetOta(OnAssetOtaStdFunc cb) {
     return 0;
 }
 #endif // HAL_PLATFORM_ASSET
+
+#if HAL_PLATFORM_ENV
+
+String SystemClass::getEnv(const char* name) {
+    String s;
+    getEnv(name, s);
+    return s;
+}
+
+bool SystemClass::getEnv(const char* name, String& value) {
+    char buf[128] = {};
+    int n = system_get_env(name, buf, sizeof(buf), nullptr /* reserved */);
+    if (n < 0) {
+        return false;
+    }
+    String s;
+    if (!s.resize(n)) {
+        return false;
+    }
+    if (n < (int)sizeof(buf)) {
+        std::memcpy(&s[0u], buf, n);
+    } else {
+        int r = system_get_env(name, &s[0u], n + 1 /* for '\0' */, nullptr /* reserved */);
+        if (r < 0) {
+            return false;
+        }
+    }
+    value = std::move(s);
+    return true;
+}
+
+bool SystemClass::getEnv(const char* name, int& value) {
+    return system_get_env_int(name, &value, nullptr) == 0;
+}
+
+bool SystemClass::getEnv(const char* name, bool& value) {
+    return system_get_env_bool(name, &value, nullptr) == 0;
+}
+
+bool SystemClass::hasEnv(const char* name) {
+    int r = system_get_env(name, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
+    return r >= 0;
+}
+
+Vector<const char*> SystemClass::listEnv() {
+    Vector<const char*> names;
+    listEnv(names);
+    return names;
+}
+
+int SystemClass::listEnv(Vector<const char*>& namesArg) {
+    size_t n = CHECK(system_list_env(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
+    Vector<const char*> names;
+    if (!names.resize(n)) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(system_list_env(names.data(), n, nullptr /* reserved */));
+    namesArg = std::move(names);
+    return 0;
+}
+
+bool SystemClass::clearEnv(bool reset) {
+    int r = system_clear_env(nullptr /* reserved */);
+    if (r != SYSTEM_ENV_NEED_RESET) { // Error or no reset is needed
+        return false;
+    }
+    if (reset) {
+        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* data */, 0 /* flags */, nullptr /* reserved */);
+    }
+    return true;
+}
+
+#endif // HAL_PLATFORM_ENV
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {

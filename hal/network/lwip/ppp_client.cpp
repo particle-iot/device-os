@@ -38,6 +38,7 @@ extern "C" {
 #include "delay_hal.h"
 #include "platform_ncp.h"
 #include "resolvapi.h"
+#include "unique_lock.h"
 
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
@@ -50,7 +51,7 @@ const uint32_t DEFAULT_PEER_ADDRESS = 0x0ADFDF02UL; // 10.223.223.2
 
 using namespace particle::net::ppp;
 
-std::once_flag Client::once_;
+particle::OnceFlag Client::once_;
 netif_ext_callback_t Client::netifCb_ = {};
 int Client::netifClientDataIdx_ = -1;
 constexpr const char* Client::eventNames_[];
@@ -89,7 +90,7 @@ void pppos_drop_packet(pppos_pcb* pppos) {
 } // anonymous
 
 Client::Client() {
-  std::call_once(once_, []() {
+  particle::CallOnce(once_, []() {
     LOCK_TCPIP_CORE();
     netifClientDataIdx_ = netif_alloc_client_data_id();
     SPARK_ASSERT(netifClientDataIdx_ > 0);
@@ -108,7 +109,7 @@ Client::~Client() {
 }
 
 void Client::init() {
-  std::lock_guard<std::mutex> lk(mutex_);
+  std::lock_guard<StaticMutex> lk(mutex_);
   if (!inited_) {
     LOG(TRACE, "PPP client initializing");
     inited_ = true;
@@ -175,7 +176,7 @@ void Client::init() {
 }
 
 void Client::deinit() {
-  std::unique_lock<std::mutex> lk(mutex_);
+  particle::UniqueLock<StaticMutex> lk(mutex_);
   if (inited_) {
     if (thread_) {
       if (running_) {
@@ -245,7 +246,7 @@ int Client::prepareConnect() {
   UNLOCK_TCPIP_CORE();
 #endif // PPP_IPV6_SUPPORT
 
-  std::unique_lock<std::mutex> lk(mutex_);
+  particle::UniqueLock<StaticMutex> lk(mutex_);
   auto cb = enterDataModeCb_;
   auto ctx = enterDataModeCbCtx_;
   lk.unlock();
@@ -265,7 +266,7 @@ bool Client::start() {
 bool Client::connect() {
   return notifyEvent(EVENT_ADM_UP);
 
-  // std::lock_guard<std::mutex> lk(mutex_);
+  // std::lock_guard<StaticMutex> lk(mutex_);
   // /* TODO: configurable parameters */
   // LOCK_TCPIP_CORE();
   // ipcp_->requestOption(ipcp::CONFIGURATION_OPTION_IP_ADDRESS);
@@ -365,26 +366,26 @@ int Client::input(const uint8_t* data, size_t size) {
 }
 
 void Client::setNotifyCallback(NotifyCallback cb, void* ctx) {
-  std::lock_guard<std::mutex> lk(mutex_);
+  std::lock_guard<StaticMutex> lk(mutex_);
   cb_ = cb;
   cbCtx_ = ctx;
 }
 
 void Client::setOutputCallback(OutputCallback cb, void* ctx) {
-  std::lock_guard<std::mutex> lk(mutex_);
+  std::lock_guard<StaticMutex> lk(mutex_);
   oCb_ = cb;
   oCbCtx_ = ctx;
 }
 
 void Client::setEnterDataModeCallback(EnterDataModeCallback cb, void* ctx) {
-  std::lock_guard<std::mutex> lk(mutex_);
+  std::lock_guard<StaticMutex> lk(mutex_);
   enterDataModeCb_ = cb;
   enterDataModeCbCtx_ = ctx;
 }
 
 void Client::setAuth(const char* user, const char* password) {
   {
-    std::lock_guard<std::mutex> lk(mutex_);
+    std::lock_guard<StaticMutex> lk(mutex_);
     user_.reset();
     pass_.reset();
     if (user) {
@@ -544,7 +545,7 @@ void Client::loop() {
           break;
         }
         case EVENT_ERROR: {
-          std::unique_lock<std::mutex> lk(mutex_);
+          particle::UniqueLock<StaticMutex> lk(mutex_);
           auto cb = cb_;
           auto ctx = cbCtx_;
           lk.unlock();
@@ -656,7 +657,7 @@ void Client::transition(State newState) {
 
   {
     if (state_ == STATE_CONNECTED || state_ == STATE_DISCONNECTED || state_ == STATE_CONNECTING) {
-      std::unique_lock<std::mutex> lk(mutex_);
+      particle::UniqueLock<StaticMutex> lk(mutex_);
       auto cb = cb_;
       auto ctx = cbCtx_;
       lk.unlock();
@@ -674,7 +675,7 @@ void Client::transition(State newState) {
 }
 
 void Client::setServer(bool server) {
-  std::lock_guard<std::mutex> lk(mutex_);
+  std::lock_guard<StaticMutex> lk(mutex_);
   server_ = server;
 }
 

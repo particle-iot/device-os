@@ -2,6 +2,9 @@
 
 set -e
 
+# Use the Protobuf compiler from the grpcio-tools package
+PROTOC=python-grpc-tools-protoc
+
 DEVICE_OS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROTO_DEFS_DIR="$DEVICE_OS_DIR/proto_defs"
 SHARED_DIR="$PROTO_DEFS_DIR/shared"
@@ -13,11 +16,11 @@ NANOPB_PLUGIN_DIR="$NANOPB_DIR/generator/protoc-gen-nanopb"
 
 gen_proto() {
   echo "Compiling $1"
-  protoc -I"$NANOPB_DIR/generator/proto" \
-         -I"$SHARED_DIR" \
-         -I"$(dirname "$1")" \
-         --plugin="protoc-gen-nanopb=$NANOPB_PLUGIN_DIR" \
-         --nanopb_out="${DEST_DIR}" "$1"
+  $PROTOC -I"$NANOPB_DIR/generator/proto" \
+          -I"$SHARED_DIR" \
+          -I"$(dirname "$1")" \
+          --plugin="protoc-gen-nanopb=$NANOPB_PLUGIN_DIR" \
+          --nanopb_out="${DEST_DIR}" "$1"
 }
 
 # Create a virtual environment
@@ -25,7 +28,10 @@ python3 -m venv "$PROTO_DEFS_DIR/.venv"
 source "$PROTO_DEFS_DIR/.venv/bin/activate"
 
 # Install dependencies
-pip3 install protobuf
+pip3 install protobuf grpcio-tools
+
+# Compile system definitions
+gen_proto "${SHARED_DIR}/system/env_vars.proto"
 
 # Compile control request definitions
 gen_proto "${SHARED_DIR}/control/extensions.proto"

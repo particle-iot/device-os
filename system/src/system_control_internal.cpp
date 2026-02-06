@@ -400,6 +400,16 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* cha
         break;
     }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
+#if HAL_PLATFORM_ENV
+    case CTRL_REQUEST_ENV_GET: {
+        setResult(req, control::config::getEnv(req));
+        break;
+    }
+    case CTRL_REQUEST_ENV_CLEAR: {
+        setResult(req, control::config::clearEnv(req));
+        break;
+    }
+#endif // HAL_PLATFORM_ENV
     default:
         // Forward the request to the application thread
         if (appReqHandler_) {

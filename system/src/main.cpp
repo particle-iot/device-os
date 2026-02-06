@@ -45,6 +45,7 @@
 #include "system_threading.h"
 #include "system_user.h"
 #include "system_update.h"
+#include "system_env.h"
 #include "core_hal.h"
 #include "delay_hal.h"
 #include "syshealth_hal.h"
@@ -807,6 +808,14 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+#if HAL_PLATFORM_ENV
+    // Initialize the env vars as early as possible
+    int r = system::Env::instance().init();
+    if (r == SYSTEM_ENV_NEED_RESET) {
+        HAL_Core_System_Reset_Ex(RESET_REASON_CONFIG_UPDATE, 0 /* data */, nullptr /* reserved */);
+    }
+#endif // HAL_PLATFORM_ENV
+
 #if HAL_PLATFORM_LWIP
     // This needs to be called prior to system_part2_post_init()
     // to make sure the network interface is initialized first.

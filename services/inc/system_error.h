@@ -41,6 +41,7 @@
         (FLASH_IO, "Flash IO error", -219), \
         (IO, "IO error", -220), \
         (WOULD_BLOCK, "Would block", -221), \
+        (FILE_NOT_OPEN, "File is not open", -224), \
         (FILE, "File error", -225), \
         (PATH_TOO_LONG, "Path is too long", -226), \
         (NETWORK, "Network error", -230), \
@@ -125,7 +126,9 @@
         (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
         (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010), \
         (LEDGER_INVALID_RESPONSE, "Invalid response from server", -2011), \
-        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000) /* -3099 ... -3000: HAL errors */
+        (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000), /* -3099 ... -3000: HAL errors */ \
+        (ENV_NOT_FOUND, "Variable not found", -4000), /* -4099 ... -4000: Configuration errors */ \
+        (ENV_INVALID_VALUE, "Invalid variable value", -4001)
 
 // Expands to enum values for all errors
 #define SYSTEM_ERROR_ENUM_VALUES(prefix) \

@@ -69,6 +69,8 @@ int filesystem_to_system_error(int error);
 #ifdef __cplusplus
 } // extern "C"
 
+#include <memory>
+
 #define CHECK_FS(expr) \
         ({ \
             auto _r = expr; \
@@ -78,10 +80,14 @@ int filesystem_to_system_error(int error);
             _r; \
         })
 
-namespace particle { namespace fs {
+namespace particle::fs {
+
+inline filesystem_t* defaultFs() {
+    return filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
+}
 
 struct FsLock {
-    explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
+    explicit FsLock(filesystem_t* fs = defaultFs())
             : fs_(fs) {
         lock();
     }
@@ -107,6 +113,48 @@ private:
     filesystem_t* fs_;
 };
 
-} } /* particle::fs */
+// TODO: Implement Input/OutputStream?
+class File {
+public:
+    File();
+    File(const File& file) = delete;
+    File(File&& file);
+    ~File();
+
+    int open(const char* path, int flags, filesystem_t* fs = defaultFs());
+    int close();
+
+    bool isOpen() const {
+        return d_.get();
+    }
+
+    int read(void* buf, lfs_size_t size);
+    int write(const void* buf, lfs_size_t size);
+    int tell();
+    int seek(lfs_soff_t offs, int whence = LFS_SEEK_SET);
+    int size();
+    int truncate(lfs_off_t size);
+    int sync();
+
+    lfs_file_t* handle();
+    filesystem_t* fs() const;
+
+    File& operator=(const File& file) = delete;
+    File& operator=(File&& file);
+
+private:
+    struct Data;
+
+    std::unique_ptr<Data> d_;
+};
+
+int mount(filesystem_t* fs = defaultFs());
+int unmount(filesystem_t* fs = defaultFs());
+
+int remove(const char* path, filesystem_t* fs = defaultFs());
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs = defaultFs());
+int stat(const char* path, lfs_info* info, filesystem_t* fs = defaultFs());
+
+} // particle::fs
 
 #endif /* __cplusplus */

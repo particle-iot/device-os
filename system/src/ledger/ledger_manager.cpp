@@ -53,6 +53,9 @@ LOG_SOURCE_CATEGORY("system.ledger");
 #include "cloud/cloud.pb.h"
 #include "cloud/ledger.pb.h"
 
+#include "unique_lock.h"
+#include "call_once.h"
+
 #define PB_CLOUD(_name) particle_cloud_##_name
 #define PB_LEDGER(_name) particle_cloud_ledger_##_name
 
@@ -735,7 +738,7 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result)
         CHECK(getLedger(ledger, curCtx_->name));
         // Make sure the ledger can't be changed while we're updating its persistently stored state
         // and sync context
-        std::unique_lock ledgerLock(*ledger);
+        particle::UniqueLock ledgerLock(*ledger);
         curCtx_->syncTime = 0;
         curCtx_->forcedSyncTime = 0;
         if (ledger->info().updateCount() == curCtx_->updateCount) {
@@ -1591,8 +1594,8 @@ LedgerManager* LedgerManager::instance() {
     // XXX: Lazy initialization is used so that ledger instances can be requested in the global
     // scope by the application. It's dangerous because the application's global constructors are
     // called before the system is fully initialized but seems to work in this case
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, []() {
+    static particle::OnceFlag onceFlag;
+    particle::CallOnce(onceFlag, []() {
         int r = mgr.init();
         if (r < 0) {
             LOG(ERROR, "Failed to initialize ledger manager: %d", r);

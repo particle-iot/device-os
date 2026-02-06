@@ -55,6 +55,10 @@ typedef enum _particle_ctrl_SetProtectedStateRequest_Action {
 } particle_ctrl_SetProtectedStateRequest_Action;
 
 /* Struct definitions */
+typedef struct _particle_ctrl_ClearEnvRequest { 
+    char dummy_field;
+} particle_ctrl_ClearEnvRequest;
+
 /* Get the device ID */
 typedef struct _particle_ctrl_GetDeviceIdRequest { 
     char dummy_field;
@@ -64,6 +68,12 @@ typedef struct _particle_ctrl_GetDeviceIdRequest {
 typedef struct _particle_ctrl_GetDeviceModeRequest { 
     char dummy_field;
 } particle_ctrl_GetDeviceModeRequest;
+
+/* *
+ Response for a `ClearEnvRequest`. */
+typedef struct _particle_ctrl_GetEnvRequest { 
+    char dummy_field;
+} particle_ctrl_GetEnvRequest;
 
 /* Get the NCP (network coprocessor) firmware version */
 typedef struct _particle_ctrl_GetNcpFirmwareVersionRequest { 
@@ -153,6 +163,8 @@ typedef struct _particle_ctrl_StartListeningModeRequest {
     char dummy_field;
 } particle_ctrl_StartListeningModeRequest;
 
+/* *
+ Get defined environment variables. */
 typedef struct _particle_ctrl_StartNyanSignalReply { 
     char dummy_field;
 } particle_ctrl_StartNyanSignalReply;
@@ -170,10 +182,14 @@ typedef struct _particle_ctrl_StopListeningModeRequest {
     char dummy_field;
 } particle_ctrl_StopListeningModeRequest;
 
+/* *
+ Clear all defined environment variables. */
 typedef struct _particle_ctrl_StopNyanSignalReply { 
     char dummy_field;
 } particle_ctrl_StopNyanSignalReply;
 
+/* *
+ Response for a `GetEnvRequest`. */
 typedef struct _particle_ctrl_StopNyanSignalRequest { 
     char dummy_field;
 } particle_ctrl_StopNyanSignalRequest;
@@ -187,6 +203,10 @@ typedef struct _particle_ctrl_SystemResetRequest {
     char dummy_field;
 } particle_ctrl_SystemResetRequest;
 
+typedef struct _particle_ctrl_ClearEnvReply { 
+    bool need_reset; 
+} particle_ctrl_ClearEnvReply;
+
 typedef struct _particle_ctrl_GetDeviceIdReply { 
     /* Device ID (hex-encoded) */
     char id[25]; 
@@ -195,6 +215,19 @@ typedef struct _particle_ctrl_GetDeviceIdReply {
 typedef struct _particle_ctrl_GetDeviceModeReply { 
     particle_ctrl_DeviceMode mode; 
 } particle_ctrl_GetDeviceModeReply;
+
+typedef PB_BYTES_ARRAY_T(32) particle_ctrl_GetEnvReply_snapshot_hash_t;
+typedef struct _particle_ctrl_GetEnvReply { 
+    pb_callback_t vars; 
+    bool has_snapshot_hash;
+    particle_ctrl_GetEnvReply_snapshot_hash_t snapshot_hash; 
+} particle_ctrl_GetEnvReply;
+
+typedef struct _particle_ctrl_GetEnvReply_Var { 
+    char name[129]; 
+    pb_callback_t value; 
+    bool is_app; 
+} particle_ctrl_GetEnvReply_Var;
 
 /* Exit the Nyan mode */
 typedef struct _particle_ctrl_GetFeatureReply { 
@@ -414,6 +447,11 @@ extern "C" {
 #define particle_ctrl_StartNyanSignalReply_init_default {0}
 #define particle_ctrl_StopNyanSignalRequest_init_default {0}
 #define particle_ctrl_StopNyanSignalReply_init_default {0}
+#define particle_ctrl_GetEnvRequest_init_default {0}
+#define particle_ctrl_GetEnvReply_init_default   {{{NULL}, NULL}, false, {0, {0}}}
+#define particle_ctrl_GetEnvReply_Var_init_default {"", {{NULL}, NULL}, 0}
+#define particle_ctrl_ClearEnvRequest_init_default {0}
+#define particle_ctrl_ClearEnvReply_init_default {0}
 #define particle_ctrl_GetDeviceIdRequest_init_zero {0}
 #define particle_ctrl_GetDeviceIdReply_init_zero {""}
 #define particle_ctrl_GetSerialNumberRequest_init_zero {0}
@@ -471,12 +509,23 @@ extern "C" {
 #define particle_ctrl_StartNyanSignalReply_init_zero {0}
 #define particle_ctrl_StopNyanSignalRequest_init_zero {0}
 #define particle_ctrl_StopNyanSignalReply_init_zero {0}
+#define particle_ctrl_GetEnvRequest_init_zero    {0}
+#define particle_ctrl_GetEnvReply_init_zero      {{{NULL}, NULL}, false, {0, {0}}}
+#define particle_ctrl_GetEnvReply_Var_init_zero  {"", {{NULL}, NULL}, 0}
+#define particle_ctrl_ClearEnvRequest_init_zero  {0}
+#define particle_ctrl_ClearEnvReply_init_zero    {0}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define particle_ctrl_GetSecurityKeyReply_data_tag 1
 #define particle_ctrl_GetSystemVersionReply_version_tag 1
+#define particle_ctrl_ClearEnvReply_need_reset_tag 1
 #define particle_ctrl_GetDeviceIdReply_id_tag    1
 #define particle_ctrl_GetDeviceModeReply_mode_tag 1
+#define particle_ctrl_GetEnvReply_vars_tag       1
+#define particle_ctrl_GetEnvReply_snapshot_hash_tag 2
+#define particle_ctrl_GetEnvReply_Var_name_tag   1
+#define particle_ctrl_GetEnvReply_Var_value_tag  2
+#define particle_ctrl_GetEnvReply_Var_is_app_tag 3
 #define particle_ctrl_GetFeatureReply_enabled_tag 1
 #define particle_ctrl_GetFeatureRequest_feature_tag 1
 #define particle_ctrl_GetNcpFirmwareVersionReply_version_tag 1
@@ -818,6 +867,35 @@ X(a, STATIC,   SINGULAR, BOOL,     enabled,           1)
 #define particle_ctrl_StopNyanSignalReply_CALLBACK NULL
 #define particle_ctrl_StopNyanSignalReply_DEFAULT NULL
 
+#define particle_ctrl_GetEnvRequest_FIELDLIST(X, a) \
+
+#define particle_ctrl_GetEnvRequest_CALLBACK NULL
+#define particle_ctrl_GetEnvRequest_DEFAULT NULL
+
+#define particle_ctrl_GetEnvReply_FIELDLIST(X, a) \
+X(a, CALLBACK, REPEATED, MESSAGE,  vars,              1) \
+X(a, STATIC,   OPTIONAL, BYTES,    snapshot_hash,     2)
+#define particle_ctrl_GetEnvReply_CALLBACK pb_default_field_callback
+#define particle_ctrl_GetEnvReply_DEFAULT NULL
+#define particle_ctrl_GetEnvReply_vars_MSGTYPE particle_ctrl_GetEnvReply_Var
+
+#define particle_ctrl_GetEnvReply_Var_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   name,              1) \
+X(a, CALLBACK, SINGULAR, STRING,   value,             2) \
+X(a, STATIC,   SINGULAR, BOOL,     is_app,            3)
+#define particle_ctrl_GetEnvReply_Var_CALLBACK pb_default_field_callback
+#define particle_ctrl_GetEnvReply_Var_DEFAULT NULL
+
+#define particle_ctrl_ClearEnvRequest_FIELDLIST(X, a) \
+
+#define particle_ctrl_ClearEnvRequest_CALLBACK NULL
+#define particle_ctrl_ClearEnvRequest_DEFAULT NULL
+
+#define particle_ctrl_ClearEnvReply_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BOOL,     need_reset,        1)
+#define particle_ctrl_ClearEnvReply_CALLBACK NULL
+#define particle_ctrl_ClearEnvReply_DEFAULT NULL
+
 extern const pb_msgdesc_t particle_ctrl_GetDeviceIdRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_GetDeviceIdReply_msg;
 extern const pb_msgdesc_t particle_ctrl_GetSerialNumberRequest_msg;
@@ -875,6 +953,11 @@ extern const pb_msgdesc_t particle_ctrl_StartNyanSignalRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_StartNyanSignalReply_msg;
 extern const pb_msgdesc_t particle_ctrl_StopNyanSignalRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
+extern const pb_msgdesc_t particle_ctrl_GetEnvRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_GetEnvReply_msg;
+extern const pb_msgdesc_t particle_ctrl_GetEnvReply_Var_msg;
+extern const pb_msgdesc_t particle_ctrl_ClearEnvRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_ClearEnvReply_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_ctrl_GetDeviceIdRequest_fields &particle_ctrl_GetDeviceIdRequest_msg
@@ -934,6 +1017,11 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 #define particle_ctrl_StartNyanSignalReply_fields &particle_ctrl_StartNyanSignalReply_msg
 #define particle_ctrl_StopNyanSignalRequest_fields &particle_ctrl_StopNyanSignalRequest_msg
 #define particle_ctrl_StopNyanSignalReply_fields &particle_ctrl_StopNyanSignalReply_msg
+#define particle_ctrl_GetEnvRequest_fields &particle_ctrl_GetEnvRequest_msg
+#define particle_ctrl_GetEnvReply_fields &particle_ctrl_GetEnvReply_msg
+#define particle_ctrl_GetEnvReply_Var_fields &particle_ctrl_GetEnvReply_Var_msg
+#define particle_ctrl_ClearEnvRequest_fields &particle_ctrl_ClearEnvRequest_msg
+#define particle_ctrl_ClearEnvReply_fields &particle_ctrl_ClearEnvReply_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_ctrl_GetSystemVersionReply_size depends on runtime parameters */
@@ -945,10 +1033,15 @@ extern const pb_msgdesc_t particle_ctrl_StopNyanSignalReply_msg;
 /* particle_ctrl_SetProtectedStateRequest_Confirm_size depends on runtime parameters */
 /* particle_ctrl_SetProtectedStateReply_size depends on runtime parameters */
 /* particle_ctrl_SetProtectedStateReply_Prepare_size depends on runtime parameters */
+/* particle_ctrl_GetEnvReply_size depends on runtime parameters */
+/* particle_ctrl_GetEnvReply_Var_size depends on runtime parameters */
+#define particle_ctrl_ClearEnvReply_size         2
+#define particle_ctrl_ClearEnvRequest_size       0
 #define particle_ctrl_GetDeviceIdReply_size      26
 #define particle_ctrl_GetDeviceIdRequest_size    0
 #define particle_ctrl_GetDeviceModeReply_size    2
 #define particle_ctrl_GetDeviceModeRequest_size  0
+#define particle_ctrl_GetEnvRequest_size         0
 #define particle_ctrl_GetFeatureReply_size       2
 #define particle_ctrl_GetFeatureRequest_size     2
 #define particle_ctrl_GetNcpFirmwareVersionRequest_size 0

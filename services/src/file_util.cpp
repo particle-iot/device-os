@@ -21,6 +21,7 @@
 
 #include "file_util.h"
 
+#include "stream.h"
 #include "nanopb_misc.h"
 #include "bytes2hexbuf.h"
 #include "str_compat.h"
@@ -314,6 +315,31 @@ int clearDir(const char* path) {
         pathBuf[pathLen] = '\0'; // Reset to the base path
     }
     return 0;
+}
+
+int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
+    fs::FsLock lock(fs);
+
+    fs::File file;
+    CHECK(file.open(destPath, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC | LFS_O_APPEND, fs));
+
+    size_t bytesWritten = 0;
+
+    char buf[256];
+    while (srcStream.availForRead() > 0) {
+        int n = srcStream.read(buf, sizeof(buf));
+        if (n < 0) {
+            if (n == SYSTEM_ERROR_END_OF_STREAM) {
+                break;
+            }
+            return n;
+        }
+        CHECK(file.write(buf, n));
+        bytesWritten += n;
+    }
+
+    CHECK(file.close());
+    return bytesWritten;
 }
 
 } // particle

@@ -32,6 +32,8 @@ extern "C" {
 #include <mutex>
 #include <atomic>
 #include "stream.h"
+#include "call_once.h"
+#include "static_mutex.h"
 
 #ifdef __cplusplus
 
@@ -183,7 +185,7 @@ private:
   State state_ = STATE_NONE;
 
   os_thread_t thread_ = nullptr;
-  std::mutex mutex_;
+  StaticMutex mutex_;
   os_queue_t queue_ = nullptr;
 
   NotifyCallback cb_ = nullptr;
@@ -199,7 +201,7 @@ private:
   std::atomic_bool running_;
   std::atomic_bool exit_;
 
-  static std::once_flag once_;
+  static particle::OnceFlag once_;
   static netif_ext_callback_t netifCb_;
   static int netifClientDataIdx_;
   bool server_ = false;

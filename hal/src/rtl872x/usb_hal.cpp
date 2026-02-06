@@ -27,6 +27,7 @@
 // FIXME: not ideal, directly using freertos task APIs
 #include "FreeRTOS.h"
 #include "task.h"
+#include "call_once.h"
 
 using namespace particle::usbd;
 
@@ -70,8 +71,8 @@ const uint8_t sDeviceDescriptor[] = {
 } // anonymous
 
 void HAL_USB_Init(void) {
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, []() {
+    static particle::OnceFlag onceFlag;
+    particle::CallOnce(onceFlag, []() {
         getUsbDevice().setDeviceDescriptor(sDeviceDescriptor, sizeof(sDeviceDescriptor));
         getUsbDevice().registerDriver(RtlUsbDriver::instance());
 

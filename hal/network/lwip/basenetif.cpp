@@ -22,7 +22,7 @@
 using namespace particle::net;
 
 uint8_t BaseNetif::clientDataId_;
-std::once_flag BaseNetif::once_;
+particle::OnceFlag BaseNetif::once_;
 
 BaseNetif::BaseNetif() {
 }
@@ -39,7 +39,7 @@ int BaseNetif::getClientDataId() {
 
 void BaseNetif::registerHandlers() {
     LwipTcpIpCoreLock lk;
-    std::call_once(once_, []() {
+    particle::CallOnce(once_, []() {
         clientDataId_ = netif_alloc_client_data_id();
     });
     netif_set_client_data(interface(), clientDataId_, (void*)this);

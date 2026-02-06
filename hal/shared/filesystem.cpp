@@ -24,12 +24,14 @@
 #include "system_error.h"
 #include "file_util.h"
 #include "scope_guard.h"
+#include "check.h"
 
-using namespace particle::fs;
+using particle::fs::FsLock;
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 #include "static_recursive_mutex.h"
+#include "call_once.h"
 
 namespace {
 
@@ -312,8 +314,10 @@ int filesystem_mount(filesystem_t* fs) {
     if (!ret) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (fs->index == FILESYSTEM_INSTANCE_DEFAULT) {
-            // Make sure /usr and /tmp folders exist
-            int r = lfs_mkdir(&fs->instance, "/usr");
+            // Make sure /sys, /usr and /tmp folders exist
+            int r = lfs_mkdir(&fs->instance, "/sys");
+            SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
+            r = lfs_mkdir(&fs->instance, "/usr");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
             r = lfs_mkdir(&fs->instance, "/tmp");
             SPARK_ASSERT((r == 0 || r == LFS_ERR_EXIST));
@@ -386,8 +390,8 @@ void filesystem_config(filesystem_t* fs) {
 filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved) {
     (void)reserved;
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    static std::once_flag onceFlag;
-    std::call_once(onceFlag, []() {
+    static particle::OnceFlag onceFlag;
+    particle::CallOnce(onceFlag, []() {
 #else
     static int onceFlag = 0;
     if (!onceFlag) ({
@@ -449,3 +453,163 @@ int filesystem_to_system_error(int error) {
     default: return SYSTEM_ERROR_FILESYSTEM;
     }
 }
+
+namespace particle::fs {
+
+struct File::Data {
+    lfs_file_t file;
+    filesystem_t* fs;
+
+    explicit Data(filesystem_t* fs) :
+            file(),
+            fs(fs) {
+    }
+};
+
+File::File() {
+}
+
+File::File(File&& file) :
+        d_(std::move(file.d_)) {
+}
+
+File::~File() {
+    int r = close();
+    if (r < 0) {
+        LOG(ERROR, "Error while closing file: %d", r);
+    }
+}
+
+int File::open(const char* path, int flags, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM; // filesystem_get_instance() failed
+    }
+    CHECK(close());
+    std::unique_ptr<Data> d(new(std::nothrow) Data(fs));
+    if (!d) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK_FS(lfs_file_open(&d->fs->instance, &d->file, path, flags));
+    d_ = std::move(d);
+    return 0;
+}
+
+int File::close() {
+    if (!d_) {
+        return 0;
+    }
+    CHECK_FS(lfs_file_close(&d_->fs->instance, &d_->file));
+    d_.reset();
+    return 0;
+}
+
+int File::read(void* buf, lfs_size_t size) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_read(&d_->fs->instance, &d_->file, buf, size));
+}
+
+int File::write(const void* buf, lfs_size_t size) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_write(&d_->fs->instance, &d_->file, buf, size));
+}
+
+int File::tell() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_tell(&d_->fs->instance, &d_->file));
+}
+
+int File::seek(lfs_soff_t offs, int whence) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_seek(&d_->fs->instance, &d_->file, offs, whence));
+}
+
+int File::size() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_size(&d_->fs->instance, &d_->file));
+}
+
+int File::truncate(lfs_off_t size) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_truncate(&d_->fs->instance, &d_->file, size));
+}
+
+int File::sync() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_sync(&d_->fs->instance, &d_->file));
+}
+
+lfs_file_t* File::handle() {
+    if (!d_) {
+        return nullptr;
+    }
+    return &d_->file;
+}
+
+filesystem_t* File::fs() const {
+    if (!d_) {
+        return nullptr;
+    }
+    return d_->fs;
+}
+
+File& File::operator=(File&& file) {
+    int r = close();
+    if (r < 0) {
+        LOG(ERROR, "Error while closing file: %d", r);
+    }
+    d_ = std::move(file.d_);
+    return *this;
+}
+
+int mount(filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(filesystem_mount(fs));
+    return 0;
+}
+
+int unmount(filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(filesystem_unmount(fs));
+    return 0;
+}
+
+int remove(const char* path, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_remove(&fs->instance, path));
+}
+
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_rename(&fs->instance, oldPath, newPath));
+}
+
+int stat(const char* path, lfs_info* info, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_stat(&fs->instance, path, info));
+}
+
+} // particle::fs

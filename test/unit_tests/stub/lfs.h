@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2026 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,10 +19,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
-#ifndef FILESYSTEM_BLOCK_SIZE
-#define FILESYSTEM_BLOCK_SIZE 4096
-#endif
 
 typedef uint32_t lfs_size_t;
 typedef int32_t lfs_ssize_t;
@@ -64,20 +60,17 @@ enum lfs_whence_flags {
 typedef struct lfs {
 } lfs_t;
 
+typedef struct lfs_config {
+} lfs_config;
+
+typedef struct lfs_info {
+} lfs_info;
+
 typedef struct lfs_file {
     size_t pos;
     int flags;
     int fd;
 } lfs_file_t;
-
-typedef struct {
-    lfs_t instance;
-} filesystem_t;
-
-typedef enum filesystem_instance_t {
-    FILESYSTEM_INSTANCE_DEFAULT = 0,
-    FILESYSTEM_INSTANCE_ASSET_STORAGE = 1
-} filesystem_instance_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,57 +88,6 @@ int lfs_file_sync(lfs_t* lfs, lfs_file_t* file);
 int lfs_remove(lfs_t* lfs, const char* path);
 // TODO: Add stubs for remaining API functions
 
-filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved);
-int filesystem_lock(filesystem_t* fs);
-int filesystem_unlock(filesystem_t* fs);
-
-int filesystem_to_system_error(int error);
-
 #ifdef __cplusplus
-} // extern "C"
-
-#define CHECK_FS(expr) \
-        ({ \
-            auto _r = expr; \
-            if (_r < 0) { \
-                return filesystem_to_system_error(_r); \
-            } \
-            _r; \
-        })
-
-namespace particle {
-
-namespace fs {
-
-class FsLock {
-public:
-    explicit FsLock(filesystem_t* fs = filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr))
-            : fs_(fs) {
-        lock();
-    }
-
-    ~FsLock() {
-        unlock();
-    }
-
-    void lock() {
-        filesystem_lock(fs_);
-    }
-
-    void unlock() {
-        filesystem_unlock(fs_);
-    }
-
-    lfs_t* instance() const {
-        return &fs_->instance;
-    }
-
-private:
-    filesystem_t* fs_;
-};
-
-} // namespace fs
-
-} // namespace particle
-
-#endif // defined(__cplusplus)
+}
+#endif
