@@ -162,6 +162,9 @@ private:
 
   void transition(State newState);
 
+  int inBytes_;
+  int outBytes_;
+
 private:
 
   struct QueueEvent {

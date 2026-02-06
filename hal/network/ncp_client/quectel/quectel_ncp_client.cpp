@@ -482,6 +482,9 @@ int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
+    // TODO: this is where IP data is sent out the modem. It will contain *both* system data and tethered data
+    // AT this point it is PPP + IP + TCP/UDP framed
+
     int err = muxer_.writeChannel(QUECTEL_NCP_PPP_CHANNEL, data, size);
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
         LOG_DEBUG(WARN, "Remote side flow control");

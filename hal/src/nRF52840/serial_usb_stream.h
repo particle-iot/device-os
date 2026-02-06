@@ -28,6 +28,7 @@ namespace particle {
 class SerialUSBStream: public EventGroupBasedStream {
 public:
     SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
+    // SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, uint32_t config,
             size_t rxBufferSize = 0, size_t txBufferSize = 0);
     ~SerialUSBStream();
 
@@ -57,6 +58,7 @@ public:
 private:
     // TODO: FIX/REMOVE
     hal_usart_interface_t serial_;
+    // HAL_USB_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
     uint32_t config_;

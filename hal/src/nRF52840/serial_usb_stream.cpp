@@ -30,8 +30,8 @@ const auto SERIAL_STREAM_BUFFER_SIZE_TX = 2048;
 } // anonymous
 
 namespace particle {
-
 SerialUSBStream::SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
+//SerialUSBStream::SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, uint32_t config,
         size_t rxBufferSize, size_t txBufferSize)
         : serial_(serial),
           config_(config),
@@ -51,14 +51,17 @@ SerialUSBStream::SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate
     SPARK_ASSERT(rxBuffer_);
     SPARK_ASSERT(txBuffer_);
 
+    // HAL_USB_USART_Config c = {};
     hal_usart_buffer_config_t c = {};
     c.size = sizeof(c);
     c.rx_buffer = (uint8_t*)rxBuffer_.get();
     c.tx_buffer = (uint8_t*)txBuffer_.get();
     c.rx_buffer_size = rxBufferSize;
     c.tx_buffer_size = txBufferSize;
-    hal_usart_init_ex(serial_, &c, nullptr);
-    hal_usart_begin_config(serial_, baudrate, config, 0);
+    // HAL_USB_USART_Init(serial_, &c);
+    // HAL_USB_USART_Begin();
+    // hal_usart_init_ex(serial_, &c, nullptr);
+    // hal_usart_begin_config(serial_, baudrate, config, 0);
     phyOn_ = true;
 }
 

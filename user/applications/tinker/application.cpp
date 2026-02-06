@@ -17,7 +17,7 @@
 
 #include "application.h"
 
-Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, 
+SerialLogHandler logHandler(115200, LOG_LEVEL_ALL, 
 {
     //Setup the Tinker application here
     { "app", LOG_LEVEL_ALL }, 
@@ -32,31 +32,83 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL,
     { "ncp.client", LOG_LEVEL_TRACE },
     { "net.rltkncp", LOG_LEVEL_TRACE },
     { "net.ifapi", LOG_LEVEL_TRACE },
-    { "net.ppp.client", LOG_LEVEL_WARN },
+    { "net.ppp.client", LOG_LEVEL_TRACE },
+    { "net.pppserver", LOG_LEVEL_TRACE },
+    { "net.ppp.client", LOG_LEVEL_TRACE },
     { "net.en", LOG_LEVEL_TRACE },
     { "service.ntp", LOG_LEVEL_TRACE },
     { "net.en", LOG_LEVEL_TRACE },
     { "mux", LOG_LEVEL_ERROR },
     { "net.ppp.ipcp", LOG_LEVEL_ERROR },
     { "comm.cloud.posix", LOG_LEVEL_TRACE },
-}   
+}
 );
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
 /* executes once at startup */
 void setup() {
-    // waitUntil(Serial.isConnected);
+#if HAL_PLATFORM_ENV
+    // Clear all environment variables to restore the default settings
+    System.clearEnv();
+#endif
+
+    waitUntil(Serial.isConnected);
     // Enable Cellular
     Cellular.on();
     Cellular.connect();
     // Bind Tether interface to USB Serial with default settings (8n1 + RTS/CTS flow control)
-    Tether.bind(TetherSerialConfig().baudrate(921600).usbserial());
+    Tether.bind(TetherSerialConfig().baudrate(921600).serial(Serial1));
+    // Tether.bind(TetherUSBConfig());
     // Turn on Tether interface and bring it up
     Tether.on();
     Tether.connect();
     Particle.connect();
 }
 
-void loop() {
+// int callbackParseTxRx(int type, const char* buf, int len, int* bytesSent) {
+//     if (sscanf(buf, "+QGDCNT: %d,%d", bytesSent) == 1) {
+//         return RESP_OK;
+//     }
+//     return WAIT;
+// }
 
+static int modemTxBytes = 0; 
+static int modemRxBytes = 0;
+
+int callbackLogBytes(int type, const char* buf, int len, char* iccid) {
+    //Log.info("%s", buf);
+    // for (int i = 0; i < len; i++) {
+    //     Log.printf("%02X ", (uint8_t)buf[i]);
+    // }
+
+    // <bytesSent>,<bytesReceived>
+    //+QGDCNT: 212252,709828
+    int tx, rx;
+    const char* p = strstr(buf, "+QGDCNT:");
+    Log.info("%s", p);
+
+    if (p && sscanf(p, "+QGDCNT: %d,%d", &tx, &rx) == 2) {
+        modemTxBytes = tx;
+        modemRxBytes = rx;
+        Log.info("modemTxBytes:%d modemRxBytes:%d", modemTxBytes, modemRxBytes);
+        return RESP_OK;
+    }
+    return WAIT;
+}
+
+void loop() {
+    delay(5s);
+
+    // Application -> Query modem data usage AT command every so often
+    char iccid[32] = "";
+    Cellular.command(callbackLogBytes, iccid, 10000, "AT+QGDCNT?\r\n");
+
+    // TODO: print combined PPP link data? cellular ppp client vs local ppp client
+    // pppservernetif --> ppp client --> lwip = Tethering Bytes
+    // pppncpnetif    --> ppp client --> lwip = Particle Bytes
+    // int pppTetherBytes = (int)system_internal(4, nullptr);
+    // int pppCellularBytes = (int)system_internal(4, nullptr);
+    
+    // Application -> log application level bytes? keep alives?
+    
 }

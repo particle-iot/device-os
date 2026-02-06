@@ -16,7 +16,7 @@
  */
 
 #undef LOG_COMPILE_TIME_LEVEL
-#define LOG_COMPILE_TIME_LEVEL (LOG_LEVEL_ALL)
+#define LOG_COMPILE_TIME_LEVEL (LOG_LEVEL_ALL) 
 
 #include "hal_platform.h"
 
@@ -167,8 +167,8 @@ int PppServerNetif::start() {
     }
 
     LOG(TRACE, "Starting PppServerNetif interface");
-    bool mockSerial = true;
-    if (mockSerial) {
+
+    if (settings_.serial != 0xFF) {
         auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, settings_.baud, settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial);
         serial_ = std::move(serial);
@@ -394,7 +394,7 @@ void PppServerNetif::loop(void* arg) {
                 char tmp[256] = {};
                 while (self->serial_->availForRead() > 0) {
                     int sz = self->serial_->read(tmp, sizeof(tmp));
-                    // LOG(INFO, "input %d", sz);
+                    LOG(INFO, "input %d", sz);
                     auto r = self->client_.input((const uint8_t*)tmp, sz);
                     (void)r;
                     // LOG(INFO, "input result = %d", r);
