@@ -183,31 +183,44 @@ int ConnectionManager::testConnections(bool background) {
         backgroundTester_.reset();
         testResultsActual_ = false;
 
-        LOG_DEBUG(INFO, "Full reachability test started");
+        LOG_DEBUG(INFO, "Full reachability test started: %d", lastTestFailed_);
         ConnectionTester tester;
-        CHECK(tester.prepare(true /* full test */, lastTestFailed_));
-        // Blocking call
-        r = tester.runTest();
-        LOG_DEBUG(INFO, "Full reachability test finished (%d)", r);
-        metrics = tester.getConnectionMetrics();
+        r = tester.prepare(true /* full test */, lastTestFailed_);
+        if (r == 0) {
+            // Blocking call
+            r = tester.runTest();
+            LOG_DEBUG(INFO, "Full reachability test finished (%d)", r);
+            metrics = tester.getConnectionMetrics();
+        } else {
+            lastTestFailed_ = true;
+        }
     } else {
         // Background test
         testResultsActual_ = false;
+        auto backgroundTestPrepared = true;
         if (!backgroundTestInProgress_) {
             LOG_DEBUG(INFO, "Background reachability test started");
             backgroundTester_ = std::make_unique<ConnectionTester>();
             CHECK_TRUE(backgroundTester_, SYSTEM_ERROR_NO_MEMORY);
-            CHECK(backgroundTester_->prepare(false /* full test*/));
-            backgroundTestInProgress_ = true;
+            r = backgroundTester_->prepare(false /* full test*/, lastTestFailed_);
+            if (r == 0) {
+                backgroundTestInProgress_ = true;
+            } else {
+                lastTestFailed_ = true;
+                backgroundTestPrepared = false;
+            }
         }
-        r = backgroundTester_->runTest(0 /* non blocking */);
-        if (!r || r != SYSTEM_ERROR_BUSY) {
-            LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
-            backgroundTestInProgress_ = false;
-            metrics = backgroundTester_->getConnectionMetrics();
-            backgroundTester_.reset();
+        if (backgroundTestPrepared) {
+            r = backgroundTester_->runTest(0 /* non blocking */);
+            if (!r || r != SYSTEM_ERROR_BUSY) {
+                LOG_DEBUG(INFO, "Background reachability test finished (%d)", r);
+                backgroundTestInProgress_ = false;
+                metrics = backgroundTester_->getConnectionMetrics();
+                backgroundTester_.reset();
+            }
         }
     }
+
     if (r == 0) {
         bestNetworks_.clear();
         bool hasValidScore = false;
