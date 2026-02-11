@@ -41,6 +41,8 @@
 #include "cellular_hal.h"
 #endif
 
+#include "system_env.h"
+
 using namespace particle::system;
 
 /* FIXME: */
@@ -129,16 +131,36 @@ const CellularConfig* cellularConfig() {
 }
 #endif
 
+bool blockInterfaceIfNeeded(const char* var, network_handle_t ifIdx) {
+    bool enabled = true;
+    if (particle::system::getEnv(var, enabled) && !enabled) {
+        if_t iface = nullptr;
+        if (!if_get_by_index(ifIdx, &iface)) {
+            NetworkManager::instance()->blockInterface(iface, true);
+            return true;
+        }
+    }
+    return false;
+}
+
 } /* anonymous */
 
 void network_setup(network_handle_t network, uint32_t flags, void* reserved) {
-    // volatile uint32_t rtlContinue = 1;
-    // while (!rtlContinue) {
-    //     asm volatile ("nop");
-    // }
     NetworkManager::instance()->init();
     // Populate the list
     NetworkManager::instance()->disableInterface();
+
+#if HAL_PLATFORM_ENV
+    // These are additionally handled in respective network interface drivers
+    // to avoid bringing interface up directly e.g. through control requests
+#if HAL_PLATFORM_WIFI
+    blockInterfaceIfNeeded("PARTICLE_WIFI_ENABLE", NETWORK_INTERFACE_WIFI_STA);
+    blockInterfaceIfNeeded("PARTICLE_WIFI_ENABLE", NETWORK_INTERFACE_WIFI_AP);
+#endif // HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_ETHERNET
+    blockInterfaceIfNeeded("PARTICLE_ETHERNET_ENABLE", NETWORK_INTERFACE_ETHERNET);
+#endif // HAL_PLATFORM_ETHERNET
+#endif // HAL_PLATFORM_ENV
 }
 
 const void* network_config(network_handle_t network, uint32_t param, void* reserved) {

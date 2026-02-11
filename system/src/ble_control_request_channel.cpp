@@ -1043,7 +1043,14 @@ int BleControlRequestChannel::initProfile() {
 #if HAL_PLATFORM_NRF52840
     bool btStackInitialized = hal_ble_is_initialized(nullptr);
     if (!btStackInitialized) {
-        SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+        int r = hal_ble_stack_init(nullptr);
+        if (r != SYSTEM_ERROR_NONE) {
+            if (r == SYSTEM_ERROR_DISABLED) {
+                return r;
+            }
+        } else {
+            SPARK_ASSERT(r == SYSTEM_ERROR_NONE);
+        }
     }
 #endif
     if (initialized_) {

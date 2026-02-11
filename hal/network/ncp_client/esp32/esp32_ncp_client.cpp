@@ -34,6 +34,7 @@ LOG_SOURCE_CATEGORY("ncp.esp32.client");
 #include "str_util.h"
 #include "check.h"
 #include "ncp.h"
+#include "system_env.h"
 
 #include <cstdlib>
 
@@ -187,6 +188,12 @@ int Esp32NcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return 0;
     }
+
+    bool enabled = true;
+    if (particle::system::getEnv("PARTICLE_WIFI_ENABLE", enabled) && !enabled) {
+        return SYSTEM_ERROR_DISABLED;
+    }
+
     if (!serial_->on()) {
         CHECK(serial_->on(true));
     }

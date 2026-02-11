@@ -101,6 +101,7 @@
         (PROTECTED, "Device is in a protected state, action prohibited", -1801), \
         (KEY_MISMATCH, "Unrecognized cryptographic key", -1802), \
         (INVALID_SIGNATURE, "Signature validation failed", -1803), \
+        (DISABLED, "Functionality is disabled by configuration", -1804), \
         (FILESYSTEM, "Filesystem error", -1900), /* -1999 ... -1900: Filesystem errors */ \
         (FILESYSTEM_IO, "Filesystem IO error", -1901), \
         (FILESYSTEM_CORRUPT, "Filesystem corrupted", -1902), \

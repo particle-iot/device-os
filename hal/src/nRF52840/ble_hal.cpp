@@ -63,6 +63,8 @@ LOG_SOURCE_CATEGORY("hal.ble");
 using namespace particle;
 #include "intrusive_list.h"
 
+#include "system_env.h"
+
 static_assert(NRF_SDH_BLE_PERIPHERAL_LINK_COUNT == 1, "Multiple simultaneous peripheral connections are not supported");
 static_assert(NRF_SDH_BLE_TOTAL_LINK_COUNT <= 20, "Maximum supported number of concurrent connections in the peripheral and central roles combined exceeded");
 
@@ -831,6 +833,10 @@ struct BleGapImpl {
 static BleGapImpl bleGapImpl;
 
 int BleObject::BleGap::init() {
+    bool enabled = true;
+    if (particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled) && !enabled) {
+        return SYSTEM_ERROR_DISABLED;
+    }
     // Set the default device name
     char devName[BLE_MAX_DEV_NAME_LEN] = {};
     CHECK(get_device_name(devName, sizeof(devName)));

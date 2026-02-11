@@ -1989,8 +1989,14 @@ BleLocalDevice::BleLocalDevice()
     if (!impl()) {
         SPARK_ASSERT(false);
     }
-    SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
-    hal_ble_set_callback_on_periph_link_events(impl()->onBleLinkEvents, impl(), nullptr);
+    int r = hal_ble_stack_init(nullptr);
+    if (r != SYSTEM_ERROR_NONE) {
+        if (r != SYSTEM_ERROR_DISABLED) {
+            SPARK_ASSERT(r == SYSTEM_ERROR_NONE);
+        }
+    } else {
+        hal_ble_set_callback_on_periph_link_events(impl()->onBleLinkEvents, impl(), nullptr);
+    }
 }
 
 BleLocalDevice& BleLocalDevice::getInstance() {

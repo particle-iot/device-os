@@ -55,6 +55,8 @@ extern "C" {
 #include "wlan_hal.h"
 #include "bt_intf.h"
 
+#include "system_env.h"
+
 extern "C" void rtw_efuse_boot_write(void);
 extern "C" uint32_t rltk_wlan_get_link_err(void);
 
@@ -231,6 +233,12 @@ int RealtekNcpClient::on() {
     if (ncpState_ == NcpState::ON) {
         return SYSTEM_ERROR_NONE;
     }
+
+    bool enabled = true;
+    if (particle::system::getEnv("PARTICLE_WIFI_ENABLE", enabled) && !enabled) {
+        return SYSTEM_ERROR_DISABLED;
+    }
+
     ncpPowerState(NcpPowerState::TRANSIENT_ON);
     // FIXME: sometimes after a reset wifi driver is not getting initialized properly
     // this is a simple workaround for such a state.

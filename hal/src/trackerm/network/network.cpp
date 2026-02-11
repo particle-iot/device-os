@@ -35,6 +35,7 @@
 #include "lwip_util.h"
 #include "core_hal.h"
 #include "deviceid_hal.h"
+#include "system_env.h"
 
 using namespace particle;
 using namespace particle::net;
@@ -160,7 +161,11 @@ int if_init_platform(void*) {
 
     if (HAL_Feature_Get(FEATURE_ETHERNET_DETECTION)) {
         // TODO: move spi interface configuration to wiznetifconfig
-        en2 = new WizNetif(HAL_SPI_INTERFACE1, mac);
+        bool enabled = true;
+        particle::system::getEnv("PARTICLE_ETHERNET_ENABLE", enabled);
+        if (enabled) {
+            en2 = new WizNetif(HAL_SPI_INTERFACE1, mac);
+        }
     }
 
     uint8_t dummy;
