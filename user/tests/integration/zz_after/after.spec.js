@@ -19,6 +19,10 @@ test('03_enable_listening_mode', async function () {
 
 });
 
+test('04_cleanup_env', async function () {
+
+});
+
 after(function() {
     // console.log('after js runs');
 });

@@ -76,6 +76,7 @@ public:
     int disableInterface(if_t iface = nullptr, network_disconnect_reason reason = NETWORK_DISCONNECT_REASON_UNKNOWN);
     int blockInterface(if_t iface, bool block);
     bool isInterfaceEnabled(if_t iface) const;
+    bool isInterfaceBlocked(if_t iface) const;
     int countEnabledInterfaces();
     int syncInterfaceStates(if_t forceIface = nullptr);
 
