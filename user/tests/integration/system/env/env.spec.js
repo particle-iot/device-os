@@ -3,8 +3,8 @@ suite('System level env vars');
 platform('gen3', 'gen4');
 systemMode('manual');
 
-const { setDevelopmentMode, getProductId } = require('../../integration/test/product');
-const { get, post, patch } = require('../../integration/test/api');
+const { setDevelopmentMode, getProductId } = require('../../test/product');
+const { get, post, patch } = require('../../test/api');
 
 const { createEnvVarsAssetModule } = require('binary-version-reader');
 const Particle = require('particle-api-js');
