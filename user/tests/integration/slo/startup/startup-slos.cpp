@@ -32,25 +32,25 @@ system_tick_t testAppSetupDuration = 0;
 } // anonymous
 
 void PRE_STARTUP() {
-    globalInitTimeFromPreStartup = millis();
+    globalInitTimeFromPreStartup = micros();
 }
 
 STARTUP({
-    globalInitTimeFromStartup = millis();
+    globalInitTimeFromStartup = micros();
     testAppInit();
-    testAppInitDuration = millis() - globalInitTimeFromStartup;
+    testAppInitDuration = micros() - globalInitTimeFromStartup;
 });
 
 void setup() {
-    setupTimeFromStartup = millis();
+    setupTimeFromStartup = micros();
     testAppSetup();
-    testAppSetupDuration = millis() - setupTimeFromStartup;
+    testAppSetupDuration = micros() - setupTimeFromStartup;
     setupTimeFromStartup -= testAppInitDuration;
 }
 
 void loop() {
     if (!loopCalled) {
-        loopTimeFromStartup = millis() - testAppInitDuration - testAppSetupDuration;
+        loopTimeFromStartup = micros() - testAppInitDuration - testAppSetupDuration;
         loopCalled = true;
     }
     testAppLoop();

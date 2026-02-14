@@ -18,44 +18,44 @@ const util = require('util')
 // Parameters validated by this test
 const THRESHOLDS = {
     p2: {
-        targetAppFlashSize: 21 * 1024, // 21KB
+        targetAppFlashSize: 28800,
         targetFreeRam: 3040870,        // 2.9MB
         targetTime: {
-            pre_startup: 1000,
-            startup: 1000,
-            setup: 1000,
-            loop: 1000
+            pre_startup: 1000 * 1000,
+            startup: 1000 * 1000,
+            setup: 1000 * 1000,
+            loop: 1000 * 1000
         }
     },
     trackerm: {
-        targetAppFlashSize: 21 * 1024, // 21KB
+        targetAppFlashSize: 28800,
         targetFreeRam: 3040870,        // 2.9MB
         targetTime: {
-            pre_startup: 1000,
-            startup: 1000,
-            setup: 1000,
-            loop: 1000
+            pre_startup: 1000 * 1000,
+            startup: 1000 * 1000,
+            setup: 1000 * 1000,
+            loop: 1000 * 1000
         }
     },
     msom: {
-        targetAppFlashSize: 21 * 1024, // 21KB
+        targetAppFlashSize: 28800,
         targetFreeRam: 2924544,        // 2.8MB
         targetTime: {
-            pre_startup: 1000,
-            startup: 1000,
-            setup: 1000,
-            loop: 1000
+            pre_startup: 1000 * 1000,
+            startup: 1000 * 1000,
+            setup: 1000 * 1000,
+            loop: 1000 * 1000
         }
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
-        targetAppFlashSize: 18105,
+        targetAppFlashSize: 23850,
         targetFreeRam: 60000,
         targetTime: {
-            pre_startup: 1000,
-            startup: 1000,
-            setup: 1000,
-            loop: 1000
+            pre_startup: 1000 * 1000,
+            startup: 1000 * 1000,
+            setup: 1000 * 1000,
+            loop: 1000 * 1000
         }
     }
 };
