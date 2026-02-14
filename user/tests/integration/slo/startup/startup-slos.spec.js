@@ -13,24 +13,50 @@ platform('gen3', 'gen4');
 // Enabling system thread, in order to account for its overhead in the measurements
 systemThread('enabled');
 
+const util = require('util')
+
 // Parameters validated by this test
 const THRESHOLDS = {
     p2: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 3040870         // 2.9MB
+        targetFreeRam: 3040870,        // 2.9MB
+        targetTime: {
+            pre_startup: 1000,
+            startup: 1000,
+            setup: 1000,
+            loop: 1000
+        }
     },
     trackerm: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 3040870         // 2.9MB
+        targetFreeRam: 3040870,        // 2.9MB
+        targetTime: {
+            pre_startup: 1000,
+            startup: 1000,
+            setup: 1000,
+            loop: 1000
+        }
     },
     msom: {
         targetAppFlashSize: 21 * 1024, // 21KB
-        targetFreeRam: 2924544         // 2.8MB
+        targetFreeRam: 2924544,        // 2.8MB
+        targetTime: {
+            pre_startup: 1000,
+            startup: 1000,
+            setup: 1000,
+            loop: 1000
+        }
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
         targetAppFlashSize: 18105,
-        targetFreeRam: 60000
+        targetFreeRam: 60000,
+        targetTime: {
+            pre_startup: 1000,
+            startup: 1000,
+            setup: 1000,
+            loop: 1000
+        }
     }
 };
 
@@ -60,4 +86,15 @@ test('slo startup stats', async function () {
     ///
     console.log(`actual_app_flash_size=${startupStats.app_flash_size} target_app_flash_size=${thresh.targetAppFlashSize} platform=${dut.platform.name}`);
     expect(startupStats.app_flash_size).to.be.below(thresh.targetAppFlashSize);
+
+    // Startup time assertions
+    console.log(`actaual_time=${util.inspect(startupStats.time)} target_time=${util.inspect(thresh.targetTime)} platform=${dut.platform.name}`);
+    expect(startupStats.time.pre_startup).to.be.below(startupStats.time.startup);
+    expect(startupStats.time.startup).to.be.below(startupStats.time.setup);
+    expect(startupStats.time.setup).to.be.below(startupStats.time.loop);
+
+    expect(startupStats.time.pre_startup).to.be.below(thresh.targetTime.pre_startup);
+    expect(startupStats.time.startup).to.be.below(thresh.targetTime.startup);
+    expect(startupStats.time.setup).to.be.below(thresh.targetTime.setup);
+    expect(startupStats.time.loop).to.be.below(thresh.targetTime.loop);
 });

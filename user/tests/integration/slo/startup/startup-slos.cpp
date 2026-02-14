@@ -18,6 +18,44 @@ extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
 
 extern uintptr_t link_module_start;
 
+namespace {
+
+system_tick_t globalInitTimeFromPreStartup = 0;
+system_tick_t globalInitTimeFromStartup = 0;
+system_tick_t setupTimeFromStartup = 0;
+system_tick_t loopTimeFromStartup = 0;
+bool loopCalled = false;
+
+system_tick_t testAppInitDuration = 0;
+system_tick_t testAppSetupDuration = 0;
+
+} // anonymous
+
+void PRE_STARTUP() {
+    globalInitTimeFromPreStartup = millis();
+}
+
+STARTUP({
+    globalInitTimeFromStartup = millis();
+    testAppInit();
+    testAppInitDuration = millis() - globalInitTimeFromStartup;
+});
+
+void setup() {
+    setupTimeFromStartup = millis();
+    testAppSetup();
+    testAppSetupDuration = millis() - setupTimeFromStartup;
+    setupTimeFromStartup -= testAppInitDuration;
+}
+
+void loop() {
+    if (!loopCalled) {
+        loopTimeFromStartup = millis() - testAppInitDuration - testAppSetupDuration;
+        loopCalled = true;
+    }
+    testAppLoop();
+}
+
 test(slo_startup_stats) {
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
@@ -31,7 +69,15 @@ test(slo_startup_stats) {
         FLASH_ModuleLength(FLASH_INTERNAL, (uint32_t)&link_module_start) +
         sizeof(uint32_t);
 
-    String stats = String::format("{\"free_mem\": %u, \"app_flash_size\": %u}",
-            free_mem, app_flash_size);
-    Particle.publish("startup_stats", stats);
+    Variant stats;
+    stats.set("free_mem", free_mem);
+    stats.set("app_flash_size", app_flash_size);
+    Variant time;
+    time.set("pre_startup", globalInitTimeFromPreStartup);
+    time.set("startup", globalInitTimeFromStartup);
+    time.set("setup", setupTimeFromStartup);
+    time.set("loop", loopTimeFromStartup);
+    stats.set("time", time);
+
+    Particle.publish("startup_stats", stats.toJSON());
 }
