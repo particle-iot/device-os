@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include "usart_hal.h"
-#include "usart_hal_private.h"
+#include "usb_hal.h"
+#include "usb_hal_private.h"
 #include "event_group_stream.h"
 #include "check.h"
 #include <memory>
@@ -27,9 +27,7 @@ namespace particle {
 
 class SerialUSBStream: public EventGroupBasedStream {
 public:
-    SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
-    // SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, uint32_t config,
-            size_t rxBufferSize = 0, size_t txBufferSize = 0);
+    SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, size_t rxBufferSize = 0, size_t txBufferSize = 0);
     ~SerialUSBStream();
 
     int read(char* data, size_t size) override;
@@ -56,12 +54,10 @@ public:
     EventGroupHandle_t eventGroup() override;
 
 private:
-    // TODO: FIX/REMOVE
-    hal_usart_interface_t serial_;
-    // HAL_USB_USART_Serial serial_;
+    HAL_USB_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
-    uint32_t config_;
+    uint32_t config_; // todo: get rid of?
     uint32_t baudrate_;
     volatile bool enabled_;
     volatile bool phyOn_;
@@ -88,6 +84,7 @@ inline unsigned int SerialUSBStream::baudrate() const {
     return baudrate_;
 }
 
+// TODO Fix these for USB read/writeable events
 // static_assert((int)SerialStream::READABLE == (int)HAL_USART_PVT_EVENT_READABLE, "Serial::READABLE needs to match HAL_USART_PVT_EVENT_READABLE");
 // static_assert((int)SerialStream::WRITABLE == (int)HAL_USART_PVT_EVENT_WRITABLE, "Serial::WRITABLE needs to match HAL_USART_PVT_EVENT_WRITABLE");
 

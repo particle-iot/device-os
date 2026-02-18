@@ -31,10 +31,21 @@
 
 namespace particle {
 
-enum class TetherSerialInterface {
-    NONE,
-    USART,
-    USB
+// enum class TetherSerialInterface {
+//     NONE,
+//     USART,
+//     USB
+// };
+
+struct TetherUSBConfig {
+    TetherUSBConfig();
+
+    // TODO: Do we even need these? 
+    TetherUSBConfig& usbserial(USBSerial& s = Serial);
+    USBSerial& usbserial() const;
+
+private: 
+    USBSerial& usbSerial_;
 };
 
 struct TetherSerialConfig {
@@ -43,24 +54,16 @@ struct TetherSerialConfig {
     TetherSerialConfig& serial(USARTSerial& s);
     USARTSerial& serial() const;
 
-    TetherSerialConfig& usbSerial(USBSerial& s = Serial);
-    USBSerial& usbSerial() const;
-
     TetherSerialConfig& config(unsigned conf);
     unsigned config() const;
 
     TetherSerialConfig& baudrate(unsigned baud);
     unsigned baudrate() const;
 
-    TetherSerialInterface activeInterface() const;
-
 private:
     USARTSerial& serial_;
     unsigned config_;
     unsigned baudrate_;
-
-    USBSerial& usbSerial_;
-    TetherSerialInterface activeInterface_;
 };
 
 class TetherClass : public spark::NetworkClass {
@@ -136,6 +139,7 @@ public:
     }
 
     int bind(const TetherSerialConfig& config);
+    int bind(const TetherUSBConfig config);
 };
 
 extern TetherClass Tether;

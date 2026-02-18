@@ -44,6 +44,9 @@ LOG_SOURCE_CATEGORY("hal.usb.cdc");
 #include "hal_platform.h"
 #include "system_error.h"
 #include "interrupts_hal.h"
+#include "check.h"
+#include "usb_hal_private.h"
+#include "usart_hal_private.h"
 
 /**
  * @brief Enable power USB detection
@@ -91,9 +94,15 @@ typedef struct {
     void*                   state_callback_context[MAX_USB_STATE_CB_NUM];
 
     volatile bool enabled;
+    EventGroupHandle_t ev_group;
 } usb_instance_t;
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 static usb_instance_t m_usb_instance = {0};
+
+#pragma GCC pop_options
 
 // Rx buffer length must by multiple of NRF_DRV_USBD_EPSIZE.
 #define READ_SIZE       (NRF_DRV_USBD_EPSIZE * 2)
@@ -252,6 +261,9 @@ static void usb_cdc_schedule_tx() {
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event)
 {
+    BaseType_t yield = pdFALSE;
+    bool eventGenerated = false;
+
     switch (event) {
         case APP_USBD_CDC_ACM_USER_EVT_SET_LINE_CODING: {
             if (m_usb_instance.bit_rate_changed_handler) {
@@ -279,6 +291,11 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             usb_cdc_change_port_state(true);
 
             usb_cdc_schedule_tx();
+
+            if (usb_uart_available_tx_data() > 0) {
+                xEventGroupSetBitsFromISR(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_WRITABLE, &yield);
+                eventGenerated = true;
+            }
             break;
         }
         case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
@@ -286,6 +303,9 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             usb_cdc_change_port_state(true);
 
             if (usb_cdc_handle_rx()) {
+                // We received data
+                xEventGroupSetBitsFromISR(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE, &yield);
+                eventGenerated = true;
                 // Setup next transfer.
                 usb_cdc_schedule_rx();
             }
@@ -293,6 +313,10 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
         }
         default:
             break;
+    }
+
+    if (eventGenerated) {
+        portYIELD_FROM_ISR(yield);    
     }
 }
 
@@ -506,6 +530,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     }
 
     m_usb_instance.mode = USB_MODE_CDC_UART;
+    m_usb_instance.ev_group = xEventGroupCreate();  // TODO: This causes problems if initialized in usb_hal_init, due to freertos not having heap yet or something? 
 
     return 0;
 }
@@ -669,3 +694,59 @@ int usb_hal_set_state_change_callback(HAL_USB_State_Callback cb, void* context, 
     }
     return SYSTEM_ERROR_NO_MEMORY;
 }
+
+EventGroupHandle_t eventGroup() {
+    return m_usb_instance.ev_group;
+}
+
+int enableEvent(HAL_USART_Pvt_Events event) {
+    // Readable? 
+    // If we have data already -> signal event
+    // else -> make sure we are ready to signal when we do receive data, nothing needed?
+
+    if (event & HAL_USART_PVT_EVENT_READABLE) {
+        if (usb_uart_available_rx_data() > 0) {
+            xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE);
+        }
+    }
+
+    // Writeable? 
+    // If we have space to write -> signal event
+    // else -> make sure when we do have space, to signal when that happens.
+      if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+          if (usb_uart_available_tx_data() > 0) {
+              xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_WRITABLE);
+          }
+      }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int waitEvent(uint32_t events, system_tick_t timeout) {
+    CHECK_FALSE(enableEvent((HAL_USART_Pvt_Events)events), SYSTEM_ERROR_INVALID_STATE);
+    return xEventGroupWaitBits(m_usb_instance.ev_group, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+}
+
+int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle) {
+    EventGroupHandle_t grp = eventGroup();
+    CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
+    *handle = grp;
+    return SYSTEM_ERROR_NONE;
+}
+
+//TODO: Adapt these for USB CDC event signalling
+// int hal_usb_cdc_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
+//     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+//     return usart->enableEvent(events);
+// }
+
+// int hal_usb_cdc_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
+//     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
+//     return usart->disableEvent(events);
+// }
+
+int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout) {
+    // TODO: error checking? 
+    return waitEvent(events, timeout);
+}
+

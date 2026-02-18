@@ -23,32 +23,32 @@ namespace particle {
 
 TetherClass Tether;
 
+TetherUSBConfig::TetherUSBConfig()
+        : usbSerial_(Serial) {
+}
+
+TetherUSBConfig& TetherUSBConfig::usbserial(USBSerial& s) {
+    usbSerial_ = s;
+    return *this;
+}
+
+USBSerial& TetherUSBConfig::usbserial() const {
+    return usbSerial_;
+}
+
 TetherSerialConfig::TetherSerialConfig()
         : serial_(USARTSerial::from(HAL_PLATFORM_PPP_SERVER_USART)),
           config_(HAL_PLATFORM_PPP_SERVER_USART_FLAGS),
-          baudrate_(HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE),
-          usbSerial_(Serial),
-          activeInterface_(TetherSerialInterface::USART) {
+          baudrate_(HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE) {
 }
 
 TetherSerialConfig& TetherSerialConfig::serial(USARTSerial& s) {
     serial_ = s;
-    activeInterface_ = TetherSerialInterface::USART;
-    return *this;
-}
-
-TetherSerialConfig& TetherSerialConfig::usbSerial(USBSerial& s) {
-    usbSerial_ = s;
-    activeInterface_ = TetherSerialInterface::USB;
     return *this;
 }
 
 USARTSerial& TetherSerialConfig::serial() const {
     return serial_;
-}
-
-USBSerial& TetherSerialConfig::usbSerial() const {
-    return usbSerial_;
 }
 
 TetherSerialConfig& TetherSerialConfig::config(unsigned conf) {
@@ -69,32 +69,36 @@ unsigned TetherSerialConfig::baudrate() const {
     return baudrate_;
 }
 
-TetherSerialInterface TetherSerialConfig::activeInterface() const {
-    return activeInterface_;
-}
-
 int TetherClass::bind(const TetherSerialConfig& config) {
     if_t iface = nullptr;
     if_get_by_index(*this, &iface);
     if (iface) {
         if_req_ppp_server_serial_settings settings = {};
         settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
-
-        switch (config.activeInterface()) {
-            case TetherSerialInterface::USART:
-                settings.serial = config.serial().interface();
-                settings.usbserial = 0xFF;
-                break;
-            case TetherSerialInterface::USB:
-                settings.serial = 0xFF;
-                settings.usbserial = config.usbSerial(); // TODO: pass something other than serial reference? 
-                break;
-            default:
-                break;
-        }
-        
+        settings.serial = config.serial().interface();
+        settings.usbserial = 0x00;
         settings.baud = config.baudrate();
         settings.config = config.config();
+        return if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr);
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int TetherClass::bind(const TetherUSBConfig config) {
+    if_t iface = nullptr;
+    if_get_by_index(*this, &iface);
+    if (iface) {
+        if_req_ppp_server_serial_settings settings = {};
+        settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
+
+        // // for debugging
+        // settings.serial = HAL_PLATFORM_PPP_SERVER_USART;
+        // settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+        // settings.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
+        settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE; // TODO: do we need this here? 
+
+        settings.serial = 0x00;
+        settings.usbserial = config.usbserial(); // TODO: pass something other than serial reference? 
         return if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr);
     }
     return SYSTEM_ERROR_NOT_FOUND;

@@ -140,7 +140,7 @@ PppServerNetif::PppServerNetif()
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
 
-    // Defaults
+    // Defaults, assume USART
     settings_.serial = HAL_PLATFORM_PPP_SERVER_USART;
     settings_.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
     settings_.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
@@ -166,14 +166,14 @@ int PppServerNetif::start() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    LOG(TRACE, "Starting PppServerNetif interface");
+    LOG(TRACE, "Starting PppServerNetif interface on %s", settings_.serial ? "USART" : "USB");
 
-    if (settings_.serial != 0xFF) {
+    if (settings_.serial) {
         auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, settings_.baud, settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial);
         serial_ = std::move(serial);
     } else {
-        auto serial = std::make_unique<SerialUSBStream>((hal_usart_interface_t)settings_.serial, settings_.baud, settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
+        auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.serial, settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial)
         serial_ = std::move(serial);
     }
@@ -296,6 +296,14 @@ int PppServerNetif::start() {
     }, nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IFC", "+IFC: (0-2)(0-2)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
+
+        // TODO: figure out how to pass this class pointer to AT command handler lambda
+        // // If USB serial then just return
+        // if (settings_.usbserial) {
+        //     // Todo test
+        //     return 0;
+        // }
+
         auto stream = (SerialStream*)data; // TODO: Fix for both types
         CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
         if (stream->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {

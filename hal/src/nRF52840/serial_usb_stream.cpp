@@ -21,6 +21,8 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "system_error.h"
+#include "delay_hal.h"
+#include "usb_hal_cdc.h"
 
 namespace {
 
@@ -30,11 +32,8 @@ const auto SERIAL_STREAM_BUFFER_SIZE_TX = 2048;
 } // anonymous
 
 namespace particle {
-SerialUSBStream::SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate, uint32_t config,
-//SerialUSBStream::SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, uint32_t config,
-        size_t rxBufferSize, size_t txBufferSize)
+SerialUSBStream::SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate, size_t rxBufferSize, size_t txBufferSize)
         : serial_(serial),
-          config_(config),
           baudrate_(baudrate),
           enabled_(true),
           phyOn_(false) {
@@ -51,22 +50,20 @@ SerialUSBStream::SerialUSBStream(hal_usart_interface_t serial, uint32_t baudrate
     SPARK_ASSERT(rxBuffer_);
     SPARK_ASSERT(txBuffer_);
 
-    // HAL_USB_USART_Config c = {};
-    hal_usart_buffer_config_t c = {};
+    HAL_USB_USART_Config c = {};
     c.size = sizeof(c);
     c.rx_buffer = (uint8_t*)rxBuffer_.get();
     c.tx_buffer = (uint8_t*)txBuffer_.get();
     c.rx_buffer_size = rxBufferSize;
     c.tx_buffer_size = txBufferSize;
-    // HAL_USB_USART_Init(serial_, &c);
-    // HAL_USB_USART_Begin();
-    // hal_usart_init_ex(serial_, &c, nullptr);
-    // hal_usart_begin_config(serial_, baudrate, config, 0);
+
+    HAL_USB_USART_Init(serial_, &c);
+    HAL_USB_USART_Begin(serial_, baudrate_, nullptr);
     phyOn_ = true;
 }
 
 SerialUSBStream::~SerialUSBStream() {
-    hal_usart_end(serial_);
+    // TODO:
 }
 
 int SerialUSBStream::read(char* data, size_t size) {
@@ -76,13 +73,20 @@ int SerialUSBStream::read(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = hal_usart_read_buffer(serial_, data, size, sizeof(char));
-    if (r == SYSTEM_ERROR_NO_MEMORY) {
-        return 0;
+    
+    for (size_t i = 0; i < size; i++) {
+        auto receivedByte = HAL_USB_USART_Receive_Data(serial_, 0);
+        if (receivedByte < 0) {
+            return i;    
+        }
+        // TODO: HANDLE NULL PTR CASE LIKE FOR SKIP
+        *data++ = receivedByte;
     }
-    return r;
+
+    return size;
 }
 
+// TODO: not used by AT server / pppserver
 int SerialUSBStream::peek(char* data, size_t size) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -90,17 +94,19 @@ int SerialUSBStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = hal_usart_peek_buffer(serial_, data, size, sizeof(char));
+    auto r = 0;
     if (r == SYSTEM_ERROR_NO_MEMORY) {
         return 0;
     }
     return r;
 }
 
+// TODO: not used by AT server / pppserver
 int SerialUSBStream::skip(size_t size) {
     return read(nullptr, size);
 }
 
+// TODO: ********************************************************************************
 int SerialUSBStream::write(const char* data, size_t size) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -108,18 +114,21 @@ int SerialUSBStream::write(const char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    auto r = hal_usart_write_buffer(serial_, data, size, sizeof(char));
-    if (r == SYSTEM_ERROR_NO_MEMORY) {
-        return 0;
+    
+    for (size_t i = 0; i < size; i++) {
+        auto r = HAL_USB_USART_Send_Data(serial_, data[i]);
+        if (r < 0) {
+            return i;
+        }
     }
-    return r;
+    return size;
 }
 
 int SerialUSBStream::flush() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    hal_usart_flush(serial_);
+    // TODO:
     return 0;
 }
 
@@ -127,64 +136,66 @@ int SerialUSBStream::availForRead() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    return hal_usart_available(serial_);
+    return HAL_USB_USART_Available_Data(serial_);
 }
 
+// TODO: TEST least important for now, only used for gsm muxer implementation
 int SerialUSBStream::availForWrite() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    return hal_usart_available_data_for_write(serial_);
+    return HAL_USB_USART_Available_Data_For_Write(serial_);
 }
 
 int SerialUSBStream::waitEvent(unsigned flags, unsigned timeout) {
     if (!phyOn_ || !enabled_) {
-        return SYSTEM_ERROR_INVALID_STATE;
+      return SYSTEM_ERROR_INVALID_STATE;
     }
     if (!flags) {
-        return 0;
+      return 0;
     }
 
-    // NOTE: non-Stream events may be passed here
-
-    return hal_usart_pvt_wait_event(serial_, flags, timeout);
+    return hal_usb_cdc_pvt_wait_event(flags, timeout);
 }
 
+// TODO
 int SerialUSBStream::setBaudRate(unsigned int baudrate) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    hal_usart_end(serial_);
-    phyOn_ = false;
-    hal_usart_begin_config(serial_, baudrate, config_, 0);
-    baudrate_ = baudrate;
-    phyOn_ = true;
+    // hal_usart_end(serial_);
+    // phyOn_ = false;
+    // hal_usart_begin_config(serial_, baudrate, config_, 0);
+    // baudrate_ = baudrate;
+    // phyOn_ = true;
     return 0;
 }
 
-int SerialUSBStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
-    if (!phyOn_ || !enabled_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    hal_usart_end(serial_);
-    phyOn_ = false;
-    if (baudrate != 0) {
-        baudrate_ = baudrate;
-    }
-    config_ = config;
-    hal_usart_begin_config(serial_, baudrate_, config_, 0);
-    phyOn_ = true;
-    return 0;
-}
+// TODO: Do we need this
+// int SerialUSBStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
+//     if (!phyOn_ || !enabled_) {
+//         return SYSTEM_ERROR_INVALID_STATE;
+//     }
+//     hal_usart_end(serial_);
+//     phyOn_ = false;
+//     if (baudrate != 0) {
+//         baudrate_ = baudrate;
+//     }
+//     config_ = config;
+//     hal_usart_begin_config(serial_, baudrate_, config_, 0);
+//     phyOn_ = true;
+//     return 0;
+// }
 
+// TODO: is this called? 
 int SerialUSBStream::on(bool on) {
     if (on) {
         CHECK_FALSE(phyOn_, SYSTEM_ERROR_NONE);
-        hal_usart_begin_config(serial_, baudrate_, config_, 0);
+        // hal_usart_begin_config(serial_, baudrate_, config_, 0);
         phyOn_ = true;
     } else {
         CHECK_TRUE(phyOn_, SYSTEM_ERROR_NONE);
-        hal_usart_end(serial_);
+        // hal_usart_end(serial_);
         phyOn_ = false;
     }
     return SYSTEM_ERROR_NONE;
@@ -192,7 +203,7 @@ int SerialUSBStream::on(bool on) {
 
 EventGroupHandle_t SerialUSBStream::eventGroup() {
     EventGroupHandle_t ev = nullptr;
-    hal_usart_pvt_get_event_group_handle(serial_, &ev);
+    hal_usb_cdc_pvt_get_event_group_handle(&ev);
     return ev;
 }
 
