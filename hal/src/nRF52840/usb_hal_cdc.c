@@ -700,24 +700,17 @@ EventGroupHandle_t eventGroup() {
 }
 
 int enableEvent(HAL_USART_Pvt_Events event) {
-    // Readable? 
-    // If we have data already -> signal event
-    // else -> make sure we are ready to signal when we do receive data, nothing needed?
-
     if (event & HAL_USART_PVT_EVENT_READABLE) {
         if (usb_uart_available_rx_data() > 0) {
             xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE);
         }
     }
 
-    // Writeable? 
-    // If we have space to write -> signal event
-    // else -> make sure when we do have space, to signal when that happens.
-      if (event & HAL_USART_PVT_EVENT_WRITABLE) {
-          if (usb_uart_available_tx_data() > 0) {
-              xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_WRITABLE);
-          }
-      }
+    if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+        if (usb_uart_available_tx_data() > 0) {
+            xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_WRITABLE);
+        }
+    }
 
     return SYSTEM_ERROR_NONE;
 }
@@ -733,17 +726,6 @@ int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle) {
     *handle = grp;
     return SYSTEM_ERROR_NONE;
 }
-
-//TODO: Adapt these for USB CDC event signalling
-// int hal_usb_cdc_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-//     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
-//     return usart->enableEvent(events);
-// }
-
-// int hal_usb_cdc_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events) {
-//     auto usart = CHECK_TRUE_RETURN(getInstance(serial), SYSTEM_ERROR_NOT_FOUND);
-//     return usart->disableEvent(events);
-// }
 
 int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout) {
     // TODO: error checking? 

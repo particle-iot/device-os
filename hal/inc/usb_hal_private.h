@@ -28,10 +28,7 @@
 extern "C" {
 #endif // __cplusplus
 
-// TODO: Make one unified private serial event instead of resuing usart events for usb cdc?
 int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle);
-// int hal_usb_cdc_pvt_enable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events);
-// int hal_usb_cdc_pvt_disable_event(hal_usart_interface_t serial, HAL_USART_Pvt_Events events);
 int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout);
 
 #ifdef __cplusplus

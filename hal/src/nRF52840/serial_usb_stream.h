@@ -57,11 +57,10 @@ private:
     HAL_USB_USART_Serial serial_;
     std::unique_ptr<char[]> rxBuffer_;
     std::unique_ptr<char[]> txBuffer_;
-    uint32_t config_; // todo: get rid of?
+    uint32_t config_;
     uint32_t baudrate_;
     volatile bool enabled_;
     volatile bool phyOn_;
-
 };
 
 inline void SerialUSBStream::enabled(bool enabled) {
@@ -83,9 +82,5 @@ inline uint32_t SerialUSBStream::config() const {
 inline unsigned int SerialUSBStream::baudrate() const {
     return baudrate_;
 }
-
-// TODO Fix these for USB read/writeable events
-// static_assert((int)SerialStream::READABLE == (int)HAL_USART_PVT_EVENT_READABLE, "Serial::READABLE needs to match HAL_USART_PVT_EVENT_READABLE");
-// static_assert((int)SerialStream::WRITABLE == (int)HAL_USART_PVT_EVENT_WRITABLE, "Serial::WRITABLE needs to match HAL_USART_PVT_EVENT_WRITABLE");
 
 } // particle

@@ -65,6 +65,7 @@ extern nat::Nat64* g_natInstance;
 
 namespace {
 
+// TODO: Make one unified private serial event instead of resuing usart events for usb cdc?
 enum PppServerNetifEvent {
     PPP_SERVER_NETIF_EVENT_EXIT = 0x01 << __builtin_ffs(HAL_USART_PVT_EVENT_MAX),
 };

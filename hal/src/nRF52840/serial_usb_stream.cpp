@@ -63,7 +63,7 @@ SerialUSBStream::SerialUSBStream(HAL_USB_USART_Serial serial, uint32_t baudrate,
 }
 
 SerialUSBStream::~SerialUSBStream() {
-    // TODO:
+    HAL_USB_USART_End(serial_);
 }
 
 int SerialUSBStream::read(char* data, size_t size) {
@@ -79,34 +79,37 @@ int SerialUSBStream::read(char* data, size_t size) {
         if (receivedByte < 0) {
             return i;    
         }
-        // TODO: HANDLE NULL PTR CASE LIKE FOR SKIP
-        *data++ = receivedByte;
+        if (data) {
+            *data++ = receivedByte;    
+        }
     }
 
     return size;
 }
 
-// TODO: not used by AT server / pppserver
 int SerialUSBStream::peek(char* data, size_t size) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     if (size == 0) {
         return 0;
+    } else if (size > 1) {
+        // Only support peeking first byte
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-    auto r = 0;
-    if (r == SYSTEM_ERROR_NO_MEMORY) {
-        return 0;
+
+    auto r = HAL_USB_USART_Receive_Data(serial_, 1);
+    if (r >= 0) {
+        *data = r;
     }
+
     return r;
 }
 
-// TODO: not used by AT server / pppserver
 int SerialUSBStream::skip(size_t size) {
     return read(nullptr, size);
 }
 
-// TODO: ********************************************************************************
 int SerialUSBStream::write(const char* data, size_t size) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -128,7 +131,7 @@ int SerialUSBStream::flush() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // TODO:
+    HAL_USB_USART_Flush_Data(serial_);
     return 0;
 }
 
@@ -139,7 +142,6 @@ int SerialUSBStream::availForRead() {
     return HAL_USB_USART_Available_Data(serial_);
 }
 
-// TODO: TEST least important for now, only used for gsm muxer implementation
 int SerialUSBStream::availForWrite() {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
@@ -158,44 +160,42 @@ int SerialUSBStream::waitEvent(unsigned flags, unsigned timeout) {
     return hal_usb_cdc_pvt_wait_event(flags, timeout);
 }
 
-// TODO
 int SerialUSBStream::setBaudRate(unsigned int baudrate) {
     if (!phyOn_ || !enabled_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // hal_usart_end(serial_);
-    // phyOn_ = false;
-    // hal_usart_begin_config(serial_, baudrate, config_, 0);
-    // baudrate_ = baudrate;
-    // phyOn_ = true;
+    HAL_USB_USART_End(serial_);
+    phyOn_ = false;
+    HAL_USB_USART_Begin(serial_, baudrate_, nullptr);
+    baudrate_ = baudrate;
+    phyOn_ = true;
     return 0;
 }
 
-// TODO: Do we need this
-// int SerialUSBStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
-//     if (!phyOn_ || !enabled_) {
-//         return SYSTEM_ERROR_INVALID_STATE;
-//     }
-//     hal_usart_end(serial_);
-//     phyOn_ = false;
-//     if (baudrate != 0) {
-//         baudrate_ = baudrate;
-//     }
-//     config_ = config;
-//     hal_usart_begin_config(serial_, baudrate_, config_, 0);
-//     phyOn_ = true;
-//     return 0;
-// }
+// CTS/RTS Configs are no ops
+int SerialUSBStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
+    if (!phyOn_ || !enabled_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    HAL_USB_USART_End(serial_);
+    phyOn_ = false;
+    if (baudrate != 0) {
+        baudrate_ = baudrate;
+    }
+    config_ = config;
+    HAL_USB_USART_Begin(serial_, baudrate_, nullptr);
+    phyOn_ = true;
+    return 0;
+}
 
-// TODO: is this called? 
 int SerialUSBStream::on(bool on) {
     if (on) {
         CHECK_FALSE(phyOn_, SYSTEM_ERROR_NONE);
-        // hal_usart_begin_config(serial_, baudrate_, config_, 0);
+        HAL_USB_USART_Begin(serial_, baudrate_, nullptr);
         phyOn_ = true;
     } else {
         CHECK_TRUE(phyOn_, SYSTEM_ERROR_NONE);
-        // hal_usart_end(serial_);
+        HAL_USB_USART_End(serial_);
         phyOn_ = false;
     }
     return SYSTEM_ERROR_NONE;
