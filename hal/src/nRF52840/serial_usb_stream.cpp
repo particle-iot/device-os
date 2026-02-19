@@ -21,7 +21,6 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "system_error.h"
-#include "delay_hal.h"
 #include "usb_hal_cdc.h"
 
 namespace {
