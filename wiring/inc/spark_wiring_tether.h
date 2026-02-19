@@ -31,16 +31,15 @@
 
 namespace particle {
 
-// enum class TetherSerialInterface {
-//     NONE,
-//     USART,
-//     USB
-// };
+enum class TetherInterface {
+    NONE,
+    USART,
+    USB
+};
 
 struct TetherUSBConfig {
     TetherUSBConfig();
 
-    // TODO: Do we even need these? 
     TetherUSBConfig& usbserial(USBSerial& s = Serial);
     USBSerial& usbserial() const;
 
@@ -112,6 +111,14 @@ public:
         return network_ready(*this, 0,  NULL);
     }
 
+    bool isOn(void) {
+        return network_is_on(*this, NULL);
+    }
+
+    bool isOff(void) {
+        return network_is_off(*this, NULL);
+    }
+
     IPAddress localIP() {
         IPAddress addr;
         GET_IF_ADDR(NETWORK_INTERFACE_PPP_SERVER, addr, addr);
@@ -138,8 +145,15 @@ public:
         return IPAddress();
     }
 
+    TetherInterface activeSerialInterface() {
+        return activeInterface_;
+    }
+
     int bind(const TetherSerialConfig& config);
     int bind(const TetherUSBConfig config);
+
+private:
+    TetherInterface activeInterface_ = TetherInterface::NONE;
 };
 
 extern TetherClass Tether;

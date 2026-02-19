@@ -30,6 +30,7 @@
 #include "spark_wiring_usbserial.h"
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_interrupts.h"
+#include "spark_wiring_tether.h"
 
 // Uncomment to enable logging in interrupt handlers
 // #define LOG_FROM_ISR
@@ -476,7 +477,8 @@ int spark::detail::LogFilter::nodeIndex(const Vector<Node> &nodes, const char *n
 // spark::StreamLogHandler
 void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
 #if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
-    if (stream_ == &Serial && Network.listening()) {
+    if (stream_ == &Serial &&
+        (Network.listening() || (particle::Tether.isOn() && particle::Tether.activeSerialInterface() == particle::TetherInterface::USB))) {
         return; // Do not mix logging and serial console output
     }
 #endif
