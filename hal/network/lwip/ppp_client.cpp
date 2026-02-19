@@ -102,8 +102,6 @@ Client::Client() {
 
   exit_ = false;
   running_ = false;
-  inBytes_ = 0;
-  outBytes_ = 0;
 }
 
 Client::~Client() {
@@ -115,7 +113,6 @@ void Client::init() {
   if (!inited_) {
     LOG(TRACE, "PPP client initializing");
     inited_ = true;
-    // Register PPP 
     pcb_ = pppapi_pppos_create(&if_, &Client::outputCb, &Client::notifyStatusCb, this);
     SPARK_ASSERT(pcb_);
     if_.flags &= ~NETIF_FLAG_UP;
@@ -326,10 +323,10 @@ int Client::input(const uint8_t* data, size_t size) {
         auto linkDropBefore = lwip_stats.link.drop;
 #endif // DEBUG_BUILD
 
-        pppos_input(pcb_, (u8_t*)data, size); // This should be raw application data
+        pppos_input(pcb_, (u8_t*)data, size);
 
         if (server_) {
-          LOG(INFO, "INPUT %u", size);
+          // LOG(INFO, "input %u", size);
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
           if (pppos->in_head != nullptr) {
             const size_t header = 19;
@@ -574,9 +571,8 @@ uint32_t Client::outputCb(ppp_pcb* pcb, uint8_t* data, uint32_t len, void* ctx) 
 }
 
 uint32_t Client::output(const uint8_t* data, size_t len) {
-  LOG_DEBUG(TRACE, "OUTPUT: %lu", len);
+  LOG_DEBUG(TRACE, "TX: %lu", len);
   // LOG_DUMP(TRACE, data, len);
-  // At this point the data has PPP header applied 
 
   if (oCb_) {
     auto r = oCb_(data, len, oCbCtx_);

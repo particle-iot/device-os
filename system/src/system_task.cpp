@@ -851,18 +851,6 @@ int system_invoke_event_handler(uint16_t handlerInfoSize, FilteringEventHandler*
 #endif // HAL_PLATFORM_NRF52840
 }
 
-// LWIP CELLULAR IF IP COUNTERS
-// // Access via netif pointer
-// netif* pppServerIf = pppServerClient.getIf();  // "ps" interface
-// netif* cellularIf = cellularClient.getIf();     // "pp" interface
-
-// // Read MIB2 counters (already updated by LwIP)
-// uint32_t tetheredIpBytesIn = pppServerIf->mib2_counters.ifinoctets;
-// uint32_t tetheredIpBytesOut = pppServerIf->mib2_counters.ifoutoctets;
-
-// uint32_t modemIpBytesIn = cellularIf->mib2_counters.ifinoctets;
-// uint32_t modemIpBytesOut = cellularIf->mib2_counters.ifoutoctets;
-
 void* system_internal(int item, void* reserved)
 {
     switch (item) {
