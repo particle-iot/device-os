@@ -97,12 +97,7 @@ typedef struct {
     EventGroupHandle_t ev_group;
 } usb_instance_t;
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
-
 static usb_instance_t m_usb_instance = {0};
-
-#pragma GCC pop_options
 
 // Rx buffer length must by multiple of NRF_DRV_USBD_EPSIZE.
 #define READ_SIZE       (NRF_DRV_USBD_EPSIZE * 2)
@@ -530,7 +525,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     }
 
     m_usb_instance.mode = USB_MODE_CDC_UART;
-    m_usb_instance.ev_group = xEventGroupCreate();  // TODO: This causes problems if initialized in usb_hal_init, due to freertos not having heap yet or something? 
+    m_usb_instance.ev_group = xEventGroupCreate();
 
     return 0;
 }
@@ -728,7 +723,6 @@ int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle) {
 }
 
 int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout) {
-    // TODO: error checking? 
     return waitEvent(events, timeout);
 }
 
