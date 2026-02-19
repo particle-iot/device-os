@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2019 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,100 +15,273 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/* Includes ------------------------------------------------------------------*/
 #include "application.h"
-
-SerialLogHandler logHandler(115200, LOG_LEVEL_ALL, 
-{
-    //Setup the Tinker application here
-    { "app", LOG_LEVEL_ALL }, 
-    //{ "sys.power", LOG_LEVEL_TRACE },
-    { "comm.protocol", LOG_LEVEL_TRACE },
-    { "system", LOG_LEVEL_TRACE },
-    { "network", LOG_LEVEL_TRACE },
-    { "ncp.at", LOG_LEVEL_TRACE },
-    { "system.nm", LOG_LEVEL_TRACE },
-    { "system.cm", LOG_LEVEL_TRACE },
-    { "system.nd", LOG_LEVEL_TRACE },
-    { "ncp.client", LOG_LEVEL_TRACE },
-    { "net.rltkncp", LOG_LEVEL_TRACE },
-    { "net.ifapi", LOG_LEVEL_TRACE },
-    { "net.ppp.client", LOG_LEVEL_TRACE },
-    { "net.pppserver", LOG_LEVEL_TRACE },
-    { "net.ppp.client", LOG_LEVEL_TRACE },
-    { "net.en", LOG_LEVEL_TRACE },
-    { "service.ntp", LOG_LEVEL_TRACE },
-    { "net.en", LOG_LEVEL_TRACE },
-    { "mux", LOG_LEVEL_ERROR },
-    { "net.ppp.ipcp", LOG_LEVEL_ERROR },
-    { "comm.cloud.posix", LOG_LEVEL_TRACE },
-}
-);
-SYSTEM_MODE(SEMI_AUTOMATIC);
-
-/* executes once at startup */
-void setup() {
-#if HAL_PLATFORM_ENV
-    // Clear all environment variables to restore the default settings
-    System.clearEnv();
+#include <cctype>
+#include "request_handler.h"
+#ifdef ENABLE_FQC_FUNCTIONALITY
+#include "src/burnin_test.h"
 #endif
 
-    waitUntil(Serial.isConnected);
-    // Enable Cellular
-    Cellular.on();
-    Cellular.connect();
-    // Bind Tether interface to USB Serial with default settings (8n1 + RTS/CTS flow control)
-    Tether.bind(TetherSerialConfig().baudrate(921600).serial(Serial1));
-    // Tether.bind(TetherUSBConfig());
-    // Turn on Tether interface and bring it up
-    Tether.on();
-    Tether.connect();
-    Particle.connect();
-}
+struct PinMapping {
+    const char* name;
+    hal_pin_t pin;
+};
 
-// int callbackParseTxRx(int type, const char* buf, int len, int* bytesSent) {
-//     if (sscanf(buf, "+QGDCNT: %d,%d", bytesSent) == 1) {
-//         return RESP_OK;
-//     }
-//     return WAIT;
-// }
+#define PIN(p) {#p, p}
 
-static int modemTxBytes = 0; 
-static int modemRxBytes = 0;
+const PinMapping g_pinmap[] = {
+    // Gen 3
+#if HAL_PLATFORM_NRF52840
+# if PLATFORM_ID == PLATFORM_TRACKER
+    PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D8), PIN(D9)
+# elif PLATFORM_ID == PLATFORM_ESOMX
+    PIN(D0), PIN(D1), PIN(D2), PIN(D5), PIN(TX), PIN(RX), PIN(A0), PIN(A1),
+    PIN(A2), PIN(A3), PIN(A4), PIN(A5), PIN(A6), PIN(A7), PIN(B0), PIN(B1),
+    PIN(B2), PIN(B3), PIN(C0), PIN(C1), PIN(C2), PIN(C3), PIN(C4), PIN(C5),
+    PIN(SS), PIN(SCK), PIN(MISO), PIN(MOSI), PIN(SDA), PIN(SCL), PIN(CTS),
+    PIN(RTS), PIN(SS1), PIN(SCK1), PIN(MISO1), PIN(MOSI1),
+# else // PLATFORM_ID == PLATFORM_ESOMX
+    PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7),
+    PIN(D8), PIN(D9), PIN(D10), PIN(D11), PIN(D12), PIN(D13), PIN(D14), PIN(D15),
+    PIN(D16), PIN(D17), PIN(D18), PIN(D19), PIN(A0), PIN(A1), PIN(A2), PIN(A3),
+    PIN(A4), PIN(A5), PIN(SCK), PIN(MISO), PIN(MOSI), PIN(SDA), PIN(SCL), PIN(TX),
+    PIN(RX)
+#  if PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_ASOM
+    ,
+    PIN(D20), PIN(D21), PIN(D22), PIN(D23),
+    PIN(A6), PIN(A7)
+#  if PLATFORM_ID == PLATFORM_ASOM
+    ,
+    PIN(D24)
+#  endif // PLATFORM_ID == PLATFORM_ASOM
+#  endif // PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_ASOM
+# endif // PLATFORM_ID == PLATFORM_TRACKER
 
-int callbackLogBytes(int type, const char* buf, int len, char* iccid) {
-    //Log.info("%s", buf);
-    // for (int i = 0; i < len; i++) {
-    //     Log.printf("%02X ", (uint8_t)buf[i]);
-    // }
+#elif HAL_PLATFORM_RTL872X // P2, TrackerM or MSoM
+    PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D8), PIN(D9),
+    PIN(D10), PIN(D11), PIN(D12), PIN(D13), PIN(D14), PIN(D15), PIN(D16), PIN(D17), PIN(D18),
+    PIN(D19), PIN(D20), PIN(D21),
+    PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5),
+    PIN(SS), PIN(SCK), PIN(MISO), PIN(MOSI), PIN(SS1), PIN(SCK1), PIN(MISO1), PIN(MOSI1),
+    PIN(SDA), PIN(SCL),
+    PIN(TX), PIN(RX), PIN(TX1), PIN(RX1),
+    PIN(WKP)
+#  if PLATFORM_ID == PLATFORM_P2
+    // P2 exposes pins for Serial3, NCP pins not exposed on TrackerM or MSoM
+    ,
+    PIN(TX2), PIN(RX2), PIN(CTS2), PIN(RTS2)
+#  endif // PLATFORM_ID == PLATFORM_P2
+#  if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+    ,
+    PIN(S0), PIN(S1), PIN(S2), PIN(S3), PIN(S4), PIN(S5), PIN(S6),
+    PIN(CTS1), PIN(RTS1)
+#  elif PLATFORM_ID == PLATFORM_MSOM
+    ,
+    PIN(D22), PIN(D23), PIN(D24), PIN(D25), PIN(D26), PIN(D27), PIN(D28), PIN(D29),
+    PIN(A6),
+    PIN(CTS), PIN(RTS)
+#  else
+#  error Unsupported HAL_PLATFORM_RTL872X platform
+#  endif
+#else // HAL_PLATFORM_RTL872X
+# error Unsupported platform
+#endif // HAL_PLATFORM_NRF52840
+};
 
-    // <bytesSent>,<bytesReceived>
-    //+QGDCNT: 212252,709828
-    int tx, rx;
-    const char* p = strstr(buf, "+QGDCNT:");
-    Log.info("%s", p);
+const size_t g_pin_count = sizeof(g_pinmap) / sizeof(*g_pinmap);
 
-    if (p && sscanf(p, "+QGDCNT: %d,%d", &tx, &rx) == 2) {
-        modemTxBytes = tx;
-        modemRxBytes = rx;
-        Log.info("modemTxBytes:%d modemRxBytes:%d", modemTxBytes, modemRxBytes);
-        return RESP_OK;
+#if HAL_PLATFORM_RTL872X
+PRODUCT_VERSION(4);
+#else
+PRODUCT_VERSION(3);
+#endif
+
+/* Function prototypes -------------------------------------------------------*/
+int tinkerDigitalRead(String pin);
+int tinkerDigitalWrite(String command);
+int tinkerAnalogRead(String pin);
+int tinkerAnalogWrite(String command);
+
+#ifdef LOG_SERIAL1
+Serial1LogHandler g_logSerial1(115200, LOG_LEVEL_ALL);
+#endif // LOG_SERIAL1
+
+#ifdef LOG_SERIAL
+SerialLogHandler g_logSerial(LOG_LEVEL_ALL);
+#endif // LOG_SERIAL
+
+#if defined(HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL) && HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+// Enable runtime PMIC / FuelGauge detection
+STARTUP(System.enable(SYSTEM_FLAG_PM_DETECTION));
+#endif // defined(HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL) && HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
+
+#ifndef PIN_INVALID
+#define PIN_INVALID (0xff)
+#endif // PIN_INVALID
+
+#if HAL_PLATFORM_RTL872X
+SYSTEM_THREAD(ENABLED);
+#endif
+
+SYSTEM_MODE(AUTOMATIC);
+
+hal_pin_t lookupPinByName(const String& name) {
+    for (unsigned i = 0; i < g_pin_count; i++) {
+        const auto& entry = g_pinmap[i];
+        if (!strcmp(entry.name, name.c_str())) {
+            return entry.pin;
+        }
     }
-    return WAIT;
+
+    return PIN_INVALID;
 }
 
-void loop() {
-    delay(5s);
+/* This function is called once at start up ----------------------------------*/
+void setup()
+{
+    //Setup the Tinker application here
 
-    // Application -> Query modem data usage AT command every so often
-    char iccid[32] = "";
-    Cellular.command(callbackLogBytes, iccid, 10000, "AT+QGDCNT?\r\n");
+    //Register all the Tinker functions
+    Particle.function("digitalread", tinkerDigitalRead);
+    Particle.function("digitalwrite", tinkerDigitalWrite);
 
-    // TODO: print combined PPP link data? cellular ppp client vs local ppp client
-    // pppservernetif --> ppp client --> lwip = Tethering Bytes
-    // pppncpnetif    --> ppp client --> lwip = Particle Bytes
-    // int pppTetherBytes = (int)system_internal(4, nullptr);
-    // int pppCellularBytes = (int)system_internal(4, nullptr);
-    
-    // Application -> log application level bytes? keep alives?
-    
+    Particle.function("analogread", tinkerAnalogRead);
+    Particle.function("analogwrite", tinkerAnalogWrite);
+
+#ifdef ENABLE_FQC_FUNCTIONALITY
+    BurninTest::instance()->setup();
+#endif
+}
+
+/* This function loops forever --------------------------------------------*/
+void loop()
+{
+    //This will run in a loop
+
+#ifdef ENABLE_FQC_FUNCTIONALITY
+    BurninTest::instance()->loop();
+#endif
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerDigitalRead
+ * Description    : Reads the digital value of a given pin
+ * Input          : Pin
+ * Output         : None.
+ * Return         : Value of the pin (0 or 1) in INT type
+                    Returns a negative number on failure
+ *******************************************************************************/
+int tinkerDigitalRead(String pinStr)
+{
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID) {
+        pinMode(pin, INPUT_PULLDOWN);
+        return digitalRead(pin);
+    }
+    return -1;
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerDigitalWrite
+ * Description    : Sets the specified pin HIGH or LOW
+ * Input          : Pin and value
+ * Output         : None.
+ * Return         : 1 on success and a negative number on failure
+ *******************************************************************************/
+int tinkerDigitalWrite(String command)
+{
+    int separatorIndex = -1;
+    for (unsigned i = 0; i < command.length(); ++i) {
+        const char c = command.charAt(i);
+        if (!std::isalnum((unsigned char)c)) {
+            separatorIndex = i;
+            break;
+        }
+    }
+    if (separatorIndex <= 0) {
+        return -1;
+    }
+    String pinStr = command.substring(0, separatorIndex);
+    String pinState = command.substring(separatorIndex + 1);
+
+    uint8_t state;
+    if (pinState == "HIGH") {
+        state = HIGH;
+    } else if (pinState == "LOW") {
+        state = LOW;
+    } else {
+        return -2;
+    }
+
+    hal_pin_t pin = lookupPinByName(pinStr);
+
+    if (pin != PIN_INVALID) {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, state);
+        return 1;
+    }
+
+    return -1;
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerAnalogRead
+ * Description    : Reads the analog value of a pin
+ * Input          : Pin
+ * Output         : None.
+ * Return         : Returns the analog value in INT type (0 to 4095)
+                    Returns a negative number on failure
+ *******************************************************************************/
+int tinkerAnalogRead(String pinStr)
+{
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && hal_pin_validate_function(pin, PF_ADC) == PF_ADC) {
+        return analogRead(pin);
+    }
+    return -1;
+}
+
+/*******************************************************************************
+ * Function Name  : tinkerAnalogWrite
+ * Description    : Writes an analog value (PWM) to the specified pin
+ * Input          : Pin and Value (0 to 255)
+ * Output         : None.
+ * Return         : 1 on success and a negative number on failure
+ *******************************************************************************/
+int tinkerAnalogWrite(String command)
+{
+    int separatorIndex = -1;
+    for (unsigned i = 0; i < command.length(); ++i) {
+        const char c = command.charAt(i);
+        if (!std::isalnum((unsigned char)c)) {
+            separatorIndex = i;
+            break;
+        }
+    }
+    if (separatorIndex <= 0) {
+        return -1;
+    }
+    String pinStr = command.substring(0, separatorIndex);
+    String pinValue = command.substring(separatorIndex + 1);
+
+    int value = pinValue.toInt();
+    if (value < 0 || value > 255) {
+        return -2;
+    }
+
+    hal_pin_t pin = lookupPinByName(pinStr);
+    if (pin != PIN_INVALID && (hal_pin_validate_function(pin, PF_DAC) == PF_DAC ||
+        hal_pin_validate_function(pin, PF_TIMER) == PF_TIMER)) {
+        pinMode(pin, OUTPUT);
+        analogWrite(pin, value);
+        return 1;
+    }
+
+    return -1;
+}
+
+// Tinker app specific USB requests.
+void ctrl_request_custom_handler(ctrl_request* req) {
+    particle::RequestHandler::instance()->process(req);
 }
