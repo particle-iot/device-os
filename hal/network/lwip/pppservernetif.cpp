@@ -65,7 +65,6 @@ extern nat::Nat64* g_natInstance;
 
 namespace {
 
-// TODO: Make one unified private serial event instead of resuing usart events for usb cdc?
 enum PppServerNetifEvent {
     PPP_SERVER_NETIF_EVENT_EXIT = 0x01 << __builtin_ffs(HAL_USART_PVT_EVENT_MAX),
 };
@@ -174,7 +173,7 @@ int PppServerNetif::start() {
         SPARK_ASSERT(serial);
         serial_ = std::move(serial);
     } else {
-        auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.serial, settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
+        auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.usbserial, settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial)
         serial_ = std::move(serial);
     }
@@ -297,37 +296,39 @@ int PppServerNetif::start() {
     }, nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IFC", "+IFC: (0-2)(0-2)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-
-        // TODO: figure out how to pass this class pointer to AT command handler lambda
-        // // If USB serial then just return
-        // if (settings_.usbserial) {
-        //     // Todo test
-        //     return 0;
-        // }
-
-        auto stream = (SerialStream*)data; // TODO: Fix for both types
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        if (stream->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {
-            request->sendResponse("+IFC: 2,2");
-        } else {
+        auto self = static_cast<PppServerNetif*>(data);
+        if (self->settings_.usbserial) {
+            // It's a SerialUSBStream — no flow control concept, just respond 0,0
             request->sendResponse("+IFC: 0,0");
+        } else {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+            if (stream->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {
+                request->sendResponse("+IFC: 2,2");
+            } else {
+                request->sendResponse("+IFC: 0,0");
+            }
         }
         return 0;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data; // TODO: Fix for both types
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        int v[2] = {};
-        CHECK_TRUE(request->scanf("%d,%d", &v[0], &v[1]) == 2, SYSTEM_ERROR_INVALID_ARGUMENT);
-        if (v[0] == 2 || v[1] == 2) {
-            auto c = stream->config() | SERIAL_FLOW_CONTROL_RTS_CTS;
-            return stream->setConfig(c);
-        } else if (v[0] == 0 || v[1] == 0) {
-            auto c = stream->config() & (~SERIAL_FLOW_CONTROL_RTS_CTS);
-            return stream->setConfig(c);
-        }
+        auto self = static_cast<PppServerNetif*>(data);
+
+        if (self->settings_.serial) {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+            int v[2] = {};
+            CHECK_TRUE(request->scanf("%d,%d", &v[0], &v[1]) == 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+            if (v[0] == 2 || v[1] == 2) {
+                auto c = stream->config() | SERIAL_FLOW_CONTROL_RTS_CTS;
+                return stream->setConfig(c);
+            } else if (v[0] == 0 || v[1] == 0) {
+                auto c = stream->config() & (~SERIAL_FLOW_CONTROL_RTS_CTS);
+                return stream->setConfig(c);
+            }
+        } 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGEREP", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CREG", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGREG", nullptr));
@@ -341,23 +342,39 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+COPS", "+COPS: 0,0,\"Particle\""));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IPR", "+IPR: (0,9600,19200,38400,57600,115200,230400,460800,921600),()"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IPR", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data; // TODO: Fix for both types
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        request->sendResponse("+IPR: %u", stream->baudrate());
+        auto self = static_cast<PppServerNetif*>(data);
+        CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
+
+        unsigned int baud = self->settings_.usbserial
+          ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
+          : static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        request->sendResponse("+IPR: %u", baud);
         return 0;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+IPR", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data; // TODO: Fix for both types
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+        auto self = static_cast<PppServerNetif*>(data);
         int v = 0;
         CHECK_TRUE(request->scanf("%d", &v) == 1, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(v > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-        CHECK(stream->setBaudRate(v));
+        CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
+
+        if (self->settings_.serial) {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK(stream->setBaudRate(v));
+        } else {
+            auto stream = static_cast<SerialUSBStream*>(self->serial_.get());
+            CHECK(stream->setBaudRate(v));
+        }
         return 0;
-    }, serial_.get()));
+    }, this));
     auto connectRequest = [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto client = (net::ppp::Client*)data;
-        request->sendResponse("CONNECT %u", ((SerialStream*)request->server()->config().stream())->baudrate()); // TODO: Fix for both types
+        auto self = static_cast<PppServerNetif*>(data);
+        auto client = (net::ppp::Client*)&self->client_;
+        unsigned int baud = self->settings_.usbserial
+          ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
+          : static_cast<SerialStream*>(self->serial_.get())->baudrate();
+
+        request->sendResponse("CONNECT %u", baud);
         request->setFinalResponse(AtServerRequest::CONNECT);
         request->server()->suspend();
         client->setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
@@ -373,8 +390,8 @@ int PppServerNetif::start() {
         client->notifyEvent(ppp::Client::EVENT_LOWER_UP);
         return 0;
     };
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WILDCARD, "D*", connectRequest, &client_));
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "D", connectRequest, &client_));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WILDCARD, "D*", connectRequest, this));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "D", connectRequest, this));
     
     SPARK_ASSERT(os_thread_create(&thread_, "pppserver", OS_THREAD_PRIORITY_NETWORK, &PppServerNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
     return 0;

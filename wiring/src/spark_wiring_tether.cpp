@@ -95,10 +95,10 @@ int TetherClass::bind(const TetherUSBConfig config) {
         // settings.serial = HAL_PLATFORM_PPP_SERVER_USART;
         // settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
         // settings.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
-        settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE; // TODO: do we need this here? 
+        settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
 
         settings.serial = 0x00;
-        settings.usbserial = config.usbserial(); // TODO: pass something other than serial reference? 
+        settings.usbserial = config.usbserial();
         return if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr);
     }
     return SYSTEM_ERROR_NOT_FOUND;
