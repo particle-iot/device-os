@@ -140,11 +140,6 @@ hal_pin_t lookupPinByName(const String& name) {
 /* This function is called once at start up ----------------------------------*/
 void setup()
 {
-#if HAL_PLATFORM_ENV
-    // Clear all environment variables to restore the default settings
-    System.clearEnv();
-#endif
-
     //Setup the Tinker application here
 
     //Register all the Tinker functions

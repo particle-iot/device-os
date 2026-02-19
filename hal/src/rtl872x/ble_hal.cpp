@@ -87,6 +87,8 @@ extern "C" {
 #include "network/ncp/wifi/wifi_ncp_client.h"
 #include "rtl_sdk_support.h"
 
+#include "system_env.h"
+
 using spark::Vector;
 using namespace particle;
 using namespace particle::ble;
@@ -1123,6 +1125,12 @@ int BleGap::init() {
     if (initialized_) {
         return SYSTEM_ERROR_NONE;
     }
+
+    bool enabled = true;
+    if (particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled) && !enabled) {
+        return SYSTEM_ERROR_DISABLED;
+    }
+
     rtwRadioAcquire(RTW_RADIO_BLE);
     state_.raw = 0;
 

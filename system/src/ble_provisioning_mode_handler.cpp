@@ -314,7 +314,11 @@ int BleProvisioningModeHandler::enter() {
 
     btStackInitialized_ = hal_ble_is_initialized(nullptr);
     if (!btStackInitialized_) {
-        SPARK_ASSERT(hal_ble_stack_init(nullptr) == SYSTEM_ERROR_NONE);
+        int r = hal_ble_stack_init(nullptr);
+        if (r == SYSTEM_ERROR_DISABLED) {
+            return r;
+        }
+        SPARK_ASSERT(r == SYSTEM_ERROR_NONE);
     }
 
     // Now the BLE configurations are non-modifiable.

@@ -160,6 +160,9 @@ void RealtekNcpNetif::loop(void* arg) {
                 auto r = self->wifiMan_->ncpClient()->on();
                 if (r != SYSTEM_ERROR_NONE && r != SYSTEM_ERROR_ALREADY_EXISTS) {
                     LOG(ERROR, "Failed to initialize Realtek NCP client: %d", r);
+                    if (r == SYSTEM_ERROR_DISABLED) {
+                        self->lastNetifEvent_.store(NetifEvent::None, std::memory_order_release);
+                    }
                 }
             }
             if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&

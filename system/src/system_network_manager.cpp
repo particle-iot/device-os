@@ -288,13 +288,13 @@ bool NetworkManager::isConfigured(if_t iface) const {
     bool ret = false;
     if (!iface) {
         for_each_iface([&](if_t iface, unsigned int curFlags) {
-            if (haveLowerLayerConfiguration(iface)) {
+            if (haveLowerLayerConfiguration(iface) && !isInterfaceBlocked(iface)) {
                 ret = true;
             }
         });
         return ret;
     } else {
-        return haveLowerLayerConfiguration(iface);
+        return haveLowerLayerConfiguration(iface) && !isInterfaceBlocked(iface);
     }
 }
 
@@ -919,6 +919,8 @@ int NetworkManager::enableInterface(if_t iface) {
         CHECK_TRUE(state, SYSTEM_ERROR_NOT_FOUND);
         if (state->enabled != EnableState::BLOCKED) {
             state->enabled = EnableState::ENABLED;
+        } else {
+            return SYSTEM_ERROR_DISABLED;
         }
     }
     return 0;
@@ -1052,6 +1054,14 @@ bool NetworkManager::isInterfaceEnabled(if_t iface) const {
     return false;
 }
 
+bool NetworkManager::isInterfaceBlocked(if_t iface) const {
+    auto state = getInterfaceRuntimeState(iface);
+    if (state) {
+        return state->enabled == EnableState::BLOCKED;
+    }
+    return false;
+}
+
 int NetworkManager::countEnabledInterfaces() {
     int count = 0;
     for (auto item = runState_.front(); item != nullptr; item = item->next) {
@@ -1100,6 +1110,9 @@ int NetworkManager::powerInterface(if_t iface, bool enable) {
     }
     if_req_power req = {};
     if (enable) {
+        if (isInterfaceBlocked(iface)) {
+            return SYSTEM_ERROR_DISABLED;
+        }
         req.state = IF_POWER_STATE_UP;
         // Update the interface power here to avoid race condition
         // The power state will be updated on NCP power events

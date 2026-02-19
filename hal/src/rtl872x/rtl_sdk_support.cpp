@@ -395,7 +395,7 @@ void rtwRadioAcquire(RtwRadio r) {
         rtwCoexCleanup(0);
         SPARK_ASSERT(wifi_on(RTW_MODE_STA) == 0);
 
-        LOG(INFO, "WiFi on");
+        LOG(INFO, "WiFi/BLE radio on");
         rltk_coex_set_wlan_slot_preempting(0b111);
     }
 }
