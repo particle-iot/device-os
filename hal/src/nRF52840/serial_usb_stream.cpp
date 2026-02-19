@@ -172,19 +172,8 @@ int SerialUSBStream::setBaudRate(unsigned int baudrate) {
     return 0;
 }
 
-// CTS/RTS Configs are no ops
+// CTS/RTS/Baudrate Configs are no ops
 int SerialUSBStream::setConfig(uint32_t config, unsigned int baudrate /* optional */) {
-    if (!phyOn_ || !enabled_) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-    HAL_USB_USART_End(serial_);
-    phyOn_ = false;
-    if (baudrate != 0) {
-        baudrate_ = baudrate;
-    }
-    config_ = config;
-    HAL_USB_USART_Begin(serial_, baudrate_, nullptr);
-    phyOn_ = true;
     return 0;
 }
 

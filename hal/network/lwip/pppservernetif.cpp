@@ -361,9 +361,6 @@ int PppServerNetif::start() {
         if (self->settings_.serial) {
             auto stream = static_cast<SerialStream*>(self->serial_.get());
             CHECK(stream->setBaudRate(v));
-        } else {
-            auto stream = static_cast<SerialUSBStream*>(self->serial_.get());
-            CHECK(stream->setBaudRate(v));
         }
         return 0;
     }, this));
@@ -420,7 +417,7 @@ void PppServerNetif::loop(void* arg) {
                 char tmp[256] = {};
                 while (self->serial_->availForRead() > 0) {
                     int sz = self->serial_->read(tmp, sizeof(tmp));
-                    LOG(INFO, "input %d", sz);
+                    // LOG(INFO, "input %d", sz);
                     auto r = self->client_.input((const uint8_t*)tmp, sz);
                     (void)r;
                     // LOG(INFO, "input result = %d", r);
@@ -548,10 +545,10 @@ void PppServerNetif::mempEventHandler(memp_t type, unsigned available, unsigned 
 
 int PppServerNetif::request(if_req_driver_specific* req, size_t size) {
     CHECK_TRUE(req, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(req->type == IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(size >= sizeof(if_req_ppp_server_serial_settings), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(req->type == IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(size >= sizeof(if_req_ppp_server_uart_settings), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    auto settings = (if_req_ppp_server_serial_settings*)req;
+    auto settings = (if_req_ppp_server_uart_settings*)req;
     memcpy(&settings_, settings, std::min(sizeof(settings_), size));
     LOG(INFO, "Update PPP server netif settings: usb=%u serial=%u baud=%u config=%08x", (unsigned)settings->usbserial, (unsigned)settings->serial, settings->baud, settings->config);
     return 0;
