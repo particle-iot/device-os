@@ -190,7 +190,8 @@ int Esp32NcpClient::on() {
     }
 
     bool enabled = true;
-    if (particle::system::getEnv("PARTICLE_WIFI_ENABLE", enabled) && !enabled) {
+    particle::system::getEnv("PARTICLE_WIFI_ENABLE", enabled);
+    if (!enabled) {
         return SYSTEM_ERROR_DISABLED;
     }
 

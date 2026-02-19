@@ -24,6 +24,8 @@ namespace {
 
 #if HAL_PLATFORM_ETHERNET
 
+retained bool skipEthernet = false;
+
 bool isEthernetPresent() {
     if_t iface = nullptr;
     return !if_get_by_index(NETWORK_INTERFACE_ETHERNET, &iface);
@@ -315,6 +317,7 @@ test(10_particle_wifi_enable_cleanup) {
 test(11_particle_ethernet_enable_init) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+    skipEthernet = false;
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
@@ -322,6 +325,7 @@ test(11_particle_ethernet_enable_init) {
 
 test(12_particle_ethernet_enable_default) {
     if (!isEthernetPresent()) {
+        skipEthernet = true;
         skip();
         return;
     }
@@ -348,7 +352,7 @@ test(12_particle_ethernet_enable_default) {
 }
 
 test(13_particle_ethernet_enable_true) {
-    if (!isEthernetPresent()) {
+    if (skipEthernet) {
         skip();
         return;
     }
@@ -373,6 +377,10 @@ test(13_particle_ethernet_enable_true) {
 }
 
 test(14_particle_ethernet_enable_false) {
+    if (skipEthernet) {
+        skip();
+        return;
+    }
     assertTrue(System.hasEnv("PARTICLE_ETHERNET_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_ETHERNET_ENABLE"), String("false"));
 
@@ -382,6 +390,10 @@ test(14_particle_ethernet_enable_false) {
 }
 
 test(15_particle_ethernet_enable_false_connect_through_other_ifaces) {
+    if (skipEthernet) {
+        skip();
+        return;
+    }
     assertTrue(System.hasEnv("PARTICLE_ETHERNET_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_ETHERNET_ENABLE"), String("false"));
 
