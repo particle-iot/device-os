@@ -32,7 +32,7 @@ int decodeProtobufFromFile(lfs_file_t* file, const pb_msgdesc_t* desc, void* msg
 int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void* msg);
 
 // TODO: Move these to filesystem.h
-int rmrf(const char* path);
+int rmrf(const char* path, filesystem_instance_t instance = FILESYSTEM_INSTANCE_DEFAULT);
 int mkdirp(const char* path);
 
 /**

@@ -236,8 +236,10 @@ int encodeProtobufToFile(lfs_file_t* file, const pb_msgdesc_t* desc, const void*
     return strm->bytes_written;
 }
 
-int rmrf(const char* path) {
-    FsLock fs;
+int rmrf(const char* path, filesystem_instance_t instance) {
+    auto fsObj = filesystem_get_instance(instance, nullptr);
+    CHECK_TRUE(fsObj, SYSTEM_ERROR_INVALID_STATE);
+    FsLock fs(fsObj);
     int r = lfs_remove(fs.instance(), path);
     if (r < 0) {
         if (r == LFS_ERR_NOTEMPTY) {
