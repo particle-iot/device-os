@@ -49,7 +49,7 @@ const THRESHOLDS = {
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
-        targetAppFlashSize: 23850,
+        targetAppFlashSize: 24400,
         targetFreeRam: 60000,
         targetTime: {
             pre_startup: 1000 * 1000,
@@ -60,8 +60,11 @@ const THRESHOLDS = {
     }
 };
 
+test('01_prepare', async function () {
 
-test('slo startup stats', async function () {
+});
+
+test('02_slo_startup_stats', async function () {
     const unparsedJson = await this.particle.receiveEvent('startup_stats');
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
@@ -88,7 +91,7 @@ test('slo startup stats', async function () {
     expect(startupStats.app_flash_size).to.be.below(thresh.targetAppFlashSize);
 
     // Startup time assertions
-    console.log(`actaual_time=${util.inspect(startupStats.time)} target_time=${util.inspect(thresh.targetTime)} platform=${dut.platform.name}`);
+    console.log(`actual_time=${util.inspect(startupStats.time)} target_time=${util.inspect(thresh.targetTime)} platform=${dut.platform.name}`);
     expect(startupStats.time.pre_startup).to.be.below(startupStats.time.startup);
     expect(startupStats.time.startup).to.be.below(startupStats.time.setup);
     expect(startupStats.time.setup).to.be.below(startupStats.time.loop);

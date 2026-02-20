@@ -1,7 +1,5 @@
-///
-// This code meant to be a direct port of the canonical startup stats firmware: https://github.com/particle-iot/pqa/blob/main/firmware/publish-startup-stats-once/src/main.cpp
-// Since this test framework does not have a setup() + loop() function, it is somewhat different.
-///
+#define PARTICLE_USE_UNSTABLE_API
+
 #include "application.h"
 #include "test.h"
 
@@ -56,7 +54,16 @@ void loop() {
     testAppLoop();
 }
 
-test(slo_startup_stats) {
+test(01_prepare) {
+    // Startup times are affected somewhat by assets and env vars (as they are also a type of an asset)
+    // Make sure that they are not present during this test
+    System.clearEnv(false /* reset */);
+    asset_manager_format_storage(nullptr);
+    expectSystemReset();
+    System.reset();
+}
+
+test(02_slo_startup_stats) {
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
     
