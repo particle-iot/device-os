@@ -29,38 +29,42 @@ let api;
 
 // Ensures that the default env vars are set at org and product levels. These variables don't change
 async function initDefaultEnv() {
-	const orgVars = {
+	const defaultOrgVars = {
 		'DVOS_CI_ORG_VAR1': 'org default 1 pcT3RG9xr4'
 	};
-	const productVars = {
+	const defaultProductVars = {
 		'DVOS_CI_PROD_VAR1': 'prod default 1 wkWStqATwW'
 	};
 
+	// Set default product variables
 	let resp = await get(api, productPath('/env', productId));
-	let env = resp.last_snapshot?.rendered;
-	if (!_.isMatch(env, orgVars)) {
-		await patch(api, orgPath('/env', ORG_ID), {
-			ops: Object.entries(orgVars).map(([key, value]) => ({ op: 'Set', key, value }))
-		});
-		await post(api, orgPath('/env/rollout', ORG_ID), {
-			when: 'Connect'
-		});
-	}
-	if (!_.isMatch(env, productVars)) {
+	const ownProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.own || {}).map(([k, v]) => [k, v.value]));
+	if (!_.isMatch(ownProductVars, defaultProductVars)) {
 		await patch(api, productPath('/env', productId), {
-			ops: Object.entries(productVars).map(([key, value]) => ({ op: 'Set', key, value }))
+			ops: Object.entries(defaultProductVars).map(([key, value]) => ({ op: 'Set', key, value }))
 		});
 		await post(api, productPath('/env/rollout', productId), {
 			when: 'Connect'
 		});
 	}
 
-	// Unset all variables at device level
+	// Set default org variables
+	const inheritedProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.inherited || {}).map(([k, v]) => [k, v.value]));
+	if (!_.isMatch(inheritedProductVars, defaultOrgVars)) {
+		await patch(api, orgPath('/env', ORG_ID), {
+			ops: Object.entries(defaultOrgVars).map(([key, value]) => ({ op: 'Set', key, value }))
+		});
+		await post(api, orgPath('/env/rollout', ORG_ID), {
+			when: 'Connect'
+		});
+	}
+
+	// Unset all device variables
 	resp = await get(api, `/v1/products/${productId}/env/${deviceId}`);
-	env = resp.env?.own;
-	if (!_.isEmpty(env)) {
+	const ownDeviceVars = resp.last_snapshot?.own || {};
+	if (!_.isEmpty(ownDeviceVars)) {
 		await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
-			ops: Object.entries(env).map(([key]) => ({ op: 'Unset', key }))
+			ops: Object.entries(ownDeviceVars).map(([key]) => ({ op: 'Unset', key }))
 		});
 		await post(api, `/v1/env/${deviceId}/rollout`, {
 			when: 'Connect'
