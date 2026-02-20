@@ -280,7 +280,7 @@ int AssetManager::parseAvailableAssets() {
         if (r) {
             LOG(WARN, "Failed to open asset %s", info.name);
         } else {
-            reader.validate();
+            reader.validate(false /* skip CRC validation */);
         }
         if (reader.isValid() && reader.size() == info.size) {
             if (!assets.append(reader.asset())) {
@@ -347,6 +347,15 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         // Save the module to the asset filesystem
         CHECK(stream.seek(0));
         CHECK(saveToFile(stream, info.name().c_str(), fs));
+
+        AssetReader fsReader;
+        fsReader.init(info.name());
+        fsReader.validate(true /* full CRC check */);
+        if (!fsReader.isValid() || fsReader.size() != info.size()) {
+            LOG(WARN, "Invalid stored asset %s, removing", info.name().c_str());
+            rmrf(info.name().c_str(), FILESYSTEM_INSTANCE_ASSET_STORAGE);
+            return SYSTEM_ERROR_BAD_DATA;
+        }
 
         CHECK(setConsumerState(ASSET_MANAGER_CONSUMER_STATE_WANT));
     }
