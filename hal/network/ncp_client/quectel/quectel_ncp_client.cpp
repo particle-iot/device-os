@@ -925,7 +925,7 @@ int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) 
 }
 
 int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
-    const auto t1 = HAL_Timer_Get_Milli_Seconds();
+    const auto t1 = millis();
     for (;;) {
         const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
@@ -934,7 +934,7 @@ int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, uns
         if (r == AtResponse::OK) {
             return SYSTEM_ERROR_NONE;
         }
-        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        const auto t2 = millis();
         if (t2 - t1 >= timeout) {
             break;
         }
@@ -2455,8 +2455,8 @@ int QuectelNcpClient::modemInit() const {
 }
 
 bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
-    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+    system_tick_t now = millis();
+    while (millis() - now < timeout) {
         if (modemPowerState() == onOff) {
             if (onOff) {
                 ncpPowerState(NcpPowerState::ON);
@@ -2573,11 +2573,11 @@ int QuectelNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT+QPOWD command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        system_tick_t now = millis();
         LOG(TRACE, "Waiting the modem to be turned off...");
         // Verify that the module was powered down by checking the VINT pin up to 30 sec
         if (waitModemPowerState(0, 30000)) {
-            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+            LOG(TRACE, "It takes %d ms to power off the modem.", millis() - now);
         } else {
             LOG(ERROR, "Failed to power off modem using AT command");
         }

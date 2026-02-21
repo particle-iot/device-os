@@ -537,12 +537,12 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
-            const int windowCount = ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
+        if ((millis() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
+            const int windowCount = ((millis() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
             lastWindow_ += UBLOX_NCP_R4_WINDOW_SIZE_MS * windowCount;
             bytesInWindow_ = std::max(0, (int)bytesInWindow_ - (int)UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD * windowCount);
             if (bytesInWindow_ == 0) {
-                lastWindow_ = HAL_Timer_Get_Milli_Seconds();
+                lastWindow_ = millis();
             }
         }
 
@@ -977,7 +977,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
         timeout = UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_TIMEOUT;
         period = UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD;
     }
-    auto t1 = HAL_Timer_Get_Milli_Seconds();
+    auto t1 = millis();
     for (;;) {
         const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
@@ -989,7 +989,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
         // R510 Firmware Update
         if (ncpId() == PLATFORM_NCP_SARA_R510) {
             if (firmwareInstallRespCodeR510_ != lastFirmwareInstallRespCodeR510_) {
-                t1 = HAL_Timer_Get_Milli_Seconds(); // If update is progressing, reset AT/OK wait timeout
+                t1 = millis(); // If update is progressing, reset AT/OK wait timeout
                 lastFirmwareInstallRespCodeR510_ = firmwareInstallRespCodeR510_;
             }
             if (firmwareInstallRespCodeR510_ == UUFWINSTALL_COMPLETE) {
@@ -999,7 +999,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
                 break; // Install complete
             }
         }
-        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        const auto t2 = millis();
         if (t2 - t1 >= timeout) {
             break;
         }
@@ -2792,8 +2792,8 @@ int SaraNcpClient::modemInit() const {
 }
 
 bool SaraNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
-    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+    system_tick_t now = millis();
+    while (millis() - now < timeout) {
         if (modemPowerState() == onOff) {
             if (onOff) {
                 ncpPowerState(NcpPowerState::ON);
@@ -2869,7 +2869,7 @@ int SaraNcpClient::modemPowerOff() {
             int reason;
             if (!HAL_Core_Get_Last_Reset_Info(&reason, nullptr, nullptr) &&
                     (reason == RESET_REASON_POWER_DOWN || reason == RESET_REASON_POWER_BROWNOUT)) {
-                auto now = HAL_Timer_Get_Milli_Seconds();
+                auto now = millis();
                 if (now < 5000) {
                     HAL_Delay_Milliseconds(5000 - now);
                 }
@@ -2965,11 +2965,11 @@ int SaraNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        system_tick_t now = millis();
         LOG(TRACE, "Waiting to be turned off");
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
         if (waitModemPowerState(0, 10000)) {
-            LOG(TRACE, "%d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+            LOG(TRACE, "%d ms to power off the modem.", millis() - now);
         } else {
             LOG(ERROR, "Failed to power off");
         }
