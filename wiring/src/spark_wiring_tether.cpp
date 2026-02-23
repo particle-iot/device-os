@@ -76,7 +76,7 @@ int TetherClass::bind(const TetherSerialConfig& config) {
         if_req_ppp_server_serial_settings settings = {};
         settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
         settings.serial = config.serial().interface();
-        settings.usbserial = 0x00;
+        settings.usbserial = 0xFF;
         settings.baud = config.baudrate();
         settings.config = config.config();
         CHECK(if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr));
@@ -92,7 +92,7 @@ int TetherClass::bind(const TetherUSBConfig config) {
     if (iface) {
         if_req_ppp_server_serial_settings settings = {};
         settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
-        settings.serial = 0x00;
+        settings.serial = 0xFF;
         settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
         settings.usbserial = config.usbserial();
         CHECK(if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr));

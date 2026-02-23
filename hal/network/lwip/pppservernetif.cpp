@@ -166,9 +166,9 @@ int PppServerNetif::start() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    LOG(TRACE, "Starting PppServerNetif interface on %s", settings_.serial ? "USART" : "USB");
+    LOG(INFO, "Starting PppServerNetif interface on %s", settings_.serial != 0xFF ? "USART" : "USB");
 
-    if (settings_.serial) {
+    if (settings_.serial != 0xFF) {
         auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, (uint32_t)settings_.baud, (uint32_t)settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial);
         serial_ = std::move(serial);
@@ -550,7 +550,7 @@ int PppServerNetif::request(if_req_driver_specific* req, size_t size) {
 
     auto settings = (if_req_ppp_server_serial_settings*)req;
     memcpy(&settings_, settings, std::min(sizeof(settings_), size));
-    LOG(INFO, "Update PPP server netif settings: usb=%u serial=%u baud=%u config=%08x", (unsigned)settings->usbserial, (unsigned)settings->serial, settings->baud, settings->config);
+    LOG(TRACE, "Update PPP server netif settings: usb=%u serial=%u baud=%u config=%08x", (unsigned)settings->usbserial, (unsigned)settings->serial, settings->baud, settings->config);
     return 0;
 }
 
