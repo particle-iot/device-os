@@ -71,54 +71,6 @@ public:
             NetworkClass(NETWORK_INTERFACE_PPP_SERVER) {
     }
 
-    void on() {
-        network_on(*this, 0, 0, NULL);
-    }
-
-    void off() {
-        network_off(*this, 0, 0, NULL);
-    }
-
-    void connect(unsigned flags=0) {
-        network_connect(*this, flags, 0, NULL);
-    }
-
-    bool connecting(void) {
-        return network_connecting(*this, 0, NULL);
-    }
-
-    void disconnect() {
-        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
-    }
-
-    void listen(bool begin=true) {
-        network_listen(*this, begin ? 0 : 1, NULL);
-    }
-
-    void setListenTimeout(uint16_t timeout) {
-        network_set_listen_timeout(*this, timeout, NULL);
-    }
-
-    uint16_t getListenTimeout(void) {
-        return network_get_listen_timeout(*this, 0, NULL);
-    }
-
-    bool listening(void) {
-        return network_listening(*this, 0, NULL);
-    }
-
-    bool ready() {
-        return network_ready(*this, 0,  NULL);
-    }
-
-    bool isOn(void) {
-        return network_is_on(*this, NULL);
-    }
-
-    bool isOff(void) {
-        return network_is_off(*this, NULL);
-    }
-
     IPAddress localIP() {
         IPAddress addr;
         GET_IF_ADDR(NETWORK_INTERFACE_PPP_SERVER, addr, addr);
