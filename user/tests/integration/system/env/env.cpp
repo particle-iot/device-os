@@ -20,6 +20,11 @@
 #include "test_suite.h"
 #include "check.h"
 
+// Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
+//     // { "comm.coap", LOG_LEVEL_ALL },
+//     // { "app", LOG_LEVEL_ALL }
+// });
+
 namespace {
 
 #if HAL_PLATFORM_ETHERNET
@@ -131,7 +136,7 @@ test(04_particle_ble_enable_false) {
     Network.listen(false);
     assertTrue(waitListening(false));
 
-#if HAL_PLATFORM_WIFI
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
     // WiFi is not affected
     System.disableUpdates();
     SCOPE_GUARD({
@@ -146,7 +151,7 @@ test(04_particle_ble_enable_false) {
     Particle.connect();
     assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-#endif // HAL_PLATFORM_WIFI
+#endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 #endif // HAL_PLATFORM_BLE
@@ -264,7 +269,9 @@ test(08_particle_wifi_enable_false) {
 test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
     bool shouldConnect = false;
 #if HAL_PLATFORM_CELLULAR
-    shouldConnect = true;
+    if (TestSuite::instance()->network() == 0) {
+        shouldConnect = true;
+    }
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_ETHERNET
     if (isEthernetPresent()) {

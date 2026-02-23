@@ -114,7 +114,7 @@ const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC = 0x40090E189F;  // Bands
                                                                         //       18,19,20,25,26(v1.2 hardware),28,39
 
 // EG91-E/EX (LTE Cat-1)
-const uint64_t QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_E_EX = 0x1010008D; // Bands 1,3,7,8,20,28
+const uint64_t QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_E_EX = 0x80800c5;  // Bands 1,3,7,8,20,28
 // const uint64_t QUECTEL_NCP_BANDMASK_CAT1_65_128_EG91_E_EX = 0x0;   // No bands in 65-128 range
 
 // EG91-NA (LTE Cat-1)
@@ -553,7 +553,6 @@ int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
 
     resetRegistrationState();
     CHECK(configureApn(conf));
-    configurePlmn(); // ignore errors
     CHECK(registerNet());
 
     checkRegistrationState();
@@ -1275,6 +1274,11 @@ int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmn
 }
 
 int QuectelNcpClient::configurePlmn() {
+    if (configuredPlmn_ || (connectionState() != NcpConnectionState::CONNECTED)) {
+        return SYSTEM_ERROR_NONE;
+    }
+    configuredPlmn_ = true;
+
     auto ncp_id = ncpId();
     if (ncp_id != PLATFORM_NCP_QUECTEL_BG95_M5 &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_NAX &&
@@ -1293,7 +1297,7 @@ int QuectelNcpClient::configurePlmn() {
         return preferredPlmnCount;
     }
 
-    CHECK_PARSER_OK(parser_.execCommand("AT+CPOL=,2")); // set format to numeric
+    parser_.execCommand("AT+CPOL=,2"); // set format to numeric
     syncUserPlmn(envPreferredPlmn, preferredPlmnCount);
 
     return SYSTEM_ERROR_NONE;
@@ -1476,6 +1480,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
     }
 
+    configuredPlmn_ = false;
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5 ||
             ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX ||
@@ -2361,6 +2366,7 @@ int QuectelNcpClient::processEventsImpl() {
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
+    configurePlmn(); // ignore errors
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }

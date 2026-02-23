@@ -95,7 +95,6 @@ test('16_particle_ethernet_enable_cleanup', async function () {
 
 });
 
-
 test('99_cleanup', async function() {
 
 });
