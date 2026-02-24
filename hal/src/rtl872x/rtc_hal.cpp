@@ -339,21 +339,15 @@ RealtekRtc rtcInstance;
 void hal_rtc_init(void) {
     rtcInstance.init();
 
-    /* Wakes up from the hibernate mode. */
-    if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_LP_DSLP_INFO_SW) == true) {
-#if !HAL_PLATFORM_EXTERNAL_RTC
-        if (rtcInstance.isTimeInfoValid())
-#endif
-        {
-            return;
-        }
+    struct timeval tv = {};
+    rtcInstance.getTime(&tv);
+    if (tv.tv_sec < UNIX_TIME_20000101000000) {
+        struct timeval tv = {
+            .tv_sec = UNIX_TIME_20000101000000,
+            .tv_usec = 0
+        };
+        rtcInstance.setTime(&tv);
     }
-
-    struct timeval tv = {
-        .tv_sec = UNIX_TIME_20000101000000,
-        .tv_usec = 0
-    };
-    rtcInstance.setTime(&tv);
 }
 
 bool hal_rtc_time_is_valid(void* reserved) {
