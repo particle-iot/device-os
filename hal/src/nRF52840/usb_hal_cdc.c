@@ -690,11 +690,7 @@ int usb_hal_set_state_change_callback(HAL_USB_State_Callback cb, void* context, 
     return SYSTEM_ERROR_NO_MEMORY;
 }
 
-EventGroupHandle_t eventGroup() {
-    return m_usb_instance.ev_group;
-}
-
-int enableEvent(HAL_USART_Pvt_Events event) {
+static int enableEvent(HAL_USART_Pvt_Events event) {
     if (event & HAL_USART_PVT_EVENT_READABLE) {
         if (usb_uart_available_rx_data() > 0) {
             xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE);
@@ -710,15 +706,14 @@ int enableEvent(HAL_USART_Pvt_Events event) {
     return SYSTEM_ERROR_NONE;
 }
 
-int waitEvent(uint32_t events, system_tick_t timeout) {
+static int waitEvent(uint32_t events, system_tick_t timeout) {
     CHECK_FALSE(enableEvent((HAL_USART_Pvt_Events)events), SYSTEM_ERROR_INVALID_STATE);
     return xEventGroupWaitBits(m_usb_instance.ev_group, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
 }
 
 int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle) {
-    EventGroupHandle_t grp = eventGroup();
-    CHECK_TRUE(grp, SYSTEM_ERROR_INVALID_STATE);
-    *handle = grp;
+    CHECK_TRUE(m_usb_instance.ev_group, SYSTEM_ERROR_INVALID_STATE);
+    *handle = m_usb_instance.ev_group;
     return SYSTEM_ERROR_NONE;
 }
 

@@ -144,7 +144,7 @@ PppServerNetif::PppServerNetif()
     settings_.serial = HAL_PLATFORM_PPP_SERVER_USART;
     settings_.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
     settings_.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
-    settings_.usbserial = 0x00;
+    settings_.usbserial = 0xFF;
 }
 
 PppServerNetif::~PppServerNetif() {
@@ -297,7 +297,7 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IFC", "+IFC: (0-2)(0-2)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
         auto self = static_cast<PppServerNetif*>(data);
-        if (self->settings_.usbserial) {
+        if (self->settings_.usbserial != 0xFF) {
             // It's a SerialUSBStream — no flow control concept, just respond 0,0
             request->sendResponse("+IFC: 0,0");
         } else {
@@ -314,7 +314,7 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
         auto self = static_cast<PppServerNetif*>(data);
 
-        if (self->settings_.serial) {
+        if (self->settings_.serial != 0xFF) {
             auto stream = static_cast<SerialStream*>(self->serial_.get());
             CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
             int v[2] = {};
@@ -345,7 +345,7 @@ int PppServerNetif::start() {
         auto self = static_cast<PppServerNetif*>(data);
         CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
 
-        unsigned int baud = self->settings_.usbserial
+        unsigned int baud = self->settings_.usbserial != 0xFF
           ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
           : static_cast<SerialStream*>(self->serial_.get())->baudrate();
         request->sendResponse("+IPR: %u", baud);
@@ -358,7 +358,7 @@ int PppServerNetif::start() {
         CHECK_TRUE(v > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
 
-        if (self->settings_.serial) {
+        if (self->settings_.serial != 0xFF) {
             auto stream = static_cast<SerialStream*>(self->serial_.get());
             CHECK(stream->setBaudRate(v));
         }
@@ -367,7 +367,7 @@ int PppServerNetif::start() {
     auto connectRequest = [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
         auto self = static_cast<PppServerNetif*>(data);
         auto client = (net::ppp::Client*)&self->client_;
-        unsigned int baud = self->settings_.usbserial
+        unsigned int baud = self->settings_.usbserial != 0xFF
           ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
           : static_cast<SerialStream*>(self->serial_.get())->baudrate();
 

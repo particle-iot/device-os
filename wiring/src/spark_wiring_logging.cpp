@@ -477,12 +477,15 @@ int spark::detail::LogFilter::nodeIndex(const Vector<Node> &nodes, const char *n
 // spark::StreamLogHandler
 void spark::StreamLogHandler::logMessage(const char *msg, LogLevel level, const char *category, const LogAttributes &attr) {
 #if PLATFORM_ID != PLATFORM_GCC && !defined(LOG_IN_LISTENING_MODE)
-    bool usbTetherOn = false;
+    if (stream_ == &Serial) {
+        if (Network.listening()) {
+            return;
+        }
 #if HAL_PLATFORM_PPP_SERVER
-    usbTetherOn = ((particle::Tether.activeSerialInterface() == particle::TetherInterface::USB) && particle::Tether.isOn());
-#endif
-    if (stream_ == &Serial && (Network.listening() || usbTetherOn)) {
-        return; // Do not mix logging and serial console output
+        if ((particle::Tether.activeSerialInterface() == particle::TetherInterface::USB) && particle::Tether.isOn()) {
+            return;
+        }
+#endif // HAL_PLATFORM_PPP_SERVER
     }
 #endif
     const char *s = nullptr;
