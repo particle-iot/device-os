@@ -59,6 +59,7 @@ test(01_prepare) {
     // Make sure that they are not present during this test
     System.clearEnv(false /* reset */);
     asset_manager_format_storage(nullptr);
+    System.disableFeature(FEATURE_ETHERNET_DETECTION); // just in case
     expectSystemReset();
     System.reset();
 }
