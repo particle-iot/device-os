@@ -31,7 +31,7 @@ void setup() {
     Tether.bind(TetherSerialConfig().baudrate(921600).serial(Serial1));
 
     // Bind Tether to USB CDC interface
-    // Tether.bind(TetherUSBConfig());
+    // Tether.bind(TetherSerialConfig().serial(Serial));
 
     // Turn on Tether interface and bring it up
     Tether.on();
