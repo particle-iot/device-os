@@ -37,14 +37,21 @@ enum class TetherInterface {
     USB
 };
 
+struct TetherUSBConfig {
+    TetherUSBConfig();
+
+    TetherUSBConfig& usbserial(USBSerial& s = Serial);
+    USBSerial& usbserial() const;
+
+private: 
+    USBSerial& usbSerial_;
+};
+
 struct TetherSerialConfig {
     TetherSerialConfig();
 
     TetherSerialConfig& serial(USARTSerial& s);
     USARTSerial& serial() const;
-
-    TetherSerialConfig& serial(USBSerial& s);
-    USBSerial& usbserial() const;
 
     TetherSerialConfig& config(unsigned conf);
     unsigned config() const;
@@ -52,15 +59,10 @@ struct TetherSerialConfig {
     TetherSerialConfig& baudrate(unsigned baud);
     unsigned baudrate() const;
 
-    TetherInterface interface() const;
-
 private:
     USARTSerial& serial_;
     unsigned config_;
     unsigned baudrate_;
-
-    USBSerial& usbSerial_;
-    TetherInterface enabledInterface_ = TetherInterface::NONE;
 };
 
 class TetherClass : public spark::NetworkClass {
@@ -100,6 +102,7 @@ public:
     }
 
     int bind(const TetherSerialConfig& config);
+    int bind(const TetherUSBConfig config);
 
 private:
     TetherInterface activeInterface_ = TetherInterface::NONE;

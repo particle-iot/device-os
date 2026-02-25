@@ -53,6 +53,8 @@ typedef struct if_req_ppp_server_serial_settings {
     uint32_t reserved1;
 } __attribute__((__packed__)) if_req_ppp_server_serial_settings;
 
+#define IF_REQ_INVALID_SERIAL_INTERFACE (0xFF)
+
 typedef if_req_ppp_server_serial_settings if_req_ppp_server_uart_settings;
 
 #ifdef __cplusplus
