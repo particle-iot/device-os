@@ -179,6 +179,10 @@ int NetworkManager::activateConnections() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    if (countEnabledInterfaces() == 0) {
+        return 0;
+    }
+
     /* Get a list of network interfaces */
     transition(State::IFACE_REQUEST_UP);
 
@@ -288,13 +292,13 @@ bool NetworkManager::isConfigured(if_t iface) const {
     bool ret = false;
     if (!iface) {
         for_each_iface([&](if_t iface, unsigned int curFlags) {
-            if (haveLowerLayerConfiguration(iface) && !isInterfaceBlocked(iface)) {
+            if (haveLowerLayerConfiguration(iface)) {
                 ret = true;
             }
         });
         return ret;
     } else {
-        return haveLowerLayerConfiguration(iface) && !isInterfaceBlocked(iface);
+        return haveLowerLayerConfiguration(iface);
     }
 }
 

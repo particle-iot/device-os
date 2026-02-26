@@ -833,10 +833,6 @@ struct BleGapImpl {
 static BleGapImpl bleGapImpl;
 
 int BleObject::BleGap::init() {
-    bool enabled = true;
-    if (particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled) && !enabled) {
-        return SYSTEM_ERROR_DISABLED;
-    }
     // Set the default device name
     char devName[BLE_MAX_DEV_NAME_LEN] = {};
     CHECK(get_device_name(devName, sizeof(devName)));
@@ -3818,6 +3814,10 @@ BleObject& BleObject::getInstance() {
 int BleObject::init() {
     if (initialized_) {
         return SYSTEM_ERROR_NONE;
+    }
+    bool enabled = true;
+    if (particle::system::getEnv("PARTICLE_BLUETOOTH_ENABLE", enabled) && !enabled) {
+        return SYSTEM_ERROR_DISABLED;
     }
     // Configure the BLE stack using the default settings.
     // Fetch the start address of the application RAM.
