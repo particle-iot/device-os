@@ -51,10 +51,16 @@ int validateBleScan() {
     };
     BleScanData data = {};
 
-    return BLE.scan(+[](const BleScanResult *result, void *context) -> void {
-        auto data = (BleScanData*)context;
-        data->results++;
-    }, &data);
+    for (int i = 0; i < 10; i++) {
+        auto r = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+            auto data = (BleScanData*)context;
+            data->results++;
+        }, &data);
+        if (r != 0) {
+            return r;
+        }
+    }
+    return data.results;
 }
 
 const system_tick_t LISTENING_MODE_STATE_CHANGE_TIMEOUT = 30000;
