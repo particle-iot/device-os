@@ -6,6 +6,11 @@ class InputStream;
 
 namespace esim {
 
+/**
+ * Profile provisioning context.
+ *
+ * Requests and responses are ASN.1-encoded.
+ */
 class Provisioning {
 public:
 	// Initiates an RSP session and returns a random challenge attached to this session
@@ -23,7 +28,7 @@ public:
 	// Transfers the profile data to the eUICC, e.g. from a file
 	int loadBoundProfilePackage(InputStream* stream);
 
-	// Cancels the provisioning
+	// Cancels the provisioning session
 	void cancel();
 };
 

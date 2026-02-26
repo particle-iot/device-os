@@ -33,6 +33,8 @@ public:
 
 	virtual int beforeGetProfilesInfo();
 	virtual int afterGetProfilesInfo(int result);
+
+	// ...
 };
 
 } // namespace particle::esim
