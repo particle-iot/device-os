@@ -351,7 +351,7 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         AssetReader fsReader;
         fsReader.init(info.name());
         fsReader.validate(true /* full CRC check */);
-        if (!fsReader.isValid() || fsReader.size() != info.size()) {
+        if (!fsReader.isValid()) {
             LOG(WARN, "Invalid stored asset %s, removing", info.name().c_str());
             rmrf(info.name().c_str(), FILESYSTEM_INSTANCE_ASSET_STORAGE);
             return SYSTEM_ERROR_BAD_DATA;
