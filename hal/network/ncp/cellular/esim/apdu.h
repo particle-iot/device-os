@@ -29,15 +29,4 @@ public:
 	size_t size() const;
 };
 
-/**
- * Base class for an APDU transport channel.
- */
-class ApduChannel {
-public:
-	virtual ~ApduChannel() = default;
-
-	virtual int command(const ApduCommand& cmd, ApduResponse& resp) = 0;
-	virtual void close() = 0;
-};
-
 } // namespace particle::esim

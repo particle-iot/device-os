@@ -13,12 +13,14 @@ class Modem {
 public:
 	virtual ~Modem() = default;
 
-	virtual int openApduChannel(std::unique_ptr<ApduChannel>& channel) = 0;
+	virtual int openApduChannel() = 0;
+	virtual int closeApduChannel() = 0;
+	virtual int sendApduCommand(const ApduCommand& cmd, ApduResponse& resp) = 0;
 
 	// Operation-specific hooks
 
-	virtual int beforeProvision();
-	virtual int afterProvision(int result);
+	virtual int beforeProvisioning();
+	virtual int afterProvisioning(int result);
 
 	virtual int beforeEnableProfile();
 	virtual int afterEnableProfile(int result);
