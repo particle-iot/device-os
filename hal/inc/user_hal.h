@@ -29,6 +29,7 @@ typedef struct hal_user_module_descriptor {
     module_info_t info;
 #if defined(MODULAR_FIRMWARE)
     void* (*pre_init)(void);
+    void (*pre_startup)(void);
     void (*init)(void);
     void (*loop)(void);
     void (*setup)(void);

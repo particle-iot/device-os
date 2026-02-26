@@ -31,9 +31,21 @@ test(TICKS_01_micros_busy_loop_monotonically_increases)
     assertTrue(Particle.connected());
 
     const auto getNtpTime = [&client](uint64_t& ntpTime) -> int {
+        const char* ntpServerList[] = {
+            "time.google.com",
+            "time.aws.com",
+            "time.cloudflare.com",
+            "time.facebook.com",
+            "time.windows.com",
+            "time.apple.com",
+            "0.pool.ntp.org",
+            "1.pool.ntp.org",
+            "2.pool.ntp.org",
+            "3.pool.ntp.org"
+        };
         int r = SYSTEM_ERROR_UNKNOWN;
-        for (int i = 0; i < 10; i++) {
-            r = client->ntpDate(&ntpTime);
+        for (int i = 0; i < sizeof(ntpServerList) / sizeof(ntpServerList[0]); i++) {
+            r = client->ntpDate(&ntpTime, ntpServerList[i]);
             if (!r) {
                 break;
             }

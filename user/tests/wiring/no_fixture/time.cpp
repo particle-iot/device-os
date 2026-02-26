@@ -361,26 +361,39 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
     assertTrue(Particle.syncTimeDone());
     assertTrue(Time.isValid());
 
+    const char* ntpServerList[] = {
+        "time.google.com",
+        "time.aws.com",
+        "time.cloudflare.com",
+        "time.facebook.com",
+        "time.windows.com",
+        "time.apple.com",
+        "0.pool.ntp.org",
+        "1.pool.ntp.org",
+        "2.pool.ntp.org",
+        "3.pool.ntp.org"
+    };
+
     uint64_t ntpTime = 0;
     int r = SYSTEM_ERROR_UNKNOWN;
-    for (int i = 0; i < 10; i++) {
-        r = client->ntpDate(&ntpTime);
+    for (int i = 0; i < sizeof(ntpServerList) / sizeof(ntpServerList[0]); i++) {
+        r = client->ntpDate(&ntpTime, ntpServerList[i]);
         if (!r) {
             break;
         }
-        delay(i * 3000);
+        delay(i * 100);
     }
-    // assertEqual(SYSTEM_ERROR_NONE, r);
+    assertEqual(SYSTEM_ERROR_NONE, r);
     // Assertion failed: (0=0) == (r=-160), file tests/integration/wiring/no_fixture/time.cpp, line 368.
     // (TIMEOUT, "Timeout error", -160)
     // [sc-97562]: this test doesn't fail that often when run in a loop by itself, but when it does fail
     //             as the only test that failed for 4 hours of testing, it's quite annoying. So let's only
     //             assert a failure if there is a valid response from the server, and it's not within
     //             20 seconds. This was increased from 10s due to several failures that were 15-17s.
-    if (r != SYSTEM_ERROR_NONE) {
-        out->printlnf("NTP server was unresponsive: %d, bailing!", r);
-        return;
-    }
+    // if (r != SYSTEM_ERROR_NONE) {
+    //     out->printlnf("NTP server was unresponsive: %d, bailing!", r);
+    //     return;
+    // }
 
     struct timeval tv = {};
     assertEqual(0, hal_rtc_get_time(&tv, nullptr));
@@ -393,4 +406,122 @@ test(TIME_19_LocalTimeIsCloseToNtpTime) {
     const int64_t diff = std::chrono::microseconds(20s).count();
     out->printlnf("Within %0.2f seconds of each other.", (float)(std::abs((int64_t)now - (int64_t)ntpTime))/1000000.0f);
     assertLessOrEqual(std::abs((int64_t)now - (int64_t)ntpTime), diff);
+}
+
+namespace {
+
+retained time_t lastTimestamp = 0;
+
+} // anonymous
+
+#if !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
+
+test(TIME_20_TimeIsPreservedThroughSoftwareReset_1) {
+    if (!Time.isValid()) {
+        Particle.connect();
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        system_tick_t mil = millis();
+        Particle.syncTime();
+        assertTrue(waitFor(Particle.syncTimeDone, 120000));
+        assertMore(Particle.timeSyncedLast(), mil);
+    }
+    lastTimestamp = Time.now();
+    expectSystemReset();
+    System.reset();
+}
+
+test(TIME_20_TimeIsPreservedThroughSoftwareReset_2) {
+    assertTrue(Time.isValid());
+    auto now = Time.now();
+    assertNotEqual(lastTimestamp, 0);
+    assertMore(now, lastTimestamp);
+    auto diff = now - lastTimestamp;
+    assertLess(diff, 10); // 10s
+}
+
+test(TIME_21_TimeIsPreservedThroughHibernateSleep_1) {
+    if (!Time.isValid()) {
+        Particle.connect();
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        system_tick_t mil = millis();
+        Particle.syncTime();
+        assertTrue(waitFor(Particle.syncTimeDone, 120000));
+        assertMore(Particle.timeSyncedLast(), mil);
+    }
+    lastTimestamp = Time.now();
+    expectSystemReset();
+    SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).duration(5s));
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+}
+
+test(TIME_21_TimeIsPreservedThroughHibernateSleep_2) {
+    assertTrue(System.wokenUpByRtc());
+    assertTrue(Time.isValid());
+    auto now = Time.now();
+    assertNotEqual(lastTimestamp, 0);
+    assertMore(now, lastTimestamp);
+    auto diff = now - lastTimestamp;
+    assertLess(diff, 10); // 10s
+}
+#else
+
+test(TIME_20_TimeIsNotPreservedThroughSoftwareReset_1) {
+    if (!Time.isValid()) {
+        Particle.connect();
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        system_tick_t mil = millis();
+        Particle.syncTime();
+        assertTrue(waitFor(Particle.syncTimeDone, 120000));
+        assertMore(Particle.timeSyncedLast(), mil);
+    }
+    lastTimestamp = Time.now();
+    expectSystemReset();
+    System.reset();
+}
+
+test(TIME_20_TimeIsNotPreservedThroughSoftwareReset_2) {
+    assertFalse(Time.isValid());
+    auto now = Time.now();
+    assertNotEqual(lastTimestamp, 0);
+    assertMore(lastTimestamp, now);
+    if (!Time.isValid()) {
+        Particle.connect();
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        system_tick_t mil = millis();
+        Particle.syncTime();
+        assertTrue(waitFor(Particle.syncTimeDone, 120000));
+        assertMore(Particle.timeSyncedLast(), mil);
+    }
+    now = Time.now();
+    assertMore(now, lastTimestamp);
+    auto diff = now - lastTimestamp;
+    assertLess(diff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME * 2);
+}
+#endif // !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
+
+test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
+    if (!Time.isValid()) {
+        Particle.connect();
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        system_tick_t mil = millis();
+        Particle.syncTime();
+        assertTrue(waitFor(Particle.syncTimeDone, 120000));
+        assertMore(Particle.timeSyncedLast(), mil);
+        Particle.disconnect();
+        assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    }
+    expectSystemReset();
+    lastTimestamp = Time.now();
+    SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(5s));
+    assertEqual(result.error(), SYSTEM_ERROR_NONE);
+}
+
+test(TIME_22_TimeIsPreservedThroughStopSleep_2) {
+    assertTrue(System.wokenUpByRtc());
+    assertTrue(Time.isValid());
+    auto now = Time.now();
+    assertNotEqual(lastTimestamp, 0);
+    assertMore(now, lastTimestamp);
+    auto diff = now - lastTimestamp;
+    assertLess(diff, 30);
 }

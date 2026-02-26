@@ -766,8 +766,8 @@ public:
 
     template<typename Condition>
     static bool waitCondition(Condition _condition, system_tick_t timeout) {
-        const system_tick_t start = millis();
-        return waitConditionWhile(_condition, [=]{ return (millis()-start)<timeout; });
+        const system_tick_t start = ::millis();
+        return waitConditionWhile(_condition, [=]{ return (::millis()-start)<timeout; });
     }
 
     bool set(hal_system_config_t config_type, const void* data, unsigned length) {

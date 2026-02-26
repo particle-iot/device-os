@@ -836,6 +836,8 @@ void app_setup_and_loop(void)
     // configurations set in STARTUP() is not reset by factory reset
     resetSettingsToFactoryDefaultsIfNeeded();
 
+    PRE_STARTUP();
+
     // NOTE: this calls user app global constructors
     system_part2_post_init();
 

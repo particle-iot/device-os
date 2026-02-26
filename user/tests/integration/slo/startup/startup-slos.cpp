@@ -1,7 +1,5 @@
-///
-// This code meant to be a direct port of the canonical startup stats firmware: https://github.com/particle-iot/pqa/blob/main/firmware/publish-startup-stats-once/src/main.cpp
-// Since this test framework does not have a setup() + loop() function, it is somewhat different.
-///
+#define PARTICLE_USE_UNSTABLE_API
+
 #include "application.h"
 #include "test.h"
 
@@ -18,7 +16,55 @@ extern "C" int hal_flash_read(uintptr_t addr, uint8_t* buf, size_t size) {
 
 extern uintptr_t link_module_start;
 
-test(slo_startup_stats) {
+namespace {
+
+system_tick_t globalInitTimeFromPreStartup = 0;
+system_tick_t globalInitTimeFromStartup = 0;
+system_tick_t setupTimeFromStartup = 0;
+system_tick_t loopTimeFromStartup = 0;
+bool loopCalled = false;
+
+system_tick_t testAppInitDuration = 0;
+system_tick_t testAppSetupDuration = 0;
+
+} // anonymous
+
+void PRE_STARTUP() {
+    globalInitTimeFromPreStartup = micros();
+}
+
+STARTUP({
+    globalInitTimeFromStartup = micros();
+    testAppInit();
+    testAppInitDuration = micros() - globalInitTimeFromStartup;
+});
+
+void setup() {
+    setupTimeFromStartup = micros();
+    testAppSetup();
+    testAppSetupDuration = micros() - setupTimeFromStartup;
+    setupTimeFromStartup -= testAppInitDuration;
+}
+
+void loop() {
+    if (!loopCalled) {
+        loopTimeFromStartup = micros() - testAppInitDuration - testAppSetupDuration;
+        loopCalled = true;
+    }
+    testAppLoop();
+}
+
+test(01_prepare) {
+    // Startup times are affected somewhat by assets and env vars (as they are also a type of an asset)
+    // Make sure that they are not present during this test
+    System.clearEnv(false /* reset */);
+    asset_manager_format_storage(nullptr);
+    System.disableFeature(FEATURE_ETHERNET_DETECTION); // just in case
+    expectSystemReset();
+    System.reset();
+}
+
+test(02_slo_startup_stats) {
     Particle.connect();
     waitFor(Particle.connected, 10 * 60 * 1000);
     
@@ -31,7 +77,15 @@ test(slo_startup_stats) {
         FLASH_ModuleLength(FLASH_INTERNAL, (uint32_t)&link_module_start) +
         sizeof(uint32_t);
 
-    String stats = String::format("{\"free_mem\": %u, \"app_flash_size\": %u}",
-            free_mem, app_flash_size);
-    Particle.publish("startup_stats", stats);
+    Variant stats;
+    stats.set("free_mem", free_mem);
+    stats.set("app_flash_size", app_flash_size);
+    Variant time;
+    time.set("pre_startup", globalInitTimeFromPreStartup);
+    time.set("startup", globalInitTimeFromStartup);
+    time.set("setup", setupTimeFromStartup);
+    time.set("loop", loopTimeFromStartup);
+    stats.set("time", time);
+
+    Particle.publish("startup_stats", stats.toJSON());
 }

@@ -25,7 +25,7 @@
 namespace particle {
 namespace ntp {
 
-const char DEFAULT_SERVER[] = "pool.ntp.org";
+const char DEFAULT_SERVER[] = "time.google.com";
 const uint16_t PORT = 123;
 const system_tick_t RETRY_INTERVAL = 2000;
 
