@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package particle;
+
+// TODO: Move to device-os-protobuf
+message EsimProvisionRequest {
+  enum Type {
+    INVALID = 0;
+    GET_EUICC_CHALLENGE = 1;
+    GET_EUICC_INFO1 = 2;
+    AUTHENTICATE_SERVER = 3;
+    PREPARE_DOWNLOAD = 4;
+    LOAD_BOUND_PROFILE_PACKAGE = 5;
+  }
+
+  Type type = 1;
+  bytes data = 2;
+}
+
+message EsimProvisionResponse {
+  bytes data = 1;
+}

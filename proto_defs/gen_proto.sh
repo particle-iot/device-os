@@ -54,3 +54,4 @@ gen_proto "${SHARED_DIR}/cloud/ledger.proto"
 # Compile internal definitions
 gen_proto "${INTERNAL_DIR}/network_config.proto"
 gen_proto "${INTERNAL_DIR}/ledger.proto"
+gen_proto "${INTERNAL_DIR}/esim.proto" # FIXME
