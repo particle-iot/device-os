@@ -13,7 +13,7 @@ public:
 	int init(Modem* modem);
 	void destroy();
 
-	int startProvisioning(Provisioning& prov);
+	int provisionProfile(Provisioning& ctx);
 
 	int enableProfile(/* ... */);
 	int disableProfile(/* ... */);

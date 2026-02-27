@@ -3,33 +3,65 @@
 namespace particle {
 
 class InputStream;
+class OutputStream;
 
 namespace esim {
 
 /**
  * Profile provisioning context.
- *
- * Requests and responses are ASN.1-encoded.
  */
 class Provisioning {
 public:
-	// Initiates an RSP session and returns a random challenge attached to this session
-	int getEuiccChallenge(char* resp, size_t respSize);
+	/**
+	 * Initiate a provisioning session.
+	 *
+	 * @param out Stream for encoding `GetEuiccChallengeResponse` (SGP 22, 5.7.7).
+	 * @return 0 on success, otherwise an error code defined by `system_error_t`.
+	 */
+	int getEuiccChallenge(OutputStream* out);
 
- 	// Gets an EUICCInfo1 for forwarding to the SM-DP+
-	int getEuiccInfo1(char* resp, size_t respSize);
+ 	/**
+ 	 * Get the eUUIC info for forwarding to the SM-DP+.
+ 	 *
+	 * @param out Stream for encoding `EUICCInfo1` (SGP 22, 5.7.8).
+	 * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ 	 */
+	int getEuiccInfo1(OutputStream* out);
 
-	// Authenticates the SM-DP+
-	int authenticateServer(const char* req, size_t reqSize, char* resp, size_t respSize);
+	/**
+	 * Authenticate the SM-DP+.
+	 *
+	 * @param in Stream for decoding `AuthenticateServerRequest` (SGP 22, 5.7.13).
+	 * @param out Stream for encoding `AuthenticateServerResponse`.
+	 * @return 0 on success, otherwise an error code defined by `system_error_t`.
+	 */
+	int authenticateServer(InputStream* in, OutputStream* out);
 
-	// Initiates a profile download
-	int prepareDownload(const char* req, size_t reqSize, char* resp, size_t respSize);
+	/**
+	 * Initiate a profile download.
+	 *
+	 * @param in Stream for decoding `PrepareDownloadRequest` (SGP 22, 5.7.5).
+	 * @param out Stream for encoding `PrepareDownloadResponse`.
+	 * @return 0 on success, otherwise an error code defined by `system_error_t`.
+	 */
+	int prepareDownload(InputStream* in, OutputStream* out);
 
-	// Transfers the profile data to the eUICC, e.g. from a file
-	int loadBoundProfilePackage(InputStream* stream);
+	/**
+	 * Transfer the profile data to the eUICC.
+	 *
+	 * Ends the provisioning session.
+	 *
+	 * @param in Stream for reading the contents of a profile package.
+	 * @return 0 on success, otherwise an error code defined by `system_error_t`.
+	 */
+	int loadBoundProfilePackage(InputStream* in);
 
-	// Cancels the provisioning session
-	void cancel();
+	/**
+	 * Cancel the provisioning session.
+	 *
+	 * @param error Error code defined by `system_error_t`.
+	 */
+	void cancel(int error);
 };
 
 } // namespace esim
