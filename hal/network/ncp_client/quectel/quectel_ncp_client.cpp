@@ -39,13 +39,13 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "stream_util.h"
 
 #include "spark_wiring_interrupts.h"
-#include "spark_wiring_vector.h"
 
 #include <algorithm>
 #include <limits>
 #include <lwip/memp.h>
 
 #include "ncp_env_var.h"
+#include "ncp_band_mask.h"
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -100,29 +100,6 @@ const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
 const auto QUECTEL_NCP_KEEPALIVE_MAX_MISSED = 5;
-
-// Bandmask same for BG95-M1 ~ BG95-M6 & BG95-MF
-// Note: BG95-M1 does not support NB mode
-// BG95-M4 not supported (bands are different as well)
-const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95 = 0xF0E189F;      // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,27,28 [all default enabled]
-const uint64_t QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95 = 0x100002;     // Band 66,85 enabled
-// const uint64_t QUECTEL_NCP_BANDMASK_CATNB_1_64_BG95 = 0x90E189F;      // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,27,28 [all default enabled]
-// const uint64_t QUECTEL_NCP_BANDMASK_CATNB_65_128_BG95 = 0x100002;     // Band 66,85 enabled
-
-// BG96-MC
-const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC = 0x40090E189F;  // Bands 1,2,3,4,5,8,12,13,17(shows up in mask, but not listed in datasheet),
-                                                                        //       18,19,20,25,26(v1.2 hardware),28,39
-
-// EG91-E/EX (LTE Cat-1)
-const uint64_t QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_E_EX = 0x80800c5;  // Bands 1,3,7,8,20,28
-// const uint64_t QUECTEL_NCP_BANDMASK_CAT1_65_128_EG91_E_EX = 0x0;   // No bands in 65-128 range
-
-// EG91-NA (LTE Cat-1)
-// const uint64_t QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_NA = 0x1836;   // Bands 2,4,5,12,13
-// EG91-NAX (LTE Cat-1)
-const uint64_t QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_NAX = 0x300181a;   // Bands 2,4,5,12,13,25,26
-// const uint64_t QUECTEL_NCP_BANDMASK_CAT1_65_128_EG91_NA_NAX = 0x0; // No bands in 65-128 range
-
 
 // FIXME: for now using a very large buffer
 const auto QUECTEL_NCP_AT_CHANNEL_RX_BUFFER_SIZE = 4096;
@@ -1046,62 +1023,41 @@ int QuectelNcpClient::checkNetConfForImsi() {
 }
 
 int QuectelNcpClient::setupBands() {
-    uint64_t defaultBands[2] = {};
-    // defaultBands[1] is intentionally 0 for the ones not explicitly set below
-    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-        defaultBands[0] = QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95;
-        defaultBands[1] = QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95;
-    } else if (ncpId() == PLATFORM_NCP_QUECTEL_BG96) {
-        defaultBands[0] = QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC;
-    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
-        defaultBands[0] = QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_NAX;
-    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_E || ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
-        defaultBands[0] = QUECTEL_NCP_BANDMASK_CAT1_1_64_EG91_E_EX;
-    }
 
-    uint64_t envPreferredBands[2] = {};
-    uint64_t envForbiddenBands[2] = {};
+    CellularBandMask defaultBands(
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, false /* upper */, false /* legacy */),
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+    );
+    CellularBandMask envPreferredBands;
+    CellularBandMask envForbiddenBands;
     getEnvBands("PARTICLE_CELLULAR_PREFERRED_BANDS", envPreferredBands);
     getEnvBands("PARTICLE_CELLULAR_FORBIDDEN_BANDS", envForbiddenBands);
-    bool useEnvBands = (envPreferredBands[0] || envPreferredBands[1] || envForbiddenBands[0] || envForbiddenBands[1]);
 
-    // At least one set of bands is set, ensure the rest have default values if not specified
-    if (useEnvBands) {
-        envPreferredBands[0] = (envPreferredBands[0] ? envPreferredBands[0] : defaultBands[0]) & defaultBands[0];
-        envPreferredBands[1] = (envPreferredBands[1] ? envPreferredBands[1] : defaultBands[1]) & defaultBands[1];
-        envPreferredBands[0] &= ~envForbiddenBands[0];
-        envPreferredBands[1] &= ~envForbiddenBands[1];
+    if (!envPreferredBands.isEmpty() || !envForbiddenBands.isEmpty()) {
+        if (envPreferredBands.isEmpty()) {
+            envPreferredBands = defaultBands;
+        }
+        envPreferredBands = (envPreferredBands & defaultBands) & ~envForbiddenBands;
     } else {
-        envPreferredBands[0] = defaultBands[0];
-        envPreferredBands[1] = defaultBands[1];
+        envPreferredBands = defaultBands;
     }
-    // LOG(INFO, "ENV BANDS: [65-128]=0x%llx, [1-64]=0x%016llx", envPreferredBands[1], envPreferredBands[0]);
 
     // Log bandmask, and change bandmask if necessary
     auto respBand = parser_.sendCommand("AT+QCFG=\"band\"");
-    uint64_t uint64LTEbandsCurrent[2] = {};
-    char qbandGSM_Str[4+1] = {};
-    char qbandLTE_Str[32+1] = {};
-    char qbandCatNB_Str[32+1] = {};
+    char qbandGsmStr[4+1] = {};
+    char qbandLteStr[32+1] = {};
+    char qbandCatNbStr[32+1] = {};
     // BG95_M5: +QCFG: "band",0xf,0x100002000000000f0e189f,0x10004200000000090e189f <GSM>,<CAT-M1-1-128>,<CAT-NB-1-128>
-    auto retBand = CHECK_PARSER(respBand.scanf("+QCFG: \"band\",0x%4[^,],0x%32[^,],0x%32[^,]", qbandGSM_Str, qbandLTE_Str, qbandCatNB_Str));
-    // LOG(INFO, "%s,%s,%s", qbandGSM_Str, qbandLTE_Str, qbandCatNB_Str);
+    auto retBand = CHECK_PARSER(respBand.scanf("+QCFG: \"band\",0x%4[^,],0x%32[^,],0x%32[^,]", qbandGsmStr, qbandLteStr, qbandCatNbStr));
     CHECK_PARSER_OK(respBand.readResult());
 
     if (retBand == 3) {
-        hexString128toUint64Array(qbandLTE_Str, uint64LTEbandsCurrent);
+        CellularBandMask bandsCurrent(qbandLteStr);
 
-        if (uint64LTEbandsCurrent[0] != envPreferredBands[0] ||
-                uint64LTEbandsCurrent[1] != envPreferredBands[1]) {
-            if (envPreferredBands[1]) {
-                sprintf(qbandLTE_Str, "%llx%016llx", envPreferredBands[1], envPreferredBands[0]);
-            } else {
-                sprintf(qbandLTE_Str, "%llx", envPreferredBands[0]);
-            }
-
-            // Apply band changes immediately, no reboot required.  Modem may need to disconnect to apply the change though.
+        if (bandsCurrent != envPreferredBands) {
+            // Apply band changes immediately, no reboot required.
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, true /* check */));
-            CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,1", qbandGSM_Str, qbandLTE_Str, qbandCatNB_Str));
+            CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr));
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
         }
     }
@@ -1134,15 +1090,13 @@ int QuectelNcpClient::clearAllUserPlmn() {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::parseEfSize(unsigned int fid, unsigned int& efSize) {
+int QuectelNcpClient::parseEfSize(unsigned int fid) {
     char fcpHexStr[128] = {};
     int sw1, sw2;
     auto resp = parser_.sendCommand("AT+CRSM=192,%u,0,0,30", fid);
-    while (resp.hasNextLine()) {
-        // Other URCs can pop up here before +CRSM and cause this to fail
-        resp.scanf("+CRSM: %d,%d,\"%127[0-9A-Fa-f]\"", &sw1, &sw2, fcpHexStr);
-    }
+    int r = CHECK_PARSER(resp.scanf("+CRSM: %d,%d,\"%127[0-9A-Fa-f]\"", &sw1, &sw2, fcpHexStr));
     CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 3, SYSTEM_ERROR_UNKNOWN);
 
     // Example Decoding
     // ----------------
@@ -1160,16 +1114,16 @@ int QuectelNcpClient::parseEfSize(unsigned int fid, unsigned int& efSize) {
     CHECK_TRUE(tag != nullptr, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     unsigned int hi, lo;
     CHECK_TRUE(::sscanf(tag + 4, "%2x%2x", &hi, &lo) == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
-    efSize = (hi << 8) | lo;
+    unsigned int efSize = (hi << 8) | lo;
     // We don't expect this to be larger than 18, but we're allowing for expansion in case of a different future SIM
     CHECK_TRUE(efSize > 0 && efSize <= 64, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
 
-    return SYSTEM_ERROR_NONE;
+    return efSize;
 }
 
 int QuectelNcpClient::readAndClearEfByFid(unsigned int fid) {
-    unsigned int efSize = 0;
-    CHECK(parseEfSize(fid, efSize));
+    int efSize = parseEfSize(fid);
+    CHECK(efSize);
 
     // Clear table by filling with 0xFF
     const size_t hexLen = efSize * 2;
@@ -1182,18 +1136,9 @@ int QuectelNcpClient::readAndClearEfByFid(unsigned int fid) {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmnCount) {
-    if (!envPreferredPlmn) {
-        return SYSTEM_ERROR_INVALID_STATE;
-    }
-
+int QuectelNcpClient::syncUserPlmn(const Vector<CString>& envPreferredPlmn) {
     Vector<unsigned int> cpolIdxs;
-    Vector<const char*> cpolPlmns;
-    SCOPE_GUARD({
-        for (auto plmn : cpolPlmns) {
-            free((void*)plmn);
-        }
-    });
+    Vector<CString> cpolPlmns;
 
     auto resp = parser_.sendCommand("AT+CPOL?");
     while (resp.hasNextLine()) {
@@ -1202,19 +1147,18 @@ int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmn
         auto r = resp.scanf("+CPOL: %u,%*u,\"%6[0-9]\",%*d,%*d,%*d,%*d,", &curIndex, curPlmn);
         if (r == 2 && curIndex > 0) {
             CHECK_TRUE(cpolIdxs.append(curIndex), SYSTEM_ERROR_NO_MEMORY);
-            char* plmnCopy = (char*)malloc(7);
+            CString plmnCopy(curPlmn);
             CHECK_TRUE(plmnCopy, SYSTEM_ERROR_NO_MEMORY);
-            strcpy(plmnCopy, curPlmn);
-            CHECK_TRUE(cpolPlmns.append(plmnCopy), SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(cpolPlmns.append(std::move(plmnCopy)), SYSTEM_ERROR_NO_MEMORY);
         }
     }
     CHECK_PARSER_OK(resp.readResult());
 
     bool needsUpdate = false;
-    if (cpolIdxs.size() != preferredPlmnCount) {
+    if (cpolIdxs.size() != envPreferredPlmn.size()) {
         needsUpdate = true;
     } else {
-        for (int i = 0; i < preferredPlmnCount; i++) {
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
             if (i >= cpolPlmns.size() ||
                 strcmp(envPreferredPlmn[i], cpolPlmns[i]) != 0) {
                 needsUpdate = true;
@@ -1230,9 +1174,9 @@ int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmn
         if (cgi_.mobile_country_code > 0 && cgi_.mobile_network_code > 0) {
             char currentPlmn[10+1] = {};
             if (CGI_FLAG_TWO_DIGIT_MNC & cgi_.cgi_flags) {
-                sprintf(currentPlmn, "%03u%02u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%02u", cgi_.mobile_country_code, cgi_.mobile_network_code);
             } else {
-                sprintf(currentPlmn, "%03u%03u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%03u", cgi_.mobile_country_code, cgi_.mobile_network_code);
             }
             for (unsigned i = 0; i < MAX_CELLULAR_PREFFERED_PLMN_ENTRIES; i++) {
                 if (strlen(envPreferredPlmn[i]) > 0) {
@@ -1247,9 +1191,9 @@ int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmn
         CHECK(clearAllUserPlmn());
 
         int lastError = AtResponse::OK;
-        for (unsigned i = 0; i < MAX_CELLULAR_PREFFERED_PLMN_ENTRIES; i++) {
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
             if (strlen(envPreferredPlmn[i]) > 0) {
-                auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%u,2,\"%s\",0,0,0,1", i+1, envPreferredPlmn[i]));
+                auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%u,2,\"%s\",0,0,0,1", i+1, (const char*)envPreferredPlmn[i]));
                 if (r != AtResponse::OK) {
                     lastError = r;
                 }
@@ -1274,6 +1218,7 @@ int QuectelNcpClient::syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmn
 }
 
 int QuectelNcpClient::configurePlmn() {
+    // apply changes after registration, or CPOL commands will error
     if (configuredPlmn_ || (connectionState() != NcpConnectionState::CONNECTED)) {
         return SYSTEM_ERROR_NONE;
     }
@@ -1287,18 +1232,15 @@ int QuectelNcpClient::configurePlmn() {
         return SYSTEM_ERROR_NONE;
     }
 
-    char envPreferredPlmn[4][6+1] = {};
-    int preferredPlmnCount = getEnvPreferredPlmn("PARTICLE_CELLULAR_PREFERRED_PLMN", envPreferredPlmn);
+    Vector<CString> envPreferredPlmn;
+    getEnvPreferredPlmn("PARTICLE_CELLULAR_PREFERRED_PLMN", envPreferredPlmn);
 
-    if (preferredPlmnCount == 0) {
+    if (envPreferredPlmn.size() == 0) {
         return clearAllUserPlmn();
-    }
-    if (preferredPlmnCount < 0) {
-        return preferredPlmnCount;
     }
 
     parser_.execCommand("AT+CPOL=,2"); // set format to numeric
-    syncUserPlmn(envPreferredPlmn, preferredPlmnCount);
+    syncUserPlmn(envPreferredPlmn);
 
     return SYSTEM_ERROR_NONE;
 }

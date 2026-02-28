@@ -17,26 +17,28 @@
 
 #pragma once
 
+
 #include "hal_platform.h"
+
+#if PLATFORM_ID != PLATFORM_GCC
 
 #if HAL_PLATFORM_ENV
 
 #include <cstddef>
 #include <cstdint>
+#include "c_string.h"
+#include "spark_wiring_vector.h"
+#include "ncp_band_mask.h"
 
 namespace particle {
 
 #define MAX_CELLULAR_PREFFERED_PLMN_ENTRIES (4)
 
-int getEnvVar(const char* name, char* val, size_t valSize);
-int getEnv(const char* name, char* val, size_t valSize);
-int getEnv(const char* name, int& value);
-int getEnv(const char* name, bool& value);
-bool hasEnv(const char* name);
-void hexString128toUint64Array(const char* hexString128, uint64_t* bands);
-void getEnvBands(const char* varName, uint64_t* bands);
-int getEnvPreferredPlmn(const char* varName, char plmns[][7]);
+void getEnvBands(const char* varName, CellularBandMask& bands);
+int getEnvPreferredPlmn(const char* varName, Vector<CString>& plmns);
 
 } // particle
 
 #endif // HAL_PLATFORM_ENV
+
+#endif // PLATFORM_ID != PLATFORM_GCC

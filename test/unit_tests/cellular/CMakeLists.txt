@@ -21,6 +21,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${DEVICE_OS_DIR}/hal/network/ncp/cellular/network_config_db.cpp
   ${DEVICE_OS_DIR}/hal/shared/cellular_sig_perc_mapping.cpp
+  ${DEVICE_OS_DIR}/hal/shared/ncp_env_var.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   cellular.cpp
 )
@@ -28,6 +29,7 @@ add_executable( ${target_name}
 # Set defines specific to target
 target_compile_definitions( ${target_name}
   PRIVATE PLATFORM_ID=3
+  PRIVATE HAL_PLATFORM_ENV=1
 )
 
 # Set compiler flags specific to target

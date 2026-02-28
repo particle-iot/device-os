@@ -19,6 +19,9 @@
 #include "unit-test/unit-test.h"
 #include "test_suite.h"
 #include "check.h"
+#include "ncp_env_var.h"
+#include "hex_to_bytes.h"
+#include "endian_util.h"
 
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     // { "comm.coap", LOG_LEVEL_ALL },
@@ -89,9 +92,13 @@ struct CpolCallbackData {
     String response;
 };
 
-int cbQCFGBand(int type, const char* buf, int len, char* lteBuf) {
-    if ((type == TYPE_PLUS) && lteBuf) {
-        sscanf(buf, "\r\n+QCFG: \"band\",0x%*[^,],0x%23[^,]", lteBuf);
+int cbQCFGBand(int type, const char* buf, int len, CellularBandMask* bands) {
+    char bandsStr[24] = {};
+    if (type == TYPE_PLUS) {
+        int resp = sscanf(buf, "\r\n+QCFG: \"band\",0x%*[^,],0x%23[^,]", bandsStr);
+        if (resp == 1) {
+            bands->setFromHexString(bandsStr);
+        }
     }
     return WAIT;
 }
@@ -111,9 +118,14 @@ bool isUbandmaskSupported() {
     return (profile == 90 || profile == 100);
 }
 
-int cbUBANDMASK(int type, const char* buf, int len, char* catM1Buf) {
-    if ((type == TYPE_PLUS) && catM1Buf) {
-        sscanf(buf, "\r\n+UBANDMASK: 0,%23[^,]", catM1Buf);
+int cbUBANDMASK(int type, const char* buf, int len, CellularBandMask* bands) {
+    char uband01_64Str[24] = {};
+    char uband65_128Str[24] = {};
+    if (type == TYPE_PLUS) {
+        int resp = sscanf(buf, "\r\n+UBANDMASK: 0,%23[^,],%23[^,]", uband01_64Str, uband65_128Str);
+        if (resp == 2) {
+            bands->setFromDecimalStrings(uband01_64Str, uband65_128Str);
+        }
     }
     return WAIT;
 }
@@ -125,45 +137,54 @@ int cbCPOL(int type, const char* buf, int len, CpolCallbackData* data) {
     return WAIT;
 }
 
-String readCurrentLteMask() {
+CellularBandMask readCurrentLteMask() {
+    CellularBandMask bands;
     if (modemType == ModemType::QUECTEL) {
-        char lteBuf[24] = {};
-        if (RESP_OK != Cellular.command(cbQCFGBand, lteBuf, 30000, "AT+QCFG=\"band\"\r\n")
-                || lteBuf[0] == '\0') {
-            return "";
-        }
-        String mask = String(lteBuf);
-        mask.toLowerCase();
-        return mask;
-
+        Cellular.command(cbQCFGBand, &bands, 30000, "AT+QCFG=\"band\"\r\n");
     } else if (modemType == ModemType::UBLOX) {
-        char catM1Buf[24] = {};
-        if (RESP_OK != Cellular.command(cbUBANDMASK, catM1Buf, 10000, "AT+UBANDMASK?\r\n")
-                || catM1Buf[0] == '\0') {
-            return "";
+        Cellular.command(cbUBANDMASK, &bands, 10000, "AT+UBANDMASK?\r\n");
+        if (getNcpId() == PLATFORM_NCP_SARA_R410) {
+            bands.setHigh(0);
         }
-        char* pEnd = catM1Buf;
-        uint64_t val = strtoull(catM1Buf, &pEnd, 10);
-        if (pEnd == catM1Buf) {
-            return "";
-        }
-
-        char hexBuf[17] = {};
-        snprintf(hexBuf, sizeof(hexBuf), "%llx", val);
-
-        return String(hexBuf);
     }
-    return "";
+    return bands;
 }
 
-// Simplifed checker for lowest 4 bands/bits only!!
-bool isBandEnabled(const String& hexMask, int band) {
-    if (hexMask.length() == 0) {
-        return true;
+CellularBandMask makeDefaultBandMask(bool readMode = false) {
+    int ncpId = getNcpId();
+    bool isR410 = (ncpId == PLATFORM_NCP_SARA_R410);
+    if (modemType == ModemType::QUECTEL) {
+        return CellularBandMask(
+            getBandMaskByNcpIdForRAT(ncpId, CellularAccessTechnology::LTE_CAT_M1, false /* upper */, false /* legacy */),
+            getBandMaskByNcpIdForRAT(ncpId, CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+        );
+    } else if (modemType == ModemType::UBLOX) {
+        return CellularBandMask(
+            getBandMaskByNcpIdForRAT(ncpId, CellularAccessTechnology::LTE_CAT_M1, false /* upper */, readMode && isR410 /* legacy */),
+            getBandMaskByNcpIdForRAT(ncpId, CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+        );
     }
-    char c = hexMask.charAt(hexMask.length() - 1);
-    int v = strtoul(&c, nullptr, 16);
-    return (v & (1 << (band - 1)));
+    return CellularBandMask{};
+}
+
+int lowestHighBand(const CellularBandMask& mask) {
+    uint64_t high = mask.high();
+    for (int i = 0; i < 64; i++) {
+        if (high & ((uint64_t)1 << i)) {
+            return 65 + i;
+        }
+    }
+    return -1;
+}
+
+CellularBandMask makeExpectedPostEnvBandMask() {
+    CellularBandMask expected = makeDefaultBandMask(false /* readMode */);
+    expected.setLow(expected.low() & ~(uint64_t)0x03);
+    int highBand = lowestHighBand(expected);
+    if (highBand >= 65) {
+        expected.setHigh(expected.high() & ~((uint64_t)1 << (highBand - 65)));
+    }
+    return expected;
 }
 
 #endif // HAL_PLATFORM_CELLULAR
@@ -176,6 +197,20 @@ test(1_particle_cellular_preferred_bands_init) {
     // Just in case
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.clearEnv(false /* reset */);
+
+    if (getModemType() != ModemType::UNSUPPORTED) {
+        Cellular.on();
+        assertTrue(waitFor(Cellular.isOn, 120000));
+
+        CellularBandMask preferred = makeExpectedPostEnvBandMask();
+        Log.info("Computed preferred bands mask: %s", (const char*)preferred.toString());
+        pushMailboxMsg(String::format("PARTICLE_CELLULAR_PREFERRED_BANDS=%s",
+                (const char*)preferred.toString()), 5000 /* wait */);
+
+        Cellular.disconnect();
+        waitForNot(Cellular.ready, 60000);
+    }
+
     expectSystemReset();
     System.reset();
 }
@@ -195,25 +230,20 @@ test(2_particle_cellular_preferred_bands_default) {
     if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
             (modemType == ModemType::QUECTEL)) {
 
-        Cellular.connect();
-        assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
-
-        String defaultMask;
+        CellularBandMask bands;
         SCOPE_GUARD({
             pushMailboxMsg(String::format("Default LTE band mask (%s): %s",
                     modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                    defaultMask.c_str()), 5000 /* wait */);
+                    (const char*)bands.toString()), 5000 /* wait */);
         });
 
-        defaultMask = readCurrentLteMask();
+        bands = readCurrentLteMask();
         Log.info("Default LTE band mask (%s): %s",
                 modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                defaultMask.c_str());
-        assertTrue(defaultMask.length() > 0);
+                (const char*)bands.toString());
+        assertFalse(bands.isEmpty() > 0);
 
-
-        // band 1 or band 2 should be enabled
-        assertTrue(isBandEnabled(defaultMask, 1) || isBandEnabled(defaultMask, 2));
+        assertEqual((const char*)bands.toString(), (const char*)makeDefaultBandMask(true /* readMode */).toString());
 
         Cellular.disconnect();
         waitForNot(Cellular.ready, 60000);
@@ -228,9 +258,9 @@ test(3_particle_cellular_preferred_bands_set) {
         return;
     }
 
+    CellularBandMask preferred = makeExpectedPostEnvBandMask();
     assertTrue(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
-    assertEqual(System.getEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"),
-            String("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC")); // disables bands 1 & 2
+    assertEqual(System.getEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"), String((const char*)preferred.toString()));
     assertTrue(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
     assertEqual(System.getEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"), String("0"));
 
@@ -242,24 +272,21 @@ test(3_particle_cellular_preferred_bands_set) {
         assertTrue(isUbandmaskSupported());
     }
 
-    Cellular.connect();
-    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    CellularBandMask expectedDefault = makeExpectedPostEnvBandMask();
 
-    String newMask;
+    CellularBandMask bands;
     SCOPE_GUARD({
         pushMailboxMsg(String::format("LTE band mask after PREFERRED_BANDS env var (%s): %s",
                 modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                newMask.c_str()), 5000 /* wait */);
+                (const char*)bands.toString()), 5000 /* wait */);
     });
 
-    newMask = readCurrentLteMask();
+    bands = readCurrentLteMask();
     Log.info("LTE band mask after PREFERRED_BANDS env var (%s): %s",
             modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-            newMask.c_str());
-    assertTrue(newMask.length() > 0);
-
-    // band 1 AND band 2 should be disabled
-    assertTrue(!isBandEnabled(newMask, 1) && !isBandEnabled(newMask, 2));
+            (const char*)bands.toString());
+    assertFalse(bands.isEmpty());
+    assertEqual((const char*)bands.toString(), (const char*)expectedDefault.toString());
 
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);
@@ -273,6 +300,18 @@ test(4_particle_cellular_forbidden_bands_init) {
 
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.clearEnv(false /* reset */);
+
+    Cellular.on();
+    assertTrue(waitFor(Cellular.isOn, 120000));
+
+    CellularBandMask forbidden = ~makeExpectedPostEnvBandMask();
+    Log.info("Computed forbidden bands mask: %s", (const char*)forbidden.toString());
+    pushMailboxMsg(String::format("PARTICLE_CELLULAR_FORBIDDEN_BANDS=%s",
+            (const char*)forbidden.toString()), 5000 /* wait */);
+
+    Cellular.disconnect();
+    waitForNot(Cellular.ready, 60000);
+
     expectSystemReset();
     System.reset();
 }
@@ -295,21 +334,20 @@ test(5_particle_cellular_forbidden_bands_default) {
         Cellular.connect();
         assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
 
-        String defaultMask;
+        CellularBandMask bands;
         SCOPE_GUARD({
             pushMailboxMsg(String::format("Default LTE band mask (%s): %s",
                     modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                    defaultMask.c_str()), 5000 /* wait */);
+                    (const char*)bands.toString()), 5000 /* wait */);
         });
 
-        defaultMask = readCurrentLteMask();
+        bands = readCurrentLteMask();
         Log.info("Default LTE band mask (%s): %s",
                 modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                defaultMask.c_str());
-        assertTrue(defaultMask.length() > 0);
+                (const char*)bands.toString());
+        assertFalse(bands.isEmpty());
 
-        // band 1 or band 2 should be enabled
-        assertTrue(isBandEnabled(defaultMask, 1) || isBandEnabled(defaultMask, 2));
+        assertEqual((const char*)bands.toString(), (const char*)makeDefaultBandMask(true /* readMode */).toString());
 
         Cellular.disconnect();
         waitForNot(Cellular.ready, 60000);
@@ -324,12 +362,11 @@ test(6_particle_cellular_forbidden_bands_set) {
         return;
     }
 
-    assertTrue(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
-    assertEqual(System.getEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"),
-            String("3")); // bits 0 & 1 → bands 1 & 2 forbidden
+    CellularBandMask forbidden = ~makeExpectedPostEnvBandMask();
     assertTrue(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
-    assertEqual(System.getEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"),
-            String("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
+    assertEqual(System.getEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"), String("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"));
+    assertTrue(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
+    assertEqual(System.getEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"), String((const char*)forbidden.toString()));
 
     Cellular.on();
     assertTrue(waitFor(Cellular.isOn, 120000));
@@ -339,24 +376,21 @@ test(6_particle_cellular_forbidden_bands_set) {
         assertTrue(isUbandmaskSupported());
     }
 
-    Cellular.connect();
-    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    CellularBandMask expectedDefault = makeExpectedPostEnvBandMask();
 
-    String newMask;
+    CellularBandMask bands;
     SCOPE_GUARD({
         pushMailboxMsg(String::format("LTE band mask after FORBIDDEN_BANDS env var (%s): %s",
                 modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-                newMask.c_str()), 5000 /* wait */);
+                (const char*)bands.toString()), 5000 /* wait */);
     });
 
-    newMask = readCurrentLteMask();
+    bands = readCurrentLteMask();
     Log.info("LTE band mask after FORBIDDEN_BANDS env var (%s): %s",
             modemType == ModemType::QUECTEL ? "QUECTEL" : "UBLOX",
-            newMask.c_str());
-    assertTrue(newMask.length() > 0);
-
-    // band 1 AND band 2 must now be disabled
-    assertTrue(!isBandEnabled(newMask, 1) && !isBandEnabled(newMask, 2));
+            (const char*)bands.toString());
+    assertFalse(bands.isEmpty());
+    assertEqual((const char*)bands.toString(), (const char*)expectedDefault.toString());
 
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);
@@ -472,26 +506,25 @@ test(11_particle_cellular_env_vars_cleared_verify_defaults) {
 
     int ncpId = getNcpId();
 
-    String mask;
+    CellularBandMask bands;
     CpolCallbackData data = {};
     SCOPE_GUARD({
         if (getModemType() != ModemType::UNSUPPORTED &&
                 ncpId != PLATFORM_NCP_SARA_R410 &&
                 ncpId != PLATFORM_NCP_QUECTEL_BG96) {
             pushMailboxMsg(String::format("Band mask after env clear: %s\nAT+CPOL response after env clear: %s",
-                    mask.c_str(), data.response.length() ? data.response.c_str() : "empty"), 5000 /* wait */);
+                    (const char*)bands.toString(), data.response.length() ? data.response.c_str() : "empty"), 5000 /* wait */);
         } else {
-            pushMailboxMsg(String::format("Band mask after env clear: %s", mask.c_str()), 5000 /* wait */);
+            pushMailboxMsg(String::format("Band mask after env clear: %s", (const char*)bands.toString()), 5000 /* wait */);
         }
     });
 
     if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
             (modemType == ModemType::QUECTEL)) {
 
-        // band 1 or band 2 should be re-enabled
-        mask = readCurrentLteMask();
-        assertTrue(mask.length() > 0);
-        assertTrue(isBandEnabled(mask, 1) || isBandEnabled(mask, 2));
+        bands = readCurrentLteMask();
+        assertFalse(bands.isEmpty());
+        assertEqual((const char*)bands.toString(), (const char*)makeDefaultBandMask(true /* readMode */).toString());
     }
 
     if (getModemType() != ModemType::UNSUPPORTED &&

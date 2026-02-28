@@ -1,6 +1,6 @@
-suite('System level env vars');
+suite('Cellular env vars');
 
-platform('gen3', 'gen4');
+platform('cellular', 'msom');
 
 const { createEnvVarsAssetModule } = require('binary-version-reader');
 const tempy = require('tempy');
@@ -11,6 +11,8 @@ const { readFile } = require('node:fs/promises');
 let appBinary;
 let deviceId;
 let device;
+let preferredBandsValue;
+let forbiddenBandsValue;
 
 async function setEnvVarsAndFlash(vars) {
     const assetData = await createEnvVarsAssetModule(vars);
@@ -28,13 +30,18 @@ before(async function() {
 test('1_particle_cellular_preferred_bands_init', async function () {
     this.test.parent.particle.network = 'cellular';
     this.test.parent.particle.suiteInitialized = false;
+    expect(device.mailBox).to.not.be.empty;
+    const msg = device.mailBox[0].d;
+    console.log(msg);
+    const match = msg.match(/^PARTICLE_CELLULAR_PREFERRED_BANDS=(.+)$/);
+    expect(match).to.not.be.null;
+    preferredBandsValue = match[1];
 });
 
 test('2_particle_cellular_preferred_bands_default', async function () {
-    // Flash env vars: PREFERRED_BANDS set to disable bands 1 & 2
-    // FORBIDDEN_BANDS explicitly set to 0 so it doesn't interfere
+    expect(preferredBandsValue).to.be.a('string');
     await setEnvVarsAndFlash({
-        PARTICLE_CELLULAR_PREFERRED_BANDS: 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC',
+        PARTICLE_CELLULAR_PREFERRED_BANDS: preferredBandsValue,
         PARTICLE_CELLULAR_FORBIDDEN_BANDS: '0',
     });
     expect(device.mailBox).to.not.be.empty;
@@ -49,14 +56,19 @@ test('3_particle_cellular_preferred_bands_set', async function () {
 test('4_particle_cellular_forbidden_bands_init', async function () {
     this.test.parent.particle.network = 'cellular';
     this.test.parent.particle.suiteInitialized = false;
+    expect(device.mailBox).to.not.be.empty;
+    const msg = device.mailBox[0].d;
+    console.log(msg);
+    const match = msg.match(/^PARTICLE_CELLULAR_FORBIDDEN_BANDS=(.+)$/);
+    expect(match).to.not.be.null;
+    forbiddenBandsValue = match[1];
 });
 
 test('5_particle_cellular_forbidden_bands_default', async function () {
-    // Flash env vars: FORBIDDEN_BANDS set to forbid bands 1 & 2 (bits 0 & 1)
-    // PREFERRED_BANDS set to all-ones so it doesn't restrict anything
+    expect(forbiddenBandsValue).to.be.a('string');
     await setEnvVarsAndFlash({
-        PARTICLE_CELLULAR_FORBIDDEN_BANDS: '3',
         PARTICLE_CELLULAR_PREFERRED_BANDS: 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+        PARTICLE_CELLULAR_FORBIDDEN_BANDS: forbiddenBandsValue,
     });
     expect(device.mailBox).to.not.be.empty;
     console.log(device.mailBox[0].d);

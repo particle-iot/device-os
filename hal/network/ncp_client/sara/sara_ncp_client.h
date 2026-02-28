@@ -29,6 +29,7 @@
 #include "static_recursive_mutex.h"
 #include "serial_stream.h"
 #include "cellular_reg_status.h"
+#include "spark_wiring_vector.h"
 
 namespace particle {
 
@@ -123,11 +124,10 @@ private:
     int waitReadyRetries_ = 0;
     bool sleepNoPPPWrite_ = false;
     bool ehsExtendedTiming_ = false;
-
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
-
     bool cgattWorkaroundApplied_ = false;
+    bool configuredPlmn_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -143,7 +143,7 @@ private:
     int checkSimCard(bool* failure = nullptr);
     int configureApn(const CellularNetworkConfig& conf);
     int clearAllUserPlmn();
-    int syncUserPlmn(char envPreferredPlmn[][7], int preferredPlmnCount);
+    int syncUserPlmn(const Vector<CString>& envPreferredPlmn);
     int configurePlmn();
     int registerNet();
     int changeBaudRate(unsigned int baud);
