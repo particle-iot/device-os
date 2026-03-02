@@ -79,7 +79,12 @@ void hal_rtc_init(void) {
     if (Am18x5::getInstance().getConfig(&config) != SYSTEM_ERROR_NONE) {
         config.version = HAL_EXRTC_API_VERSION;
         config.size = sizeof(hal_am18x5_config_t);
-        config.default_rtc = false;
+        // This was set to false during early manufacturing
+        // There is no point in NOT having the AM1805 to act
+        // as the main RTC: there is no proper RTC on nRF52840
+        // and we use just a general purpose timer, which will be
+        // inaccurate accross STOP sleep for example.
+        config.default_rtc = true;
         config.wdi_pin = RTC_WDI;
         config.int_pin = RTC_INT;
         config.i2c_if = HAL_PLATFORM_EXTERNAL_RTC_I2C;
