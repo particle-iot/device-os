@@ -323,7 +323,7 @@ void hal_rtc_init(void) {
         if (Am18x5::getInstance().isDefault()) {
             // Sync time from external RTC to internal RTC
             Am18x5::getInstance().getTime(&tv);
-            // XXX: AM1805 default time is 2000-01-01, so no need to take
+            // XXX: AM1805 default time is UNIX_TIME_20000101000000 (with 99 hundreths), so no need to take
             // care of setting it above or anything like that.
             // This might not hold true for other RTC chips.
             rtcInstance.setTime(&tv);
