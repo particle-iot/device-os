@@ -32,9 +32,6 @@
 #include "ble_hal.h"
 #include "check.h"
 #include "radio_common.h"
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
-#endif
 #include "spark_wiring_vector.h"
 #include "service_debug.h"
 

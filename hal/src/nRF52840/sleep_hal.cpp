@@ -43,9 +43,6 @@
 #include "concurrent_hal.h"
 #include "check.h"
 #include "radio_common.h"
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
-#endif
 #include "spark_wiring_vector.h"
 #include "platform_ncp.h"
 
@@ -1288,7 +1285,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
                 .tv_sec = seconds,
                 .tv_usec = 0
             };
-            CHECK(hal_exrtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, nullptr, nullptr, nullptr));
+            CHECK(hal_rtc_set_alarm(&tv, HAL_RTC_ALARM_FLAG_IN, nullptr, nullptr, nullptr));
         }
         source = source->next;
     }

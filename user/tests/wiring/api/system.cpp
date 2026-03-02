@@ -488,3 +488,59 @@ test(system_power_management) {
     API_COMPILE({ auto getSocBitPrecision = getConf.socBitPrecision(); (void)getSocBitPrecision; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
+void am18x5OscEventHandler(uint8_t event, void* context) {
+}
+
+test(system_external_rtc) {
+    SystemExternalRtcConfiguration config;
+    config.defaultRtc(true)
+          .watchdogInputPin(PIN_INVALID)
+          .interruptPin(PIN_INVALID)
+          .i2cInterface(HAL_I2C_INTERFACE1)
+          .rcFallbackOnXtalFailure(true)
+          .rcOnBatteryPowered(true)
+          .oscSource(Am18x5Oscillator::INTERNAL_RC)
+          .oscSource(Am18x5Oscillator::EXTERNAL_CRYSTAL)
+          .xtalCalibrationValue(-45)
+          .clkOutEnabled(true)
+          .clkOutFrequency(Am18x5SqwFrequency::HZ_32768)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_DISABLE)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_EVERY_1024_SEC)
+          .autoCalibration(Am18x5AutoCalibration::AUTO_CAL_EVERY_512_SEC);
+    API_COMPILE(System.setExternalRtcConfiguration(config));
+    
+    API_COMPILE(System.getExternalRtcConfiguration(config));
+    API_COMPILE({ auto defaultRtc = config.defaultRtc(); (void)defaultRtc; });
+    API_COMPILE({ auto wdiPin = config.watchdogInputPin(); (void)wdiPin; });
+    API_COMPILE({ auto intPin = config.interruptPin(); (void)intPin; });
+    API_COMPILE({ auto i2cIf = config.i2cInterface(); (void)i2cIf; });
+    API_COMPILE({ auto rcOnFailure = config.rcFallbackOnXtalFailure(); (void)rcOnFailure; });
+    API_COMPILE({ auto rcOnBattery = config.rcOnBatteryPowered(); (void)rcOnBattery; });
+    API_COMPILE({ auto oscSrc = config.oscSource(); (void)oscSrc; });
+    API_COMPILE({ auto calValue = config.xtalCalibrationValue(); (void)calValue; });
+    API_COMPILE({ auto enabled = config.clkOutEnabled(); (void)enabled; });
+    API_COMPILE({ auto freq = config.clkOutFrequency(); (void)freq; });
+    API_COMPILE({ auto autoCal = config.autoCalibration(); (void)autoCal; });
+
+    API_COMPILE({ auto isPresent = System.isExternalRtcPresent(); (void)isPresent; });
+    API_COMPILE({ auto id = System.getExternalRtcId(); (void)id; });
+
+    SystemExternalRtcSleepConfiguration sleepConfig;
+    sleepConfig.extiTriggerLatched(true)
+               .extiPolarity(Am18x5ExtiPolarity::FALLING)
+               .extiPolarity(Am18x5ExtiPolarity::RISING)
+               .duration(10000)
+               .duration(10s);
+    API_COMPILE(System.powerGatedByExternalRtc(sleepConfig));
+    API_COMPILE({ auto latched = sleepConfig.extiTriggerLatched(); (void)latched; });
+    API_COMPILE({ auto polarity = sleepConfig.extiPolarity(); (void)polarity; });
+    API_COMPILE({ auto duration = sleepConfig.duration(); (void)duration; });
+
+    API_COMPILE(System.onExternalRtcOscEvents(Am18x5OscEvent::XT_OSC_FAILURE | Am18x5OscEvent::AUTO_CAL_FAILURE, am18x5OscEventHandler, nullptr));
+    Am18x5Oscillator oscSource;
+    API_COMPILE(System.getExternalRtcOscSource(&oscSource));
+}
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

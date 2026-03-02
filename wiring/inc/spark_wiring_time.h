@@ -28,6 +28,7 @@
 
 #include "spark_wiring_string.h"
 #include "time_compat.h"
+#include "rtc_hal.h"
 #include <time.h>
 
 extern const char* TIME_FORMAT_DEFAULT;
@@ -64,6 +65,9 @@ public:
 	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
 	static float	   zone();						// retrieve the current timezone
 	static void    setTime(time_t t);			// set the given time as unix/rtc time
+
+    static int              setTimeSource(hal_rtc_source_t source); // set RTC time source
+    static hal_rtc_source_t getTimeSource();             // get RTC time source
 
   operator bool() const;
   static bool isValid();
