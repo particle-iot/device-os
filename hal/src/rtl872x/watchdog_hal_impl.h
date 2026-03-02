@@ -21,7 +21,6 @@
 #if HAL_PLATFORM_HW_WATCHDOG
 #include "check.h"
 #include "logging.h"
-#include "static_recursive_mutex.h"
 
 extern "C" {
 
@@ -30,25 +29,11 @@ extern "C" {
 void WDG_IrqClear(void);
 }
 
-class WatchdogLock {
-public:
-    WatchdogLock() {
-        mutex_.lock();
-    }
-
-    ~WatchdogLock() {
-        mutex_.unlock();
-    }
-
-private:
-    StaticRecursiveMutex mutex_;
-};
-
 /**
  * @note The watchdog will be paused during sleep modes, but not the debug mode.
  * 
  */
-class RtlWatchdog : public Watchdog {
+class RtlWatchdog : public WatchdogBase {
 public:
     int init(const hal_watchdog_config_t* config) {
         if (started()) {
@@ -122,7 +107,7 @@ public:
 
 private:
     RtlWatchdog(uint32_t mandatoryCaps, uint32_t optionalCaps, uint32_t minTimeout, uint32_t maxTimeout)
-            : Watchdog(mandatoryCaps, optionalCaps, minTimeout, maxTimeout),
+            : WatchdogBase(mandatoryCaps, optionalCaps, minTimeout, maxTimeout),
               initialized_(false) {
     }
 
@@ -170,70 +155,5 @@ private:
     static constexpr uint32_t WATCHDOG_MIN_TIMEOUT = 0;
     static constexpr uint32_t WATCHDOG_MAX_TIMEOUT = 8190000;
 };
-
-static Watchdog* getWatchdogInstance(hal_watchdog_instance_t instance) {
-    static Watchdog* watchdog[HAL_PLATFORM_HW_WATCHDOG_COUNT] = {
-        RtlWatchdog::instance(),
-        // Add pointer to new watchdog here.
-    };
-    CHECK_TRUE(instance < sizeof(watchdog) / sizeof(watchdog[0]), nullptr);
-    return watchdog[instance];
-}
-
-
-/**** Watchdog HAL APIs ****/
-
-int hal_watchdog_set_config(hal_watchdog_instance_t instance, const hal_watchdog_config_t* config, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->init(config);
-}
-
-int hal_watchdog_on_expired_callback(hal_watchdog_instance_t instance, hal_watchdog_on_expired_callback_t callback, void* context, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->setOnExpiredCallback(callback, context);
-}
-
-int hal_watchdog_start(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->start();
-}
-
-int hal_watchdog_stop(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->stop();
-}
-
-int hal_watchdog_refresh(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->refresh();
-}
-
-int hal_watchdog_get_info(hal_watchdog_instance_t instance, hal_watchdog_info_t* info, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    // Update info.state according to the status register.
-    pInstance->started();
-    return pInstance->getInfo(info);
-}
-
-// backward compatibility for nRF52
-bool hal_watchdog_reset_flagged_deprecated(void) {
-    return false;
-}
-
-void hal_watchdog_refresh_deprecated() {
-    hal_watchdog_refresh(HAL_WATCHDOG_INSTANCE1, nullptr);
-}
 
 #endif // HAL_PLATFORM_HW_WATCHDOG

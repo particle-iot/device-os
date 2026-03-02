@@ -24,15 +24,15 @@
 #include "check.h"
 #include "platform_headers.h"
 #include <time.h>
+#include "core_hal.h"
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#include "am18x5.h"
+using namespace particle;
+#endif
 
 extern "C" {
 #include "rtl8721d.h"
 }
-
-#if HAL_PLATFORM_EXTERNAL_RTC
-#include "exrtc_hal.h"
-#endif
-
 
 namespace {
 
@@ -40,42 +40,6 @@ const time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 const time_t UNIX_TIME_20000101000000 = 946684800UL;   // 2000/01/01 00:00:00
 
 const int CFG_RTC_PRIORITY = 5;
-
-#if HAL_PLATFORM_EXTERNAL_RTC
-class ExternalRtc {
-public:
-    ExternalRtc() = default;
-    ~ExternalRtc() = default;
-
-    int init() {
-        return hal_exrtc_init(nullptr);
-    }
-
-    int deinit() {
-        return SYSTEM_ERROR_NONE;
-    }
-
-    int getTime(struct timeval* tv) {
-        return hal_exrtc_get_time(tv, nullptr);
-    }
-
-    int setTime(const struct timeval* tv) {
-        return hal_exrtc_set_time(tv, nullptr);
-    }
-
-    int setAlarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context) {
-        return hal_exrtc_set_alarm(tv, flags, handler, context, nullptr);
-    }
-
-    int cancelAlarm() {
-        return hal_exrtc_cancel_alarm(nullptr);
-    }
-
-    bool isTimeValid() {
-        return hal_exrtc_time_is_valid(nullptr);
-    }
-};
-#endif
 
 class RealtekRtc {
 public:
@@ -328,11 +292,7 @@ private:
 
 retained_system struct tm RealtekRtc::timeInfo_ = {};
 
-#if HAL_PLATFORM_EXTERNAL_RTC
-ExternalRtc rtcInstance;
-#else
 RealtekRtc rtcInstance;
-#endif
 
 } // anonymous
 
@@ -342,32 +302,124 @@ void hal_rtc_init(void) {
     struct timeval tv = {};
     rtcInstance.getTime(&tv);
     if (tv.tv_sec < UNIX_TIME_20000101000000) {
-        struct timeval tv = {
+        tv = {
             .tv_sec = UNIX_TIME_20000101000000,
             .tv_usec = 0
         };
         rtcInstance.setTime(&tv);
     }
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    bool exRtcPresent = true;
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    exRtcPresent = false;
+    if (HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
+        if (Am18x5::getInstance().begin() == SYSTEM_ERROR_NONE) {
+            exRtcPresent = true;
+        }
+    }
+#endif
+    if (exRtcPresent) {
+        if (Am18x5::getInstance().isDefault()) {
+            // Sync time from external RTC to internal RTC
+            Am18x5::getInstance().getTime(&tv);
+            // XXX: AM1805 default time is 2000-01-01, so no need to take
+            // care of setting it above or anything like that.
+            // This might not hold true for other RTC chips.
+            rtcInstance.setTime(&tv);
+        } else {
+            // Sync time from internal RTC to external RTC
+            rtcInstance.getTime(&tv);
+            Am18x5::getInstance().setTime(&tv);
+        }
+    }
+#endif
 }
 
 bool hal_rtc_time_is_valid(void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().isTimeValid();
+    }
+#endif
     return rtcInstance.isTimeValid();
 }
 
 int hal_rtc_get_time(struct timeval* tv, void* reserved) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().getTime(tv);
+    }
+#endif
     return rtcInstance.getTime(tv);
 }
 
 int hal_rtc_set_time(const struct timeval* tv, void* reserved) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isPresent()) {
+        int ret = Am18x5::getInstance().setTime(tv);
+        if (Am18x5::getInstance().isDefault()) {
+            CHECK(ret);
+        }
+    }
+#endif
     return rtcInstance.setTime(tv);
 }
 
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context);
+    }
+#endif
     return rtcInstance.setAlarm(tv, flags, handler, context);
 }
 
 void hal_rtc_cancel_alarm(void) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        Am18x5::getInstance().setAlarm(false);
+        return;
+    }
+#endif
     rtcInstance.cancelAlarm();
+}
+
+int hal_rtc_set_source(hal_rtc_source_t source, void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    hal_am18x5_config_t config = {};
+    config.size = sizeof(hal_am18x5_config_t);
+    if (!Am18x5::getInstance().isPresent()) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+    CHECK(Am18x5::getInstance().getConfig(&config));
+    uint8_t currDefault = config.default_rtc;
+    if (source == HAL_RTC_SOURCE_EXTERNAL && !currDefault) {
+        config.default_rtc = true;
+    }
+    if (source == HAL_RTC_SOURCE_INTERNAL && currDefault) {
+        config.default_rtc = false;
+    }
+    if (currDefault != config.default_rtc) {
+        CHECK(Am18x5::getInstance().setConfig(&config));
+    }
+#else
+    if (source == HAL_RTC_SOURCE_EXTERNAL) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+#endif
+    return SYSTEM_ERROR_NONE;
+}
+
+hal_rtc_source_t hal_rtc_get_source(void* reserved) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (Am18x5::getInstance().isDefault()) {
+        return HAL_RTC_SOURCE_EXTERNAL;
+    }
+#endif
+    return HAL_RTC_SOURCE_INTERNAL;
 }
 
 // These are deprecated due to time_t size changes
