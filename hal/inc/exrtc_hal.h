@@ -63,7 +63,7 @@ typedef enum hal_exrtc_status_flag_t {
 
 typedef enum hal_exrtc_config_flag_t {
     HAL_EXRTC_CONFIG_NONE = 0,
-    HAL_EXRTC_CONFIG_USE_FOR_RTC = 0x01,
+    HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC = 0x01,
 } hal_exrtc_config_flag_t;
 
 typedef enum hal_exrtc_capability_t {

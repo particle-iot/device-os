@@ -48,9 +48,6 @@ bool hal_rtc_time_is_valid(void* reserved);
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
 void hal_rtc_cancel_alarm(void);
 
-int hal_rtc_set_source(hal_rtc_source_t source, void* reserved);
-hal_rtc_source_t hal_rtc_get_source(void* reserved);
-
 // These functions are deprecated and are only used for backwards compatibility
 // due to time_t size change
 time32_t hal_rtc_get_unixtime_deprecated(void);
