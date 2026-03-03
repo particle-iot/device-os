@@ -487,11 +487,47 @@ int usb_hal_init(void) {
     return 0;
 }
 
+static int usb_uart_deinit(void) {
+    if (m_usb_instance.mode != USB_MODE_CDC_UART) {
+      return 0;
+    }
+
+    usb_hal_detach();
+
+    // Ensure USBD is fully stopped and disabled
+    if (nrfx_usbd_is_enabled()) {
+      app_usbd_stop();
+    }
+    if (nrf_drv_usbd_is_enabled()) {
+      app_usbd_disable();
+    }
+
+    // Unregister SOF and remove CDC ACM class instance (must be done when USBD is disabled)
+    app_usbd_class_inst_t const * class_cdc_acm = app_usbd_cdc_acm_class_inst_get(&m_app_cdc_acm);
+    app_usbd_class_sof_unregister(class_cdc_acm);
+    app_usbd_class_remove(class_cdc_acm);
+
+#if HAL_PLATFORM_USB_CONTROL_INTERFACE
+    extern int hal_usb_control_interface_deinit(void* reserved);
+    hal_usb_control_interface_deinit(NULL);
+#endif
+
+    if (m_usb_instance.ev_group) {
+      vEventGroupDelete(m_usb_instance.ev_group);
+      m_usb_instance.ev_group = NULL;
+    }
+
+    // Reset mode so usb_uart_init() can run again
+    m_usb_instance.mode = USB_MODE_NONE;
+
+    return 0;
+}
+
 int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size) {
     uint32_t ret;
 
     if (m_usb_instance.mode == USB_MODE_CDC_UART) {
-        return 0;
+        usb_uart_deinit();
     }
 
     if (app_fifo_init(&m_usb_instance.rx_fifo, rx_buf, rx_buf_size)) {

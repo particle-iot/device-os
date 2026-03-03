@@ -360,6 +360,10 @@ extern "C" int hal_usb_control_interface_init(void* reserved) {
     return !(app_usbd_class_append(usbd_control_class_inst_get(&usbd_control_instance)) == NRF_SUCCESS);
 }
 
+extern "C" int hal_usb_control_interface_deinit(void* reserved) {
+    return !(app_usbd_class_remove(usbd_control_class_inst_get(&usbd_control_instance)) == NRF_SUCCESS);
+}
+
 void HAL_USB_Set_Vendor_Request_Callback(HAL_USB_Vendor_Request_Callback cb, void* p) {
     s_usb_vendor_request_callback = cb;
     s_usb_vendor_request_callback_ctx = p;
