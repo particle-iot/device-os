@@ -22,9 +22,8 @@
 #include "appender.h"
 #include "ncp/cellular/network_config_db.h"
 #include "ncp/cellular/cellular_network_manager.h"
-#include "cellular_stubs.h"
-// #include "ncp/cellular/cellular_ncp_client.h"
-// #include "platform_ncp.h"
+#include "ncp/cellular/cellular_ncp_client.h"
+#include "platform_ncp.h"
 #include "ncp_band_mask.h"
 #include "ncp_env_var.h" // included just to ensure it doesn't break PLATFORM_GCC
 

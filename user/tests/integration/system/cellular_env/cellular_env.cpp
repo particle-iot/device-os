@@ -30,6 +30,8 @@
 
 namespace {
 
+retained bool g_SkipTests = false;
+
 #if HAL_PLATFORM_CELLULAR
 
 enum class ModemType {
@@ -194,6 +196,17 @@ CellularBandMask makeExpectedPostEnvBandMask() {
 #if HAL_PLATFORM_CELLULAR
 
 test(1_particle_cellular_preferred_bands_init) {
+    if (TestSuite::instance()->network() != NETWORK_INTERFACE_ALL &&
+            TestSuite::instance()->network() != NETWORK_INTERFACE_CELLULAR) {
+        g_SkipTests = true;
+    } else {
+        g_SkipTests = false;
+    }
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
+
     // Just in case
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.clearEnv(false /* reset */);
@@ -216,7 +229,7 @@ test(1_particle_cellular_preferred_bands_init) {
 }
 
 test(2_particle_cellular_preferred_bands_default) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -253,7 +266,7 @@ test(2_particle_cellular_preferred_bands_default) {
 }
 
 test(3_particle_cellular_preferred_bands_set) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -293,7 +306,7 @@ test(3_particle_cellular_preferred_bands_set) {
 }
 
 test(4_particle_cellular_forbidden_bands_init) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -317,7 +330,7 @@ test(4_particle_cellular_forbidden_bands_init) {
 }
 
 test(5_particle_cellular_forbidden_bands_default) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -357,7 +370,7 @@ test(5_particle_cellular_forbidden_bands_default) {
 }
 
 test(6_particle_cellular_forbidden_bands_set) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -398,7 +411,7 @@ test(6_particle_cellular_forbidden_bands_set) {
 
 test(7_particle_cellular_preferred_plmn_init) {
     int ncpId = getNcpId();
-    if (getModemType() == ModemType::UNSUPPORTED ||
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED ||
             ncpId == PLATFORM_NCP_SARA_R410 ||
             ncpId == PLATFORM_NCP_QUECTEL_BG96) {
         skip();
@@ -413,7 +426,7 @@ test(7_particle_cellular_preferred_plmn_init) {
 
 test(8_particle_cellular_preferred_plmn_default) {
     int ncpId = getNcpId();
-    if (getModemType() == ModemType::UNSUPPORTED ||
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED ||
             ncpId == PLATFORM_NCP_SARA_R410 ||
             ncpId == PLATFORM_NCP_QUECTEL_BG96) {
         skip();
@@ -446,7 +459,7 @@ test(8_particle_cellular_preferred_plmn_default) {
 
 test(9_particle_cellular_preferred_plmn_set) {
     int ncpId = getNcpId();
-    if (getModemType() == ModemType::UNSUPPORTED ||
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED ||
             ncpId == PLATFORM_NCP_SARA_R410 ||
             ncpId == PLATFORM_NCP_QUECTEL_BG96) {
         skip();
@@ -479,7 +492,7 @@ test(9_particle_cellular_preferred_plmn_set) {
 }
 
 test(10_particle_cellular_preferred_plmn_cleanup) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -490,7 +503,7 @@ test(10_particle_cellular_preferred_plmn_cleanup) {
 }
 
 test(11_particle_cellular_env_vars_cleared_verify_defaults) {
-    if (getModemType() == ModemType::UNSUPPORTED) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
     }
@@ -545,6 +558,11 @@ test(11_particle_cellular_env_vars_cleared_verify_defaults) {
 #endif // HAL_PLATFORM_CELLULAR
 
 test(99_cleanup) {
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
+
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
