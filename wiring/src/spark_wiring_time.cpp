@@ -286,14 +286,6 @@ void TimeClass::setTime(time_t t)
     }
 }
 
-int TimeClass::setTimeSource(hal_rtc_source_t source) {
-    return hal_rtc_set_source(source, nullptr);
-}
-
-hal_rtc_source_t TimeClass::getTimeSource() {
-    return hal_rtc_get_source(nullptr);
-}
-
 /* return string representation for the given time */
 String TimeClass::timeStr(time_t t)
 {
