@@ -39,11 +39,13 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "stream_util.h"
 
 #include "spark_wiring_interrupts.h"
-#include "spark_wiring_vector.h"
 
 #include <algorithm>
 #include <limits>
 #include <lwip/memp.h>
+
+#include "ncp_env_var.h"
+#include "ncp_band_mask.h"
 
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
@@ -89,7 +91,7 @@ inline system_tick_t millis() {
 }
 
 const auto QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE = 115200;
-const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE = 460800;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_M5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
@@ -899,7 +901,7 @@ int QuectelNcpClient::waitAtResponse(unsigned int timeout, unsigned int period) 
 }
 
 int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period) {
-    const auto t1 = HAL_Timer_Get_Milli_Seconds();
+    const auto t1 = millis();
     for (;;) {
         const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
@@ -908,7 +910,7 @@ int QuectelNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, uns
         if (r == AtResponse::OK) {
             return SYSTEM_ERROR_NONE;
         }
-        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        const auto t2 = millis();
         if (t2 - t1 >= timeout) {
             break;
         }
@@ -1018,6 +1020,229 @@ int QuectelNcpClient::checkNetConfForImsi() {
         HAL_Delay_Milliseconds(100*imsiCount);
     } while (imsiCount < IMSI_MAX_RETRY_CNT);
     return SYSTEM_ERROR_TIMEOUT;
+}
+
+int QuectelNcpClient::setupBands() {
+
+    CellularBandMask defaultBands(
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, false /* upper */, false /* legacy */),
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+    );
+    CellularBandMask envPreferredBands;
+    CellularBandMask envForbiddenBands;
+    getEnvBands("PARTICLE_CELLULAR_PREFERRED_BANDS", envPreferredBands);
+    getEnvBands("PARTICLE_CELLULAR_FORBIDDEN_BANDS", envForbiddenBands);
+
+    if (!envPreferredBands.isEmpty() || !envForbiddenBands.isEmpty()) {
+        if (envPreferredBands.isEmpty()) {
+            envPreferredBands = defaultBands;
+        }
+        envPreferredBands = (envPreferredBands & defaultBands) & ~envForbiddenBands;
+    } else {
+        envPreferredBands = defaultBands;
+    }
+
+    // Log bandmask, and change bandmask if necessary
+    auto respBand = parser_.sendCommand("AT+QCFG=\"band\"");
+    char qbandGsmStr[4+1] = {};
+    char qbandLteStr[32+1] = {};
+    char qbandCatNbStr[32+1] = {};
+    // BG95_M5: +QCFG: "band",0xf,0x100002000000000f0e189f,0x10004200000000090e189f <GSM>,<CAT-M1-1-128>,<CAT-NB-1-128>
+    auto retBand = CHECK_PARSER(respBand.scanf("+QCFG: \"band\",0x%4[^,],0x%32[^,],0x%32[^,]", qbandGsmStr, qbandLteStr, qbandCatNbStr));
+    CHECK_PARSER_OK(respBand.readResult());
+
+    if (retBand == 3) {
+        CellularBandMask bandsCurrent(qbandLteStr);
+
+        if (bandsCurrent != envPreferredBands) {
+            // Apply band changes immediately, no reboot required.
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, true /* check */));
+            CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr));
+            CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
+        }
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::clearAllUserPlmn() {
+    Vector<unsigned> cpolIdxs;
+    auto resp = parser_.sendCommand("AT+CPOL?");
+
+    while (resp.hasNextLine()) {
+        unsigned curIndex = 0;
+        auto r = resp.scanf("+CPOL: %u", &curIndex);
+        if (r == 1 && curIndex > 0) { // Ignore scanf() errors
+            CHECK_TRUE(cpolIdxs.append(curIndex), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
+    CHECK_PARSER_OK(resp.readResult());
+
+    int lastError = AtResponse::OK;
+    for (int index : cpolIdxs) {
+        auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%d", index));
+        if (r != AtResponse::OK) {
+            lastError = r;
+        }
+    }
+    CHECK_PARSER_OK(lastError);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::parseEfSize(unsigned int fid) {
+    char fcpHexStr[128] = {};
+    int sw1, sw2;
+    auto resp = parser_.sendCommand("AT+CRSM=192,%u,0,0,30", fid);
+    int r = CHECK_PARSER(resp.scanf("+CRSM: %d,%d,\"%127[0-9A-Fa-f]\"", &sw1, &sw2, fcpHexStr));
+    CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 3, SYSTEM_ERROR_UNKNOWN);
+
+    // Example Decoding
+    // ----------------
+    //               HD|                                             TG|LN|HI|LO
+    // +CRSM: 144,0,"62|1C8202412183026F7EA5038001718A01058B036F0608|80|02|00|0B|880158"
+    //
+    // convert HILO to decimal(11), and add 11 x 0xFF
+    // AT+CRSM=214,28542,0,0,11,"FFFFFFFFFFFFFFFFFFFFFF"
+
+    // Validate FCP template header (tag 0x62)
+    CHECK_TRUE(strncmp(fcpHexStr, "62", 2) == 0, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+    // Find top-level tag "8002" and grab the two size bytes
+    const char* tag = strstr(fcpHexStr, "8002");
+    CHECK_TRUE(tag != nullptr, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    unsigned int hi, lo;
+    CHECK_TRUE(::sscanf(tag + 4, "%2x%2x", &hi, &lo) == 2, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    unsigned int efSize = (hi << 8) | lo;
+    // We don't expect this to be larger than 18, but we're allowing for expansion in case of a different future SIM
+    CHECK_TRUE(efSize > 0 && efSize <= 64, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+    return efSize;
+}
+
+int QuectelNcpClient::readAndClearEfByFid(unsigned int fid) {
+    int efSize = parseEfSize(fid);
+    CHECK(efSize);
+
+    // Clear table by filling with 0xFF
+    const size_t hexLen = efSize * 2;
+    CHECK_TRUE(efSize <= 64, SYSTEM_ERROR_INTERNAL);
+    char ffBuf[128 + 1];
+    memset(ffBuf, 'F', hexLen);
+    ffBuf[hexLen] = '\0';
+    CHECK_PARSER(parser_.execCommand("AT+CRSM=214,%u,0,0,%u,\"%s\"", fid, efSize, ffBuf));
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::syncUserPlmn(const Vector<CString>& envPreferredPlmn) {
+    Vector<unsigned int> cpolIdxs;
+    Vector<CString> cpolPlmns;
+
+    auto resp = parser_.sendCommand("AT+CPOL?");
+    while (resp.hasNextLine()) {
+        unsigned curIndex = 0;
+        char curPlmn[6+1] = {};
+        auto r = resp.scanf("+CPOL: %u,%*u,\"%6[0-9]\",%*d,%*d,%*d,%*d,", &curIndex, curPlmn);
+        if (r == 2 && curIndex > 0) {
+            CHECK_TRUE(cpolIdxs.append(curIndex), SYSTEM_ERROR_NO_MEMORY);
+            CString plmnCopy(curPlmn);
+            CHECK_TRUE(plmnCopy, SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(cpolPlmns.append(std::move(plmnCopy)), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
+    CHECK_PARSER_OK(resp.readResult());
+
+    bool needsUpdate = false;
+    if (cpolIdxs.size() != envPreferredPlmn.size()) {
+        needsUpdate = true;
+    } else {
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
+            if (i >= cpolPlmns.size() ||
+                strcmp(envPreferredPlmn[i], cpolPlmns[i]) != 0) {
+                needsUpdate = true;
+                break;
+            }
+        }
+    }
+
+    if (needsUpdate) {
+        CellularSignalQuality qual;
+        queryAndParseAtCops(&qual);
+        bool needsReselection = false;
+        if (cgi_.mobile_country_code > 0 && cgi_.mobile_network_code > 0) {
+            char currentPlmn[10+1] = {};
+            if (CGI_FLAG_TWO_DIGIT_MNC & cgi_.cgi_flags) {
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%02u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+            } else {
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%03u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+            }
+            for (unsigned i = 0; i < MAX_CELLULAR_PREFFERED_PLMN_ENTRIES; i++) {
+                if (strlen(envPreferredPlmn[i]) > 0) {
+                    if (strcmp(currentPlmn, envPreferredPlmn[i]) != 0) {
+                        needsReselection = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        CHECK(clearAllUserPlmn());
+
+        int lastError = AtResponse::OK;
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
+            if (strlen(envPreferredPlmn[i]) > 0) {
+                auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%u,2,\"%s\",0,0,0,1", i+1, (const char*)envPreferredPlmn[i]));
+                if (r != AtResponse::OK) {
+                    lastError = r;
+                }
+            }
+        }
+        CHECK_PARSER_OK(lastError);
+
+        if (needsReselection) {
+            CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=2,2")); // detach
+
+            // Clear RPLMN tables so last registered PLMN is not tried again first, will try UPLMN table (AT+CPOL)
+            readAndClearEfByFid(28542); // CS  (GSM) location info (EF_LOCI, 6F7E)
+            readAndClearEfByFid(28531); // PS (GPRS) location info (EF_PSLOCI, 6F73)
+            readAndClearEfByFid(28643); // EPS (LTE) location info (EF_EPSLOCI, 6FE3)
+            readAndClearEfByFid(28539); // Forbidden PLMN list (EF_FPLMN, 6F7B)
+
+            CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2")); // re-selection
+        }
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::configurePlmn() {
+    // apply changes after registration, or CPOL commands will error
+    if (configuredPlmn_ || (connectionState() != NcpConnectionState::CONNECTED)) {
+        return SYSTEM_ERROR_NONE;
+    }
+    configuredPlmn_ = true;
+
+    auto ncp_id = ncpId();
+    if (ncp_id != PLATFORM_NCP_QUECTEL_BG95_M5 &&
+            ncp_id != PLATFORM_NCP_QUECTEL_EG91_NAX &&
+            ncp_id != PLATFORM_NCP_QUECTEL_EG91_EX &&
+            ncp_id != PLATFORM_NCP_QUECTEL_EG91_E) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    Vector<CString> envPreferredPlmn;
+    getEnvPreferredPlmn("PARTICLE_CELLULAR_PREFERRED_PLMN", envPreferredPlmn);
+
+    if (envPreferredPlmn.size() == 0) {
+        return clearAllUserPlmn();
+    }
+
+    parser_.execCommand("AT+CPOL=,2"); // set format to numeric
+    syncUserPlmn(envPreferredPlmn);
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::selectSimCard() {
@@ -1146,6 +1371,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         setPolicymanServiceMode(CellularPolicymanServiceMode::FULL_SERVICE, true /* check */);
     }
 
+    auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
 
@@ -1165,7 +1391,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=2,2"));
             CHECK(waitAtResponse(10000));
         }
-        auto runtimeBaudrate = getRuntimeBaudrate();
+        runtimeBaudrate = getRuntimeBaudrate();
         CHECK(changeBaudRate(runtimeBaudrate));
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
@@ -1194,7 +1420,18 @@ int QuectelNcpClient::initReady(ModemState state) {
         if (isQuecCat1Device()) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
+    }
 
+    configuredPlmn_ = false;
+    if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX ||
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+        CHECK(setupBands());
+    }
+
+    if (state != ModemState::MuxerAtChannel) {
         // Send AT+CMUX and initialize multiplexer
         int portspeed;
         switch (runtimeBaudrate) {
@@ -1209,9 +1446,10 @@ int QuectelNcpClient::initReady(ModemState state) {
             default:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
+
         // XXX: AT+CMUX=? says portspeed value range is (1-7), but 8 is required for it to work on BG95-M5
         r = CHECK_PARSER(parser_.execCommand("AT+CMUX=0,0,%d,%u,,,,,", portspeed, QUECTEL_NCP_MAX_MUXER_FRAME_SIZE));
-        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+        CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
 
         // Initialize muxer
         CHECK(initMuxer());
@@ -1444,7 +1682,7 @@ int QuectelNcpClient::setPolicymanServiceMode(CellularPolicymanServiceMode mode,
 int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
     // IMPORTANT: Set modem full functionality!
     // Otherwise we won't be able to query ICCID/IMSI
-    CHECK_PARSER_OK(parser_.execCommand("AT+CFUN=1,0"));
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
 
     netConf_ = conf;
     if (!netConf_.isValid()) {
@@ -1466,26 +1704,80 @@ int QuectelNcpClient::configureApn(const CellularNetworkConfig& conf) {
         }
     }
 
+    // Speed up connection times by not setting the APN if already set, this value is saved in NVM.
+    //
+    char cgdcontApnVal[64] = {}; // APN max length is 63 octets + 1 for \0
+    char cgdcontIpVal[12] = {};
+    char cgdcontFmt[50] = {};
+    int rCgdcont = 0;
+    bool setApn = true; // default to setting the APN
+    auto apnLength = strlen(netConf_.hasApn() ? netConf_.apn() : "");
+
     // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
     for (int i = 0; i < CGDCONT_ATTEMPTS; i++) {
-        // FIXME: for now IPv4 context only
-        auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
-                QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
-                netConf_.hasApn() ? netConf_.apn() : "");
-        const int r = CHECK_PARSER(resp.readResult());
+        auto respCgdcont = parser_.sendCommand("AT+CGDCONT?");
+        if (apnLength) {  // %0s not allowed
+            // Create the format string, done this way %ns because some APNs contain '.'
+            //      "+CGDCONT: 1,\"%[^\"]\",\"%ns%*[^\n]"
+            // Will match "IP", and "apnstr" or ""apn.str" from the following:
+            //      "+CGDCONT: 1,"IP","apnstr","0.0.0.0",0,0,0,2,0,0,0,0,0,0,0"
+            //      "+CGDCONT: 1,"IP","apnstr.mnc123.mcc456.gprs","100.123.456.789",0,0,0,2,0,0,0,0,0,0,0\r\n"
+            //      "+CGDCONT: 1,"IP","apn.str.mnc123.mcc456.gprs","100.123.456.789",0,0,0,2,0,0,0,0,0,0,0\r\n"
+            snprintf(cgdcontFmt, sizeof(cgdcontFmt), "+CGDCONT: %d,\"%%[^\"]\",\"%%%us%%*[^\n]", QUECTEL_DEFAULT_CID, apnLength);
+            while (respCgdcont.hasNextLine()) {
+                rCgdcont = respCgdcont.scanf(cgdcontFmt, cgdcontIpVal, cgdcontApnVal);
+                if (rCgdcont == 2) { // Ignore scanf() errors
+                    break;
+                }
+            }
+            // Set the APN if any are true:
+            // - We don't match anything from the scanf()
+            // - cgdcontApnVal does not match expected APN
+            // - No APN is set or explicitly blank "" APN (apnLength == 0)
+            // - cgdcontIpVal is not "IP".
+            if (cgdcontApnVal[0] != '\0' &&
+                    strncmp(cgdcontApnVal, netConf_.hasApn() ? netConf_.apn() : "", sizeof(cgdcontApnVal)) == 0 &&
+                    strncmp(cgdcontIpVal, "IP", sizeof(cgdcontIpVal)) == 0) {
+                setApn = false;
+            }
+        }
+        const int r = CHECK_PARSER(respCgdcont.readResult());
         if (r == AtResponse::OK) {
-            return SYSTEM_ERROR_NONE;
+            break;
         }
         HAL_Delay_Milliseconds(200);
     }
-    return SYSTEM_ERROR_AT_NOT_OK;
+
+    // LOG(INFO,"setApn=%d, IpVal=%s, ApnVal=%s, Fmt=%s, hasApn()=%d, apn()=%s, strncmp=%d",
+    //         setApn, cgdcontIpVal, cgdcontApnVal, cgdcontFmt, netConf_.hasApn(),
+    //         netConf_.apn(), strncmp(cgdcontApnVal, netConf_.hasApn() ? netConf_.apn() : "", sizeof(cgdcontApnVal)) != 0);
+    if (setApn) {
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, true /* check */));
+        // XXX: we've seen CGDCONT fail on cold boot, retrying here a few times
+        for (int i = 0; i < CGDCONT_ATTEMPTS; i++) {
+            // FIXME: for now IPv4 context only
+            auto resp = parser_.sendCommand("AT+CGDCONT=%d,\"%s\",\"%s\"",
+                    QUECTEL_DEFAULT_CID, QUECTEL_DEFAULT_PDP_TYPE,
+                    netConf_.hasApn() ? netConf_.apn() : "");
+            const int r = CHECK_PARSER(resp.readResult());
+            if (r == AtResponse::OK) {
+                return SYSTEM_ERROR_NONE;
+            }
+            HAL_Delay_Milliseconds(200);
+        }
+
+        return SYSTEM_ERROR_AT_NOT_OK;
+    }
+
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::registerNet() {
     int r = 0;
     // Set modem full functionality
-    r = CHECK_PARSER(parser_.execCommand("AT+CFUN=1,0"));
+    r = CHECK_PARSER(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+
 
     resetRegistrationState();
 
@@ -2016,6 +2308,7 @@ int QuectelNcpClient::processEventsImpl() {
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
+    configurePlmn(); // ignore errors
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }
@@ -2110,8 +2403,8 @@ int QuectelNcpClient::modemInit() const {
 }
 
 bool QuectelNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
-    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+    system_tick_t now = millis();
+    while (millis() - now < timeout) {
         if (modemPowerState() == onOff) {
             if (onOff) {
                 ncpPowerState(NcpPowerState::ON);
@@ -2228,11 +2521,11 @@ int QuectelNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT+QPOWD command is not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        system_tick_t now = millis();
         LOG(TRACE, "Waiting the modem to be turned off...");
         // Verify that the module was powered down by checking the VINT pin up to 30 sec
         if (waitModemPowerState(0, 30000)) {
-            LOG(TRACE, "It takes %d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+            LOG(TRACE, "It takes %d ms to power off the modem.", millis() - now);
         } else {
             LOG(ERROR, "Failed to power off modem using AT command");
         }

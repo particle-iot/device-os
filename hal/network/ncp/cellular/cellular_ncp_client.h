@@ -17,14 +17,18 @@
 
 #pragma once
 
+#include "platforms.h"
+#if PLATFORM_ID != PLATFORM_GCC
 #include "ncp_client.h"
 #include "cellular_network_manager.h"
 #include "cellular_hal_cellular_global_identity.h"
 #include "timer_hal.h"
 #include "underlying_type.h"
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 namespace particle {
 
+#if PLATFORM_ID != PLATFORM_GCC
 struct CellularNcpEvent: NcpEvent {
     enum Type {
         AUTH = CUSTOM_EVENT_TYPE_BASE
@@ -67,6 +71,7 @@ enum class UbloxSaraUmnoprof {
     STANDARD_GLOBAL  = 90,
     STANDARD_EUROPE  = 100,
 };
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 enum class CellularAccessTechnology {
     NONE = -1,
@@ -82,6 +87,7 @@ enum class CellularAccessTechnology {
     LTE_NB_IOT = 9
 };
 
+#if PLATFORM_ID != PLATFORM_GCC
 enum class CellularPowerSavingValue {
     NONE = -1,
     UPSV_DISABLED = 0,
@@ -281,5 +287,6 @@ inline CellularQualityUnits CellularSignalQuality::qualityUnits() const {
         }
     }
 }
+#endif // PLATFORM_ID != PLATFORM_GCC
 
 } // particle

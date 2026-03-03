@@ -17,8 +17,11 @@
 
 #pragma once
 
+#include "platforms.h"
+#if PLATFORM_ID != PLATFORM_GCC
 #include "module_info.h"
 #include "ota_flash_hal.h"
+#endif // PLATFORM_ID != PLATFORM_GCC
 #include "hal_platform.h"
 
 #ifdef __cplusplus

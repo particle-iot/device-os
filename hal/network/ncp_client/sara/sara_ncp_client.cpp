@@ -49,6 +49,9 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "system_cache.h"
 #include "call_once.h"
 
+#include "ncp_env_var.h"
+#include "ncp_band_mask.h"
+
 #undef LOG_COMPILE_TIME_LEVEL
 #define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
@@ -106,9 +109,6 @@ const auto UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT = 5000; // milliseconds
 const auto UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED = 0; // disables muxer keep alive
 const auto UBLOX_NCP_KEEPALIVE_PERIOD_R510 = UBLOX_NCP_KEEPALIVE_PERIOD_DISABLED;
 const auto UBLOX_NCP_KEEPALIVE_MAX_MISSED = 5;
-
-// const uint32_t UBLOX_NCP_BANDMASK_01_64_R510 = 0x0B0E189F;  // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,28 [all default enabled]
-const uint8_t UBLOX_NCP_BANDMASK_65_128_R510 = 0x40;        // Band 66,85 enabled, 71 disabled [used as a mask]
 
 const auto UBLOX_NCP_R5_EHS_STD_CLK_T1_MS = 23000; // Standard EHS timing
 const auto UBLOX_NCP_R5_EHS_STD_CLK_T2_MS = 2000;  //  |
@@ -532,12 +532,12 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     CHECK_FALSE(muxerDataStream_->enabled(), SYSTEM_ERROR_INVALID_STATE);
 
     if (ncpId() == PLATFORM_NCP_SARA_R410 && fwVersion_ <= UBLOX_NCP_R4_APP_FW_VERSION_NO_HW_FLOW_CONTROL_MAX) {
-        if ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
-            const int windowCount = ((HAL_Timer_Get_Milli_Seconds() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
+        if ((millis() - lastWindow_) >= UBLOX_NCP_R4_WINDOW_SIZE_MS) {
+            const int windowCount = ((millis() - lastWindow_) / UBLOX_NCP_R4_WINDOW_SIZE_MS);
             lastWindow_ += UBLOX_NCP_R4_WINDOW_SIZE_MS * windowCount;
             bytesInWindow_ = std::max(0, (int)bytesInWindow_ - (int)UBLOX_NCP_R4_BYTES_PER_WINDOW_THRESHOLD * windowCount);
             if (bytesInWindow_ == 0) {
-                lastWindow_ = HAL_Timer_Get_Milli_Seconds();
+                lastWindow_ = millis();
             }
         }
 
@@ -971,7 +971,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
         timeout = UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_TIMEOUT;
         period = UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD;
     }
-    auto t1 = HAL_Timer_Get_Milli_Seconds();
+    auto t1 = millis();
     for (;;) {
         const int r = parser.execCommand(period, "AT");
         if (r < 0 && r != SYSTEM_ERROR_TIMEOUT) {
@@ -983,7 +983,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
         // R510 Firmware Update
         if (ncpId() == PLATFORM_NCP_SARA_R510) {
             if (firmwareInstallRespCodeR510_ != lastFirmwareInstallRespCodeR510_) {
-                t1 = HAL_Timer_Get_Milli_Seconds(); // If update is progressing, reset AT/OK wait timeout
+                t1 = millis(); // If update is progressing, reset AT/OK wait timeout
                 lastFirmwareInstallRespCodeR510_ = firmwareInstallRespCodeR510_;
             }
             if (firmwareInstallRespCodeR510_ == UUFWINSTALL_COMPLETE) {
@@ -993,7 +993,7 @@ int SaraNcpClient::waitAtResponse(AtParser& parser, unsigned int timeout, unsign
                 break; // Install complete
             }
         }
-        const auto t2 = HAL_Timer_Get_Milli_Seconds();
+        const auto t2 = millis();
         if (t2 - t1 >= timeout) {
             break;
         }
@@ -1107,6 +1107,10 @@ int SaraNcpClient::checkNetConfForImsi() {
 }
 
 int SaraNcpClient::selectNetworkProf(ModemState& state) {
+    if (ncpId() != PLATFORM_NCP_SARA_R410 && ncpId() != PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE;
+    }
+
     int resetCount = 0;
     bool disableLowPowerModes = false;
     // Note: Not failing on AT error on ICCID/IMSI lookup since SIMs have shown strange edge cases
@@ -1128,7 +1132,8 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         CHECK(checkNetConfForImsi());
     }
 
-    if (ncpId() == PLATFORM_NCP_SARA_R510) {
+    const bool isR410 = (ncpId() == PLATFORM_NCP_SARA_R410);
+    if (!isR410) {
         // AT+CEMODE? query can take up to 24 seconds to poll without CellularFunctionality::MINIMUM first, and we don't
         // want to be dropping to CellularFunctionality::MINIMUM every boot / connection.
         // Check cached value to see if we need to change CEMODE=0 (PS_ONLY).
@@ -1141,6 +1146,29 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             CHECK(waitAtResponseFromPowerOn(state));
             // NOTE: may need to be in minimum functionality for setting umnoprof, let configureApn() set it back to full
         }
+    }
+
+    bool useEnvBands = false;
+    CellularBandMask defaultBands(
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, false /* upper */, isR410 /* legacy */),
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+    );
+    CellularBandMask fullBands(
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, false /* upper */, false /* legacy */),
+        getBandMaskByNcpIdForRAT(ncpId(), CellularAccessTechnology::LTE_CAT_M1, true /* upper */, false /* legacy */)
+    );
+    CellularBandMask envPreferredBands;
+    CellularBandMask envForbiddenBands;
+    getEnvBands("PARTICLE_CELLULAR_PREFERRED_BANDS", envPreferredBands);
+    getEnvBands("PARTICLE_CELLULAR_FORBIDDEN_BANDS", envForbiddenBands);
+    if (!envPreferredBands.isEmpty() || !envForbiddenBands.isEmpty()) {
+        if (envPreferredBands.isEmpty()) {
+            envPreferredBands = defaultBands;
+        }
+        envPreferredBands = (envPreferredBands & fullBands) & ~envForbiddenBands;
+        useEnvBands = true;
+    } else {
+        envPreferredBands = defaultBands;
     }
 
     bool reset = false;
@@ -1156,7 +1184,7 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         // Let's try to avoid that with a soft reset, before retrying.
         auto result = respUmnoprof.readResult();
         if (result != AtResponse::OK) {
-            if (ncpId() == PLATFORM_NCP_SARA_R510) {
+            if (!isR410) { // R510
                 CHECK_PARSER_OK(parser_.execCommand("AT+UFACTORY=2,2"));
             }
             modemSoftPowerOff();
@@ -1164,18 +1192,27 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
         }
         // First time setup, or switching between official SIM on wrong profile?
         if (r == 1 && (
-                (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT) ||
-                (ncpId() == PLATFORM_NCP_SARA_R410 &&
+                (useEnvBands && (static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_GLOBAL &&
+                    static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE)) ||
+                (!useEnvBands && static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::SW_DEFAULT) ||
+                (!useEnvBands && isR410 &&
                     ((netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_EUROPE) ||
                         (netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT))) ||
-                (ncpId() == PLATFORM_NCP_SARA_R510 &&
+                (!useEnvBands && !isR410 &&
                     ((netConf_.netProv() == CellularNetworkProvider::TWILIO && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::STANDARD_GLOBAL) ||
                         (netConf_.netProv() == CellularNetworkProvider::KORE_ATT && static_cast<UbloxSaraUmnoprof>(curProf) != UbloxSaraUmnoprof::ATT)))
                 )) {
             int newProf = static_cast<int>(UbloxSaraUmnoprof::SIM_SELECT);
 
-            // TWILIO Super SIM
-            if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
+            if (useEnvBands) {
+                // Must be set to UbloxSaraUmnoprof::STANDARD_GLOBAL or UbloxSaraUmnoprof::STANDARD_EUROPE to change bands
+                if (isR410) {
+                    newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
+                } else { // R510
+                    newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_GLOBAL);
+                }
+            } else if (netConf_.netProv() == CellularNetworkProvider::TWILIO) {
+                // TWILIO Super SIM
                 // _oldFirmwarePresent: u-blox firmware 05.06* and 05.07* does not have
                 // UMNOPROF=100 available. Default to UMNOPROF=0 in that case.
                 if (oldFirmwarePresent_) {
@@ -1184,14 +1221,13 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
                     } else {
                         newProf = static_cast<int>(UbloxSaraUmnoprof::SW_DEFAULT);
                     }
-                } else if (ncpId() == PLATFORM_NCP_SARA_R410) {
+                } else if (isR410) {
                     newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_EUROPE);
                 } else { // R510
                     newProf = static_cast<int>(UbloxSaraUmnoprof::STANDARD_GLOBAL);
                 }
-            }
-            // KORE AT&T or 3rd Party SIM
-            else {
+            } else {
+                // KORE AT&T or 3rd Party SIM
                 // Hard code ATT for R410 05.12 firmware versions or R510 Kore AT&T SIMs
                 if (fwVersion_ == UBLOX_NCP_R4_APP_FW_VERSION_0512 || ncpId() == PLATFORM_NCP_SARA_R510) {
                     if (netConf_.netProv() == CellularNetworkProvider::KORE_ATT) {
@@ -1212,45 +1248,35 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             // Not checking for error since we will reset either way
             reset = true;
             disableLowPowerModes = true;
-        } else if (r == 1 && (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_EUROPE ||
-                static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_GLOBAL)) {
+        } else if (r == 1 &&
+                    (static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_EUROPE ||
+                    static_cast<UbloxSaraUmnoprof>(curProf) == UbloxSaraUmnoprof::STANDARD_GLOBAL)
+                    ) {
             // Log bandmask, and change bandmask if necessary
             auto respBand = parser_.sendCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK?");
-            uint64_t uint64Uband01_64Current = 0;
-            uint64_t uint64Uband65_128Current = 0;
-            // uint64_t uint64Uband01_64Desired = 0;
-            uint64_t uint64Uband65_128Desired = 0;
             char uband01_64Str[24] = {};
             char uband65_128Str[24] = {};
             // R510: +UBANDMASK: 0,185473183,1048642 <RAT>,<CAT-M1-1-64>,<CAT-M1-65-128>
             // R410: +UBANDMASK: 0,524420,1,524420 <RAT>,<CAT-M1>,<RAT>,<CAT-NB> ... CAT-NB not supported by SARA-R410M-01B
             // Technically the following scanf is only correct for R510, but since we ignore uband65_128Str for R410 it works fine
-            auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,],%23[^,]", uband01_64Str,uband65_128Str));
+            auto retBand = CHECK_PARSER(respBand.scanf("+UBANDMASK: 0,%23[^,],%23[^,]", uband01_64Str, uband65_128Str));
             CHECK_PARSER_OK(respBand.readResult());
-            char* pEnd1 = &uband01_64Str[0];
-            char* pEnd2 = &uband65_128Str[0];
-            uint64Uband01_64Current = strtoull(uband01_64Str, &pEnd1, 10);
-            uint64Uband65_128Current = strtoull(uband65_128Str, &pEnd2, 10);
-            if (netConf_.netProv() == CellularNetworkProvider::TWILIO && retBand == 2) {
-                // Enable Cat-M1 bands 2,4,5,12 (AT&T), 13 (VZW) = 6170
-                if (ncpId() == PLATFORM_NCP_SARA_R410) {
-                    if (pEnd1 - uband01_64Str > 0 && uint64Uband01_64Current != 6170) {
-                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,6170");
-                        // Not checking for error since we will reset either way
-                        reset = true;
-                        disableLowPowerModes = false;
+            CellularBandMask bandsCurrent;
+            if (isR410) {
+                bandsCurrent.setFromDecimalStrings(uband01_64Str);
+            } else { // R510
+                bandsCurrent.setFromDecimalStrings(uband01_64Str, uband65_128Str);
+            }
+            if (retBand == 2) {
+                if (bandsCurrent != envPreferredBands) {
+                    if (isR410) {
+                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,%llu", envPreferredBands.low());
+                    } else { // R510
+                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,%llu,%llu", envPreferredBands.low(), envPreferredBands.high());
                     }
-                }
-                // When modem is initially set to UMNOPROF=90, all bands will be enabled
-                // Allow any combination of Cat-M1 bands, but disable band 71
-                else if (ncpId() == PLATFORM_NCP_SARA_R510) {
-                    uint64Uband65_128Desired = uint64Uband65_128Current & ~UBLOX_NCP_BANDMASK_65_128_R510;
-                    if (pEnd2 - uband65_128Str > 0 && uint64Uband65_128Current != uint64Uband65_128Desired) {
-                        parser_.execCommand(UBLOX_UBANDMASK_TIMEOUT, "AT+UBANDMASK=0,%lu,%lu",(uint32_t)uint64Uband01_64Current,(uint32_t)uint64Uband65_128Desired);
-                        // Not checking for error since we will reset either way
-                        reset = true;
-                        disableLowPowerModes = false;
-                    }
+                    // Not checking for error since we will reset either way
+                    reset = true;
+                    disableLowPowerModes = false;
                 }
             }
         }
@@ -1268,6 +1294,138 @@ int SaraNcpClient::selectNetworkProf(ModemState& state) {
             }
         }
     } while (reset && ++resetCount < 4); // Note: Twilio SIMs could take more than 2 tries in some error cases, others <= 2
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::clearAllUserPlmn() {
+    Vector<unsigned> cpolIdxs;
+    auto resp = parser_.sendCommand("AT+CPOL?");
+
+    while (resp.hasNextLine()) {
+        unsigned curIndex = 0;
+        auto r = resp.scanf("+CPOL: %u", &curIndex);
+        if (r == 1 && curIndex > 0) { // Ignore scanf() errors
+            CHECK_TRUE(cpolIdxs.append(curIndex), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
+    CHECK_PARSER_OK(resp.readResult());
+
+    int lastError = AtResponse::OK;
+    for (int index : cpolIdxs) {
+        auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%d", index));
+        if (r != AtResponse::OK) {
+            lastError = r;
+        }
+    }
+    CHECK_PARSER_OK(lastError);
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::syncUserPlmn(const Vector<CString>& envPreferredPlmn) {
+    Vector<unsigned int> cpolIdxs;
+    Vector<CString> cpolPlmns;
+
+    auto resp = parser_.sendCommand("AT+CPLS?");
+    unsigned int cplsVal = 0;
+    int r = CHECK_PARSER(resp.scanf("+CPLS: %u", &cplsVal));
+    CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    if (cplsVal != 0) { // factory default 0, ensures UPLMN is used first when set by AT+CPOL
+        CHECK_PARSER(parser_.execCommand("AT+CPLS=0"));
+    }
+
+    resp = parser_.sendCommand("AT+CPOL?");
+    while (resp.hasNextLine()) {
+        unsigned curIndex = 0;
+        char curPlmn[6+1] = {};
+        auto r = resp.scanf("+CPOL: %u,%*u,\"%6[0-9]\",%*d,%*d,%*d,%*d,", &curIndex, curPlmn);
+        if (r == 2 && curIndex > 0) {
+            CHECK_TRUE(cpolIdxs.append(curIndex), SYSTEM_ERROR_NO_MEMORY);
+            CString plmnCopy(curPlmn);
+            CHECK_TRUE(plmnCopy, SYSTEM_ERROR_NO_MEMORY);
+            CHECK_TRUE(cpolPlmns.append(std::move(plmnCopy)), SYSTEM_ERROR_NO_MEMORY);
+        }
+    }
+    CHECK_PARSER_OK(resp.readResult());
+
+    bool needsUpdate = false;
+    if (cpolIdxs.size() != envPreferredPlmn.size()) {
+        needsUpdate = true;
+    } else {
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
+            if (i >= cpolPlmns.size() ||
+                strcmp(envPreferredPlmn[i], cpolPlmns[i]) != 0) {
+                needsUpdate = true;
+                break;
+            }
+        }
+    }
+
+    if (needsUpdate) {
+        CellularSignalQuality qual;
+        queryAndParseAtCops(&qual);
+        bool needsReselection = false;
+        if (cgi_.mobile_country_code > 0 && cgi_.mobile_network_code > 0) {
+            char currentPlmn[10+1] = {};
+            if (CGI_FLAG_TWO_DIGIT_MNC & cgi_.cgi_flags) {
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%02u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+            } else {
+                snprintf(currentPlmn, sizeof(currentPlmn), "%03u%03u", cgi_.mobile_country_code, cgi_.mobile_network_code);
+            }
+            for (unsigned i = 0; i < MAX_CELLULAR_PREFFERED_PLMN_ENTRIES; i++) {
+                if (strlen(envPreferredPlmn[i]) > 0) {
+                    if (strcmp(currentPlmn, envPreferredPlmn[i]) != 0) {
+                        needsReselection = true;
+                    }
+                    break;
+                }
+            }
+        }
+
+        CHECK(clearAllUserPlmn());
+
+        int lastError = AtResponse::OK;
+        for (int i = 0; i < envPreferredPlmn.size(); i++) {
+            if (strlen(envPreferredPlmn[i]) > 0) {
+                auto r = CHECK_PARSER(parser_.execCommand("AT+CPOL=%u,2,\"%s\",0,0,0,1", i+1, (const char*)envPreferredPlmn[i]));
+                if (r != AtResponse::OK) {
+                    lastError = r;
+                }
+            }
+        }
+        CHECK_PARSER_OK(lastError);
+
+        if (needsReselection) {
+            CHECK_PARSER(parser_.execCommand(UBLOX_COPS_TIMEOUT, "AT+COPS=0,2"));
+        }
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::configurePlmn() {
+    // apply changes after registration, or CPOL commands will error
+    if (configuredPlmn_ || (connectionState() != NcpConnectionState::CONNECTED)) {
+        return SYSTEM_ERROR_NONE;
+    }
+    configuredPlmn_ = true;
+
+    if (ncpId() != PLATFORM_NCP_SARA_R510) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    Vector<CString> envPreferredPlmn;
+    getEnvPreferredPlmn("PARTICLE_CELLULAR_PREFERRED_PLMN", envPreferredPlmn);
+
+    if (envPreferredPlmn.size() == 0) {
+        return clearAllUserPlmn();
+    }
+
+    CHECK_PARSER_OK(parser_.execCommand("AT+CPOL=,2")); // set format to numeric
+    syncUserPlmn(envPreferredPlmn);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1552,10 +1710,9 @@ int SaraNcpClient::initReady(ModemState state) {
         CHECK(waitAtResponse(10000));
     }
 
+    configuredPlmn_ = false;
     // Select MNO and band profiles depending on the configuration
-    if (ncpId() == PLATFORM_NCP_SARA_R410 || ncpId() == PLATFORM_NCP_SARA_R510) {
-        CHECK(selectNetworkProf(state));
-    }
+    CHECK(selectNetworkProf(state));
 
     // Reformat the operator string to be numeric
     // (allows the capture of `mcc` and `mnc`)
@@ -2544,6 +2701,7 @@ int SaraNcpClient::processEventsImpl() {
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
+    configurePlmn(); // ignore errors
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
@@ -2615,8 +2773,8 @@ int SaraNcpClient::modemInit() const {
 }
 
 bool SaraNcpClient::waitModemPowerState(bool onOff, system_tick_t timeout) {
-    system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    while (HAL_Timer_Get_Milli_Seconds() - now < timeout) {
+    system_tick_t now = millis();
+    while (millis() - now < timeout) {
         if (modemPowerState() == onOff) {
             if (onOff) {
                 ncpPowerState(NcpPowerState::ON);
@@ -2692,7 +2850,7 @@ int SaraNcpClient::modemPowerOff() {
             int reason;
             if (!HAL_Core_Get_Last_Reset_Info(&reason, nullptr, nullptr) &&
                     (reason == RESET_REASON_POWER_DOWN || reason == RESET_REASON_POWER_BROWNOUT)) {
-                auto now = HAL_Timer_Get_Milli_Seconds();
+                auto now = millis();
                 if (now < 5000) {
                     HAL_Delay_Milliseconds(5000 - now);
                 }
@@ -2788,11 +2946,11 @@ int SaraNcpClient::modemSoftPowerOff() {
             LOG(ERROR, "AT not responding");
             return SYSTEM_ERROR_AT_NOT_OK;
         }
-        system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+        system_tick_t now = millis();
         LOG(TRACE, "Waiting to be turned off");
         // Verify that the module was powered down by checking the VINT pin up to 10 sec
         if (waitModemPowerState(0, 10000)) {
-            LOG(TRACE, "%d ms to power off the modem.", HAL_Timer_Get_Milli_Seconds() - now);
+            LOG(TRACE, "%d ms to power off the modem.", millis() - now);
         } else {
             LOG(ERROR, "Failed to power off");
         }

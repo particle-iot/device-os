@@ -29,6 +29,7 @@
 #include "static_recursive_mutex.h"
 #include "serial_stream.h"
 #include "cellular_reg_status.h"
+#include "spark_wiring_vector.h"
 
 namespace particle {
 
@@ -118,6 +119,7 @@ private:
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
     unsigned int fwVersion_ = 0;
+    bool configuredPlmn_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -129,6 +131,12 @@ private:
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
     int checkNetConfForImsi();
+    int setupBands();
+    int parseEfSize(unsigned int fid);
+    int readAndClearEfByFid(unsigned int fid);
+    int clearAllUserPlmn();
+    int syncUserPlmn(const Vector<CString>& envPreferredPlmn);
+    int configurePlmn();
     int selectSimCard();
     int checkSimCard();
     int getModuleFunctionality();
