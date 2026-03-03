@@ -49,6 +49,10 @@ int SystemCache::del(SystemCacheKey key) {
     return tlv_.del(to_underlying(key));
 }
 
+int SystemCache::size(SystemCacheKey key) {
+    return tlv_.dataSize(to_underlying(key));
+}
+
 } } // particle::services
 
 #endif // HAL_PLATFORM_FILESYSTEM
