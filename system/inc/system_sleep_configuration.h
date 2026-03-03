@@ -43,6 +43,7 @@ enum class SystemSleepMode: uint8_t {
     STOP            = HAL_SLEEP_MODE_STOP,
     ULTRA_LOW_POWER = HAL_SLEEP_MODE_ULTRA_LOW_POWER,
     HIBERNATE       = HAL_SLEEP_MODE_HIBERNATE,
+    POWER_GATE      = HAL_SLEEP_MODE_POWER_GATE
 };
 
 enum class AnalogInterruptMode: uint8_t {
