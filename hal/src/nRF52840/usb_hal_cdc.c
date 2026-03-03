@@ -120,7 +120,7 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(m_app_cdc_acm,
                             APP_USBD_CDC_COMM_PROTOCOL_AT_V250
 );
 
-#define FIFO_LENGTH(p_fifo)     fifo_length(p_fifo)  /**< Macro for calculating the FIFO length. */
+#define FIFO_LENGTH(p_fifo)     fifo_length(p_fifo)  /**< How much data is currently in the fifo. */
 #define IS_FIFO_FULL(p_fifo)    fifo_full(p_fifo)
 static __INLINE uint32_t fifo_length(app_fifo_t * p_fifo) {
     uint32_t tmp = p_fifo->read_pos;
@@ -156,9 +156,8 @@ static void set_usb_state(HAL_USB_State state) {
 static bool usb_cdc_copy_from_rx_buffer() {
     if (m_usb_instance.rx_done && (FIFO_LENGTH(&m_usb_instance.rx_fifo) + m_usb_instance.rx_data_size) <= m_usb_instance.rx_fifo.buf_size_mask) {
         // Receive data into buffer
-        for (uint32_t i = 0; i < m_usb_instance.rx_data_size; i++) {
-            SPARK_ASSERT(app_fifo_put(&m_usb_instance.rx_fifo, m_rx_buffer[i]) == NRF_SUCCESS);
-        }
+        uint32_t rx_size = m_usb_instance.rx_data_size;
+        SPARK_ASSERT(app_fifo_write(&m_usb_instance.rx_fifo, (uint8_t*)m_rx_buffer, &rx_size) == NRF_SUCCESS);
         return true;
     }
 
@@ -214,6 +213,7 @@ static void usb_cdc_change_port_state(bool state)
             // aborts transfers!
             m_usb_instance.tx_failed = 0;
             m_usb_instance.transmitting = false;
+            xEventGroupSetBits(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_WRITABLE);
         }
     }
 }
@@ -235,11 +235,8 @@ static void usb_cdc_schedule_tx() {
     }
 
     if (m_usb_instance.com_opened && !m_usb_instance.transmitting && FIFO_LENGTH(&m_usb_instance.tx_fifo) > 0) {
-        size_t to_send = 0;
-        uint8_t data;
-        while ((to_send < SEND_SIZE) && app_fifo_get(&m_usb_instance.tx_fifo, &data) == NRF_SUCCESS) {
-            m_tx_buffer[to_send++] = data;
-        }
+        uint32_t to_send = SEND_SIZE;
+        app_fifo_read(&m_usb_instance.tx_fifo, (uint8_t*)m_tx_buffer, &to_send);
 
         m_usb_instance.tx_failed = 0;
         m_app_cdc_acm.specific.p_data->ctx.line_state |= APP_USBD_CDC_ACM_LINE_STATE_DTR;
@@ -276,6 +273,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             // NOTE: Nordic SDK will abort any outstanding RX/TX transfers.
             m_usb_instance.rx_state = false;
             usb_cdc_change_port_state(false);
+            eventGenerated = true;
             break;
         }
         case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
@@ -298,11 +296,13 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
             usb_cdc_change_port_state(true);
 
             if (usb_cdc_handle_rx()) {
-                // We received data
-                xEventGroupSetBitsFromISR(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE, &yield);
-                eventGenerated = true;
                 // Setup next transfer.
                 usb_cdc_schedule_rx();
+            }
+            // Always notify readable if there is data in the FIFO or pending in rx buffer
+            if (FIFO_LENGTH(&m_usb_instance.rx_fifo) > 0 || m_usb_instance.rx_done) {
+                xEventGroupSetBitsFromISR(m_usb_instance.ev_group, HAL_USART_PVT_EVENT_READABLE, &yield);
+                eventGenerated = true;
             }
             break;
         }
@@ -530,19 +530,22 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
     return 0;
 }
 
-int usb_uart_send(uint8_t data[], uint16_t size) {
+int usb_uart_send(const uint8_t data[], uint16_t size) {
     if (m_usb_instance.state != HAL_USB_STATE_CONFIGURED || !m_usb_instance.com_opened) {
         return -1;
     }
 
-    for (int i = 0; i < size; i++) {
+    uint32_t bytesRemaining = size;
+    while (bytesRemaining) {
         // wait until tx fifo is available
         while (IS_FIFO_FULL(&m_usb_instance.tx_fifo)) {
             if (!usb_hal_is_connected() || !usb_will_preempt()) {
                 return -1;
             }
         }
-        SPARK_ASSERT(app_fifo_put(&m_usb_instance.tx_fifo, data[i]) == NRF_SUCCESS);
+        uint32_t bytesToWrite = bytesRemaining;
+        SPARK_ASSERT(app_fifo_write(&m_usb_instance.tx_fifo, data + (size - bytesRemaining), &bytesToWrite) == NRF_SUCCESS);
+        bytesRemaining -= bytesToWrite;
     }
 
     // NOTE: we only care and report about how many bytes were actually put into the transmit buffer
@@ -721,3 +724,28 @@ int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout) {
     return waitEvent(events, timeout);
 }
 
+int hal_usb_cdc_pvt_send_data(const char* data, size_t size) {
+    if (m_usb_instance.state != HAL_USB_STATE_CONFIGURED || !m_usb_instance.com_opened) {
+        return -1;
+    }
+
+    uint32_t bytesToWrite = size;
+    SPARK_ASSERT(app_fifo_write(&m_usb_instance.tx_fifo, data, &bytesToWrite) == NRF_SUCCESS);
+
+    // NOTE: its possible to only write part of the data. WRITABLE will need to be signaled to complete transmission
+    return bytesToWrite;
+}
+
+int hal_usb_cdc_pvt_recv_data(char* data, size_t size) {
+    if (usb_cdc_copy_from_rx_buffer()) {
+        m_usb_instance.rx_data_size = 0;
+        m_usb_instance.rx_done = false;
+    }
+
+    uint32_t to_read = size;
+    if (app_fifo_read(&m_usb_instance.rx_fifo, (uint8_t*)data, &to_read) == NRF_SUCCESS) {
+        return to_read;
+    }
+
+    return 0;
+}

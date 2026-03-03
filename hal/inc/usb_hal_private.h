@@ -30,6 +30,8 @@ extern "C" {
 
 int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle);
 int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout);
+int hal_usb_cdc_pvt_send_data(const char* data, size_t size);
+int hal_usb_cdc_pvt_recv_data(char* data, size_t size);
 
 #ifdef __cplusplus
 }

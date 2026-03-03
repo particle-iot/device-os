@@ -73,17 +73,7 @@ int SerialUSBStream::read(char* data, size_t size) {
         return 0;
     }
     
-    for (size_t i = 0; i < size; i++) {
-        auto receivedByte = HAL_USB_USART_Receive_Data(serial_, 0);
-        if (receivedByte < 0) {
-            return i;    
-        }
-        if (data) {
-            *data++ = receivedByte;    
-        }
-    }
-
-    return size;
+    return hal_usb_cdc_pvt_recv_data(data, size);
 }
 
 int SerialUSBStream::peek(char* data, size_t size) {
@@ -117,13 +107,7 @@ int SerialUSBStream::write(const char* data, size_t size) {
         return 0;
     }
     
-    for (size_t i = 0; i < size; i++) {
-        auto r = HAL_USB_USART_Send_Data(serial_, data[i]);
-        if (r < 0) {
-            return i;
-        }
-    }
-    return size;
+    return hal_usb_cdc_pvt_send_data(data, size);
 }
 
 int SerialUSBStream::flush() {
