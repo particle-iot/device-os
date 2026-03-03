@@ -57,6 +57,7 @@ typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_STOP = 1,
     HAL_SLEEP_MODE_ULTRA_LOW_POWER = 2,
     HAL_SLEEP_MODE_HIBERNATE = 3,
+    HAL_SLEEP_MODE_POWER_GATE = 4,
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 
