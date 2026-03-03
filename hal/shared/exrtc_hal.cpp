@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2026 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,39 +16,64 @@
  */
 
 #include "exrtc_hal.h"
-#include "spark_wiring_platform.h"
-#include "debug.h"
+#include "check.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
-using namespace particle;
+// FIXME: for now this is all somewhat am18x5-specific, but the API itself should be somewhat extensible
 
-int hal_external_rtc_set_config(const hal_am18x5_config_t* conf, void* reserved) {
-    return Am18x5::getInstance().setConfig(conf);
+int hal_exrtc_bind(hal_exrtc_instance_t instance, const hal_exrtc_binding_t* binding, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(binding, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+#if HAL_PLATFORM_EXTERNAL_RTC
+    // TODO: could later allow to change i2c address or pin mapping, but for simplicity returning an error here
+    return SYSTEM_ERROR_ALREADY_EXISTS;
+#endif // HAL_PLATFORM_EXTERNAL_RTC
+
+    return Am18x5::getInstance().bind(binding->device);
 }
 
-int hal_external_rtc_get_config(hal_am18x5_config_t* conf, void* reserved) {
-    return Am18x5::getInstance().getConfig(conf);
+int hal_exrtc_get_device(hal_exrtc_instance_t instance, hal_exrtc_device_t* device, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    return Am18x5::getInstance().getDevice(device);
 }
 
-int hal_external_rtc_get_id(char* buf, size_t len, void* reserved) {
-    return Am18x5::getInstance().getIdString(buf, len);
+int hal_exrtc_unbind(hal_exrtc_instance_t instance, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+#if HAL_PLATFORM_EXTERNAL_RTC
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // HAL_PLATFORM_EXTERNAL_RTC
+
+    return Am18x5::getInstance().clearConfig(/* unbind */ true);
 }
 
-bool hal_external_rtc_is_present(void* reserved) {
-    return Am18x5::getInstance().isPresent();
+int hal_exrtc_get_status(hal_exrtc_instance_t instance, hal_exrtc_status_t* status, void* reserved, void* reserved1) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    return Am18x5::getInstance().getStatus(status);
 }
 
-int hal_external_rtc_sleep(const hal_am18x5_sleep_config_t* conf, void* reserved) {
-    return Am18x5::getInstance().sleep(conf);
+int hal_exrtc_set_config(hal_exrtc_instance_t instance, const hal_exrtc_config_t* config, const hal_exrtc_vendor_config_t* vendor, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    return Am18x5::getInstance().setConfig(config, vendor);
 }
 
-int hal_external_rtc_on_osc_events(uint8_t events, Am18x5OscEventHandler handler, void* context, void* reserved) {
-    return Am18x5::getInstance().onOscillatorEvent(events, handler, context);
+int hal_exrtc_get_config(hal_exrtc_instance_t instance, hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    return Am18x5::getInstance().getConfig(config, vendor);
 }
 
-int hal_external_rtc_get_oscillator_source(particle::Am18x5Oscillator* source, void* reserved) {
-    return Am18x5::getInstance().getOscillatorSource(source);
+void* hal_exrtc_event_handler_add(hal_exrtc_instance_instance instance, hal_exrtc_event_handler_t handler, void* context, void* reserved) {
+    if (instance != HAL_EXRTC_INSTANCE_1) {
+        return nullptr;
+    }
+
+    return Am18x5::getInstance().onEvent(handler, context);
 }
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
