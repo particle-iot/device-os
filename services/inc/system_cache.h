@@ -28,8 +28,10 @@ enum class SystemCacheKey : uint16_t {
     WIZNET_CONFIG_DATA = 0x0003,
     CELLULAR_NCP_OPERATION_MODE = 0x0004,
     CELLULAR_DEVICE_INFO = 0x0005,
-    EXRTC_CONFIG_DATA = 0x0006,
+    AM18X5_MANUFACTURING_CONFIG = 0x0006,
+
     ASSET_MANAGER_CONSUMER_STATE = 0x0010,
+    EXRTC_CONFIG_DATA = 0x0011
 };
 
 class SystemCache {
@@ -41,6 +43,7 @@ public:
     int get(SystemCacheKey key, void* value, size_t length);
     int set(SystemCacheKey key, const void* value, size_t length);
     int del(SystemCacheKey key);
+    int size(SystemCacheKey key);
 
     SystemCache(SystemCache const&) = delete;
     SystemCache(SystemCache&&) = delete;
