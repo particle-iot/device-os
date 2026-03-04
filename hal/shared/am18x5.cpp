@@ -46,13 +46,35 @@ void exRtcInterruptHandler(void* data) {
 }
 
 const long MICROS_IN_HUNDREDTH = 10000;
-const auto UNIX_TIME_YEAR_BASE = 118; // 2018 - 1900
+const long MICROS_IN_SECOND = 1000000;
+const auto TM_CALENDAR_YEAR_2000 = 2000 - 1900; // for leap years we need to be in correct epoch
+
+#define CEIL_DIV(A, B) (((A) + (B) - 1) / (B))
 
 int timevalToCalendar(const struct timeval* tv, struct tm* calendar) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(gmtime_r(&tv->tv_sec, calendar), SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(calendar->tm_year >= UNIX_TIME_YEAR_BASE, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(calendar->tm_year >= TM_CALENDAR_YEAR_2000, SYSTEM_ERROR_INVALID_ARGUMENT);
     return 0;
+}
+
+
+int canonicalizeTimeval(struct timeval* tv) {
+    CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    if (tv->tv_usec >= MICROS_IN_SECOND) {
+        tv->tv_sec += tv->tv_usec / MICROS_IN_SECOND;
+        tv->tv_usec %= MICROS_IN_SECOND;
+    }
+
+    tv->tv_usec = CEIL_DIV(tv->tv_usec, MICROS_IN_HUNDREDTH) * MICROS_IN_HUNDREDTH;
+
+    if (tv->tv_usec >= MICROS_IN_SECOND) {
+        ++tv->tv_sec;
+        tv->tv_usec -= MICROS_IN_SECOND;
+    }
+
+    return SYSTEM_ERROR_NONE;
 }
 
 } // anonymous namespace
@@ -403,23 +425,20 @@ int Am18x5::getIdString(char* id, size_t len) const {
 
 int Am18x5::setTime(const struct timeval* tv) const {
     struct tm calendar;
+    struct timeval canonical = *tv;
+    CHECK(canonicalizeTimeval(&tv));
     CHECK(timevalToCalendar(tv, &calendar));
 
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     uint8_t buff[8] = {0};
-    auto tv_usec = tv->tv_usec;
-    if (tv_usec > 99) {
-        // In most cases, tv_usec is not set in user app, which leaves it being an invalid value.
-        tv_usec = 0;
-    }
-    buff[0] = CHECK(decToBcd(tv_usec / MICROS_IN_HUNDREDTH));
+    buff[0] = CHECK(decToBcd(canonical.tv_usec / MICROS_IN_HUNDREDTH));
     buff[1] = CHECK(decToBcd(calendar.tm_sec));
     buff[2] = CHECK(decToBcd(calendar.tm_min));
     buff[3] = CHECK(decToBcd(calendar.tm_hour));
     buff[4] = CHECK(decToBcd(calendar.tm_mday));
     buff[5] = CHECK(decToBcd(calendar.tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
-    buff[6] = CHECK(decToBcd(calendar.tm_year - UNIX_TIME_YEAR_BASE));
+    buff[6] = CHECK(decToBcd(calendar.tm_year % 100));
     buff[7] = CHECK(decToBcd(calendar.tm_wday));
     CHECK(writeContinuousRegisters(Am18x5Register::HUNDREDTHS, buff, sizeof(buff)));
     return SYSTEM_ERROR_NONE;
@@ -441,12 +460,12 @@ int Am18x5::getTime(struct timeval* tv) const {
     calendar.tm_mon = CHECK(bcdToDec(buff[5]));
     calendar.tm_mon -= 1;
     calendar.tm_year = CHECK(bcdToDec(buff[6]));
-    calendar.tm_year += UNIX_TIME_YEAR_BASE;
+    calendar.tm_year += TM_CALENDAR_YEAR_2000;
     calendar.tm_wday = CHECK(bcdToDec(buff[7]));
     calendar.tm_isdst = -1;
 
     tv->tv_sec = mktime(&calendar);
-    tv->tv_usec = (long)buff[0] * MICROS_IN_HUNDREDTH;
+    tv->tv_usec = CHECK(bcdToDec(buff[0])) * MICROS_IN_HUNDREDTH;
     return SYSTEM_ERROR_NONE;
 }
 
@@ -481,19 +500,16 @@ int Am18x5::setAlarm(bool enable, uint32_t flags, const struct timeval* tv, Alar
             }
 
             struct tm calendar;
+            CHECK(canonicalizeTimeval(&alarm));
             CHECK(timevalToCalendar(&alarm, &calendar));
             uint8_t buff[7] = {0};
-            if (alarm.tv_usec > 99) {
-                // In most cases, tv_usec is not set in user app, which leaves it being an invalid value.
-                alarm.tv_usec = 0;
-            }
             buff[0] = CHECK(decToBcd(alarm.tv_usec / MICROS_IN_HUNDREDTH));
             buff[1] = CHECK(decToBcd(calendar.tm_sec));
             buff[2] = CHECK(decToBcd(calendar.tm_min));
             buff[3] = CHECK(decToBcd(calendar.tm_hour));
             buff[4] = CHECK(decToBcd(calendar.tm_mday));
             buff[5] = CHECK(decToBcd(calendar.tm_mon + 1)); // Month in tm structure ranges from 0 - 11.
-            alarmYear_ = calendar.tm_year - UNIX_TIME_YEAR_BASE;
+            alarmYear_ = calendar.tm_year % 100;
             buff[6] = CHECK(decToBcd(calendar.tm_wday));
             CHECK(writeContinuousRegisters(Am18x5Register::HUNDREDTHS_ALARM, buff, sizeof(buff)));
         }
@@ -522,7 +538,7 @@ int Am18x5::getAlarm(struct timeval* tv) const {
         calendar.tm_mon = CHECK(bcdToDec(buff[5]));
         calendar.tm_mon -= 1;
         // NOTE: alarmYear_ needs to be valid
-        calendar.tm_year = alarmYear_ + UNIX_TIME_YEAR_BASE;
+        calendar.tm_year = alarmYear_ + TM_CALENDAR_YEAR_2000;
         calendar.tm_wday = CHECK(bcdToDec(buff[6]));
         calendar.tm_isdst = -1;
 
