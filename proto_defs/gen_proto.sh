@@ -28,7 +28,7 @@ python3 -m venv "$PROTO_DEFS_DIR/.venv"
 source "$PROTO_DEFS_DIR/.venv/bin/activate"
 
 # Install dependencies
-pip3 install protobuf grpcio-tools
+pip3 install --no-cache-dir protobuf==6.33.1 grpcio-tools==1.76.0 setuptools==80.9.0
 
 # Compile system definitions
 gen_proto "${SHARED_DIR}/system/env_vars.proto"
