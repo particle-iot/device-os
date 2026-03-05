@@ -523,10 +523,13 @@ static int usb_uart_deinit(void) {
     return 0;
 }
 
-int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size) {
+int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16_t tx_buf_size, bool default_buffers) {
     uint32_t ret;
 
     if (m_usb_instance.mode == USB_MODE_CDC_UART) {
+        if (default_buffers) {
+            return -1;
+        }
         usb_uart_deinit();
     }
 
