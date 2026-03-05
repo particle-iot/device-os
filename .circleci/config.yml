@@ -105,8 +105,8 @@ jobs:
           platform: << parameters.platform >>
   build-for-darwin:
     macos:
-      xcode: "14.3.1"
-    resource_class: macos.m1.medium.gen1
+      xcode: "26.2.0"
+    resource_class: m4pro.medium
     parameters:
       tasks:
         type: string
