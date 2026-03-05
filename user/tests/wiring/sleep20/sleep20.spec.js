@@ -33,11 +33,11 @@ before(function() {
     }
 });
 
-async function distributePeerInfo() {
+async function distributePeerInfo(self) {
     if (centralDevice.peerInfo && peripheralDevice.peerInfo) {
         console.log('Exchanging peer info');
-        await this.particle.publishEvent({ name: BASE_EVENT_NAME + centralDevice.id, data: peripheralDevice.peerInfo, auth: auth });
-        await this.particle.publishEvent({ name: BASE_EVENT_NAME + peripheralDevice.id, data: centralDevice.peerInfo, auth: auth });
+        await self.particle.publishEvent({ name: BASE_EVENT_NAME + centralDevice.id, data: peripheralDevice.peerInfo, auth: auth });
+        await self.particle.publishEvent({ name: BASE_EVENT_NAME + peripheralDevice.id, data: centralDevice.peerInfo, auth: auth });
     }
 }
 
@@ -46,7 +46,7 @@ test('000_System_Sleep_Peripheral_Cloud_Connect', async function() {
     const data = await this.particle.receiveEvent(BASE_EVENT_NAME + peripheralDevice.id);
     console.log(data);
     peripheralDevice.peerInfo = data;
-    await distributePeerInfo();
+    await distributePeerInfo(this);
 });
 
 test('000_System_Sleep_Central_Cloud_Connect', async function() {
@@ -54,5 +54,5 @@ test('000_System_Sleep_Central_Cloud_Connect', async function() {
     const data = await this.particle.receiveEvent(BASE_EVENT_NAME + centralDevice.id);
     console.log(data);
     centralDevice.peerInfo = data;
-    await distributePeerInfo();
+    await distributePeerInfo(this);
 });
