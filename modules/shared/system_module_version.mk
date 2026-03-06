@@ -1,6 +1,6 @@
 # Skip to next 100 every v0.x.0 release (e.g. 108 for v0.6.2 to 200 for v0.7.0-rc.1)
 # Bump by 1 for every prerelease or release with the same v0.x.* base.
-COMMON_MODULE_VERSION ?= 6306
+COMMON_MODULE_VERSION ?= 6400
 SYSTEM_PART1_MODULE_VERSION ?= $(COMMON_MODULE_VERSION)
 
 RELEASE_080_MODULE_VERSION_BASE ?= 300
@@ -8,19 +8,19 @@ RELEASE_070_MODULE_VERSION ?= 207
 RELEASE_110_MODULE_VERSION ?= 1102
 
 
-# Bump by 1 if Tinker has been updated
-USER_PART_MODULE_VERSION ?= 6
+# Bump by 1 or up to next multiple of 10 if the module format or exported user dynalib has been changed.
+USER_PART_MODULE_VERSION ?= 10
 
 # Skip to next 100 every v0.x.0 release (e.g. 11 for v0.6.2 to 100 for v0.7.0-rc.1),
 # but only if the bootloader has changed since the last v0.x.0 release.
 # Bump by 1 for every updated bootloader image for a release with the same v0.x.* base.
-BOOTLOADER_VERSION ?= 3201
+BOOTLOADER_VERSION ?= 3300
 
 # If PREBOOTLOADER_MBR_VERSION and/or PREBOOTLOADER_PART1_VERSION needs to be updated,
 # also bump the BOOTLOADER_VERSION as it depends on these.
 ifeq ($(PLATFORM_MCU),rtl872x)
 PREBOOTLOADER_MBR_VERSION ?= 3
-PREBOOTLOADER_PART1_VERSION ?= 12
+PREBOOTLOADER_PART1_VERSION ?= 13
 endif
 
 # The version of the bootloader that the system firmware requires
@@ -28,7 +28,7 @@ endif
 # this version usually lags behind the current bootloader version, to avoid non-mandatory updates.
 ifeq ($(PLATFORM_GEN),3)
 ifeq ($(PLATFORM_MCU),rtl872x)
-BOOTLOADER_DEPENDENCY = 3201
+BOOTLOADER_DEPENDENCY = 3300
 else # ifeq ($(PLATFORM_MCU),rtl872x)
 BOOTLOADER_DEPENDENCY = 3100
 endif # ifeq ($(PLATFORM_GEN),3)
@@ -38,7 +38,7 @@ BOOTLOADER_DEPENDENCY = 0
 endif
 
 ifeq ($(PLATFORM_MCU),rtl872x)
-PREBOOTLOADER_PART1_DEPENDENCY = 12
+PREBOOTLOADER_PART1_DEPENDENCY = 13
 endif
 
 ifeq ($(PLATFORM_GEN),3)

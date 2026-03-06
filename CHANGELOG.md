@@ -1,3 +1,26 @@
+## 6.4.0
+
+### FEATURES
+
+- Environment [#2892](https://github.com/particle-iot/device-os/pull/2892) [#2904](https://github.com/particle-iot/device-os/pull/2904) [#2903](https://github.com/particle-iot/device-os/pull/2903) [#2892](https://github.com/particle-iot/device-os/pull/2892) [#2903](https://github.com/particle-iot/device-os/pull/2903) [#2902](https://github.com/particle-iot/device-os/pull/2902)
+- `PRE_STARTUP()` API for earlier application initialization [#2888](https://github.com/particle-iot/device-os/pull/2888)
+- [system] `PARTICLE_BLE_ENABLE`, `PARTICLE_WIFI_ENABLE`, and `PARTICLE_ETHERNET_ENABLE` environment variables [#2897](https://github.com/particle-iot/device-os/pull/2897)
+- [cellular] support `PARTICLE_CELLULAR_PREFERRED_BANDS`, `PARTICLE_CELLULAR_FORBIDDEN_BANDS`, and `PARTICLE_CELLULAR_PREFERRED_PLMN` environment variables [#2896](https://github.com/particle-iot/device-os/pull/2896)
+- [am18x5] built-in AM18x5 driver in Device OS [#2906](https://github.com/particle-iot/device-os/pull/2906) [1bb9b26](https://github.com/particle-iot/device-os/commit/1bb9b26e6)
+- `POWER_OFF` sleep mode support through AM18x5 [#2906](https://github.com/particle-iot/device-os/pull/2906)
+
+### BUGFIXES
+
+- Fix DNS server change lockup and improve DNS failure handling [#2894](https://github.com/particle-iot/device-os/pull/2894)
+- [wiring] system: fix 32-bit global `millis()` being shadowed by class-member 64-bit `millis()` [9d30096](https://github.com/particle-iot/device-os/commit/9d3009660)
+- [system] do not handle network activity when going into sleep mode if network manager is not initialized [97ecb3d](https://github.com/particle-iot/device-os/commit/97ecb3dab)
+- [Gen 4] preserve RTC time across sleep and software resets [#2906](https://github.com/particle-iot/device-os/pull/2906) [708feb6](https://github.com/particle-iot/device-os/commit/708feb62d)
+
+### INTERNAL
+
+- [tests] Test improvements [#2899](https://github.com/particle-iot/device-os/pull/2899) [#2901](https://github.com/particle-iot/device-os/pull/2901) [#2906](https://github.com/particle-iot/device-os/pull/2906) [1875a2a](https://github.com/particle-iot/device-os/commit/1875a2a07) [9b5c9d9](https://github.com/particle-iot/device-os/commit/9b5c9d9fa) [04949f4](https://github.com/particle-iot/device-os/commit/04949f429)
+- [ci] update Xcode to 26.2.0 [#2900](https://github.com/particle-iot/device-os/pull/2900)
+
 ## 6.3.5
 
 ### BUGFIXES
