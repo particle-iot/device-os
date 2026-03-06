@@ -137,20 +137,23 @@ test(04_particle_ble_enable_false) {
     assertTrue(waitListening(false));
 
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
-    // WiFi is not affected
-    System.disableUpdates();
-    SCOPE_GUARD({
-        Particle.disconnect();
-        waitForNot(Particle.connected, 1000);
-        System.enableUpdates();
-    });
+    if (TestSuite::instance()->network() == NETWORK_INTERFACE_WIFI_STA ||
+        TestSuite::instance()->network() == NETWORK_INTERFACE_ALL) {
+        // WiFi is not affected
+        System.disableUpdates();
+        SCOPE_GUARD({
+            Particle.disconnect();
+            waitForNot(Particle.connected, 1000);
+            System.enableUpdates();
+        });
 
-    WiFi.on();
-    assertTrue(waitFor(WiFi.isOn, 5000));
-    WiFi.connect();
-    Particle.connect();
-    assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        WiFi.on();
+        assertTrue(waitFor(WiFi.isOn, 5000));
+        WiFi.connect();
+        Particle.connect();
+        assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    }
 #endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
@@ -269,9 +272,7 @@ test(08_particle_wifi_enable_false) {
 test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
     bool shouldConnect = false;
 #if HAL_PLATFORM_CELLULAR
-    if (TestSuite::instance()->network() == 0) {
-        shouldConnect = true;
-    }
+    shouldConnect = TestSuite::instance()->network() == NETWORK_INTERFACE_CELLULAR || TestSuite::instance()->network() == NETWORK_INTERFACE_ALL;
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_ETHERNET
     if (isEthernetPresent()) {
@@ -287,7 +288,7 @@ test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
     assertTrue(System.hasEnv("PARTICLE_WIFI_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_WIFI_ENABLE"), String("false"));
 
-    assertEqual((int)TestSuite::instance()->network(), (int)0);
+    assertNotEqual((int)TestSuite::instance()->network(), (int)NETWORK_INTERFACE_WIFI_STA);
 
     System.disableUpdates();
     SCOPE_GUARD({

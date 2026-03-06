@@ -55,8 +55,7 @@ test('07_particle_wifi_enable_true', async function() {
 
 test('08_particle_wifi_enable_false', async function() {
     // This is a bit of a hack, but should work fine
-    // NOTE: runs after on-device test
-    delete this.test.parent.particle.network;
+    this.test.parent.particle.network = 'any'; // just set to something other than wifi
     this.test.parent.particle.suiteInitialized = false;
 });
 
@@ -65,7 +64,6 @@ test('09_particle_wifi_enable_false_connect_through_other_ifaces', async functio
 });
 
 test('10_particle_wifi_enable_cleanup', async function() {
-
 });
 
 test('11_particle_ethernet_enable_init', async function () {
@@ -83,7 +81,7 @@ test('13_particle_ethernet_enable_true', async function () {
 });
 
 test('14_particle_ethernet_enable_false', async function () {
-    delete this.test.parent.particle.network;
+    this.test.parent.particle.network = 'any'; // just set to something other than ethernet
     this.test.parent.particle.suiteInitialized = false;
 });
 
