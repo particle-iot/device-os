@@ -16,10 +16,13 @@
  */
 
 #include "hal_platform.h"
+#include "rtc_hal.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "am18x5.h"
+
+using namespace particle;
 
 // Tracker
 void hal_exrtc_get_watchdog_limits_deprecated(system_tick_t* low, system_tick_t* high, void* reserved) {

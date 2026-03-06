@@ -36,14 +36,23 @@ typedef enum hal_rtc_alarm_flags {
 } hal_rtc_alarm_flags;
 
 typedef enum hal_rtc_source_t {
-    HAL_RTC_SOURCE_INTERNAL = 0,
-    HAL_RTC_SOURCE_EXTERNAL = 1
+    HAL_RTC_SOURCE_DEFAULT  = 0,
+    HAL_RTC_SOURCE_INTERNAL = 1,
+    HAL_RTC_SOURCE_EXTERNAL = 2
 } hal_rtc_source_t;
 
+typedef struct hal_rtc_option_t {
+    uint16_t size;
+    uint16_t version;
+
+    hal_rtc_source_t source; // force specific source
+    uint8_t reserved[3];
+} __attribute__((packed)) hal_rtc_option_t;
+
 void hal_rtc_init(void);
-int hal_rtc_get_time(struct timeval* tv, void* reserved);
-int hal_rtc_set_time(const struct timeval* tv, void* reserved);
-bool hal_rtc_time_is_valid(void* reserved);
+int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt);
+int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt);
+bool hal_rtc_time_is_valid(hal_rtc_option_t* opt);
 // XXX: only one alarm and its handler can be registered at a time
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved);
 void hal_rtc_cancel_alarm(void);

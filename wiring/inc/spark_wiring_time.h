@@ -30,6 +30,7 @@
 #include "time_compat.h"
 #include "rtc_hal.h"
 #include <time.h>
+#include "spark_wiring_platform.h"
 
 extern const char* TIME_FORMAT_DEFAULT;
 extern const char* TIME_FORMAT_ISO8601_FULL;
@@ -37,94 +38,110 @@ extern const char* TIME_FORMAT_ISO8601_FULL;
 
 class TimeClass {
 public:
+    TimeClass(hal_rtc_source_t source = HAL_RTC_SOURCE_DEFAULT);
+
 	// Arduino time and date functions
-	static int     hour();            			// current hour
-	static int     hour(time_t t);				// the hour for the given time
-	static int     hourFormat12();    			// current hour in 12 hour format
-	static int     hourFormat12(time_t t);		// the hour for the given time in 12 hour format
-	static uint8_t isAM();            			// returns true if time now is AM
-	static uint8_t isAM(time_t t);    			// returns true the given time is AM
-	static uint8_t isPM();            			// returns true if time now is PM
-	static uint8_t isPM(time_t t);    			// returns true the given time is PM
-	static int     minute();          			// current minute
-	static int     minute(time_t t);  			// the minute for the given time
-	static int     second();          			// current second
-	static int     second(time_t t);  			// the second for the given time
-	static int     day();             			// current day
-	static int     day(time_t t);     			// the day for the given time
-	static int     weekday();         			// the current weekday
-	static int     weekday(time_t t); 			// the weekday for the given time
-	static int     month();           			// current month
-	static int     month(time_t t);   			// the month for the given time
-	static int     year();            			// current four digit year
-	static int     year(time_t t);    			// the year for the given time
+	int     hour();            			// current hour
+	int     hour(time_t t);				// the hour for the given time
+	int     hourFormat12();    			// current hour in 12 hour format
+	int     hourFormat12(time_t t);		// the hour for the given time in 12 hour format
+	uint8_t isAM();            			// returns true if time now is AM
+	uint8_t isAM(time_t t);    			// returns true the given time is AM
+	uint8_t isPM();            			// returns true if time now is PM
+	uint8_t isPM(time_t t);    			// returns true the given time is PM
+	int     minute();          			// current minute
+	int     minute(time_t t);  			// the minute for the given time
+	int     second();          			// current second
+	int     second(time_t t);  			// the second for the given time
+	int     day();             			// current day
+	int     day(time_t t);     			// the day for the given time
+	int     weekday();         			// the current weekday
+	int     weekday(time_t t); 			// the weekday for the given time
+	int     month();           			// current month
+	int     month(time_t t);   			// the month for the given time
+	int     year();            			// current four digit year
+	int     year(time_t t);    			// the year for the given time
 	// FIXME: For now using time32_t, until newlib printf %lld/%llu absence is resolved
 	// or at least %d/%u crashes with 64-bit arguments
-	static time32_t  now();              			// return the current time as seconds since Jan 1 1970
-	static time32_t  local();						// return the time as seconds since Jan 1 1970 in the local timezone.
-	static void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
-	static float	   zone();						// retrieve the current timezone
-	static void    setTime(time_t t);			// set the given time as unix/rtc time
+	time32_t  now();              			// return the current time as seconds since Jan 1 1970
+	time32_t  local();						// return the time as seconds since Jan 1 1970 in the local timezone.
+	void    zone(float GMT_Offset);		// set the time zone (+/-) offset from GMT
+	float	   zone();						// retrieve the current timezone
+	void    setTime(time_t t);			// set the given time as unix/rtc time
 
-    static int              setTimeSource(hal_rtc_source_t source); // set RTC time source
-    static hal_rtc_source_t getTimeSource();             // get RTC time source
+    hal_rtc_source_t getTimeSource();             // get RTC time source
 
-  operator bool() const;
-  static bool isValid();
-  
-  /* Retrieve the current DST offset that is added to the current local time when
-   * Time.beginDST() has been called.
-   * The default is 1 hour.
-   */
-  static float getDSTOffset();
-  /* Set a custom DST offset */
-  static void setDSTOffset(float offset);
-  /* Add the offset from getDSTOffset() to the current time */
-  static void beginDST();
-  /* Do not add the offset from getDSTOffset() to the current time */
-  static void endDST();
-  /* Returns true if DST is in effect (beginDST() was called previously) */
-  static uint8_t isDST();
+    operator bool() const;
+    bool isValid() const;
+    
+    /* Retrieve the current DST offset that is added to the current local time when
+    * Time.beginDST() has been called.
+    * The default is 1 hour.
+    */
+    float getDSTOffset();
+    /* Set a custom DST offset */
+    void setDSTOffset(float offset);
+    /* Add the offset from getDSTOffset() to the current time */
+    void beginDST();
+    /* Do not add the offset from getDSTOffset() to the current time */
+    void endDST();
+    /* Returns true if DST is in effect (beginDST() was called previously) */
+    uint8_t isDST();
 
-        /* return string representation of the current time */
-        inline String timeStr()
-        {
-                return timeStr(now());
-        }
+    /* return string representation of the current time */
+    inline String timeStr()
+    {
+            return timeStr(now());
+    }
 
-        /* return string representation for the given time */
-        static String timeStr(time_t t);
+    /* return string representation for the given time */
+    String timeStr(time_t t);
 
-        /**
-         * Return a string representation of the given time using strftime().
-         * This function takes several kilobytes of flash memory so it's kept separate
-         * from `timeStr()` to reduce memory footprint for applications that don't use
-         * alternative time formats.
-         *
-         * @param t
-         * @param format_spec
-         * @return
-         */
-        String format(time_t t, const char* format_spec=NULL);
+    /**
+     * Return a string representation of the given time using strftime().
+     * This function takes several kilobytes of flash memory so it's kept separate
+     * from `timeStr()` to reduce memory footprint for applications that don't use
+     * alternative time formats.
+     *
+     * @param t
+     * @param format_spec
+     * @return
+     */
+    String format(time_t t, const char* format_spec=NULL);
 
-        inline String format(const char* format_spec=NULL)
-        {
-            return format(now(), format_spec);
-        }
+    inline String format(const char* format_spec=NULL)
+    {
+        return format(now(), format_spec);
+    }
 
-        void setFormat(const char* format)
-        {
-            this->format_spec = format;
-        }
+    void setFormat(const char* format)
+    {
+        this->format_spec = format;
+    }
 
-        const char* getFormat() const { return format_spec; }
+    const char* getFormat() const { return format_spec; }
 
 private:
-    static const char* format_spec;
-    static String timeFormatImpl(tm* calendar_time, const char* format, int time_zone);
-
+    hal_rtc_source_t source_;
+    const char* format_spec;
+    String timeFormatImpl(tm* calendar_time, const char* format, int time_zone);
 };
 
-extern TimeClass Time;	//eg. usage: Time.day();
+TimeClass& __fetch_global_Time();
+
+#define Time __fetch_global_Time()
+
+#if (HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
+
+// Mainly for debug
+
+TimeClass& __fetch_global_InternalTime();
+#define InternalTime __fetch_global_InternalTime()
+
+#else
+
+#define InternalTime __fetch_global_Time()
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #endif
