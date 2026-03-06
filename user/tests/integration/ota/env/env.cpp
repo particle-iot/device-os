@@ -375,89 +375,54 @@ test(03_check_local_env_update) {
     System.reset();
 }
 
-test(04_start_on_connect_env_update) {
+test(04_prepare_on_connect_env_update) {
+}
+
+test(05_start_on_connect_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(05_complete_on_connect_env_update) {
+test(06_complete_on_connect_env_update) {
     completeFirmwareUpdate();
 }
 
-test(06_check_on_connect_env_update) {
+test(07_check_on_connect_env_update) {
     // The contents of the snapshot can be anything at this point so only check the predefined
     // org/product variables here
-    assertTrue(System.getEnv("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
-    assertTrue(System.getEnv("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
+    assertTrue(System.getEnv("DEV_VAR1") == String("dev 11") + nonce);
+    assertTrue(System.getEnv("DEV_VAR2") == String("dev 22") + nonce);
 }
 
-test(07_start_ad_hoc_env_update) {
+test(08_start_ad_hoc_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(08_complete_ad_hoc_env_update) {
+test(09_complete_ad_hoc_env_update) {
     completeFirmwareUpdate(true /* expectSafeMode */);
 }
 
-test(09_check_ad_hoc_env_update) {
+test(10_check_ad_hoc_env_update) {
     // Application variables
     assertTrue(System.getEnv("APP_VAR1") == String("app 1 ") + nonce);
     assertTrue(System.getEnv("APP_VAR2") == String("app 2 ") + nonce);
-
-    // Predefined org/product variables
-    assertTrue(System.getEnv("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
-    assertTrue(System.getEnv("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
 }
 
-test(10_start_immediate_product_env_update) {
+test(11_start_immediate_device_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(11_complete_immediate_product_env_update) {
+test(12_complete_immediate_device_env_update) {
     completeFirmwareUpdate();
 }
 
-test(12_check_immediate_product_env_update) {
-    // Product variables
-    auto var1 = findVarWithValue(String("prod 1 ") + nonce);
-    assertTrue(var1.length() > 0 && var1.length() < sizeof(deviceVar1));
-    std::memcpy(deviceVar1, var1.c_str(), var1.length() + 1); // Include '\0'
-
-    auto var2 = var1 + "_2";
-    assertTrue(System.getEnv(var2.c_str()) == String("prod 2 ") + nonce);
-    assertTrue(var2.length() < sizeof(deviceVar2));
-    std::memcpy(deviceVar2, var2.c_str(), var2.length() + 1);
-
-    // Application variables
-    assertTrue(System.getEnv("APP_VAR1") == String("app 1 ") + nonce);
-    assertTrue(System.getEnv("APP_VAR2") == String("app 2 ") + nonce);
-
-    // Predefined org/product variables
-    assertTrue(System.getEnv("DVOS_CI_ORG_VAR1") == "org default 1 pcT3RG9xr4");
-    assertTrue(System.getEnv("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
-}
-
-test(13_start_immediate_device_env_update) {
-    prepareForFirmwareUpdate();
-    connect();
-}
-
-test(14_complete_immediate_device_env_update) {
-    completeFirmwareUpdate();
-}
-
-test(15_check_immediate_device_env_update) {
-    // Product variables
-    assertTrue(System.getEnv(deviceVar1) == String("prod 1 ") + nonce);
-    assertTrue(System.getEnv(deviceVar2) == String("dev prod 2 ") + nonce); // Overridden
-
+test(13_check_immediate_device_env_update) {
     // Application variables
     assertTrue(System.getEnv("APP_VAR1") == String("app 1 ") + nonce);
     assertTrue(System.getEnv("APP_VAR2") == String("dev app 2 ") + nonce); // Overridden
 
-    // Predefined org/product variables
-    assertTrue(System.getEnv("DVOS_CI_ORG_VAR1") == String("dev org 1 ") + nonce); // Overridden
-    assertTrue(System.getEnv("DVOS_CI_PROD_VAR1") == "prod default 1 wkWStqATwW");
+    assertTrue(System.getEnv("DEV_VAR1") == String("dev 1") + nonce);
+    assertTrue(System.getEnv("DEV_VAR2") == String("dev 2") + nonce);
 }

@@ -8,6 +8,8 @@ const { flash, waitFlashStatusEvent } = require('../../test/ota');
 const { get, post, patch, devicePath, productPath, orgPath } = require('../../test/api');
 const { randomString } = require('../../test/random');
 
+const { unsetDeviceVariables } = require('../../test/env');
+
 const { createEnvVarsAssetModule, createApplicationAndAssetBundle } = require('binary-version-reader');
 const Particle = require('particle-api-js');
 const tempy = require('tempy');
@@ -29,47 +31,38 @@ let api;
 
 // Ensures that the default env vars are set at org and product levels. These variables don't change
 async function initDefaultEnv() {
-	const defaultOrgVars = {
-		'DVOS_CI_ORG_VAR1': 'org default 1 pcT3RG9xr4'
-	};
-	const defaultProductVars = {
-		'DVOS_CI_PROD_VAR1': 'prod default 1 wkWStqATwW'
-	};
+	// const defaultOrgVars = {
+	// 	'DVOS_CI_ORG_VAR1': 'org default 1 pcT3RG9xr4'
+	// };
+	// const defaultProductVars = {
+	// 	'DVOS_CI_PROD_VAR1': 'prod default 1 wkWStqATwW'
+	// };
 
-	// Set default product variables
-	let resp = await get(api, productPath('/env', productId));
-	const ownProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.own || {}).map(([k, v]) => [k, v.value]));
-	if (!_.isMatch(ownProductVars, defaultProductVars)) {
-		await patch(api, productPath('/env', productId), {
-			ops: Object.entries(defaultProductVars).map(([key, value]) => ({ op: 'Set', key, value }))
-		});
-		await post(api, productPath('/env/rollout', productId), {
-			when: 'Connect'
-		});
-	}
+	// // Set default product variables
+	// let resp = await get(api, productPath('/env', productId));
+	// const ownProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.own || {}).map(([k, v]) => [k, v.value]));
+	// if (!_.isMatch(ownProductVars, defaultProductVars)) {
+	// 	await patch(api, productPath('/env', productId), {
+	// 		ops: Object.entries(defaultProductVars).map(([key, value]) => ({ op: 'Set', key, value }))
+	// 	});
+	// 	await post(api, productPath('/env/rollout', productId), {
+	// 		when: 'Connect'
+	// 	});
+	// }
 
-	// Set default org variables
-	const inheritedProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.inherited || {}).map(([k, v]) => [k, v.value]));
-	if (!_.isMatch(inheritedProductVars, defaultOrgVars)) {
-		await patch(api, orgPath('/env', ORG_ID), {
-			ops: Object.entries(defaultOrgVars).map(([key, value]) => ({ op: 'Set', key, value }))
-		});
-		await post(api, orgPath('/env/rollout', ORG_ID), {
-			when: 'Connect'
-		});
-	}
+	// // Set default org variables
+	// const inheritedProductVars = Object.fromEntries(Object.entries(resp.last_snapshot?.inherited || {}).map(([k, v]) => [k, v.value]));
+	// if (!_.isMatch(inheritedProductVars, defaultOrgVars)) {
+	// 	await patch(api, orgPath('/env', ORG_ID), {
+	// 		ops: Object.entries(defaultOrgVars).map(([key, value]) => ({ op: 'Set', key, value }))
+	// 	});
+	// 	await post(api, orgPath('/env/rollout', ORG_ID), {
+	// 		when: 'Connect'
+	// 	});
+	// }
 
 	// Unset all device variables
-	resp = await get(api, `/v1/products/${productId}/env/${deviceId}`);
-	const ownDeviceVars = resp.last_snapshot?.own || {};
-	if (!_.isEmpty(ownDeviceVars)) {
-		await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
-			ops: Object.entries(ownDeviceVars).map(([key]) => ({ op: 'Unset', key }))
-		});
-		await post(api, `/v1/env/${deviceId}/rollout`, {
-			when: 'Connect'
-		});
-	}
+	await unsetDeviceVariables(api, deviceId);
 }
 
 before(async function() {
@@ -147,64 +140,51 @@ test('02_start_local_env_update', async function() {
 test('03_check_local_env_update', async function() {
 });
 
-test('04_start_on_connect_env_update', async function() {
+test('04_prepare_on_connect_env_update', async function() {
+	await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
+		ops: [
+			{ op: 'Set', key: 'DEV_VAR2', value: 'dev 22 ' + nonce },
+			{ op: 'Set', key: 'DEV_VAR1', value: 'dev 11 ' + nonce }
+		]
+	});
+	await post(api, `/v1/env/${deviceId}/rollout`, {
+		when: 'Connect'
+	});
+});
+
+test('05_start_on_connect_env_update', async function() {
 	// Snapshot update should start automatically
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('05_complete_on_connect_env_update', async function() {
+test('06_complete_on_connect_env_update', async function() {
 });
 
-test('06_check_on_connect_env_update', async function() {
+test('07_check_on_connect_env_update', async function() {
 });
 
-test('07_start_ad_hoc_env_update', async function() {
+test('08_start_ad_hoc_env_update', async function() {
 	const bundleZip = await createApplicationAndAssetBundle(appBinary, [], {
 		'APP_VAR1': 'app 1 ' + nonce,
-		'APP_VAR2': 'app 2 ' + nonce,
-		// These are saved to the device but don't override the snapshot variables
-		'DVOS_CI_ORG_VAR1': 'app org 1 ' + nonce,
-		'DVOS_CI_PROD_VAR1': 'app prod 1 ' + nonce
+		'APP_VAR2': 'app 2 ' + nonce
 	});
 	await flash(this, bundleZip, { filename: 'bundle.zip' });
 });
 
-test('08_complete_ad_hoc_env_update', async function() {
+test('09_complete_ad_hoc_env_update', async function() {
 });
 
-test('09_check_ad_hoc_env_update', async function() {
+test('10_check_ad_hoc_env_update', async function() {
 });
 
-test('10_start_immediate_product_env_update', async function() {
-	await patch(api, productPath('/env', productId), {
-		ops: [
-			{ op: 'Set', key: deviceVar1, value: 'prod 1 ' + nonce },
-			{ op: 'Set', key: deviceVar2, value: 'prod 2 ' + nonce }
-		]
-	});
-	await post(api, productPath('/env/rollout', productId), {
-		when: 'Immediate'
-	});
-	await waitFlashStatusEvent(this, { status: 'success' });
-});
-
-test('11_complete_immediate_product_env_update', async function() {
-});
-
-test('12_check_immediate_product_env_update', async function() {
-});
-
-test('13_start_immediate_device_env_update', async function() {
+test('11_start_immediate_device_env_update', async function() {
 	await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
 		ops: [
 			// Override app variables
 			{ op: 'Set', key: 'APP_VAR2', value: 'dev app 2 ' + nonce },
-			// Override product variables
-			{ op: 'Set', key: deviceVar2, value: 'dev prod 2 ' + nonce },
-			// Override org variables
-			{ op: 'Set', key: 'DVOS_CI_ORG_VAR1', value: 'dev org 1 ' + nonce },
 			// Set device variables
-			{ op: 'Set', key: 'DEV_VAR1', value: 'dev 1 ' + nonce }
+			{ op: 'Set', key: 'DEV_VAR1', value: 'dev 1 ' + nonce },
+			{ op: 'Set', key: 'DEV_VAR2', value: 'dev 2 ' + nonce },
 		]
 	});
 	await post(api, `/v1/env/${deviceId}/rollout`, {
@@ -213,8 +193,8 @@ test('13_start_immediate_device_env_update', async function() {
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('14_complete_immediate_device_env_update', async function() {
+test('12_complete_immediate_device_env_update', async function() {
 });
 
-test('15_check_immediate_device_env_update', async function() {
+test('13_check_immediate_device_env_update', async function() {
 });

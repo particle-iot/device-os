@@ -71,3 +71,11 @@ test(02_remove_static_ip) {
 test(03_enable_listening_mode) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
+
+#if HAL_PLATFORM_ENV
+test(04_cleanup_env) {
+    System.clearEnv(false /* reset */);
+    expectSystemReset();
+    System.reset();
+}
+#endif // HAL_PLATFORM_ENV

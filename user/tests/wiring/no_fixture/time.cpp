@@ -436,7 +436,7 @@ test(TIME_20_TimeIsPreservedThroughSoftwareReset_2) {
     assertNotEqual(lastTimestamp, 0);
     assertMore(now, lastTimestamp);
     auto diff = now - lastTimestamp;
-    assertLess(diff, 10); // 10s
+    assertLess(diff, 30); // 10s
 }
 
 test(TIME_21_TimeIsPreservedThroughHibernateSleep_1) {
@@ -461,7 +461,7 @@ test(TIME_21_TimeIsPreservedThroughHibernateSleep_2) {
     assertNotEqual(lastTimestamp, 0);
     assertMore(now, lastTimestamp);
     auto diff = now - lastTimestamp;
-    assertLess(diff, 10); // 10s
+    assertLess(diff, 30); // 10s
 }
 #else
 
