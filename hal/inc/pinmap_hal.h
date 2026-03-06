@@ -31,15 +31,15 @@ typedef struct hal_pin_info_t hal_pin_info_t;
 typedef uint16_t hal_pin_t;
 typedef hal_pin_t pin_t;
 
-#if HAL_PLATFORM_IO_EXTENSION
+// XXX: Make sure to add to PinType in system_sleep_configuration
 typedef enum hal_pin_type_t {
-    HAL_PIN_TYPE_UNKNOWN,
+    HAL_PIN_TYPE_UNKNOWN = 0,
     HAL_PIN_TYPE_MCU,
     HAL_PIN_TYPE_IO_EXPANDER,
     HAL_PIN_TYPE_DEMUX,
+    HAL_PIN_TYPE_RTC,
     HAL_PIN_TYPE_MAX
 } hal_pin_type_t;
-#endif
 
 typedef enum PinMode {
     INPUT = 0,

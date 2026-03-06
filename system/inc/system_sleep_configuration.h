@@ -43,7 +43,7 @@ enum class SystemSleepMode: uint8_t {
     STOP            = HAL_SLEEP_MODE_STOP,
     ULTRA_LOW_POWER = HAL_SLEEP_MODE_ULTRA_LOW_POWER,
     HIBERNATE       = HAL_SLEEP_MODE_HIBERNATE,
-    POWER_GATE      = HAL_SLEEP_MODE_POWER_GATE
+    POWER_OFF       = HAL_SLEEP_MODE_POWER_OFF
 };
 
 enum class AnalogInterruptMode: uint8_t {
@@ -62,6 +62,14 @@ enum class SystemSleepNetworkFlag: uint16_t {
     INACTIVE_STANDBY = HAL_SLEEP_NETWORK_FLAG_INACTIVE_STANDBY
 };
 ENABLE_ENUM_CLASS_BITWISE(SystemSleepNetworkFlag);
+
+enum class PinType: uint8_t {
+    UNKNOWN = HAL_PIN_TYPE_UNKNOWN,
+    MCU = HAL_PIN_TYPE_MCU,
+    IO_EXPANDER = HAL_PIN_TYPE_IO_EXPANDER,
+    DEMUX = HAL_PIN_TYPE_DEMUX,
+    RTC = HAL_PIN_TYPE_RTC,
+};
 
 class SystemSleepConfigurationHelper {
 public:
@@ -249,13 +257,13 @@ public:
         return *this;
     }
 
-    SystemSleepConfiguration& gpio(hal_pin_t pin, InterruptMode mode) {
+    SystemSleepConfiguration& gpio(hal_pin_t pin, InterruptMode mode, PinType type = PinType::UNKNOWN) {
         if (valid_) {
             // Check if this pin has been featured.
             auto wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO);
             while (wakeup) {
                 auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeup);
-                if (gpioWakeup->pin == pin) {
+                if (gpioWakeup->pin == pin && gpioWakeup->type == static_cast<hal_pin_type_t>(type)) {
                     gpioWakeup->mode = mode;
                     return *this;
                 }
@@ -277,9 +285,15 @@ public:
             wakeupSource->base.next = config_.wakeup_sources;
             wakeupSource->pin = pin;
             wakeupSource->mode = mode;
+            wakeupSource->type = static_cast<hal_pin_type_t>(type);
             config_.wakeup_sources = reinterpret_cast<hal_wakeup_source_base_t*>(wakeupSource);
         }
         return *this;
+    }
+
+    SystemSleepConfiguration& gpio(PinType type, InterruptMode mode) {
+        // FIXME: for now this should suffice for e.g. .gpio(PinType::RTC, FALLING)
+        return gpio(PIN_INVALID, mode, type);
     }
 
     SystemSleepConfiguration& gpios(const Vector<std::pair<hal_pin_t, InterruptMode>>& pins) {

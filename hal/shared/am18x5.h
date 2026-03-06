@@ -28,10 +28,7 @@
 #include "watchdog_hal.h"
 #include "watchdog_base.h"
 #include "enumclass.h"
-
-#define HAL_EXRTC_API_VERSION                   2
-#define HAL_EXRTC_ID_STR_LEN                    18
-#define HAL_EXRTC_MFG_MAGIC                     (0xC36AE15D)
+#include "exrtc_hal.h"
 
 namespace particle {
 
@@ -167,7 +164,7 @@ enum Am18x5OscEvent : uint8_t {
 
 typedef void (*Am18x5OscEventHandler)(uint8_t event, void* context);
 
-typedef struct hal_am18x5_config_t {
+typedef struct am18x5_manufacturing_config_t {
     uint16_t version;
     uint16_t size;
     uint8_t default_rtc;
@@ -184,23 +181,25 @@ typedef struct hal_am18x5_config_t {
     uint32_t mfg_magic;
     int8_t mfg_osc_cal_xt; // Read only
     uint8_t reserved[12];
-} __attribute__((packed)) hal_am18x5_config_t;
+} __attribute__((packed)) am18x5_manufacturing_config_t;
 
-typedef struct hal_am18x5_sleep_config_t {
+using am18x5_config_t = am18x5_manufacturing_config_t;
+
+typedef struct am18x5_sleep_config_t {
     uint16_t version;
     uint16_t size;
     Am18x5ExtiPolarity exti_polarity;
     bool exti_trigger_latched;
     system_tick_t duration; // in seconds
     uint8_t reserved[6];
-} __attribute__((packed)) hal_am18x5_sleep_config_t;
+} __attribute__((packed)) am18x5_sleep_config_t;
 
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
 
-    int setConfig(const hal_am18x5_config_t* config);
-    int getConfig(hal_am18x5_config_t* config);
+    int setConfig(const am18x5_config_t* config);
+    int getConfig(am18x5_config_t* config);
 
     bool isDefault() const;
     bool isPresent() const { return initialized_; }
@@ -223,7 +222,7 @@ public:
     bool isWatchdogStarted() const;
 
     // If multiple wakeup sources are configured, sleep mode exits on one wakeup source satisfied.
-    int sleep(const hal_am18x5_sleep_config_t* config);
+    int sleep(const am18x5_sleep_config_t* config);
 
     int getIdString(char* id, size_t len) const;
 
@@ -303,7 +302,7 @@ private:
     os_thread_t exRtcWorkerThread_;
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
-    hal_am18x5_config_t config_;
+    am18x5_config_t config_;
     uint8_t watchdogValue_;
     uint8_t ids_[AM18X5_ID_COUNT];
 

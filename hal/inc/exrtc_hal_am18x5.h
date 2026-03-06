@@ -25,7 +25,21 @@
 extern "C" {
 #endif // __cplusplus
 
+typedef struct hal_exrtc_vendor_config_am18x5_t {
+    hal_exrtc_vendor_config_t base;
 
+    union {
+        struct {
+            uint8_t xtal_calibration_set : 1;
+        };
+        uint32_t flags;
+    };
+    // May be overriden by manufacturing data
+    int8_t xtal_calibration;
+    // TODO: latching thing and whatever else
+} hal_exrtc_vendor_config_am18x5_t;
+
+#define HAL_EXRTC_TYPE_AM18X5_DEFAULT_ADDRESS (0x69)
 
 #ifdef __cplusplus
 }

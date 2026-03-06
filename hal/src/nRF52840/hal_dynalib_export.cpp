@@ -54,3 +54,4 @@
 
 #include "hal_dynalib_posix_syscall.h"
 #include "hal_dynalib_storage.h"
+#include "hal_dynalib_exrtc.h"

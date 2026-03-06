@@ -57,7 +57,7 @@ typedef enum hal_sleep_mode_t {
     HAL_SLEEP_MODE_STOP = 1,
     HAL_SLEEP_MODE_ULTRA_LOW_POWER = 2,
     HAL_SLEEP_MODE_HIBERNATE = 3,
-    HAL_SLEEP_MODE_POWER_GATE = 4,
+    HAL_SLEEP_MODE_POWER_OFF = 4,
     HAL_SLEEP_MODE_MAX = 0x7F
 } hal_sleep_mode_t;
 
@@ -122,7 +122,7 @@ typedef struct hal_wakeup_source_gpio_t {
     hal_wakeup_source_base_t base; // This must come first in order to use casting.
     uint16_t pin;
     InterruptMode mode; // Caution: This might not be 1-byte length, depending on linker options.
-    uint8_t reserved;
+    hal_pin_type_t type;
 } hal_wakeup_source_gpio_t;
 
 /**

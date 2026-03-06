@@ -34,11 +34,14 @@
 #include "bytes2hexbuf.h"
 #include "am18x5_defines.h"
 #include "am18x5.h"
+#include "exrtc_hal_internal.h"
 
 using namespace particle;
 using namespace particle::services;
 
 namespace {
+
+const size_t AM18X5_ID_STR_LEN = 18;
 
 void exRtcInterruptHandler(void* data) {
     auto instance = static_cast<Am18x5*>(data);
@@ -93,7 +96,7 @@ Am18x5::Am18x5()
           oscEventHandlerContext_(nullptr) {
     config_ = {};
     config_.version = HAL_EXRTC_API_VERSION;
-    config_.size = sizeof(hal_am18x5_config_t);
+    config_.size = sizeof(am18x5_config_t);
 }
 
 Am18x5::~Am18x5() {
@@ -107,19 +110,19 @@ Am18x5& Am18x5::getInstance() {
 
 // Version takes the precedence in case of upgrading/downgrading DVOS firmware
 // The size of the config should keep/increase on version bumped
-int Am18x5::setConfig(const hal_am18x5_config_t* config) {
+int Am18x5::setConfig(const am18x5_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(config->size > 0 && config->i2c_if < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_ARGUMENT);
-    hal_am18x5_config_t cachedConfig = {};
-    int ret = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(hal_am18x5_config_t));
+    am18x5_config_t cachedConfig = {};
+    int ret = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(am18x5_config_t));
     if (ret != SYSTEM_ERROR_NOT_FOUND) {
         CHECK(ret);
     }
     if (ret == SYSTEM_ERROR_NOT_FOUND) {
-        cachedConfig.size = sizeof(hal_am18x5_config_t);
+        cachedConfig.size = sizeof(am18x5_config_t);
         memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
         cachedConfig.version = HAL_EXRTC_API_VERSION;
-        cachedConfig.size = sizeof(hal_am18x5_config_t);
+        cachedConfig.size = sizeof(am18x5_config_t);
         if (cachedConfig.mfg_magic != HAL_EXRTC_MFG_MAGIC) {
             // Use the runtime calibration value as the MFG value
             cachedConfig.mfg_magic = HAL_EXRTC_MFG_MAGIC;
@@ -146,7 +149,7 @@ int Am18x5::setConfig(const hal_am18x5_config_t* config) {
                 LOG(TRACE, "Update EXRTC MFG calibration value: %d", mfgOscCalXt);
             }
         }
-        hal_am18x5_config_t* pNewConfig = nullptr;
+        am18x5_config_t* pNewConfig = nullptr;
         uint8_t* configBuff = nullptr;
         SCOPE_GUARD ({
             if (configBuff) {
@@ -160,14 +163,14 @@ int Am18x5::setConfig(const hal_am18x5_config_t* config) {
             // Read out full config
             CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, configBuff, cachedConfig.size));
             memcpy(configBuff, config, config->size);
-            hal_am18x5_config_t* pConfig = reinterpret_cast<hal_am18x5_config_t*>(configBuff);
+            am18x5_config_t* pConfig = reinterpret_cast<am18x5_config_t*>(configBuff);
             // Restore the version, size and mfg_osc_cal_xt fields
             pConfig->version = cachedConfig.version;
             pConfig->size = cachedConfig.size;
             pNewConfig = pConfig;
         } else {
             SPARK_ASSERT(config->size >= cachedConfig.size);
-            cachedConfig.size = sizeof(hal_am18x5_config_t);
+            cachedConfig.size = sizeof(am18x5_config_t);
             memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
             pNewConfig = &cachedConfig;
             // version and size fields are bumped
@@ -193,10 +196,10 @@ int Am18x5::setConfig(const hal_am18x5_config_t* config) {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::getConfig(hal_am18x5_config_t* config) {
+int Am18x5::getConfig(am18x5_config_t* config) {
     CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
-    hal_am18x5_config_t cachedConfig = {};
-    CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(hal_am18x5_config_t)));
+    am18x5_config_t cachedConfig = {};
+    CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(am18x5_config_t)));
     memcpy(config, &cachedConfig, std::min(cachedConfig.size, config->size));
     LOG(INFO, "Get EXRTC config version: %d, size: %d", cachedConfig.version, cachedConfig.size);
     return SYSTEM_ERROR_NONE;
@@ -395,7 +398,7 @@ int Am18x5::unlock() {
 
 int Am18x5::getIdString(char* id, size_t len) const {
     Am18x5Lock lock;
-    CHECK_TRUE(id && (len >= HAL_EXRTC_ID_STR_LEN), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(id && (len >= AM18X5_ID_STR_LEN), SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     bytes2hexbuf(ids_, 2, id); // Part Number in BCD format
     id += 4;
@@ -426,8 +429,8 @@ int Am18x5::getIdString(char* id, size_t len) const {
 int Am18x5::setTime(const struct timeval* tv) const {
     struct tm calendar;
     struct timeval canonical = *tv;
-    CHECK(canonicalizeTimeval(&tv));
-    CHECK(timevalToCalendar(tv, &calendar));
+    CHECK(canonicalizeTimeval(&canonical));
+    CHECK(timevalToCalendar(&canonical, &calendar));
 
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
@@ -641,7 +644,7 @@ int Am18x5::setPsw(bool val) const {
     return SYSTEM_ERROR_NONE;
 }
 
-int Am18x5::sleep(const hal_am18x5_sleep_config_t* config) {
+int Am18x5::sleep(const am18x5_sleep_config_t* config) {
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);

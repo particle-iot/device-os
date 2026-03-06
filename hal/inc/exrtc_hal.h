@@ -22,15 +22,13 @@
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #include "i2c_hal.h"
-
-#if HAL_PLATFORM_AM18X5
-#include "exrtc_hal_am18x5.h"
-#endif // HAL_PLATFORM_AM18X5
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
+#define HAL_EXRTC_API_VERSION_BASE (3)
 #define HAL_EXRTC_API_VERSION (3)
 
 typedef enum hal_exrtc_instance_t {
@@ -64,6 +62,7 @@ typedef enum hal_exrtc_status_flag_t {
 typedef enum hal_exrtc_config_flag_t {
     HAL_EXRTC_CONFIG_NONE = 0,
     HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC = 0x01,
+    HAL_EXRTC_CONFIG_DEFAULT_PLATFORM_CONFIG = 0x02
 } hal_exrtc_config_flag_t;
 
 typedef enum hal_exrtc_capability_t {
@@ -72,7 +71,12 @@ typedef enum hal_exrtc_capability_t {
     HAL_EXRTC_CAPS_CLOCK_SOURCE = 0x02,
     HAL_EXRTC_CAPS_CLOCK_OUTPUT = 0x04,
     HAL_EXRTC_CAPS_AUTO_CALIBRATION = 0x08,
-    HAL_EXRTC_CAPS_CLOCK_SOURCE_INTERNAL_ON_BATTERY = 0x10,
+    HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY = 0x10,
+    HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL = 0x20,
+    HAL_EXRTC_CAPS_SLEEP = 0x40,
+    HAL_EXRTC_CAPS_EXTI = 0x80,
+    HAL_EXRTC_CAPS_EXTI_LEVEL_TRIGGER = 0x100,
+    HAL_EXRTC_CAPS_WATCHDOG = 0x200,
 } hal_exrtc_capability_t;
 
 typedef enum hal_exrtc_event_t {
@@ -94,55 +98,63 @@ typedef struct hal_i2c_device_t {
     hal_pin_t pin_int;
     hal_pin_t pins[4];
     uint32_t reserved[4];
-} __attribute__((packed)) hal_i2c_device_t;
+} hal_i2c_device_t;
 
 typedef struct hal_exrtc_device_t {
     uint16_t version;
     uint16_t size;
 
     hal_exrtc_type_t type;
-    uint32_t flags;
+    uint32_t flags; // reserved for now
 
     uint32_t reserved[4];
-    void* reserved1;
 
-    uint8_t transport;
+    hal_exrtc_transport_t transport;
     union {
         hal_i2c_device_t i2c;
     };
-    uint32_t reserved[4];
+    uint32_t reserved1[4];
     // Do not add any more fields here unless version
     // is changed and version change is correctly handled
-} __attribute__((packed)) hal_exrtc_device_t;
+} hal_exrtc_device_t;
 
 typedef struct hal_exrtc_vendor_config_t {
     uint16_t version;
     uint16_t size;
 
     hal_exrtc_type_t type;
-} __attribute__((packed)) hal_exrtc_vendor_config_t;
+    uint8_t reserved[3];
+    // This is a base struct, do not add any more fields to it
+} hal_exrtc_vendor_config_t;
 
 typedef struct hal_exrtc_config_t {
     uint16_t version;
     uint16_t size;
 
-    uint32_t flags;
+    uint32_t flags; //  hal_exrtc_config_flag_t
+    uint32_t caps_enable; // hal_exrtc_capability_t
+
+    hal_exrtc_clock_source_t clock_source;
+
     uint32_t reserved[4];
-} __attribute__((packed)) hal_exrtc_config_t;
+} hal_exrtc_config_t;
 
 typedef struct hal_exrtc_status_t {
     uint16_t version;
     uint16_t size;
 
-    uint32_t status;
-    uint32_t capabilities;
-
     hal_exrtc_type_t type;
+
+    uint32_t status; // hal_exrtc_status_flag_t
+    uint32_t caps_supported; // hal_exrtc_capability_t
+    uint32_t caps_optional; // hal_exrtc_capability_t
+    uint32_t caps_enabled; // hal_exrtc_capability_t
+    uint32_t reserved;
 
     hal_exrtc_clock_source_t clock_source;
 
-    uint32_t reserved[4]; 
-} __attribute__((packed)) hal_exrtc_status_t;
+    uint32_t reserved1[4]; 
+} hal_exrtc_status_t;
 
 typedef struct hal_exrtc_binding_t {
     uint16_t version;
@@ -152,8 +164,11 @@ typedef struct hal_exrtc_binding_t {
     // Optional
     hal_exrtc_config_t* config;
     hal_exrtc_vendor_config_t* vendor;
+}  hal_exrtc_binding_t;
 
-}  __attribute__((packed)) hal_exrtc_binding_t;
+typedef enum hal_exrtc_command_t {
+
+} hal_exrtc_command_t;
 
 typedef void (*hal_exrtc_event_handler_t)(uint32_t events, void* extra, void* context);
 
@@ -166,12 +181,16 @@ int hal_exrtc_get_status(hal_exrtc_instance_t instance, hal_exrtc_status_t* stat
 int hal_exrtc_set_config(hal_exrtc_instance_t instance, const hal_exrtc_config_t* config, const hal_exrtc_vendor_config_t* vendor, void* reserved);
 int hal_exrtc_get_config(hal_exrtc_instance_t instance, hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor, void* reserved);
 
-void* hal_exrtc_event_handler_add(hal_exrtc_instance_instance instance, hal_exrtc_event_handler_t handler, void* context, void* reserved);
+void* hal_exrtc_event_handler_add(hal_exrtc_instance_t instance, hal_exrtc_event_handler_t handler, void* context, void* reserved);
 
-int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, void* reserved);
+int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, void* arg1, void* reserved);
 
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+
+#if HAL_PLATFORM_AM18X5
+#include "exrtc_hal_am18x5.h"
+#endif // HAL_PLATFORM_AM18X5
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

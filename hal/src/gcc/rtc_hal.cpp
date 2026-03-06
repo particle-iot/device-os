@@ -40,18 +40,18 @@ void hal_rtc_init(void) {
     tzset();
 }
 
-int hal_rtc_get_time(struct timeval* tv, void* reserved) {
+int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
     auto now = boost::posix_time::microsec_clock::universal_time();
     ptimeToTimeval(tv, now);
     return 0;
 }
 
-int hal_rtc_set_time(const struct timeval* tv, void* reserved) {
+int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
     return 0;
 }
 
-bool hal_rtc_time_is_valid(void* reserved) {
+bool hal_rtc_time_is_valid(hal_rtc_option_t* opt) {
     return true;
 }
 

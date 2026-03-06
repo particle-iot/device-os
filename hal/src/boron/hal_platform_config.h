@@ -100,3 +100,4 @@
 
 // FIXME: system part flash size overflow
 #define HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL (1)
+#define HAL_PLATFORM_AM18X5 (1)
