@@ -388,10 +388,8 @@ test(06_complete_on_connect_env_update) {
 }
 
 test(07_check_on_connect_env_update) {
-    // The contents of the snapshot can be anything at this point so only check the predefined
-    // org/product variables here
-    assertTrue(System.getEnv("DEV_VAR1") == String("dev 11") + nonce);
-    assertTrue(System.getEnv("DEV_VAR2") == String("dev 22") + nonce);
+    assertEqual(System.getEnv("DEV_VAR1"), String("dev 11 ") + nonce);
+    assertEqual(System.getEnv("DEV_VAR2"), String("dev 22 ") + nonce);
 }
 
 test(08_start_ad_hoc_env_update) {
@@ -405,8 +403,8 @@ test(09_complete_ad_hoc_env_update) {
 
 test(10_check_ad_hoc_env_update) {
     // Application variables
-    assertTrue(System.getEnv("APP_VAR1") == String("app 1 ") + nonce);
-    assertTrue(System.getEnv("APP_VAR2") == String("app 2 ") + nonce);
+    assertEqual(System.getEnv("APP_VAR1"), String("app 1 ") + nonce);
+    assertEqual(System.getEnv("APP_VAR2"), String("app 2 ") + nonce);
 }
 
 test(11_start_immediate_device_env_update) {
@@ -420,9 +418,17 @@ test(12_complete_immediate_device_env_update) {
 
 test(13_check_immediate_device_env_update) {
     // Application variables
-    assertTrue(System.getEnv("APP_VAR1") == String("app 1 ") + nonce);
-    assertTrue(System.getEnv("APP_VAR2") == String("dev app 2 ") + nonce); // Overridden
+    assertEqual(System.getEnv("APP_VAR1"), String("app 1 ") + nonce);
+    assertEqual(System.getEnv("APP_VAR2"), String("dev app 2 ") + nonce); // Overridden
 
-    assertTrue(System.getEnv("DEV_VAR1") == String("dev 1") + nonce);
-    assertTrue(System.getEnv("DEV_VAR2") == String("dev 2") + nonce);
+    assertEqual(System.getEnv("DEV_VAR1"), String("dev 1 ") + nonce);
+    assertEqual(System.getEnv("DEV_VAR2"), String("dev 2 ") + nonce);
+}
+
+test(99_cleanup) {
+    // Just in case
+    System.enableReset();
+    System.clearEnv(false /* reset */);
+    expectSystemReset();
+    System.reset();
 }

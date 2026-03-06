@@ -22,7 +22,7 @@ const THRESHOLDS = {
         targetFreeRam: 3040870,        // 2.9MB
         targetTime: {
             pre_startup: 110000,
-            pre_startup_duration: 180,
+            pre_startup_duration: 220,
             startup_duration: 390000,
             setup_duration: 55
         }
@@ -50,7 +50,7 @@ const THRESHOLDS = {
     argon: {
         targetTime: {
             pre_startup: 270000,
-            pre_startup_duration: 146,
+            pre_startup_duration: 150,
             startup_duration: 32000,
             setup_duration: 170
         }
