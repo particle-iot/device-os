@@ -438,8 +438,19 @@ test(16_particle_ethernet_enable_cleanup) {
 }
 #endif // HAL_PLATFORM_ETHERNET
 
-test(99_cleanup) {
+test(97_cleanup) {
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
+}
+
+test(98_cleanup) {
+    expectSystemReset();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(99_cleanup) {
+    
 }

@@ -78,4 +78,15 @@ test(04_cleanup_env) {
     expectSystemReset();
     System.reset();
 }
+
+test(05_cleanup_env) {
+    expectSystemReset();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(06_cleanup_env) {
+    
+}
 #endif // HAL_PLATFORM_ENV

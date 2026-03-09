@@ -425,10 +425,21 @@ test(13_check_immediate_device_env_update) {
     assertEqual(System.getEnv("DEV_VAR2"), String("dev 2 ") + nonce);
 }
 
-test(99_cleanup) {
+test(97_cleanup) {
     // Just in case
     System.enableReset();
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
+}
+
+test(98_cleanup) {
+    expectSystemReset();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(99_cleanup) {
+    
 }

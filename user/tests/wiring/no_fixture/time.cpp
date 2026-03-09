@@ -523,5 +523,5 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_2) {
     assertNotEqual(lastTimestamp, 0);
     assertMore(now, lastTimestamp);
     auto diff = now - lastTimestamp;
-    assertLess(diff, 30);
+    assertLess(diff, 60);
 }

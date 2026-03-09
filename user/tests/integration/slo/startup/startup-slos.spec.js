@@ -120,8 +120,12 @@ test('01_prepare', async function () {
 
 });
 
-test('02_slo_startup_stats', async function () {
-    const unparsedJson = await this.particle.receiveEvent('startup_stats');
+test('02_prepare', async function () {
+
+});
+
+test('03_slo_startup_stats', async function () {
+    const unparsedJson = device.mailBox.pop().d;
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
 

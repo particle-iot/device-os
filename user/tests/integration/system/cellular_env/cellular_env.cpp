@@ -557,7 +557,7 @@ test(11_particle_cellular_env_vars_cleared_verify_defaults) {
 
 #endif // HAL_PLATFORM_CELLULAR
 
-test(99_cleanup) {
+test(97_cleanup) {
     if (g_SkipTests) {
         skip();
         return;
@@ -566,4 +566,19 @@ test(99_cleanup) {
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
+}
+
+test(98_cleanup) {
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
+    expectSystemReset();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(99_cleanup) {
+    
 }

@@ -17,7 +17,7 @@ const _ = require('lodash');
 
 const { readFile } = require('node:fs/promises');
 
-const ORG_ID = 'particle'; // Set to `undefined` to use the current user's sandbox
+const ORG_ID = 'particle-hil'; // Set to `undefined` to use the current user's sandbox
 
 let nonce;
 let appBinary;

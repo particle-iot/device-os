@@ -64,10 +64,12 @@ test(01_prepare) {
     System.reset();
 }
 
-test(02_slo_startup_stats) {
-    Particle.connect();
-    waitFor(Particle.connected, 10 * 60 * 1000);
-    
+test(02_prepare) {
+    expectSystemReset();
+    System.reset();
+}
+
+test(03_slo_startup_stats) {
     // get free_mem
     uint32_t free_mem = System.freeMemory();
     
@@ -87,5 +89,16 @@ test(02_slo_startup_stats) {
     time.set("loop", loopTimeFromStartup);
     stats.set("time", time);
 
-    Particle.publish("startup_stats", stats.toJSON());
+    pushMailboxMsg(stats.toJSON(), 5000);
+}
+
+test(98_cleanup) {
+    expectSystemReset();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(99_cleanup) {
+    
 }
