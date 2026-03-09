@@ -6,6 +6,8 @@ systemThread('enabled');
 const { unsetDeviceVariables } = require('../test/env');
 const Particle = require('particle-api-js');
 
+const { waitFlashStatusEvent } = require('../test/ota');
+
 let device;
 let deviceId;
 let api;
@@ -34,6 +36,13 @@ test('03_enable_listening_mode', async function () {
 
 test('04_cleanup_env', async function () {
     await unsetDeviceVariables(api, deviceId);
+});
+
+test('05_cleanup_env', async function () {
+    await waitFlashStatusEvent(this, { status: 'success' });
+});
+
+test('06_cleanup_env', async function () {
 });
 
 after(function() {

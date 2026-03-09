@@ -8,6 +8,8 @@ const _ = require('lodash');
 
 const { readFile } = require('node:fs/promises');
 
+const { waitFlashStatusEvent } = require('../../test/ota');
+
 let appBinary;
 let deviceId;
 let device;
@@ -93,6 +95,12 @@ test('16_particle_ethernet_enable_cleanup', async function () {
 
 });
 
+test('97_cleanup', async function() {
+});
+
+test('98_cleanup', async function() {
+    await waitFlashStatusEvent(this, { status: 'success' });
+});
 
 test('99_cleanup', async function() {
     delete this.test.parent.particle.network;

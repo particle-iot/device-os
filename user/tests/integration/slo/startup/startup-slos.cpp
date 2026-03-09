@@ -58,6 +58,10 @@ test(01_prepare) {
     // Startup times are affected somewhat by assets and env vars (as they are also a type of an asset)
     // Make sure that they are not present during this test
     System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
     asset_manager_format_storage(nullptr);
     System.disableFeature(FEATURE_ETHERNET_DETECTION); // just in case
     expectSystemReset();
@@ -93,12 +97,11 @@ test(03_slo_startup_stats) {
 }
 
 test(98_cleanup) {
-    expectSystemReset();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     // We are supposed to get an empty env
 }
 
 test(99_cleanup) {
-    
+
 }

@@ -429,17 +429,21 @@ test(97_cleanup) {
     // Just in case
     System.enableReset();
     System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
     expectSystemReset();
     System.reset();
 }
 
 test(98_cleanup) {
-    expectSystemReset();
+    prepareForFirmwareUpdate();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     // We are supposed to get an empty env
 }
 
 test(99_cleanup) {
-    
+    completeFirmwareUpdate();
 }

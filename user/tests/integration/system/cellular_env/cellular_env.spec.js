@@ -8,6 +8,8 @@ const _ = require('lodash');
 
 const { readFile } = require('node:fs/promises');
 
+const { waitFlashStatusEvent } = require('../../test/ota');
+
 let appBinary;
 let deviceId;
 let device;
@@ -105,6 +107,14 @@ test('10_particle_cellular_preferred_plmn_cleanup', async function () {
 test('11_particle_cellular_env_vars_cleared_verify_defaults', async function () {
     expect(device.mailBox).to.not.be.empty;
     console.log(device.mailBox[0].d);
+});
+
+test('97_cleanup', async function() {
+
+});
+
+test('98_cleanup', async function() {
+    await waitFlashStatusEvent(this, { status: 'success' });
 });
 
 test('99_cleanup', async function() {

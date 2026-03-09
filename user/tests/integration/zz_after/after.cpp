@@ -25,27 +25,96 @@
 
 namespace {
 
-    bool getFactoryModule(hal_module_t* factoryModule) {
-        // Search the platform modules for the factory module
-        hal_system_info_t info = {};
-        info.size = sizeof(info);
-        const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
-        if (r != 0) {
-            return false;
-        }
-        SCOPE_GUARD({
-            system_info_free_unstable(&info, nullptr /* reserved */);
-        });
-
-        for (size_t i = 0; i < info.module_count; ++i) {
-            const auto& module = info.modules[i];
-            if (module.bounds.store == MODULE_STORE_FACTORY) {
-                *factoryModule = module;
-                return true;
-            }
-        }
+bool getFactoryModule(hal_module_t* factoryModule) {
+    // Search the platform modules for the factory module
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
+    if (r != 0) {
         return false;
     }
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr /* reserved */);
+    });
+
+    for (size_t i = 0; i < info.module_count; ++i) {
+        const auto& module = info.modules[i];
+        if (module.bounds.store == MODULE_STORE_FACTORY) {
+            *factoryModule = module;
+            return true;
+        }
+    }
+    return false;
+}
+
+enum class FirmwareUpdateStatus {
+    NONE,
+    STARTED,
+    SUCCESS,
+    ERROR
+};
+
+auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+std::atomic<int> firmwareUpdateProgressCount;
+
+void firmwareUpdateEventHandler(system_event_t, int data, void*) {
+    switch (data) {
+    case firmware_update_begin:
+        Test::out->println("firmware_update_begin");
+        firmwareUpdateStatus = FirmwareUpdateStatus::STARTED;
+        break;
+    case firmware_update_complete:
+        Test::out->println("firmware_update_complete");
+        firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
+        break;
+    case firmware_update_progress:
+        ++firmwareUpdateProgressCount;
+        break;
+    default:
+        Test::out->printlnf("Unexpected firmware update status: %d", data);
+        firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
+        break;
+    }
+}
+
+void prepareForFirmwareUpdate() {
+    System.disableReset();
+    System.on(firmware_update, firmwareUpdateEventHandler);
+    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+    firmwareUpdateProgressCount = 0;
+}
+
+void completeFirmwareUpdate(bool expectSafeMode = false) {
+    bool ok = false;
+    auto t1 = millis();
+    for (;;) {
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
+            ok = true;
+            break;
+        }
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::ERROR) {
+            Test::out->println("Firmware update failed");
+            break;
+        }
+        // The JS part of the test waits until the OTA completes so the timeout here is for
+        // finalizing the update on the device
+        if (millis() - t1 >= 30000) {
+            Test::out->println("Firmware update timeout");
+            break;
+        }
+    }
+    Test::out->printlnf("firmware_update_progress count: %d", firmwareUpdateProgressCount.load());
+    System.off(firmware_update);
+    if (ok) {
+        if (expectSafeMode) {
+            TestRunner::instance()->expectSafeMode();
+        } else {
+            TestRunner::instance()->expectSystemReset();
+        }
+    }
+    assertTrue(ok);
+    System.enableReset();
+}
 
 } // namespace
 
@@ -75,18 +144,22 @@ test(03_enable_listening_mode) {
 #if HAL_PLATFORM_ENV
 test(04_cleanup_env) {
     System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
     expectSystemReset();
     System.reset();
 }
 
 test(05_cleanup_env) {
-    expectSystemReset();
+    prepareForFirmwareUpdate();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     // We are supposed to get an empty env
 }
 
 test(06_cleanup_env) {
-    
+    completeFirmwareUpdate();
 }
 #endif // HAL_PLATFORM_ENV
