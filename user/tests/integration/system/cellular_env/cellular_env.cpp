@@ -647,6 +647,7 @@ test(98_cleanup) {
         return;
     }
     prepareForFirmwareUpdate();
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     // We are supposed to get an empty env

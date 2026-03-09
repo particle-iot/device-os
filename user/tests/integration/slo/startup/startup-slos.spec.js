@@ -15,6 +15,8 @@ systemThread('enabled');
 
 const util = require('util')
 
+const { waitFlashStatusEvent } = require('../../test/ota');
+
 // Parameters validated by this test
 const THRESHOLDS = {
     p2: {
@@ -125,6 +127,7 @@ test('02_prepare', async function () {
 });
 
 test('03_slo_startup_stats', async function () {
+    const device = this.particle.devices[0];
     const unparsedJson = device.mailBox.pop().d;
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
@@ -167,4 +170,12 @@ test('03_slo_startup_stats', async function () {
     expect(actualTime.pre_startup_duration).to.be.below(thresh.targetTime.pre_startup_duration);
     expect(actualTime.startup_duration).to.be.below(thresh.targetTime.startup_duration);
     expect(actualTime.setup_duration).to.be.below(thresh.targetTime.setup_duration);
+});
+
+test('98_cleanup', async function() {
+    await waitFlashStatusEvent(this, { status: 'success' });
+});
+
+test('99_cleanup', async function() {
+
 });

@@ -27,6 +27,75 @@ bool loopCalled = false;
 system_tick_t testAppInitDuration = 0;
 system_tick_t testAppSetupDuration = 0;
 
+enum class FirmwareUpdateStatus {
+    NONE,
+    STARTED,
+    SUCCESS,
+    ERROR
+};
+
+auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+std::atomic<int> firmwareUpdateProgressCount;
+
+void firmwareUpdateEventHandler(system_event_t, int data, void*) {
+    switch (data) {
+    case firmware_update_begin:
+        Test::out->println("firmware_update_begin");
+        firmwareUpdateStatus = FirmwareUpdateStatus::STARTED;
+        break;
+    case firmware_update_complete:
+        Test::out->println("firmware_update_complete");
+        firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
+        break;
+    case firmware_update_progress:
+        ++firmwareUpdateProgressCount;
+        break;
+    default:
+        Test::out->printlnf("Unexpected firmware update status: %d", data);
+        firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
+        break;
+    }
+}
+
+void prepareForFirmwareUpdate() {
+    System.disableReset();
+    System.on(firmware_update, firmwareUpdateEventHandler);
+    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+    firmwareUpdateProgressCount = 0;
+}
+
+void completeFirmwareUpdate(bool expectSafeMode = false) {
+    bool ok = false;
+    auto t1 = millis();
+    for (;;) {
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
+            ok = true;
+            break;
+        }
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::ERROR) {
+            Test::out->println("Firmware update failed");
+            break;
+        }
+        // The JS part of the test waits until the OTA completes so the timeout here is for
+        // finalizing the update on the device
+        if (millis() - t1 >= 30000) {
+            Test::out->println("Firmware update timeout");
+            break;
+        }
+    }
+    Test::out->printlnf("firmware_update_progress count: %d", firmwareUpdateProgressCount.load());
+    System.off(firmware_update);
+    if (ok) {
+        if (expectSafeMode) {
+            TestRunner::instance()->expectSafeMode();
+        } else {
+            TestRunner::instance()->expectSystemReset();
+        }
+    }
+    assertTrue(ok);
+    System.enableReset();
+}
+
 } // anonymous
 
 void PRE_STARTUP() {
@@ -97,11 +166,13 @@ test(03_slo_startup_stats) {
 }
 
 test(98_cleanup) {
+    prepareForFirmwareUpdate();
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     // We are supposed to get an empty env
 }
 
 test(99_cleanup) {
-
+    completeFirmwareUpdate();
 }
