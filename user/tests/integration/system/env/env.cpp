@@ -121,6 +121,7 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
     bool ok = false;
     auto t1 = millis();
     for (;;) {
+        Particle.process();
         if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
             ok = true;
             break;
