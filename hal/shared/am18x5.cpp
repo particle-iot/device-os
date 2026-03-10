@@ -14,32 +14,45 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+#undef LOG_COMPILE_TIME_LEVEL
+#define LOG_COMPILE_TIME_LEVEL LOG_LEVEL_ALL
 
-#include "rtc_hal.h"
-#include "system_cache.h"
+#include "hal_platform.h"
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 // #define LOG_CHECKED_ERRORS 1
 
 #include <memory>
+#include <iterator>
 #include "check.h"
 #include "system_error.h"
 #include "bcd_to_dec.h"
 #include "interrupts_hal.h"
 #include "gpio_hal.h"
-#include "system_cache.h"
 #include "scope_guard.h"
 #include "core_hal.h"
 #include "bytes2hexbuf.h"
 #include "am18x5_defines.h"
 #include "am18x5.h"
+#include "rtc_hal.h"
 #include "exrtc_hal_internal.h"
+#include "system_cache.h"
 
 using namespace particle;
-using namespace particle::services;
-
 namespace {
+
+const uint32_t AM18X5_SUPPORTED_CAPS =
+        HAL_EXRTC_CAPS_POWER_GATE |
+        HAL_EXRTC_CAPS_CLOCK_SOURCE |
+        HAL_EXRTC_CAPS_CLOCK_OUTPUT |
+        HAL_EXRTC_CAPS_AUTO_CALIBRATION |
+        HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY |
+        HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL |
+        HAL_EXRTC_CAPS_SLEEP |
+        HAL_EXRTC_CAPS_EXTI |
+        HAL_EXRTC_CAPS_EXTI_LEVEL_TRIGGER |
+        HAL_EXRTC_CAPS_WATCHDOG;
 
 const size_t AM18X5_ID_STR_LEN = 18;
 
@@ -84,19 +97,25 @@ int canonicalizeTimeval(struct timeval* tv) {
 
 Am18x5::Am18x5()
         : initialized_(false),
-          disableI2cOnEnded_(false),
           alarmYear_(0),
           alarmHandler_(nullptr),
           alarmHandlerContext_(nullptr),
           exRtcWorkerThread_(nullptr),
           exRtcWorkerSemaphore_(nullptr),
           exRtcWorkerThreadExit_(false),
+          exrtcConfigFlags_(0),
           subscribedOscEvents_(0),
           oscEventHandler_(nullptr),
           oscEventHandlerContext_(nullptr) {
     config_ = {};
     config_.version = HAL_EXRTC_API_VERSION;
     config_.size = sizeof(am18x5_config_t);
+    config_.wdi_pin = PIN_INVALID;
+    config_.int_pin = PIN_INVALID;
+    config_.i2c_if = HAL_I2C_INTERFACE1;
+    config_.osc_src = Am18x5Oscillator::EXTERNAL_CRYSTAL;
+    config_.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+    config_.mfg_magic = HAL_EXRTC_MFG_MAGIC;
 }
 
 Am18x5::~Am18x5() {
@@ -108,100 +127,230 @@ Am18x5& Am18x5::getInstance() {
     return am18x5;
 }
 
+int Am18x5::loadLegacyMfgOscCalibration(int32_t* cal) const {
+    CHECK_TRUE(cal, SYSTEM_ERROR_INVALID_ARGUMENT);
+    am18x5_config_t legacy = {};
+    int r = particle::services::SystemCache::instance().get(particle::services::SystemCacheKey::AM18X5_MANUFACTURING_CONFIG, &legacy, sizeof(legacy));
+    if (r == SYSTEM_ERROR_NOT_FOUND) {
+        return r;
+    }
+    CHECK(r);
+    if (legacy.version >= 2 && legacy.mfg_magic == HAL_EXRTC_MFG_MAGIC) {
+        *cal = legacy.mfg_osc_cal_xt;
+    } else {
+        *cal = legacy.osc_cal_xt;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::loadMfgOscCalibration(int32_t* cal) const {
+    CHECK_TRUE(cal, SYSTEM_ERROR_INVALID_ARGUMENT);
+    hal_exrtc_calibration_data_t stored = {};
+    int r = particle::services::SystemCache::instance().get(particle::services::SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, &stored, sizeof(stored));
+    if (r == SYSTEM_ERROR_NONE) {
+        CHECK_TRUE(stored.size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_BAD_DATA);
+        *cal = stored.value;
+        return SYSTEM_ERROR_NONE;
+    }
+    CHECK_TRUE(r == SYSTEM_ERROR_NOT_FOUND, r);
+    return loadLegacyMfgOscCalibration(cal);
+}
+
+int Am18x5::bind(const hal_exrtc_binding_t* binding) {
+    if (isPresent()) {
+        CHECK(end());
+    }
+    CHECK_TRUE(binding && binding->device && binding->config, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(binding->device->type == HAL_EXRTC_TYPE_AM18X5, SYSTEM_ERROR_NOT_SUPPORTED);
+    CHECK_TRUE(binding->device->transport == HAL_EXRTC_TRANSPORT_I2C, SYSTEM_ERROR_NOT_SUPPORTED);
+    CHECK_TRUE(binding->device->i2c.address == HAL_EXRTC_TYPE_AM18X5_DEFAULT_ADDRESS, SYSTEM_ERROR_NOT_SUPPORTED);
+
+    am18x5_config_t config = {};
+    config.version = HAL_EXRTC_API_VERSION;
+    config.size = sizeof(config);
+    config.default_rtc = !!(binding->config->flags & HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC);
+    exrtcConfigFlags_ = binding->config->flags;
+    config.wdi_pin = binding->device->i2c.pins[0];
+    config.int_pin = binding->device->i2c.pin_int;
+    config.i2c_if = binding->device->i2c.interface;
+    config.rc_fallback = !!(binding->config->caps_enable & HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL);
+    config.rc_on_battery = !!(binding->config->caps_enable & HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY);
+    config.osc_src = binding->config->clock_source == HAL_EXRTC_CLOCK_SOURCE_INTERNAL ?
+            Am18x5Oscillator::INTERNAL_RC : Am18x5Oscillator::EXTERNAL_CRYSTAL;
+    config.clk_out_en = !!(binding->config->caps_enable & HAL_EXRTC_CAPS_CLOCK_OUTPUT);
+    config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+    config.auto_calibration = (binding->config->caps_enable & HAL_EXRTC_CAPS_AUTO_CALIBRATION) ?
+            Am18x5AutoCalibration::AUTO_CAL_EVERY_1024_SEC : Am18x5AutoCalibration::AUTO_CAL_DISABLE;
+    config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+
+    int32_t legacyMfgCal = 0;
+    bool haveLegacyMfgCal = (loadMfgOscCalibration(&legacyMfgCal) == SYSTEM_ERROR_NONE);
+    if (haveLegacyMfgCal) {
+        CHECK_TRUE(legacyMfgCal >= INT8_MIN && legacyMfgCal <= INT8_MAX, SYSTEM_ERROR_BAD_DATA);
+        config.mfg_osc_cal_xt = static_cast<int8_t>(legacyMfgCal);
+    }
+
+    if (binding->vendor) {
+        CHECK_TRUE(binding->vendor->type == HAL_EXRTC_TYPE_AM18X5, SYSTEM_ERROR_INVALID_ARGUMENT);
+        auto vendor = reinterpret_cast<const hal_exrtc_vendor_config_am18x5_t*>(binding->vendor);
+        if (vendor->xtal_calibration_set) {
+            config.osc_cal_xt = vendor->xtal_calibration;
+        }
+    }
+    if (!haveLegacyMfgCal) {
+        config.mfg_osc_cal_xt = config.osc_cal_xt;
+    }
+
+    CHECK(setConfig(&config));
+    return begin();
+}
+
+int Am18x5::command(hal_exrtc_command_t cmd, void* arg, void* arg1) {
+    (void)arg1;
+    switch (cmd) {
+        case HAL_EXRTC_COMMAND_SLEEP: {
+            auto params = static_cast<hal_exrtc_sleep_config_t*>(arg);
+            CHECK_TRUE(params && params->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+            am18x5_sleep_config_t config = {};
+            config.version = HAL_EXRTC_API_VERSION;
+            config.size = sizeof(config);
+            config.duration = params->duration;
+            switch (params->exti_mode) {
+                case CHANGE:
+                    config.exti_polarity = Am18x5ExtiPolarity::NONE;
+                    break;
+                case FALLING:
+                    config.exti_polarity = Am18x5ExtiPolarity::FALLING;
+                    break;
+                case RISING:
+                    config.exti_polarity = Am18x5ExtiPolarity::RISING;
+                    break;
+                default:
+                    return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+            return sleep(&config);
+        }
+        default:
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+}
+
+int Am18x5::getDevice(hal_exrtc_device_t* device) const {
+    CHECK_TRUE(device && device->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+    hal_exrtc_device_t dev = {};
+    dev.size = sizeof(dev);
+    dev.version = HAL_EXRTC_API_VERSION;
+    dev.type = HAL_EXRTC_TYPE_AM18X5;
+    dev.transport = HAL_EXRTC_TRANSPORT_I2C;
+    dev.i2c.interface = config_.i2c_if;
+    dev.i2c.address = HAL_EXRTC_TYPE_AM18X5_DEFAULT_ADDRESS;
+    dev.i2c.pin_int = config_.int_pin;
+    dev.i2c.pins[0] = config_.wdi_pin;
+    std::fill(std::begin(dev.i2c.pins) + 1, std::end(dev.i2c.pins), PIN_INVALID);
+    memcpy(device, &dev, std::min<size_t>(device->size, sizeof(dev)));
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor) const {
+    CHECK_TRUE(config && config->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    hal_exrtc_config_t exrtcConfig = {};
+    exrtcConfig.size = sizeof(exrtcConfig);
+    exrtcConfig.version = HAL_EXRTC_API_VERSION;
+    if (config_.default_rtc) {
+        exrtcConfig.flags |= HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC;
+    }
+    if (exrtcConfigFlags_ & HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK) {
+        exrtcConfig.flags |= HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK;
+    }
+    exrtcConfig.clock_source = config_.osc_src == Am18x5Oscillator::INTERNAL_RC ?
+            HAL_EXRTC_CLOCK_SOURCE_INTERNAL : HAL_EXRTC_CLOCK_SOURCE_EXTERNAL;
+    if (config_.rc_on_battery) {
+        exrtcConfig.caps_enable |= HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY;
+    }
+    if (config_.rc_fallback) {
+        exrtcConfig.caps_enable |= HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL;
+    }
+    if (config_.auto_calibration != Am18x5AutoCalibration::AUTO_CAL_DISABLE) {
+        exrtcConfig.caps_enable |= HAL_EXRTC_CAPS_AUTO_CALIBRATION;
+    }
+    if (config_.clk_out_en) {
+        exrtcConfig.caps_enable |= HAL_EXRTC_CAPS_CLOCK_OUTPUT;
+    }
+    memcpy(config, &exrtcConfig, std::min<size_t>(config->size, sizeof(exrtcConfig)));
+
+    if (vendor) {
+        CHECK_TRUE(vendor->size >= sizeof(hal_exrtc_vendor_config_t), SYSTEM_ERROR_INVALID_ARGUMENT);
+        hal_exrtc_vendor_config_am18x5_t amVendor = {};
+        amVendor.base.size = sizeof(amVendor);
+        amVendor.base.version = HAL_EXRTC_API_VERSION;
+        amVendor.base.type = HAL_EXRTC_TYPE_AM18X5;
+        amVendor.xtal_calibration_set = true;
+        amVendor.xtal_calibration = config_.osc_cal_xt;
+        memcpy(vendor, &amVendor, std::min<size_t>(vendor->size, sizeof(amVendor)));
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::getStatus(hal_exrtc_status_t* status) const {
+    CHECK_TRUE(status && status->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+    hal_exrtc_status_t exrtcStatus = {};
+    exrtcStatus.size = sizeof(exrtcStatus);
+    exrtcStatus.version = HAL_EXRTC_API_VERSION;
+    exrtcStatus.type = HAL_EXRTC_TYPE_AM18X5;
+    exrtcStatus.status = HAL_EXRTC_STATUS_BOUND;
+    exrtcStatus.caps_supported = AM18X5_SUPPORTED_CAPS;
+    exrtcStatus.caps_enabled = 0;
+    if (config_.rc_on_battery) {
+        exrtcStatus.caps_enabled |= HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY;
+    }
+    if (config_.rc_fallback) {
+        exrtcStatus.caps_enabled |= HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL;
+    }
+    if (config_.auto_calibration != Am18x5AutoCalibration::AUTO_CAL_DISABLE) {
+        exrtcStatus.caps_enabled |= HAL_EXRTC_CAPS_AUTO_CALIBRATION;
+    }
+    if (config_.clk_out_en) {
+        exrtcStatus.caps_enabled |= HAL_EXRTC_CAPS_CLOCK_OUTPUT;
+    }
+    if (initialized_) {
+        exrtcStatus.status |= HAL_EXRTC_STATUS_PRESENT | HAL_EXRTC_STATUS_READY;
+        Am18x5Oscillator source = Am18x5Oscillator::EXTERNAL_CRYSTAL;
+        if (!const_cast<Am18x5*>(this)->getOscillatorSource(&source)) {
+            exrtcStatus.clock_source = source == Am18x5Oscillator::INTERNAL_RC ?
+                    HAL_EXRTC_CLOCK_SOURCE_INTERNAL : HAL_EXRTC_CLOCK_SOURCE_EXTERNAL;
+        }
+    } else {
+        exrtcStatus.clock_source = config_.osc_src == Am18x5Oscillator::INTERNAL_RC ?
+                HAL_EXRTC_CLOCK_SOURCE_INTERNAL : HAL_EXRTC_CLOCK_SOURCE_EXTERNAL;
+    }
+    memcpy(status, &exrtcStatus, std::min<size_t>(status->size, sizeof(exrtcStatus)));
+    return SYSTEM_ERROR_NONE;
+}
+
 // Version takes the precedence in case of upgrading/downgrading DVOS firmware
 // The size of the config should keep/increase on version bumped
 int Am18x5::setConfig(const am18x5_config_t* config) {
     CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK_TRUE(config->size > 0 && config->i2c_if < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_ARGUMENT);
-    am18x5_config_t cachedConfig = {};
-    int ret = SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(am18x5_config_t));
-    if (ret != SYSTEM_ERROR_NOT_FOUND) {
-        CHECK(ret);
+    am18x5_config_t updated = config_;
+    memcpy(&updated, config, std::min<size_t>(sizeof(updated), config->size));
+    updated.version = HAL_EXRTC_API_VERSION;
+    updated.size = sizeof(updated);
+    if (updated.mfg_magic != HAL_EXRTC_MFG_MAGIC) {
+        updated.mfg_magic = HAL_EXRTC_MFG_MAGIC;
+        updated.mfg_osc_cal_xt = updated.osc_cal_xt;
     }
-    if (ret == SYSTEM_ERROR_NOT_FOUND) {
-        cachedConfig.size = sizeof(am18x5_config_t);
-        memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
-        cachedConfig.version = HAL_EXRTC_API_VERSION;
-        cachedConfig.size = sizeof(am18x5_config_t);
-        if (cachedConfig.mfg_magic != HAL_EXRTC_MFG_MAGIC) {
-            // Use the runtime calibration value as the MFG value
-            cachedConfig.mfg_magic = HAL_EXRTC_MFG_MAGIC;
-            cachedConfig.mfg_osc_cal_xt = cachedConfig.osc_cal_xt;
-            LOG(TRACE, "EXRTC MFG calibration value is not set. Copy it: %d", cachedConfig.mfg_osc_cal_xt);
-        }
-        CHECK(SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, cachedConfig.size));
-        LOG(INFO, "Successfully created EXRTC config, version: %d, size: %d", cachedConfig.version, cachedConfig.size);
-    } else {
-        LOG(INFO, "Existing EXRTC config version: %d, size: %d", cachedConfig.version, cachedConfig.size);
-        int8_t mfgOscCalXt;
-        if (cachedConfig.version >= 2) {
-            SPARK_ASSERT(cachedConfig.mfg_magic == HAL_EXRTC_MFG_MAGIC);
-            mfgOscCalXt = cachedConfig.mfg_osc_cal_xt;
-        } else {
-            // Use the runtime calibration value as the MFG value
-            mfgOscCalXt = cachedConfig.osc_cal_xt;
-        }
-        if (config->version >= 2 && config->mfg_magic == HAL_EXRTC_MFG_MAGIC) {
-            if (mfgOscCalXt != config->mfg_osc_cal_xt) {
-                // Allow to update MFG value through HAL API only. This may happen during MFG process or after the crystal is replaced.
-                // Wiring layer doesn't have write access to this field
-                mfgOscCalXt = config->mfg_osc_cal_xt;
-                LOG(TRACE, "Update EXRTC MFG calibration value: %d", mfgOscCalXt);
-            }
-        }
-        am18x5_config_t* pNewConfig = nullptr;
-        uint8_t* configBuff = nullptr;
-        SCOPE_GUARD ({
-            if (configBuff) {
-                free(configBuff);
-            }
-        });
-        if (cachedConfig.version >= config->version) {
-            SPARK_ASSERT(cachedConfig.size >= config->size);
-            configBuff = (uint8_t*)malloc(cachedConfig.size);
-            CHECK_TRUE(configBuff, SYSTEM_ERROR_NO_MEMORY);
-            // Read out full config
-            CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, configBuff, cachedConfig.size));
-            memcpy(configBuff, config, config->size);
-            am18x5_config_t* pConfig = reinterpret_cast<am18x5_config_t*>(configBuff);
-            // Restore the version, size and mfg_osc_cal_xt fields
-            pConfig->version = cachedConfig.version;
-            pConfig->size = cachedConfig.size;
-            pNewConfig = pConfig;
-        } else {
-            SPARK_ASSERT(config->size >= cachedConfig.size);
-            cachedConfig.size = sizeof(am18x5_config_t);
-            memcpy(&cachedConfig, config, std::min(cachedConfig.size, config->size));
-            pNewConfig = &cachedConfig;
-            // version and size fields are bumped
-        }
-        SPARK_ASSERT(pNewConfig != nullptr);
-        // Restore the mfg_osc_cal_xt field
-        pNewConfig->mfg_magic = HAL_EXRTC_MFG_MAGIC;
-        pNewConfig->mfg_osc_cal_xt = mfgOscCalXt;
-        CHECK(SystemCache::instance().set(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)pNewConfig, pNewConfig->size));
-        LOG(INFO, "Successfully updated EXRTC config, version: %d, size: %d", pNewConfig->version, pNewConfig->size);
-    }
-
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-    if (config->default_rtc && !HAL_Feature_Get(FEATURE_EXRTC_DETECTION)) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-#endif
-    LOG(INFO, "Try (re)starting the external RTC...");
-    ret = begin();
-    if (config->default_rtc || initialized_) {
-        CHECK(ret);
-    }
+    config_ = updated;
     return SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::getConfig(am18x5_config_t* config) {
     CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
-    am18x5_config_t cachedConfig = {};
-    CHECK(SystemCache::instance().get(SystemCacheKey::EXRTC_CONFIG_DATA, (uint8_t*)&cachedConfig, sizeof(am18x5_config_t)));
-    memcpy(config, &cachedConfig, std::min(cachedConfig.size, config->size));
-    LOG(INFO, "Get EXRTC config version: %d, size: %d", cachedConfig.version, cachedConfig.size);
+    memcpy(config, &config_, std::min<size_t>(config_.size, config->size));
+    LOG(INFO, "Get EXRTC config version: %d, size: %d", config_.version, config_.size);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -226,15 +375,16 @@ int Am18x5::begin() {
             end();
         }
     });
-    CHECK(getConfig(&config_));
+    CHECK_TRUE(config_.size >= sizeof(am18x5_config_t), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_TRUE(config_.i2c_if < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_STATE);
     if (!initialized_) {
         if (!hal_i2c_is_enabled(config_.i2c_if, nullptr)) {
-            CHECK(hal_i2c_init(config_.i2c_if, nullptr));
+            hal_i2c_init(config_.i2c_if, nullptr);
             hal_i2c_begin(config_.i2c_if, I2C_MODE_MASTER, 0x00, nullptr);
+            CHECK_TRUE(hal_i2c_is_enabled(config_.i2c_if, nullptr), SYSTEM_ERROR_INTERNAL);
             // Make sure to reset the I2C bus to avoid potentially corrupting the AM18x5 configuration if
             // we start communication with it during an ongoing write transaction (which may happen e.g. after a hard reset)
-            hal_i2c_reset(config_.i2c_if, 0, nullptr);
-            disableI2cOnEnded_ = true;
+            CHECK(hal_i2c_reset(config_.i2c_if, 0, nullptr));
         }
         Am18x5Lock lock;
         // NOTE: acquire lock only after initializing the I2C peripheral, as this will actually call into
@@ -291,10 +441,6 @@ int Am18x5::end() {
     }
     if (initialized_) {
         ret = reset();
-    }
-    if (disableI2cOnEnded_) {
-        hal_i2c_end(config_.i2c_if, nullptr);
-        disableI2cOnEnded_ = false;
     }
     return ret;
 }
@@ -695,8 +841,13 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
     // Configure RTC pins to minimize power leakage
     CHECK(writeRegister(Am18x5Register::OUTPUT_CTRL, outputCtrl));
 
-    // Set PSW/nIRQ2 to be working in SLEEP mode
+    uint8_t control1 = 0x00;
+    CHECK(readRegister(Am18x5Register::CONTROL1, &control1));
+    bool pwr2Enabled = control1 & CONTROL1_PWR2_MASK;
+
+    // Set PSW/nIRQ2 to be working in SLEEP mode as the power switch output.
     CHECK(writeRegister(Am18x5Register::CONTROL2, 6, false, true, CONTROL2_OUT2S_MASK, CONTROL2_OUT2S_SHIFT));
+    CHECK(writeRegister(Am18x5Register::CONTROL1, 1, false, true, CONTROL1_PWR2_MASK, 1));
     // When 1, the I/O interface will be disabled when the power switch is active and disabled 
     CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_OSC_CONTROL));
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, 1, false, true, OSC_CONTROL_PWGT_MASK, OSC_CONTROL_PWGT_SHIFT));
@@ -716,6 +867,7 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
         // Disable EXTI interrupt, as it is only used for sleep wakeup for now
         intMask &= ~INTERRUPT_EX1E_MASK;
         writeRegister(Am18x5Register::INT_MASK, intMask);
+        writeRegister(Am18x5Register::CONTROL1, pwr2Enabled ? 1 : 0, false, true, CONTROL1_PWR2_MASK, 1);
         if (watchdogWasStarted) {
             writeRegister(Am18x5Register::WDT, watchdogValue_);
         }
@@ -738,7 +890,8 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
     // Enable interrupt
     CHECK(writeRegister(Am18x5Register::INT_MASK, intMask));
 
-    if (config->exti_trigger_latched && config->exti_polarity != Am18x5ExtiPolarity::NONE) {
+    // Optionally require the EXTI wake input to be inactive before arming sleep.
+    if ((exrtcConfigFlags_ & HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK) && config->exti_polarity != Am18x5ExtiPolarity::NONE) {
         uint8_t exin;
         CHECK(readRegister(Am18x5Register::EXTENSION_RAM_ADDRESS, &exin));
         bool isExtiHigh = exin & EXTENSION_RAM_EXIN_MASK;

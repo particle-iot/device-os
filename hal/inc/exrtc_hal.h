@@ -22,6 +22,7 @@
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #include "i2c_hal.h"
+#include "interrupts_hal.h"
 #include <time.h>
 
 #ifdef __cplusplus
@@ -62,7 +63,8 @@ typedef enum hal_exrtc_status_flag_t {
 typedef enum hal_exrtc_config_flag_t {
     HAL_EXRTC_CONFIG_NONE = 0,
     HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC = 0x01,
-    HAL_EXRTC_CONFIG_DEFAULT_PLATFORM_CONFIG = 0x02
+    HAL_EXRTC_CONFIG_DEFAULT_PLATFORM_CONFIG = 0x02,
+    HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK = 0x04
 } hal_exrtc_config_flag_t;
 
 typedef enum hal_exrtc_capability_t {
@@ -167,8 +169,27 @@ typedef struct hal_exrtc_binding_t {
 }  hal_exrtc_binding_t;
 
 typedef enum hal_exrtc_command_t {
-
+    HAL_EXRTC_COMMAND_NONE = 0,
+    HAL_EXRTC_COMMAND_WRITE_MFG_XTAL_CALIBRATION = 1,
+    HAL_EXRTC_COMMAND_SLEEP = 2
 } hal_exrtc_command_t;
+
+typedef struct hal_exrtc_calibration_data_t {
+    uint16_t version;
+    uint16_t size;
+
+    int32_t value;
+    uint32_t reserved[4];
+} hal_exrtc_calibration_data_t;
+
+typedef struct hal_exrtc_sleep_config_t {
+    uint16_t version;
+    uint16_t size;
+
+    InterruptMode exti_mode;
+    system_tick_t duration;
+    uint8_t reserved[8];
+} hal_exrtc_sleep_config_t;
 
 typedef void (*hal_exrtc_event_handler_t)(uint32_t events, void* extra, void* context);
 

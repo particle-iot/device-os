@@ -192,7 +192,31 @@ TwoWire& __fetch_global_Wire3();
 hal_i2c_config_t __attribute__((weak)) acquireWire3Buffer();
 #endif  // Wiring_Wire3
 
-#endif
+namespace particle {
+namespace detail {
+
+inline TwoWire& wireForInterface(hal_i2c_interface_t interface) {
+    switch (interface) {
+        case HAL_I2C_INTERFACE1:
+        default: {
+            return __fetch_global_Wire();
+        }
+#if Wiring_Wire1
+        case HAL_I2C_INTERFACE2: {
+            return __fetch_global_Wire1();
+        }
+#endif // Wiring_Wire1
+#if Wiring_Wire3
+        case HAL_I2C_INTERFACE3: {
+            return __fetch_global_Wire3();
+        }
+#endif // Wiring_Wire3
+    }
+}
+
+} // detail
+} // particle
 
 #endif
 
+#endif

@@ -21,6 +21,7 @@
 
 #include "rtc_hal.h"
 #include "exrtc_hal.h"
+#include "sleep_hal.h"
 
 #define HAL_EXRTC_MFG_MAGIC (0xC36AE15D)
 
@@ -45,4 +46,3 @@ hal_exrtc_binding_t* hal_exrtc_default_binding();
 #endif // __cplusplus
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-
