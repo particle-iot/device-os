@@ -317,7 +317,7 @@ extern "C" {
 #define SYSTEM_ENV_NEED_RESET 1
 
 /**
- * Signature of a callback used with `system_for_each_env()`.
+ * Signature of a callback for `system_for_each_env()`.
  *
  * @param name Variable name.
  * @param val Variable value. This is the `buf` pointer provided to `system_for_each_env()` by the caller.
@@ -377,7 +377,7 @@ int system_get_env_bool(const char* name, bool* val, void* reserved);
  *
  * @param fn Callback function.
  * @param arg Callback argument.
- * @param buf Buffer for storing the variable value. Can be `NULL` if `buf_size` is 0.
+ * @param buf Buffer for storing the value of each variable. Can be `NULL` if `buf_size` is 0.
  * @param buf_size Size of the buffer `buf`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return On success, the number of defined variables, otherwise an error code defined by
