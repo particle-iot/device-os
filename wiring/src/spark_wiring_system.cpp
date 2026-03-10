@@ -213,13 +213,13 @@ Vector<String> SystemClass::listEnv() {
 }
 
 int SystemClass::listEnv(Vector<String>& namesArg) {
-    size_t varCount = CHECK(system_for_each_env(nullptr /* fn */, nullptr /* arg */, nullptr /* buf */, 0 /* buf_size */,
+    size_t varCount = CHECK(system_list_env(nullptr /* fn */, nullptr /* arg */, nullptr /* buf */, 0 /* buf_size */,
             nullptr /* reserved */));
     Vector<String> names;
     if (!names.reserve(varCount)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    int r = system_for_each_env([](const char* name, const char* val, size_t valSize, void* arg) -> int {
+    int r = system_list_env([](const char* name, const char* val, size_t valSize, void* arg) -> int {
         auto names = (Vector<String>*)arg;
         String nameStr(name);
         if (!nameStr.length()) {

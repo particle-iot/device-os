@@ -486,7 +486,7 @@ int system_get_env_bool(const char* name, bool* val, void* reserved) {
     return Env::instance().get(name, *val);
 }
 
-int system_for_each_env(system_for_each_env_fn fn, void* arg, char* buf, size_t buf_size, void* reserved) {
+int system_list_env(system_list_env_fn fn, void* arg, char* buf, size_t buf_size, void* reserved) {
     if (fn) {
         int r = Env::instance().forEach(buf, buf_size, [fn, arg](const auto& var, const char* val) -> int {
             return fn(var.name, val, var.size, arg);

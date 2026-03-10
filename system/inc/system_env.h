@@ -317,16 +317,16 @@ extern "C" {
 #define SYSTEM_ENV_NEED_RESET 1
 
 /**
- * Signature of a callback for `system_for_each_env()`.
+ * Signature of a callback for `system_list_env()`.
  *
  * @param name Variable name.
- * @param val Variable value. This is the `buf` pointer provided to `system_for_each_env()` by the caller.
+ * @param val Variable value. This is the `buf` pointer provided to `system_list_env()` by the caller.
  * @param val_size Actual length of the variable value. Can be greater than `buf_size` provided to
- *        `system_for_each_env()` by the caller.
+ *        `system_list_env()` by the caller.
  * @param arg Callback argument.
  * @return 0 on success, otherwise an error code defined by `system_error_t`.
  */
-typedef int (*system_for_each_env_fn)(const char* name, const char* val, size_t val_size, void* arg);
+typedef int (*system_list_env_fn)(const char* name, const char* val, size_t val_size, void* arg);
 
 /**
  * Get the value of an environment variable.
@@ -373,17 +373,17 @@ int system_get_env_int(const char* name, int* val, void* reserved);
 int system_get_env_bool(const char* name, bool* val, void* reserved);
 
 /**
- * Invoke a callback for each defined environment variable.
+ * List all defined environment variables.
  *
- * @param fn Callback function.
- * @param arg Callback argument.
+ * @param fn Callback to invoke for each defined variable. Can be `NULL`.
+ * @param arg Argument to pass to the callback.
  * @param buf Buffer for storing the value of each variable. Can be `NULL` if `buf_size` is 0.
- * @param buf_size Size of the buffer `buf`.
+ * @param buf_size Size of the `buf` buffer.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return On success, the number of defined variables, otherwise an error code defined by
  *         `system_error_t` or the negative value returned by the callback.
  */
-int system_for_each_env(system_for_each_env_fn fn, void* arg, char* buf, size_t buf_size, void* reserved);
+int system_list_env(system_list_env_fn fn, void* arg, char* buf, size_t buf_size, void* reserved);
 
 /**
  * Clear all defined environment variables.
