@@ -1136,7 +1136,7 @@ public:
 
     static bool hasEnv(const char* name);
 
-    static Vector<const char*> listEnv();
+    static Vector<String> listEnv();
 
     // Returns true if a system reset is needed to apply the changes. If `reset` is true (default),
     // resets the device automatically
@@ -1189,7 +1189,7 @@ private:
     }
 
 #if HAL_PLATFORM_ENV
-    static int listEnv(Vector<const char*>& names);
+    static int listEnv(Vector<String>& names);
 #endif // HAL_PLATFORM_ENV
 };
 

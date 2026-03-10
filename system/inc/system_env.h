@@ -317,6 +317,18 @@ extern "C" {
 #define SYSTEM_ENV_NEED_RESET 1
 
 /**
+ * Signature of a callback used with `system_for_each_env()`.
+ *
+ * @param name Variable name.
+ * @param val Variable value. This is the `buf` pointer provided to `system_for_each_env()` by the caller.
+ * @param val_size Actual length of the variable value. Can be greater than `buf_size` provided to
+ *        `system_for_each_env()` by the caller.
+ * @param arg Callback argument.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+typedef int (*system_for_each_env_fn)(const char* name, const char* val, size_t val_size, void* arg);
+
+/**
  * Get the value of an environment variable.
  *
  * The output is always null-terminated unless the size of the output buffer is 0.
@@ -361,16 +373,17 @@ int system_get_env_int(const char* name, int* val, void* reserved);
 int system_get_env_bool(const char* name, bool* val, void* reserved);
 
 /**
- * List all defined environment variables.
+ * Invoke a callback for each defined environment variable.
  *
- * @param[out] names Array to store the variable names.
- * @param count Maximum number of elements that can be stored in the array.
+ * @param fn Callback function.
+ * @param arg Callback argument.
+ * @param buf Buffer for storing the variable value. Can be `NULL` if `buf_size` is 0.
+ * @param buf_size Size of the buffer `buf`.
  * @param reserved Reserved argument. Must be set to `NULL`.
- * @return On success, the actual number of defined variables, otherwise an error code defined by
- *         `system_error_t`. The returned number of variables can be greater than the size of the
- *         output array.
+ * @return On success, the number of defined variables, otherwise an error code defined by
+ *         `system_error_t` or the negative value returned by the callback.
  */
-int system_list_env(const char* names[], size_t count, void* reserved);
+int system_for_each_env(system_for_each_env_fn fn, void* arg, char* buf, size_t buf_size, void* reserved);
 
 /**
  * Clear all defined environment variables.

@@ -206,21 +206,32 @@ bool SystemClass::hasEnv(const char* name) {
     return r >= 0;
 }
 
-Vector<const char*> SystemClass::listEnv() {
-    Vector<const char*> names;
+Vector<String> SystemClass::listEnv() {
+    Vector<String> names;
     listEnv(names);
     return names;
 }
 
-int SystemClass::listEnv(Vector<const char*>& namesArg) {
-    size_t n = CHECK(system_list_env(nullptr /* names */, 0 /* count */, nullptr /* reserved */));
-    Vector<const char*> names;
-    if (!names.resize(n)) {
+int SystemClass::listEnv(Vector<String>& namesArg) {
+    size_t varCount = CHECK(system_for_each_env(nullptr /* fn */, nullptr /* arg */, nullptr /* buf */, 0 /* buf_size */,
+            nullptr /* reserved */));
+    Vector<String> names;
+    if (!names.reserve(varCount)) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    CHECK(system_list_env(names.data(), n, nullptr /* reserved */));
-    namesArg = std::move(names);
-    return 0;
+    int r = system_for_each_env([](const char* name, const char* val, size_t valSize, void* arg) -> int {
+        auto names = (Vector<String>*)arg;
+        String nameStr(name);
+        if (!nameStr.length()) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        names->append(std::move(nameStr));
+        return 0;
+    }, &names, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
+    if (r >= 0) {
+        namesArg = std::move(names);
+    }
+    return r;
 }
 
 bool SystemClass::clearEnv(bool reset) {

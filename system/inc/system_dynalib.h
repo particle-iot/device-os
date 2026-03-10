@@ -142,7 +142,7 @@ DYNALIB_FN(BASE_IDX3 + 0, system, system_get_update_status, int(void*))
 DYNALIB_FN(BASE_IDX3 + 1, system, system_get_env, int(const char*, char*, size_t, void*))
 DYNALIB_FN(BASE_IDX3 + 2, system, system_get_env_int, int(const char*, int*, void*))
 DYNALIB_FN(BASE_IDX3 + 3, system, system_get_env_bool, int(const char*, bool*, void*))
-DYNALIB_FN(BASE_IDX3 + 4, system, system_list_env, int(const char*[], size_t, void*))
+DYNALIB_FN(BASE_IDX3 + 4, system, system_for_each_env, int(system_for_each_env_fn, void*, char*, size_t, void*))
 DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 #define BASE_IDX4 (BASE_IDX3 + 6)
 #else
