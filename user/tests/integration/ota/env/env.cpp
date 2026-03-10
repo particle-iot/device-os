@@ -163,10 +163,7 @@ test(03_check_local_env_update) {
     assertTrue(System.getEnv("BOOL_TRAILING_SPACE") == "false ");
 
     // System.listEnv()
-    Vector<String> names;
-    for (const auto& name: System.listEnv()) {
-        names.append(name); // const char* -> String
-    }
+    Vector<String> names = System.listEnv();
     assertEqual(names.size(), 31);
     assertTrue(names.contains("STR_SHORT"));
     assertTrue(names.contains("STR_LONG"));
