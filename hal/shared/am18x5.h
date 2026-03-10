@@ -29,6 +29,7 @@
 #include "watchdog_base.h"
 #include "enumclass.h"
 #include "exrtc_hal.h"
+#include "pinmap_hal.h"
 
 namespace particle {
 
@@ -183,20 +184,42 @@ typedef struct am18x5_manufacturing_config_t {
     uint8_t reserved[12];
 } __attribute__((packed)) am18x5_manufacturing_config_t;
 
-using am18x5_config_t = am18x5_manufacturing_config_t;
+typedef struct am18x5_config_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t default_rtc;
+    uint8_t wdi_pin;
+    uint8_t int_pin;
+    hal_i2c_interface_t i2c_if;
+    uint8_t rc_fallback;
+    uint8_t rc_on_battery;
+    Am18x5Oscillator osc_src;
+    int8_t osc_cal_xt;
+    uint8_t clk_out_en;
+    Am18x5SqwFrequency clk_out_freq;
+    Am18x5AutoCalibration auto_calibration;
+    uint32_t mfg_magic;
+    int8_t mfg_osc_cal_xt; // Read only
+    uint8_t reserved[12];
+} __attribute__((packed)) am18x5_config_t;
 
 typedef struct am18x5_sleep_config_t {
     uint16_t version;
     uint16_t size;
     Am18x5ExtiPolarity exti_polarity;
-    bool exti_trigger_latched;
     system_tick_t duration; // in seconds
-    uint8_t reserved[6];
+    uint8_t reserved[7];
 } __attribute__((packed)) am18x5_sleep_config_t;
 
 class Am18x5 {
 public:
     typedef void (*AlarmHandler)(void* context);
+
+    int bind(const hal_exrtc_binding_t* binding);
+    int command(hal_exrtc_command_t cmd, void* arg, void* arg1);
+    int getDevice(hal_exrtc_device_t* device) const;
+    int getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor = nullptr) const;
+    int getStatus(hal_exrtc_status_t* status) const;
 
     int setConfig(const am18x5_config_t* config);
     int getConfig(am18x5_config_t* config);
@@ -238,9 +261,10 @@ private:
     Am18x5();
     ~Am18x5();
 
+    int loadMfgOscCalibration(int32_t* cal) const;
+    int loadLegacyMfgOscCalibration(int32_t* cal) const;
     int detect();
     int applyConfig();
-
     int setPsw(bool val) const; // This is dangerous, make it private for now!
 
     int setHundredths(uint8_t hundredths) const;
@@ -295,13 +319,13 @@ private:
     static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
-    bool disableI2cOnEnded_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;
     os_thread_t exRtcWorkerThread_;
     os_queue_t exRtcWorkerSemaphore_;
     bool exRtcWorkerThreadExit_;
+    uint32_t exrtcConfigFlags_;
     am18x5_config_t config_;
     uint8_t watchdogValue_;
     uint8_t ids_[AM18X5_ID_COUNT];

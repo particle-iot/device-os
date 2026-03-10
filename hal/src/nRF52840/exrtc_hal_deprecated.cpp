@@ -15,6 +15,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "nrf52840.h" // FIXME: pinmap woes
 #include "hal_platform.h"
 #include "rtc_hal.h"
 

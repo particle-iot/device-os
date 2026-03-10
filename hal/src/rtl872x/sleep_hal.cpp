@@ -51,6 +51,7 @@ extern "C" {
 #include "dct_hal.h"
 #include "align_util.h"
 #include "delay_hal.h"
+#include "exrtc_hal_internal.h"
 
 using namespace particle;
 
@@ -154,6 +155,21 @@ public:
         CHECK_TRUE(config, SYSTEM_ERROR_INVALID_ARGUMENT);
         memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
 
+        if (config->mode == HAL_SLEEP_MODE_HIBERNATE || config->mode == HAL_SLEEP_MODE_POWER_OFF) {
+            /* Backup (sic!) backup RAM into flash */
+            hal_backup_ram_sync(nullptr);
+        }
+
+        if (config->mode == HAL_SLEEP_MODE_POWER_OFF) {
+            return enterPowerOffMode(config);
+        }
+
+        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
+            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
+                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
+            }
+        }
+
         bool bleInitialized = hal_ble_is_initialized(nullptr);
         bool advertising = hal_ble_gap_is_advertising(nullptr) ||
                            hal_ble_gap_is_connecting(nullptr, nullptr) ||
@@ -169,17 +185,6 @@ public:
         }
 
         HAL_USB_Detach();
-
-        if (config->mode == HAL_SLEEP_MODE_HIBERNATE) {
-            /* Backup (sic!) backup RAM into flash */
-            hal_backup_ram_sync(nullptr);
-        }
-
-        for (int usart = 0; usart < HAL_PLATFORM_USART_NUM; usart++) {
-            if (hal_usart_is_enabled(static_cast<hal_usart_interface_t>(usart))) {
-                hal_usart_flush(static_cast<hal_usart_interface_t>(usart));
-            }
-        }
 
         hal_interrupt_suspend();
 
@@ -371,6 +376,46 @@ private:
         return false;
     }
 
+    int enterPowerOffMode(const hal_sleep_config_t* config) {
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+        hal_exrtc_sleep_config_t sleep = {};
+        sleep.version = HAL_EXRTC_API_VERSION;
+        sleep.size = sizeof(sleep);
+        sleep.exti_mode = CHANGE;
+
+        auto source = config->wakeup_sources;
+        while (source) {
+            if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
+                auto gpio = reinterpret_cast<const hal_wakeup_source_gpio_t*>(source);
+                CHECK_TRUE(gpio->type == HAL_PIN_TYPE_RTC, SYSTEM_ERROR_NOT_SUPPORTED);
+                CHECK_TRUE(sleep.exti_mode == CHANGE, SYSTEM_ERROR_NOT_SUPPORTED);
+                switch (gpio->mode) {
+                    case FALLING:
+                    case RISING: {
+                        sleep.exti_mode = gpio->mode;
+                        break;
+                    }
+                    default: {
+                        return SYSTEM_ERROR_NOT_SUPPORTED;
+                    }
+                }
+            } else if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
+                auto rtc = reinterpret_cast<const hal_wakeup_source_rtc_t*>(source);
+                CHECK_TRUE(sleep.duration == 0, SYSTEM_ERROR_NOT_SUPPORTED);
+                sleep.duration = rtc->ms / 1000;
+                CHECK_TRUE(sleep.duration > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+            } else {
+                return SYSTEM_ERROR_NOT_SUPPORTED;
+            }
+            source = source->next;
+        }
+
+        return hal_exrtc_command(HAL_EXRTC_INSTANCE_DEFAULT, HAL_EXRTC_COMMAND_SLEEP, &sleep, nullptr, nullptr);
+#else
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif
+    }
+
     int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_gpio_t* gpio) {
         switch(gpio->mode) {
             case RISING:
@@ -382,10 +427,22 @@ private:
                 return SYSTEM_ERROR_INVALID_ARGUMENT;
             }
         }
+        if (gpio->type == HAL_PIN_TYPE_RTC) {
+            if (mode != HAL_SLEEP_MODE_POWER_OFF) {
+                return SYSTEM_ERROR_NOT_SUPPORTED;
+            }
+            if (gpio->mode == CHANGE) {
+                return SYSTEM_ERROR_INVALID_ARGUMENT;
+            }
+            return SYSTEM_ERROR_NONE;
+        }
+        if (mode == HAL_SLEEP_MODE_POWER_OFF) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
         if (gpio->pin >= TOTAL_PINS) {
             return SYSTEM_ERROR_LIMIT_EXCEEDED;
         }
-        if (mode == HAL_SLEEP_MODE_HIBERNATE && !isAonPin(gpio->pin)) {
+        if ((mode == HAL_SLEEP_MODE_HIBERNATE || mode == HAL_SLEEP_MODE_POWER_OFF) && !isAonPin(gpio->pin)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         return SYSTEM_ERROR_NONE;
@@ -398,7 +455,7 @@ private:
         if (lpcomp->trig > HAL_SLEEP_LPCOMP_CROSS) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
-        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+        if (mode == HAL_SLEEP_MODE_HIBERNATE || mode == HAL_SLEEP_MODE_POWER_OFF) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         // TODO
@@ -419,7 +476,7 @@ private:
         if (!hal_usart_is_enabled(usart->serial)) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
-        if (mode == HAL_SLEEP_MODE_HIBERNATE) {
+        if (mode == HAL_SLEEP_MODE_HIBERNATE || mode == HAL_SLEEP_MODE_POWER_OFF) {
             return SYSTEM_ERROR_NOT_SUPPORTED;
         }
         // TODO

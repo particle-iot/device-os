@@ -24,8 +24,10 @@
 #include "spark_wiring_time.h"
 #include "exrtc_hal.h"
 #include "enumflags.h"
+#include "enumclass.h"
 #include "spark_wiring_i2c.h"
 #include "spark_wiring_vector.h"
+#include "system_error.h"
 #include <algorithm>
 #include <type_traits>
 #include <iterator>
@@ -53,6 +55,7 @@ enum class RtcCap : uint32_t {
     EXTI_LEVEL_TRIGGER = HAL_EXRTC_CAPS_EXTI_LEVEL_TRIGGER,
     WATCHDOG = HAL_EXRTC_CAPS_WATCHDOG,
 };
+ENABLE_ENUM_CLASS_BITWISE(RtcCap);
 
 using RtcCaps = EnumFlags<RtcCap>;
 
@@ -63,6 +66,7 @@ enum class RtcStatusFlag : uint8_t {
     PRESENT = HAL_EXRTC_STATUS_PRESENT,
     READY = HAL_EXRTC_STATUS_READY,
 };
+ENABLE_ENUM_CLASS_BITWISE(RtcStatusFlag);
 
 enum class RtcClockSource : uint8_t {
     NONE = HAL_EXRTC_CLOCK_SOURCE_NONE,
@@ -95,14 +99,30 @@ public:
         defaultTimeSource(true);
     }
 
+    bool valid() const {
+        return valid_;
+    }
+
+    int error() const {
+        return error_;
+    }
+
     Concrete& type(RtcType type) {
         device_.type = static_cast<hal_exrtc_type_t>(type);
         return self();
     }
 
+    RtcType type() const {
+        return static_cast<RtcType>(device_.type);
+    }
+
     Concrete& capabilities(RtcCaps caps) {
         config_.caps_enable = caps.value();
         return self();
+    }
+
+    RtcCaps capabilities() const {
+        return RtcCaps::fromUnderlying(config_.caps_enable);
     }
 
     Concrete& i2c(TwoWire& wire, uint8_t address) {
@@ -112,9 +132,21 @@ public:
         return self();
     }
 
+    TwoWire& interface() const {
+        return particle::detail::wireForInterface(device_.i2c.interface);
+    }
+
+    uint8_t address() const {
+        return device_.i2c.address;
+    }
+
     Concrete& interrupt(hal_pin_t pin) {
         device_.i2c.pin_int = pin;
         return self();
+    }
+
+    hal_pin_t interrupt() const {
+        return device_.i2c.pin_int;
     }
 
     Concrete& pins(const Vector<hal_pin_t>& gpios) {
@@ -136,7 +168,14 @@ public:
         return self();
     }
 
-    Concrete& defaultTimeSource(bool state = true) {
+    hal_pin_t pin(size_t idx) const {
+        if (idx >= sizeof(device_.i2c.pins) / sizeof(device_.i2c.pins[0])) {
+            return PIN_INVALID;
+        }
+        return device_.i2c.pins[idx];
+    }
+
+    Concrete& defaultTimeSource(bool state) {
         if (state) {
             config_.flags |= HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC;
         } else {
@@ -145,9 +184,30 @@ public:
         return self();
     }
 
+    bool defaultTimeSource() const {
+        return config_.flags & HAL_EXRTC_CONFIG_USE_AS_MAIN_RTC;
+    }
+
+    Concrete& sleepExtiCheck(bool state) {
+        if (state) {
+            config_.flags |= HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK;
+        } else {
+            config_.flags &= ~(HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK);
+        }
+        return self();
+    }
+
+    bool sleepExtiCheck() const {
+        return config_.flags & HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK;
+    }
+
     Concrete& clockSource(RtcClockSource source) {
         config_.clock_source = static_cast<hal_exrtc_clock_source_t>(source);
         return self();
+    }
+
+    RtcClockSource clockSource() const {
+        return static_cast<RtcClockSource>(config_.clock_source);
     }
 
     hal_exrtc_binding_t toHalBinding() const {
@@ -179,14 +239,19 @@ public:
         return self().halVendorConfigImpl();
     }
 
+    void setResult(int error) {
+        error_ = error;
+        valid_ = (error == SYSTEM_ERROR_NONE);
+    }
+
     hal_exrtc_vendor_config_t* halVendorConfigImpl() {
         return nullptr;
     }
 
-protected:
-
     hal_exrtc_device_t device_ = {};
     hal_exrtc_config_t config_ = {};
+    bool valid_ = true;
+    int error_ = SYSTEM_ERROR_NONE;
 
 private:
     Concrete& self() {
@@ -253,8 +318,74 @@ private:
 
 class RtcStatus {
 public:
-    RtcStatus() {}
-    RtcStatus(hal_exrtc_status_t status) {}
+    RtcStatus() = default;
+    explicit RtcStatus(hal_exrtc_status_t status)
+            : status_(status),
+              valid_(true),
+              error_(SYSTEM_ERROR_NONE) {
+    }
+
+    explicit RtcStatus(int error)
+            : valid_(false),
+              error_(error) {
+    }
+
+    explicit operator bool() const {
+        return valid_ && type() != RtcType::NONE;
+    }
+
+    bool valid() const {
+        return valid_;
+    }
+
+    int error() const {
+        return error_;
+    }
+
+    RtcType type() const {
+        return static_cast<RtcType>(status_.type);
+    }
+
+    RtcStatusFlags flags() const {
+        return RtcStatusFlags::fromUnderlying(status_.status);
+    }
+
+    RtcCaps supportedCapabilities() const {
+        return RtcCaps::fromUnderlying(status_.caps_supported);
+    }
+
+    RtcCaps optionalCapabilities() const {
+        return RtcCaps::fromUnderlying(status_.caps_optional);
+    }
+
+    RtcCaps enabledCapabilities() const {
+        return RtcCaps::fromUnderlying(status_.caps_enabled);
+    }
+
+    RtcClockSource clockSource() const {
+        return static_cast<RtcClockSource>(status_.clock_source);
+    }
+
+    bool builtIn() const {
+        return status_.status & HAL_EXRTC_STATUS_BUILT_IN;
+    }
+
+    bool bound() const {
+        return status_.status & HAL_EXRTC_STATUS_BOUND;
+    }
+
+    bool present() const {
+        return status_.status & HAL_EXRTC_STATUS_PRESENT;
+    }
+
+    bool ready() const {
+        return status_.status & HAL_EXRTC_STATUS_READY;
+    }
+
+private:
+    hal_exrtc_status_t status_ = {};
+    bool valid_ = false;
+    int error_ = SYSTEM_ERROR_NOT_FOUND;
 };
 
 class ExRtcBase: public TimeClass {
@@ -269,7 +400,6 @@ public:
     }
 
     RtcStatus status() const {
-        // TODO: type
         hal_exrtc_status_t stat = {};
         stat.size = sizeof(stat);
         stat.version = HAL_EXRTC_API_VERSION;
@@ -277,7 +407,7 @@ public:
         if (!r) {
             return RtcStatus(stat);
         }
-        return RtcStatus();
+        return RtcStatus(r);
     }
 
 protected:
@@ -301,6 +431,9 @@ public:
     using ExRtcBase::ExRtcBase;
 
     int enable(const Config& config) {
+        if (!config.valid()) {
+            return config.error() ? config.error() : SYSTEM_ERROR_INVALID_STATE;
+        }
         auto binding = config.toHalBinding();
         return this->bind(&binding);
     }
@@ -308,11 +441,17 @@ public:
     template <typename C, typename std::enable_if<IsRtcConfigurationTrait<C>::value &&
             !std::is_same<typename std::decay<C>::type, Config>::value, int>::type = 0>
     int enable(const C& config) {
+        if (!config.valid()) {
+            return config.error() ? config.error() : SYSTEM_ERROR_INVALID_STATE;
+        }
         auto binding = config.toHalBinding();
         return this->bind(&binding);
     }
 
     int setConfig(const Config& config) {
+        if (!config.valid()) {
+            return config.error() ? config.error() : SYSTEM_ERROR_INVALID_STATE;
+        }
         auto binding = config.toHalBinding();
         return setConfigCommon(binding.config, binding.vendor);
     }
@@ -320,12 +459,20 @@ public:
     template <typename C, typename std::enable_if<IsRtcConfigurationTrait<C>::value &&
             !std::is_same<typename std::decay<C>::type, Config>::value, int>::type = 0>
     int setConfig(const C& config) {
+        if (!config.valid()) {
+            return config.error() ? config.error() : SYSTEM_ERROR_INVALID_STATE;
+        }
         auto binding = config.toHalBinding();
         return this->setConfigCommon(binding.config, binding.vendor);
     }
 
     int getConfig(Config& config) const {
-        return this->getConfigCommon(config.halConfig(), config.halVendorConfig());
+        int r = hal_exrtc_get_device(this->instance_, config.halDevice(), nullptr);
+        if (!r) {
+            r = this->getConfigCommon(config.halConfig(), config.halVendorConfig());
+        }
+        config.setResult(r);
+        return r;
     }
 
     Config getConfig() const {
