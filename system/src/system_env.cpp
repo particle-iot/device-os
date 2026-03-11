@@ -46,11 +46,9 @@ const auto APP_FILE_STAGED = "/sys/env_app.staged";
 const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
-const size_t MAX_ENV_FILE_SIZE = 48 * 1024;
-
 const size_t HASH_PRIME_SIZES[] = { 5, 11, 23, 37, 53, 97, 127, 193, 283, 389, 577, 769, 1153 };
-const unsigned HASH_LOAD_FACTOR_N = 1;
-const unsigned HASH_LOAD_FACTOR_D = 1;
+const unsigned HASH_MAX_LOAD_FACTOR_N = 3;
+const unsigned HASH_MAX_LOAD_FACTOR_D = 4;
 
 class ValueStream: public InputStream {
 public:
@@ -116,6 +114,28 @@ private:
     size_t end_;
 };
 
+const char* stagedPathForSource(Env::VarSource src) {
+    switch (src) {
+    case Env::VarSource::APP:
+        return APP_FILE_STAGED;
+    case Env::VarSource::SNAPSHOT:
+        return SNAPSHOT_FILE_STAGED;
+    default:
+        return nullptr;
+    }
+}
+
+const char* currentPathForSource(Env::VarSource src) {
+    switch (src) {
+    case Env::VarSource::APP:
+        return APP_FILE_CURRENT;
+    case Env::VarSource::SNAPSHOT:
+        return SNAPSHOT_FILE_CURRENT;
+    default:
+        return nullptr;
+    }
+}
+
 const char* stagedPathForAssetType(AssetType type) {
     switch (type) {
     case AssetType::ENV_VARS_APP:
@@ -144,63 +164,40 @@ uint32_t strHash(const char* s) { // djb2
 
 } // unnamed
 
-Env::Var::Var() :
-        next(nullptr),
-        hash(0),
-        valOffs(0),
-        valSize(0),
-        nameOffs(0),
-        nameSize(0),
-        src(0) {
+Env::EnvData::EnvData() :
+        size(0) {
 }
 
-Env::Vars::Vars() :
-        firstVar(nullptr),
-        varCount(0) {
-}
-
-Env::Vars::Vars(Vars&& vars) :
-        snapshotFile(std::move(vars.snapshotFile)),
-        appFile(std::move(vars.appFile)),
-        snapshotHash(std::move(vars.snapshotHash)),
-        buckets(std::move(vars.buckets)),
-        firstVar(vars.firstVar),
-        varCount(vars.varCount) {
-    vars.firstVar = nullptr;
-    vars.varCount = 0;
-}
-
-Env::Vars::~Vars() {
-    auto v = firstVar;
-    while (v) {
-        auto next = v->next;
-        delete v;
-        v = next;
+Env::EnvData::~EnvData() {
+    for (int i = 0; i < buckets.size(); ++i) {
+        auto v = buckets.at(i);
+        while (v) {
+            auto next = v->next;
+            delete v;
+            v = next;
+        }
     }
 }
 
-int Env::Vars::add(const char* name, Var newVar) {
+int Env::EnvData::add(const char* name, VarEntry var) {
     auto hash = strHash(name);
     size_t bucketCount = buckets.size();
     if (bucketCount) {
         char nameBuf[MAX_ENV_NAME_LEN + 1];
-        auto var = buckets.at(hash % bucketCount);
-        while (var) {
-            CHECK(readName(*var, nameBuf, sizeof(nameBuf)));
+        auto v = buckets.at(hash % bucketCount);
+        while (v) {
+            CHECK(readName(*v, nameBuf, sizeof(nameBuf)));
             if (std::strcmp(nameBuf, name) == 0) {
                 // Replace the existing entry
-                newVar.hash = hash;
-                newVar.next = var->next;
-                *var = std::move(newVar);
+                var.hash = hash;
+                var.next = v->next;
+                *v = std::move(var);
                 return 0;
             }
-            var = var->next;
-            if (!var || var->hash != hash) {
-                break;
-            }
+            v = v->next;
         }
     }
-    if (!bucketCount || (varCount + 1) * HASH_LOAD_FACTOR_D > bucketCount * HASH_LOAD_FACTOR_N) {
+    if (!bucketCount || (size + 1) * HASH_MAX_LOAD_FACTOR_D > bucketCount * HASH_MAX_LOAD_FACTOR_N) {
         // Rehash
         size_t newBucketCount = 0;
         for (unsigned i = 0; i < sizeof(HASH_PRIME_SIZES) / sizeof(HASH_PRIME_SIZES[0]); ++i) {
@@ -212,69 +209,61 @@ int Env::Vars::add(const char* name, Var newVar) {
         if (!newBucketCount) {
             newBucketCount = bucketCount * 2 - 1;
         }
-        Vector<Var*> newBuckets;
+        Vector<VarEntry*> newBuckets;
         if (!newBuckets.resize(newBucketCount)) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        auto var = firstVar;
-        while (var) {
-            auto next = var->next;
-            auto index = var->hash % newBucketCount;
-            auto var2 = newBuckets.at(index);
-            if (var2) {
-                var->next = var2;
+        for (unsigned i = 0; i < bucketCount; ++i) {
+            auto v = buckets.at(i);
+            while (v) {
+                auto next = v->next;
+                auto idx = v->hash % newBucketCount;
+                v->next = newBuckets.at(idx);
+                newBuckets[idx] = v;
+                v = next;
             }
-            newBuckets[index] = var;
-            var = next;
         }
         buckets = std::move(newBuckets);
         bucketCount = newBucketCount;
     }
     // Add a new entry
-    std::unique_ptr<Var> var(new(std::nothrow) Var(newVar));
-    if (!var) {
+    std::unique_ptr<VarEntry> v(new(std::nothrow) VarEntry(var));
+    if (!v) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
-    auto index = hash % bucketCount;
-    auto var2 = buckets.at(index);
-    if (var2) {
-        var->next = var2;
-    }
-    buckets[index] = var.release();
+    v->hash = hash;
+    auto idx = hash % bucketCount;
+    v->next = buckets.at(idx);
+    buckets[idx] = v.release();
+    ++size;
     return 0;
 }
 
-const Env::Var* Env::Vars::find(const char* name) {
+const Env::VarEntry* Env::EnvData::find(const char* name) {
     if (buckets.isEmpty()) {
         return nullptr;
     }
-    auto hash = strHash(name);
-    auto var = buckets.at(hash % buckets.size());
-    if (!var) {
-        return nullptr;
-    }
     char nameBuf[MAX_ENV_NAME_LEN + 1];
-    for (;;) {
-        int r = readName(*var, nameBuf, sizeof(nameBuf));
+    auto v = buckets.at(strHash(name) % buckets.size());
+    while (v) {
+        int r = readName(*v, nameBuf, sizeof(nameBuf));
         if (r < 0) {
             return nullptr;
         }
         if (std::strcmp(nameBuf, name) == 0) {
-            return var;
+            break; // Found
         }
-        var = var->next;
-        if (!var || var->hash != hash) {
-            return nullptr;
-        }
+        v = v->next;
     }
+    return v;
 }
 
-int Env::Vars::readValue(const Var& var, char* buf, size_t bufSize) {
+int Env::EnvData::readValue(const VarEntry& var, char* buf, size_t bufSize) {
     if (!bufSize) {
         return 0;
     }
     fs::FsLock lock;
-    auto& file = (var.src == VarSource::APP) ? appFile : snapshotFile;
+    auto& file = fileHandleForSource((VarSource)var.src);
     CHECK(file.seek(var.valOffs));
     size_t bytesToRead = std::min<size_t>(var.valSize, bufSize - 1);
     size_t bytesRead = CHECK(file.read(buf, bytesToRead));
@@ -285,12 +274,12 @@ int Env::Vars::readValue(const Var& var, char* buf, size_t bufSize) {
     return var.valSize;
 }
 
-int Env::Vars::readName(const Var& var, char* buf, size_t bufSize) {
+int Env::EnvData::readName(const VarEntry& var, char* buf, size_t bufSize) {
     if (!bufSize) {
         return 0;
     }
     fs::FsLock lock;
-    auto& file = (var.src == VarSource::APP) ? appFile : snapshotFile;
+    auto& file = fileHandleForSource((VarSource)var.src);
     CHECK(file.seek(var.nameOffs));
     size_t bytesToRead = std::min<size_t>(var.nameSize, bufSize - 1);
     size_t bytesRead = CHECK(file.read(buf, bytesToRead));
@@ -301,18 +290,6 @@ int Env::Vars::readName(const Var& var, char* buf, size_t bufSize) {
     return var.nameSize;
 }
 
-Env::Vars& Env::Vars::operator=(Vars&& vars) {
-    snapshotFile = std::move(vars.snapshotFile);
-    appFile = std::move(vars.appFile);
-    snapshotHash = std::move(vars.snapshotHash);
-    buckets = std::move(vars.buckets);
-    firstVar = vars.firstVar;
-    varCount = vars.varCount;
-    vars.firstVar = nullptr;
-    vars.varCount = 0;
-    return *this;
-}
-
 Env::~Env() {
 }
 
@@ -320,16 +297,22 @@ int Env::init() {
     fs::FsLock lock;
     CHECK(fs::mount());
 
-    Vars vars;
+    std::unique_ptr<EnvData> env(new(std::nothrow) EnvData());
+    if (!env) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
 
     bool hasStaged = false;
-    int r = loadVars(vars, hasStaged, true /* tryStaged */);
+    int r = loadEnv(*env, hasStaged, true /* tryStaged */);
     if (r < 0) {
         if (hasStaged) {
             // Ignore the staged files as a fallback
-            vars = Vars();
+            env.reset(new(std::nothrow) EnvData());
+            if (!env) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
             hasStaged = false;
-            r = loadVars(vars, hasStaged, false /* tryStaged */);
+            r = loadEnv(*env, hasStaged, false /* tryStaged */);
         }
         if (r < 0) {
             LOG(ERROR, "Error while loading env vars: %d", r);
@@ -338,18 +321,20 @@ int Env::init() {
     }
 
     // Clean up empty files
-    if (vars.appFile.isOpen() && vars.appFile.size() == 0) {
-        vars.appFile.close();
+    if (env->appFile.isOpen() && env->appFile.size() == 0) {
+        env->appFile.close();
         fs::remove(APP_FILE_CURRENT);
         fs::remove(APP_FILE_STAGED);
     }
-    if (vars.snapshotFile.isOpen() && vars.snapshotFile.size() == 0) {
-        vars.snapshotFile.close();
+    if (env->snapshotFile.isOpen() && env->snapshotFile.size() == 0) {
+        env->snapshotFile.close();
         fs::remove(SNAPSHOT_FILE_CURRENT);
         fs::remove(SNAPSHOT_FILE_STAGED);
     }
 
-    vars_ = std::move(vars);
+    if (env->size) {
+        env_ = std::move(env);
+    }
 
     r = updateBootloaderVars();
     if (r < 0) {
@@ -362,16 +347,22 @@ int Env::init() {
 }
 
 int Env::get(const char* name, char* buf, size_t bufSize) {
-    auto var = vars_.find(name);
+    if (!env_) {
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
+    }
+    auto var = env_->find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
-    CHECK(vars_.readValue(*var, buf, bufSize));
+    CHECK(env_->readValue(*var, buf, bufSize));
     return var->valSize;
 }
 
 int Env::get(const char* name, CString& val) {
-    auto var = vars_.find(name);
+    if (!env_) {
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
+    }
+    auto var = env_->find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
@@ -380,7 +371,7 @@ int Env::get(const char* name, CString& val) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     auto v = CString::wrap(buf); // Takes ownership over the buffer
-    CHECK(vars_.readValue(*var, buf, var->valSize + 1));
+    CHECK(env_->readValue(*var, buf, var->valSize + 1));
     val = std::move(v);
     return var->valSize;
 }
@@ -418,11 +409,14 @@ int Env::get(const char* name, bool& val) {
 }
 
 int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
-    auto var = vars_.find(name);
+    if (!env_) {
+        return SYSTEM_ERROR_ENV_NOT_FOUND;
+    }
+    auto var = env_->find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
-    auto& file = (var->src == VarSource::APP) ? vars_.appFile : vars_.snapshotFile;
+    auto& file = env_->fileHandleForSource((VarSource)var->src);
     std::unique_ptr<ValueStream> s(new(std::nothrow) ValueStream(file, var->valOffs, var->valSize));
     if (!s) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -432,7 +426,7 @@ int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
 }
 
 int Env::clear() {
-    if (!vars_.varCount) {
+    if (!env_) {
         return 0;
     }
     fs::FsLock lock;
@@ -484,33 +478,33 @@ int Env::updateBootloaderVars() {
     return 0;
 }
 
-int Env::loadVars(Vars& vars, bool& hasStaged, bool tryStaged) {
+int Env::loadEnv(EnvData& env, bool& hasStaged, bool tryStaged) {
     // Load the variables bundled with the app
-    CHECK(loadVarsForSource(vars, hasStaged, tryStaged, VarSource::APP));
+    CHECK(loadEnvForSource(env, hasStaged, tryStaged, VarSource::APP));
 
     // Override with the variables from the snapshot
-    CHECK(loadVarsForSource(vars, hasStaged, tryStaged, VarSource::SNAPSHOT));
+    CHECK(loadEnvForSource(env, hasStaged, tryStaged, VarSource::SNAPSHOT));
     return 0;
 }
 
-int Env::loadVarsForSource(Vars& vars, bool& hasStaged, bool tryStaged, VarSource src) {
-    auto& file = (src == VarSource::APP) ? vars.appFile : vars.snapshotFile;
-
+int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src) {
     if (tryStaged) {
-        auto path = (src == VarSource::APP) ? APP_FILE_STAGED : SNAPSHOT_FILE_STAGED;
-        int r = loadVarsFile(vars, file, path, src);
+        auto path = stagedPathForSource(src);
+        int r = loadEnvFile(env, path, src);
         if (r >= 0) {
             hasStaged = true;
             // Rename the staged file
+            auto& file = env.fileHandleForSource(src);
             CHECK(file.close());
-            auto newPath = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
+            auto newPath = currentPathForSource(src);
             CHECK(fs::rename(path, newPath));
             // Reopen the file
             CHECK(file.open(newPath, LFS_O_RDONLY));
             return 0;
         } else if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-            LOG(ERROR, "Error while reading %s: %d", path, r);
+            LOG(ERROR, "Error while loading %s: %d", path, r);
             hasStaged = true;
+            // Remove the staged file
             int r2 = fs::remove(path);
             if (r2 < 0) {
                 LOG(ERROR, "Error while removing %s: %d", path, r2);
@@ -519,39 +513,36 @@ int Env::loadVarsForSource(Vars& vars, bool& hasStaged, bool tryStaged, VarSourc
         }
     }
 
-    auto path = (src == VarSource::APP) ? APP_FILE_CURRENT : SNAPSHOT_FILE_CURRENT;
-    int r = loadVarsFile(vars, file, path, src);
+    auto path = currentPathForSource(src);
+    int r = loadEnvFile(env, path, src);
     if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-        LOG(ERROR, "Error while reading %s: %d", path, r);
+        LOG(ERROR, "Error while loading %s: %d", path, r);
         return r;
     }
     return 0;
 }
 
-int Env::loadVarsFile(Vars& vars, fs::File& file, const char* path, VarSource src) {
-    fs::File f;
-    CHECK(f.open(path, LFS_O_RDONLY));
-    size_t size = CHECK(f.size());
-    if (size > MAX_ENV_FILE_SIZE) {
-        return SYSTEM_ERROR_TOO_LARGE;
-    }
+int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
+    fs::File file;
+    CHECK(file.open(path, LFS_O_RDONLY));
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
     // the corresponding file on the device (see `init()`)
+    size_t size = CHECK(file.size());
     if (size > 0) {
-        CHECK(readVars(vars, f, src));
+        CHECK(parseEnvFile(env, file, src));
     }
-    file = std::move(f); // Keep the file open
+    env.fileHandleForSource(src) = std::move(file); // Keep the file open
     return 0;
 }
 
-int Env::readVars(Vars& vars, fs::File& file, VarSource src) {
+int Env::parseEnvFile(EnvData& env, fs::File& file, VarSource src) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
-    char nameBuf[MAX_ENV_NAME_LEN + 1];
+    char nameBuf[MAX_ENV_NAME_LEN + 1] = {};
 
     struct DecodeContext {
-        Vars& vars;
+        EnvData& env;
         fs::File& file;
         VarSource src;
         char* name; // Last read variable name
@@ -562,7 +553,7 @@ int Env::readVars(Vars& vars, fs::File& file, VarSource src) {
         int error;
     };
     DecodeContext d = {
-        .vars = vars,
+        .env = env,
         .file = file,
         .src = src,
         .name = nameBuf,
@@ -621,14 +612,14 @@ int Env::readVars(Vars& vars, fs::File& file, VarSource src) {
             return false;
         }
 
-        Var var;
-        var.valOffs = d->valOffs;
-        var.valSize = d->valSize;
+        VarEntry var;
         var.nameOffs = d->nameOffs;
         var.nameSize = d->nameSize;
+        var.valOffs = d->valOffs;
+        var.valSize = d->valSize;
         var.src = d->src;
 
-        int r = d->vars.add(d->name, std::move(var));
+        int r = d->env.add(d->name, std::move(var));
         if (r < 0) {
             d->error = r;
             return false;
@@ -643,11 +634,11 @@ int Env::readVars(Vars& vars, fs::File& file, VarSource src) {
         if (pbVars.hash.size != SNAPSHOT_HASH_SIZE) {
             return SYSTEM_ERROR_BAD_DATA;
         }
-        vars.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
-        if (!vars.snapshotHash) {
+        env.snapshotHash.reset(new(std::nothrow) char[SNAPSHOT_HASH_SIZE]);
+        if (!env.snapshotHash) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        std::memcpy(vars.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
+        std::memcpy(env.snapshotHash.get(), pbVars.hash.bytes, SNAPSHOT_HASH_SIZE);
     }
     return 0;
 }

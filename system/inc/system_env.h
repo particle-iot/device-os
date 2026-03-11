@@ -38,10 +38,18 @@ class InputStream;
 
 namespace system {
 
+/**
+ * Maximum length of an environment variable name.
+ */
 const size_t MAX_ENV_NAME_LEN = 128;
 
 class Env: public SystemAssetHandler {
 public:
+    enum VarSource {
+        APP,
+        SNAPSHOT
+    };
+
     /**
      * Variable info.
      */
@@ -51,18 +59,18 @@ public:
          */
         const char* name;
         /**
+         * Variable source.
+         */
+        VarSource source;
+        /**
          * Size of the variable value not including '\0'.
          */
         size_t size;
-        /**
-         * Whether this is an application variable.
-         */
-        bool isApp;
 
-        VarInfo(const char* name, size_t size, bool isApp) :
+        VarInfo(const char* name, VarSource src, size_t size) :
                 name(name),
-                size(size),
-                isApp(isApp) {
+                source(src),
+                size(size) {
         }
     };
 
@@ -146,7 +154,7 @@ public:
      * @return `true` if the variable is defined, otherwise `false`.
      */
     bool has(const char* name) {
-        return vars_.find(name);
+        return env_ ? !!env_->find(name) : false;
     }
 
     /**
@@ -155,7 +163,7 @@ public:
      * @return Number of variables.
      */
     size_t count() const {
-        return vars_.varCount;
+        return env_ ? env_->size : 0;
     }
 
     /**
@@ -177,29 +185,38 @@ public:
      *         `system_error_t` or the negative value returned by the callback.
      */
     template<typename F>
-    int forEach(F&& fn) {
-        char nameBuf[MAX_ENV_NAME_LEN + 1];
-        auto var = vars_.firstVar;
-        while (var) {
-            int r = vars_.readName(*var, nameBuf, sizeof(nameBuf));
-            if (r < 0) {
-                return r;
-            }
-            r = fn(VarInfo(nameBuf, var->valSize, var->src == VarSource::APP));
-            if (r < 0) {
-                return r;
-            }
-            var = var->next;
+    int forEach(F&& fn, char* buf = nullptr, size_t bufSize = 0) {
+        if (!env_) {
+            return 0;
         }
-        return vars_.varCount;
+        char nameBuf[MAX_ENV_NAME_LEN + 1];
+        for (int i = 0; i < env_->buckets.size(); ++i) {
+            auto v = env_->buckets.at(i);
+            while (v) {
+                int r = env_->readName(*v, nameBuf, sizeof(nameBuf));
+                if (r < 0) {
+                    return r;
+                }
+                r = env_->readValue(*v, buf, bufSize);
+                if (r < 0) {
+                    return r;
+                }
+                r = fn(VarInfo(nameBuf, (VarSource)v->src, v->valSize));
+                if (r < 0) {
+                    return r;
+                }
+                v = v->next;
+            }
+        }
+        return env_->size;
     }
 
     const char* snapshotHash() const {
-        return vars_.snapshotHash.get();
+        return env_ ? env_->snapshotHash.get() : nullptr;
     }
 
     bool hasSnapshot() const {
-        return vars_.snapshotFile.isOpen();
+        return env_ ? env_->snapshotFile.isOpen() : false;
     }
 
     int clear();
@@ -214,56 +231,50 @@ public:
     static Env& instance();
 
 private:
-    enum VarSource {
-        APP,
-        SNAPSHOT
-    };
-
-    struct Var {
-        Var* next;
+    struct VarEntry {
+        VarEntry* next;
         uint32_t hash;
         uint16_t valOffs;
         uint16_t valSize;
         uint16_t nameOffs;
         uint8_t nameSize;
         uint8_t src; // VarSource
-
-        Var();
     };
 
-    struct Vars {
-        fs::File snapshotFile;
+    struct EnvData {
         fs::File appFile;
+        fs::File snapshotFile;
         std::unique_ptr<char[]> snapshotHash;
-        Vector<Var*> buckets;
-        Var* firstVar;
-        size_t varCount;
+        Vector<VarEntry*> buckets;
+        size_t size;
 
-        Vars();
-        Vars(const Vars& vars) = delete;
-        Vars(Vars&& vars);
-        ~Vars();
+        EnvData();
+        EnvData(const EnvData&) = delete;
+        ~EnvData();
 
-        int add(const char* name, Var var);
-        const Var* find(const char* name);
+        int add(const char* name, VarEntry var);
+        const VarEntry* find(const char* name);
 
-        int readValue(const Var& var, char* buf, size_t bufSize);
-        int readName(const Var& var, char* buf, size_t bufSize);
+        int readValue(const VarEntry& var, char* buf, size_t bufSize);
+        int readName(const VarEntry& var, char* buf, size_t bufSize);
 
-        Vars& operator=(const Vars& vars) = delete;
-        Vars& operator=(Vars&& vars);
+        fs::File& fileHandleForSource(VarSource src) {
+            return (src == VarSource::APP) ? appFile : snapshotFile;
+        }
+
+        EnvData& operator=(const EnvData&) = delete;
     };
 
-    Vars vars_;
+    std::unique_ptr<EnvData> env_;
 
     Env() = default; // Use instance()
 
     int updateBootloaderVars();
 
-    static int loadVars(Vars& vars, bool& hasStaged, bool tryStaged);
-    static int loadVarsForSource(Vars& vars, bool& hasStaged, bool tryStaged, VarSource src);
-    static int loadVarsFile(Vars& vars, fs::File& file, const char* path, VarSource src);
-    static int readVars(Vars& vars, fs::File& file, VarSource src);
+    static int loadEnv(EnvData& env, bool& hasStaged, bool tryStaged);
+    static int loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src);
+    static int loadEnvFile(EnvData& env, const char* path, VarSource src);
+    static int parseEnvFile(EnvData& env, fs::File& file, VarSource src);
 };
 
 // Helper functions that return `true` if the variable is defined and valid, or `false` if the
