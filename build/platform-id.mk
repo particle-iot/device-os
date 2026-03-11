@@ -409,4 +409,10 @@ MODULE_FUNCTION_NCP_FIRMWARE    :=7
 MODULE_FUNCTION_RADIO_STACK     :=8
 MODULE_FUNCTION_ASSET           :=9
 
+ifdef PRINT_PLATFORM_MCU
+.PHONY: print-platform-mcu
+print-platform-mcu:
+	@echo $(PLATFORM_MCU)
+endif
+
 endif
