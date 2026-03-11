@@ -56,7 +56,7 @@ test(time_source)
     API_COMPILE(source = TimeSource::EXTERNAL);
     API_COMPILE(source = Time.timeSource());
     API_COMPILE(source = Time.getTimeSource());
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     API_COMPILE(source = InternalTime.timeSource());
     API_COMPILE(source = InternalTime.getTimeSource());
 #endif

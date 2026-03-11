@@ -276,13 +276,13 @@ test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Analog_P
 }
 
 // Tracker support waking up device from hibernate mode by external RTC
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 test(06_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
 }
 
 test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
 }
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 #endif // !HAL_PLATFORM_RTL872X
 
 #if HAL_PLATFORM_RTL872X

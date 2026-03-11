@@ -393,11 +393,11 @@ TimeClass& __fetch_global_Time() {
     return t;
 }
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 TimeClass& __fetch_global_InternalTime() {
     static TimeClass t(TimeSource::INTERNAL);
     return t;
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

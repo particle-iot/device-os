@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 // #define LOG_CHECKED_ERRORS 1
 
@@ -1329,4 +1329,4 @@ os_thread_return_t Am18x5::exRtcInterruptHandleThread(void* param) {
     os_thread_exit(instance->exRtcWorkerThread_);
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

@@ -30,7 +30,7 @@
 #include <algorithm>
 #include <iterator>
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "am18x5.h"
 
@@ -431,4 +431,4 @@ hal_exrtc_binding_t* __attribute__((weak)) hal_exrtc_default_binding() {
     return nullptr;
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

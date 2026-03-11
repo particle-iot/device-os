@@ -725,7 +725,7 @@ static int validateGpioWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sour
         }
     }
     if (gpio->type == HAL_PIN_TYPE_RTC) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
         if (gpio->mode == CHANGE) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
@@ -751,7 +751,7 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
     if (mode == HAL_SLEEP_MODE_HIBERNATE || mode == HAL_SLEEP_MODE_POWER_OFF) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
         if ((rtc->ms / 1000) == 0) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
@@ -1292,7 +1292,7 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
 }
 
 static int enterPowerOffMode(const hal_sleep_config_t* config) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     hal_exrtc_sleep_config_t sleep = {};
     sleep.version = HAL_EXRTC_API_VERSION;
     sleep.size = sizeof(sleep);
@@ -1332,12 +1332,12 @@ static int enterPowerOffMode(const hal_sleep_config_t* config) {
 }
 
 static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_source_base_t** wakeupReason) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     if (config->mode == HAL_SLEEP_MODE_POWER_OFF) {
         return enterPowerOffMode(config);
     }
 #endif
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     auto source = config->wakeup_sources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
@@ -1409,7 +1409,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
             hal_pin_info_t* halPinMap = hal_pin_map();
             auto gpioWakeup = reinterpret_cast<hal_wakeup_source_gpio_t*>(wakeupSource);
             if (gpioWakeup->type == HAL_PIN_TYPE_RTC) {
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
                 uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[RTC_INT].gpio_port, halPinMap[RTC_INT].gpio_pin);
                 nrf_gpio_cfg_sense_input(nrfPin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
                 wakeupSource = wakeupSource->next;
@@ -1456,7 +1456,7 @@ static int enterHibernateMode(const hal_sleep_config_t* config, hal_wakeup_sourc
         } else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_LPCOMP) {
             configLpcompWakeupSource(wakeupSource);
         }
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
         else if (wakeupSource->type == HAL_WAKEUP_SOURCE_TYPE_RTC) {
             hal_pin_info_t* halPinMap = hal_pin_map();
             uint32_t nrfPin = NRF_GPIO_PIN_MAP(halPinMap[RTC_INT].gpio_port, halPinMap[RTC_INT].gpio_pin);

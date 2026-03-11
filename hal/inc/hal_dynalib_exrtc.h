@@ -32,7 +32,7 @@
 // New HAL functions must be added to the end of this list.
 // GNINRAW
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 DYNALIB_BEGIN(hal_exrtc)
 
@@ -48,4 +48,4 @@ DYNALIB_FN(8, hal_exrtc, hal_exrtc_event_handler_del, int(hal_exrtc_instance_t, 
 
 DYNALIB_END(hal_exrtc)
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

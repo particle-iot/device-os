@@ -18,9 +18,9 @@
 #include "watchdog_hal_impl.h"
 #include "static_recursive_mutex.h"
 
-#if HAL_PLATFORM_HW_WATCHDOG || HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_HW_WATCHDOG || HAL_PLATFORM_EXTERNAL_RTC
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 #include "am18x5.h"
 using namespace particle;
 #endif
@@ -54,7 +54,7 @@ static WatchdogBase* getWatchdogInstance(hal_watchdog_instance_t instance) {
 #if HAL_PLATFORM_RTL872X
         RtlWatchdog::instance(),
 #endif
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
         Am18x5Watchdog::instance(),
 #endif
         // Add pointer to new watchdog here.
@@ -116,4 +116,4 @@ void hal_watchdog_refresh_deprecated() {
     hal_watchdog_refresh(HAL_WATCHDOG_INSTANCE1, nullptr);
 }
 
-#endif // HAL_PLATFORM_HW_WATCHDOG || HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_HW_WATCHDOG || HAL_PLATFORM_EXTERNAL_RTC

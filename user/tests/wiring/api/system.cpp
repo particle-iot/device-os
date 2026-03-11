@@ -491,7 +491,7 @@ test(system_power_management) {
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 void exrtcEventHandler(particle::RtcEvents events, void* context) {
 }
@@ -644,4 +644,4 @@ test(system_am18x5) {
 }
 #endif // HAL_PLATFORM_AM18X5
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

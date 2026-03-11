@@ -137,7 +137,7 @@ TimeClass& __fetch_global_Time();
 
 #define Time __fetch_global_Time()
 
-#if (HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
+#if (HAL_PLATFORM_EXTERNAL_RTC)
 
 // Mainly for debug
 
@@ -148,6 +148,6 @@ TimeClass& __fetch_global_InternalTime();
 
 #define InternalTime __fetch_global_Time()
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
 #endif

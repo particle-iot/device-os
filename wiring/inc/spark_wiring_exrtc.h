@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "spark_wiring_time.h"
 #include "exrtc_hal.h"
@@ -638,4 +638,4 @@ protected:
 
 } // particle
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
