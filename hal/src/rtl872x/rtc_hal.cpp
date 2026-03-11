@@ -313,6 +313,8 @@ void hal_rtc_init(void) {
     if (!hal_exrtc_get_time_internal(&tvExt) && timercmp(&tvExt, &tv, >)) {
         // Sync external -> internal
         rtcInstance.setTime(&tvExt);
+    } else {
+        hal_exrtc_set_time_internal(&tv);
     }
 #endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 }
