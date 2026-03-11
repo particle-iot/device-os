@@ -26,9 +26,11 @@
 #include "enumflags.h"
 #include "enumclass.h"
 #include "spark_wiring_i2c.h"
-#include "spark_wiring_vector.h"
+#include "spark_wiring_string.h"
 #include "system_error.h"
 #include <algorithm>
+#include <functional>
+#include <new>
 #include <type_traits>
 #include <iterator>
 
@@ -74,7 +76,36 @@ enum class RtcClockSource : uint8_t {
     EXTERNAL = HAL_EXRTC_CLOCK_SOURCE_EXTERNAL,
 };
 
+enum class RtcEvent : uint32_t {
+    NONE = HAL_EXRTC_EVENT_NONE,
+    CALIBRATION_FAILURE = HAL_EXRTC_EVENT_CALIBRATION_FAILURE,
+    CLOCK_SOURCE_EXTERNAL_FAILURE = HAL_EXRTC_EVENT_CLOCK_SOURCE_EXTERNAL_FAILURE,
+};
+ENABLE_ENUM_CLASS_BITWISE(RtcEvent);
+
+using RtcEvents = EnumFlags<RtcEvent>;
+using ExRtcOnEventCallback = void (*)(RtcEvents events, void* context);
+using ExRtcOnEventStdFunction = std::function<void(RtcEvents events)>;
+
 using RtcStatusFlags = EnumFlags<RtcStatusFlag>;
+
+class ExRtcEventSubscription {
+public:
+    explicit ExRtcEventSubscription(void* cookie = nullptr)
+            : cookie_(cookie) {
+    }
+
+    explicit operator bool() const {
+        return cookie_ != nullptr;
+    }
+
+    void* getCookie() const {
+        return cookie_;
+    }
+
+private:
+    void* cookie_;
+};
 
 class RtcConfigurationTag {
 protected:
@@ -410,6 +441,56 @@ public:
         return RtcStatus(r);
     }
 
+    String id() const {
+        char buf[HAL_EXRTC_MAX_ID_SIZE] = {};
+        if (!hal_exrtc_command(instance_, HAL_EXRTC_COMMAND_GET_ID, buf, sizeof(buf), nullptr)) {
+            return String(buf);
+        }
+        return String();
+    }
+
+    void off() const {
+        hal_exrtc_event_handler_del(instance_, nullptr, nullptr);
+    }
+
+    void off(const ExRtcEventSubscription& subscription) const {
+        if (subscription) {
+            hal_exrtc_event_handler_del(instance_, subscription.getCookie(), nullptr);
+        }
+    }
+
+    ExRtcEventSubscription onEvent(ExRtcOnEventCallback callback, void* context = nullptr) {
+        if (!callback) {
+            return ExRtcEventSubscription();
+        }
+        auto handler = new(std::nothrow) EventHandler();
+        if (!handler) {
+            return ExRtcEventSubscription();
+        }
+        handler->rawCallback = callback;
+        handler->rawContext = context;
+        auto cookie = hal_exrtc_event_handler_add(instance_, onEventCallback, handler, destroyEventHandler, nullptr);
+        return ExRtcEventSubscription(cookie);
+    }
+
+    ExRtcEventSubscription onEvent(const ExRtcOnEventStdFunction& callback) {
+        if (!callback) {
+            return ExRtcEventSubscription();
+        }
+        auto handler = new(std::nothrow) EventHandler();
+        if (!handler) {
+            return ExRtcEventSubscription();
+        }
+        handler->callback = callback;
+        auto cookie = hal_exrtc_event_handler_add(instance_, onEventStdFunctionCallback, handler, destroyEventHandler, nullptr);
+        return ExRtcEventSubscription(cookie);
+    }
+
+    template<typename T>
+    ExRtcEventSubscription onEvent(void(T::*callback)(RtcEvents), T* instance) {
+        return onEvent((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : ExRtcOnEventStdFunction(nullptr));
+    }
+
 protected:
     int bind(const hal_exrtc_binding_t* binding) {
         return hal_exrtc_bind(instance_, binding, nullptr);
@@ -419,6 +500,30 @@ protected:
     }
     int getConfigCommon(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor) const {
         return hal_exrtc_get_config(instance_, config, vendor, nullptr);
+    }
+
+    struct EventHandler {
+        ExRtcOnEventCallback rawCallback = nullptr;
+        void* rawContext = nullptr;
+        ExRtcOnEventStdFunction callback;
+    };
+
+    static void onEventCallback(uint32_t events, void* extra, void* context) {
+        auto handler = static_cast<EventHandler*>(context);
+        if (handler && handler->rawCallback) {
+            handler->rawCallback(RtcEvents::fromUnderlying(events), handler->rawContext);
+        }
+    }
+
+    static void onEventStdFunctionCallback(uint32_t events, void* extra, void* context) {
+        auto handler = static_cast<EventHandler*>(context);
+        if (handler && handler->callback) {
+            handler->callback(RtcEvents::fromUnderlying(events));
+        }
+    }
+
+    static void destroyEventHandler(void* context) {
+        delete static_cast<EventHandler*>(context);
     }
 
     hal_exrtc_instance_t instance_;

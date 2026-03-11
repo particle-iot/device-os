@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <iterator>
+#include <new>
 #include "check.h"
 #include "system_error.h"
 #include "bcd_to_dec.h"
@@ -205,7 +206,7 @@ int Am18x5::bind(const hal_exrtc_binding_t* binding) {
     return begin();
 }
 
-int Am18x5::command(hal_exrtc_command_t cmd, void* arg, void* arg1) {
+int Am18x5::command(hal_exrtc_command_t cmd, void* arg, uint32_t arg1) {
     (void)arg1;
     switch (cmd) {
         case HAL_EXRTC_COMMAND_SLEEP: {
@@ -411,7 +412,9 @@ int Am18x5::begin() {
         }
         initialized_ = true;
     }
-    return ret = applyConfig();
+    CHECK(applyConfig());
+    CHECK(updateEventHandlers());
+    return ret = SYSTEM_ERROR_NONE;
 }
 
 int Am18x5::end() {
@@ -569,7 +572,84 @@ int Am18x5::getIdString(char* id, size_t len) const {
     id += 2;
     uint8_t idLo = ids_[5]; // ID[7:0]
     bytes2hexbuf(&idLo, 1, id);
+    id += 2;
+    *id = '\0';
     return SYSTEM_ERROR_NONE;
+}
+
+void Am18x5::exRtcOscEventHandler(uint8_t events, void* context) {
+    auto self = static_cast<Am18x5*>(context);
+    if (!self) {
+        return;
+    }
+    uint32_t exrtcEvents = HAL_EXRTC_EVENT_NONE;
+    if (events & Am18x5OscEvent::XT_OSC_FAILURE) {
+        exrtcEvents |= HAL_EXRTC_EVENT_CLOCK_SOURCE_EXTERNAL_FAILURE;
+    }
+    if (events & Am18x5OscEvent::AUTO_CAL_FAILURE) {
+        exrtcEvents |= HAL_EXRTC_EVENT_CALIBRATION_FAILURE;
+    }
+    if (!exrtcEvents) {
+        return;
+    }
+    for (auto h = self->eventHandlers_.front(); h; h = h->next) {
+        if (h->handler) {
+            h->handler(exrtcEvents, nullptr, h->context);
+        }
+    }
+}
+
+void* Am18x5::addEventHandler(hal_exrtc_event_handler_t handler, void* context, hal_exrtc_event_cleanup_handler_t cleanup) {
+    CHECK_TRUE(handler, nullptr);
+    auto h = new(std::nothrow) ExRtcEventHandler();
+    CHECK_TRUE(h, nullptr);
+    h->handler = handler;
+    h->context = context;
+    h->cleanup = cleanup;
+    eventHandlers_.pushFront(h);
+    if (updateEventHandlers()) {
+        eventHandlers_.popFront();
+        if (h->cleanup) {
+            h->cleanup(h->context);
+        }
+        delete h;
+        return nullptr;
+    }
+    return h;
+}
+
+int Am18x5::removeEventHandler(void* cookie) {
+    CHECK_TRUE(cookie, SYSTEM_ERROR_INVALID_ARGUMENT);
+    for (auto h = eventHandlers_.front(), prev = static_cast<ExRtcEventHandler*>(nullptr); h; prev = h, h = h->next) {
+        if (h == cookie) {
+            eventHandlers_.pop(h, prev);
+            if (h->cleanup) {
+                h->cleanup(h->context);
+            }
+            delete h;
+            return updateEventHandlers();
+        }
+    }
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int Am18x5::clearEventHandlers() {
+    while (auto h = eventHandlers_.popFront()) {
+        if (h->cleanup) {
+            h->cleanup(h->context);
+        }
+        delete h;
+    }
+    return updateEventHandlers();
+}
+
+int Am18x5::updateEventHandlers() {
+    const uint8_t events = eventHandlers_.front() ?
+            (Am18x5OscEvent::XT_OSC_FAILURE | Am18x5OscEvent::AUTO_CAL_FAILURE) : 0;
+    if (!initialized_) {
+        return SYSTEM_ERROR_NONE;
+    }
+    return onOscillatorEvent(events, events ? exRtcOscEventHandler : nullptr, this);
 }
 
 int Am18x5::setTime(const struct timeval* tv) const {

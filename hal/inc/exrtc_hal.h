@@ -31,6 +31,7 @@ extern "C" {
 
 #define HAL_EXRTC_API_VERSION_BASE (3)
 #define HAL_EXRTC_API_VERSION (3)
+#define HAL_EXRTC_MAX_ID_SIZE (18)
 
 typedef enum hal_exrtc_instance_t {
     HAL_EXRTC_INSTANCE_1 = 0,
@@ -171,7 +172,8 @@ typedef struct hal_exrtc_binding_t {
 typedef enum hal_exrtc_command_t {
     HAL_EXRTC_COMMAND_NONE = 0,
     HAL_EXRTC_COMMAND_WRITE_MFG_XTAL_CALIBRATION = 1,
-    HAL_EXRTC_COMMAND_SLEEP = 2
+    HAL_EXRTC_COMMAND_SLEEP = 2,
+    HAL_EXRTC_COMMAND_GET_ID = 3
 } hal_exrtc_command_t;
 
 typedef struct hal_exrtc_calibration_data_t {
@@ -192,6 +194,7 @@ typedef struct hal_exrtc_sleep_config_t {
 } hal_exrtc_sleep_config_t;
 
 typedef void (*hal_exrtc_event_handler_t)(uint32_t events, void* extra, void* context);
+typedef void (*hal_exrtc_event_cleanup_handler_t)(void* context);
 
 int hal_exrtc_bind(hal_exrtc_instance_t instance, const hal_exrtc_binding_t* binding, void* reserved);
 int hal_exrtc_get_device(hal_exrtc_instance_t instance, hal_exrtc_device_t* device, void* reserved);
@@ -202,9 +205,10 @@ int hal_exrtc_get_status(hal_exrtc_instance_t instance, hal_exrtc_status_t* stat
 int hal_exrtc_set_config(hal_exrtc_instance_t instance, const hal_exrtc_config_t* config, const hal_exrtc_vendor_config_t* vendor, void* reserved);
 int hal_exrtc_get_config(hal_exrtc_instance_t instance, hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor, void* reserved);
 
-void* hal_exrtc_event_handler_add(hal_exrtc_instance_t instance, hal_exrtc_event_handler_t handler, void* context, void* reserved);
+void* hal_exrtc_event_handler_add(hal_exrtc_instance_t instance, hal_exrtc_event_handler_t handler, void* context, hal_exrtc_event_cleanup_handler_t cleanup, void* reserved);
+int hal_exrtc_event_handler_del(hal_exrtc_instance_t instance, void* cookie, void* reserved);
 
-int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, void* arg1, void* reserved);
+int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, uint32_t arg1, void* reserved);
 
 #ifdef __cplusplus
 }

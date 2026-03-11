@@ -42,8 +42,9 @@ DYNALIB_FN(2, hal_exrtc, hal_exrtc_unbind, int(hal_exrtc_instance_t, void*))
 DYNALIB_FN(3, hal_exrtc, hal_exrtc_get_status, int(hal_exrtc_instance_t, hal_exrtc_status_t*, void*, void*))
 DYNALIB_FN(4, hal_exrtc, hal_exrtc_set_config, int(hal_exrtc_instance_t, const hal_exrtc_config_t*, const hal_exrtc_vendor_config_t*, void*))
 DYNALIB_FN(5, hal_exrtc, hal_exrtc_get_config, int(hal_exrtc_instance_t, hal_exrtc_config_t*, hal_exrtc_vendor_config_t*, void*))
-DYNALIB_FN(6, hal_exrtc, hal_exrtc_event_handler_add, void*(hal_exrtc_instance_t, hal_exrtc_event_handler_t, void*, void*))
-DYNALIB_FN(7, hal_exrtc, hal_exrtc_command, int(hal_exrtc_instance_t, hal_exrtc_command_t, void*, void*, void*))
+DYNALIB_FN(6, hal_exrtc, hal_exrtc_event_handler_add, void*(hal_exrtc_instance_t, hal_exrtc_event_handler_t, void*, hal_exrtc_event_cleanup_handler_t, void*))
+DYNALIB_FN(7, hal_exrtc, hal_exrtc_command, int(hal_exrtc_instance_t, hal_exrtc_command_t, void*, uint32_t, void*))
+DYNALIB_FN(8, hal_exrtc, hal_exrtc_event_handler_del, int(hal_exrtc_instance_t, void*, void*))
 
 DYNALIB_END(hal_exrtc)
 
