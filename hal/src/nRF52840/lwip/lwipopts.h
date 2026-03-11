@@ -1444,7 +1444,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * LWIP_STATS==1: Enable statistics collection in lwip_stats.
  */
-#define LWIP_STATS                      1
+#define LWIP_STATS                      0
 
 #if LWIP_STATS
 
@@ -1552,7 +1552,11 @@ void sys_unlock_tcpip_core(void);
 #define UDP_STATS                       0
 #define TCP_STATS                       0
 #define MEM_STATS                       0
-#define MEMP_STATS                      0
+// Particle: enabled by default for monitoring pbuf pool and flow control
+#define MEMP_STATS                      1
+#undef LWIP_STATS
+#define LWIP_STATS                      1
+// /Particle
 #define SYS_STATS                       0
 #define LWIP_STATS_DISPLAY              0
 #define IP6_STATS                       0

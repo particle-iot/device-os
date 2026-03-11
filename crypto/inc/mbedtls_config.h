@@ -25,6 +25,7 @@
 #define MBEDTLS_CONFIG_H
 
 /* For new platforms the configuration file resides in hal */
+#include "hal_platform.h"
 #include "mbedtls_config_platform.h"
 
 #endif /* MBEDTLS_CONFIG_H */
