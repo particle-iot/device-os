@@ -236,7 +236,7 @@ public:
     int getTime(struct timeval* tv) const;
     bool isTimeValid(struct timeval* tv = nullptr) const;
 
-    int setAlarm(bool enable, uint32_t flags = 0, const struct timeval* tv = nullptr, AlarmHandler handler = nullptr, void* context = nullptr);
+    int setAlarm(bool enable, uint32_t flags = 0, const struct timeval* tv = nullptr, AlarmHandler handler = nullptr, void* context = nullptr, bool requireInterruptPin = true);
     int getAlarm(struct timeval* tv) const;
 
     int enableWatchdog(system_tick_t ms);

@@ -711,10 +711,13 @@ bool Am18x5::isTimeValid(struct timeval* tv) const {
     return false;
 }
 
-int Am18x5::setAlarm(bool enable, uint32_t flags, const struct timeval* tv, AlarmHandler handler, void* context) {
+int Am18x5::setAlarm(bool enable, uint32_t flags, const struct timeval* tv, AlarmHandler handler, void* context, bool requireInterruptPin) {
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
     if (enable) {
+        if (requireInterruptPin) {
+            CHECK_TRUE(config_.int_pin != PIN_INVALID, SYSTEM_ERROR_NOT_SUPPORTED);
+        }
         if (tv) {
             struct timeval alarm = *tv;
             struct timeval now;
@@ -943,7 +946,7 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
     // This function should not return if succeeded.
     SCOPE_GUARD ({
         // Restore alarm config
-        setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_);
+        setAlarm(enabled > 0 ? true : false, 0, &alarmTv, alarmHandler_, alarmHandlerContext_, false);
         // Disable EXTI interrupt, as it is only used for sleep wakeup for now
         intMask &= ~INTERRUPT_EX1E_MASK;
         writeRegister(Am18x5Register::INT_MASK, intMask);
@@ -958,7 +961,7 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
             .tv_sec = config->duration,
             .tv_usec = 0
         };
-        CHECK(setAlarm(true, HAL_RTC_ALARM_FLAG_IN, &tv, nullptr, nullptr));
+        CHECK(setAlarm(true, HAL_RTC_ALARM_FLAG_IN, &tv, nullptr, nullptr, false));
         intMask |= INTERRUPT_AIE_MASK;
     } else {
         intMask &= ~INTERRUPT_AIE_MASK;
