@@ -117,7 +117,7 @@ public:
         });
 
         mocks_.OnCallFunc(HAL_RNG_GetRandomNumber).Return(12345);
-        mocks_.OnCallFunc(hal_rtc_get_time).Do([&](struct timeval* tv, void* reserved) -> int {
+        mocks_.OnCallFunc(hal_rtc_get_time).Do([&](struct timeval* tv, hal_rtc_option_t* opt) -> int {
             if (tv) {
                 tv->tv_sec = DEFAULT_UNIXTIME;
                 tv->tv_usec = 0;

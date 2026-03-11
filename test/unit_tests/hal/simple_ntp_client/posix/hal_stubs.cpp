@@ -34,7 +34,7 @@ uint32_t HAL_RNG_GetRandomNumber() {
 	return 0;
 }
 
-int hal_rtc_get_time(struct timeval* tv, void* reserved) {
+int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
     return 0;
 }
 
