@@ -20,7 +20,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "time.h"
 #include "concurrent_hal.h"
@@ -460,6 +460,6 @@ private:
 };
 
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
 #endif // AM18X5_H

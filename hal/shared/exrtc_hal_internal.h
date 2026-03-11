@@ -17,7 +17,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "rtc_hal.h"
 #include "exrtc_hal.h"
@@ -45,4 +45,4 @@ hal_exrtc_binding_t* hal_exrtc_default_binding();
 }
 #endif // __cplusplus
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

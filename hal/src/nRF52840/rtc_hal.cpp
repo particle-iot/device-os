@@ -76,13 +76,13 @@ int setUnixTime(const struct timeval* tv) {
 
 void hal_rtc_init(void) {
     struct timeval tv = {};
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     hal_exrtc_init();
     if (!hal_exrtc_get_time_internal(&tv)) {
         // Use external RTC time, as ours is definitely lost on init
         setUnixTime(&tv);
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 }
 
 bool hal_rtc_time_is_valid(hal_rtc_option_t* opt) {
@@ -92,7 +92,7 @@ bool hal_rtc_time_is_valid(hal_rtc_option_t* opt) {
 
 int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     // Mainly for debug
     if (opt && opt->source == HAL_RTC_SOURCE_EXTERNAL) {
         return hal_exrtc_get_time_internal(tv);
@@ -104,7 +104,7 @@ int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
             return 0;
         }
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
     auto unixTimeUs = getUsUnixTime();
     timevalFromUsUnixtime(tv, unixTimeUs);
     if (opt) {
@@ -116,7 +116,7 @@ int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
 int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     // Update both is possible
     int r = 0;
     if (!opt || opt->source != HAL_RTC_SOURCE_INTERNAL) {
@@ -125,7 +125,7 @@ int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
     if (opt && opt->source == HAL_RTC_SOURCE_EXTERNAL) {
         return r;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
     return setUnixTime(tv);
 }
@@ -133,11 +133,11 @@ int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     if (hal_exrtc_is_default() && !hal_exrtc_set_alarm(tv, flags, handler, context)) {
         return 0;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
     struct timeval alarm = *tv;
     if (flags & HAL_RTC_ALARM_FLAG_IN) {
@@ -182,11 +182,11 @@ int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_ha
 }
 
 void hal_rtc_cancel_alarm(void) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     if (hal_exrtc_is_default() && !hal_exrtc_cancel_alarm()) {
         return;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
     // This implementation is only used for System.sleep(seconds) (network sleep)
     // on Gen3 devices.

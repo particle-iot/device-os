@@ -19,7 +19,7 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "i2c_hal.h"
 #include "interrupts_hal.h"
@@ -218,4 +218,4 @@ int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, vo
 #include "exrtc_hal_am18x5.h"
 #endif // HAL_PLATFORM_AM18X5
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC

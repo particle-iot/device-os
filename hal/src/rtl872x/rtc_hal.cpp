@@ -25,7 +25,7 @@
 #include "platform_headers.h"
 #include <time.h>
 #include "core_hal.h"
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal_internal.h"
 #endif
 
@@ -307,7 +307,7 @@ void hal_rtc_init(void) {
         rtcInstance.setTime(&tv);
     }
 
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     hal_exrtc_init();
     struct timeval tvExt;
     if (!hal_exrtc_get_time_internal(&tvExt) && timercmp(&tvExt, &tv, >)) {
@@ -316,7 +316,7 @@ void hal_rtc_init(void) {
     } else {
         hal_exrtc_set_time_internal(&tv);
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 }
 
 bool hal_rtc_time_is_valid(hal_rtc_option_t* opt) {
@@ -326,7 +326,7 @@ bool hal_rtc_time_is_valid(hal_rtc_option_t* opt) {
 
 int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     // Mainly for debug
     if (opt && opt->source == HAL_RTC_SOURCE_EXTERNAL) {
         return hal_exrtc_get_time_internal(tv);
@@ -347,7 +347,7 @@ int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
 
 int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
     CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     // Update both is possible
     int r = 0;
     if (!opt || opt->source != HAL_RTC_SOURCE_INTERNAL) {
@@ -356,26 +356,26 @@ int hal_rtc_set_time(const struct timeval* tv, hal_rtc_option_t* opt) {
     if (opt && opt->source == HAL_RTC_SOURCE_EXTERNAL) {
         return r;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
 
     return rtcInstance.setTime(tv);
 }
 
 int hal_rtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context, void* reserved) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     if (hal_exrtc_is_default() && !hal_exrtc_set_alarm(tv, flags, handler, context)) {
         return 0;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
     return rtcInstance.setAlarm(tv, flags, handler, context);
 }
 
 void hal_rtc_cancel_alarm(void) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     if (hal_exrtc_is_default() && !hal_exrtc_cancel_alarm()) {
         return;
     }
-#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#endif // HAL_PLATFORM_EXTERNAL_RTC
     rtcInstance.cancelAlarm();
 }
 

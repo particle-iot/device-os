@@ -377,7 +377,7 @@ private:
     }
 
     int enterPowerOffMode(const hal_sleep_config_t* config) {
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
         hal_exrtc_sleep_config_t sleep = {};
         sleep.version = HAL_EXRTC_API_VERSION;
         sleep.size = sizeof(sleep);

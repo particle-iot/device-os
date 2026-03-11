@@ -62,7 +62,7 @@ DYNALIB_TABLE_EXTERN(system_asset_manager);
 #if HAL_PLATFORM_LEDGER
 DYNALIB_TABLE_EXTERN(system_ledger);
 #endif
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 DYNALIB_TABLE_EXTERN(hal_exrtc);
 #endif
 
@@ -128,7 +128,7 @@ extern "C" __attribute__((externally_visible)) const void* const system_part1_mo
 #if HAL_PLATFORM_LEDGER
     , DYNALIB_TABLE_NAME(system_ledger)
 #endif
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
     , DYNALIB_TABLE_NAME(hal_exrtc)
 #endif
 };

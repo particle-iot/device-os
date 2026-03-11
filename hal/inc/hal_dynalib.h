@@ -35,7 +35,7 @@
 #include "timer_hal.h"
 #include "rtc_hal.h"
 #include "interrupts_hal.h"
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal.h"
 #endif
 #endif

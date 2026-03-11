@@ -19,7 +19,7 @@
 #include "hal_platform.h"
 #include "rtc_hal.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #include "am18x5.h"
 
@@ -42,4 +42,4 @@ int hal_exrtc_feed_watchdog_deprecated(void* reserved) {
     return Am18x5::getInstance().feedWatchdog();
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

@@ -22,7 +22,7 @@
 #include "pinmap_hal.h"
 #include "call_once.h"
 
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 hal_exrtc_binding_t* hal_exrtc_default_binding() {
     static hal_exrtc_device_t device = {};
@@ -65,4 +65,4 @@ hal_exrtc_binding_t* hal_exrtc_default_binding() {
     return &binding;
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL

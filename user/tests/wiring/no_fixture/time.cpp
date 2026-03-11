@@ -414,7 +414,7 @@ retained time_t lastTimestamp = 0;
 
 } // anonymous
 
-#if !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
+#if !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
 
 test(TIME_20_TimeIsPreservedThroughSoftwareReset_1) {
     if (!Time.isValid()) {
@@ -497,7 +497,7 @@ test(TIME_20_TimeIsNotPreservedThroughSoftwareReset_2) {
     auto diff = now - lastTimestamp;
     assertLess(diff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME * 2);
 }
-#endif // !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
+#endif // !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
 
 test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
     if (!Time.isValid()) {
