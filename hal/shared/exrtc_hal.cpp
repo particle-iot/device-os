@@ -411,7 +411,7 @@ int hal_exrtc_set_time_internal(const struct timeval* tv) {
 
 int hal_exrtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_rtc_alarm_handler handler, void* context) {
     if (Am18x5::getInstance().isPresent()) {
-        return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context);
+        return Am18x5::getInstance().setAlarm(true, flags, tv, handler, context, true);
     }
     return SYSTEM_ERROR_NOT_FOUND;
 }
