@@ -30,6 +30,7 @@
 #include "enumclass.h"
 #include "exrtc_hal.h"
 #include "pinmap_hal.h"
+#include "intrusive_list.h"
 
 namespace particle {
 
@@ -216,7 +217,7 @@ public:
     typedef void (*AlarmHandler)(void* context);
 
     int bind(const hal_exrtc_binding_t* binding);
-    int command(hal_exrtc_command_t cmd, void* arg, void* arg1);
+    int command(hal_exrtc_command_t cmd, void* arg, uint32_t arg1);
     int getDevice(hal_exrtc_device_t* device) const;
     int getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor = nullptr) const;
     int getStatus(hal_exrtc_status_t* status) const;
@@ -251,6 +252,9 @@ public:
 
     int getOscillatorSource(Am18x5Oscillator* source);
     int onOscillatorEvent(uint8_t events, Am18x5OscEventHandler handler, void* context);
+    void* addEventHandler(hal_exrtc_event_handler_t handler, void* context, hal_exrtc_event_cleanup_handler_t cleanup = nullptr);
+    int removeEventHandler(void* cookie);
+    int clearEventHandlers();
 
     int lock();
     int unlock();
@@ -258,6 +262,13 @@ public:
     static Am18x5& getInstance();
 
 private:
+    struct ExRtcEventHandler {
+        hal_exrtc_event_handler_t handler = nullptr;
+        void* context = nullptr;
+        hal_exrtc_event_cleanup_handler_t cleanup = nullptr;
+        ExRtcEventHandler* next = nullptr;
+    };
+
     Am18x5();
     ~Am18x5();
 
@@ -265,6 +276,7 @@ private:
     int loadLegacyMfgOscCalibration(int32_t* cal) const;
     int detect();
     int applyConfig();
+    int updateEventHandlers();
     int setPsw(bool val) const; // This is dangerous, make it private for now!
 
     int setHundredths(uint8_t hundredths) const;
@@ -312,6 +324,7 @@ private:
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const;
     static os_thread_return_t exRtcInterruptHandleThread(void* param);
+    static void exRtcOscEventHandler(uint8_t events, void* context);
 
     static constexpr uint16_t AM1805_PART_NUMBER = 0x1805;
     static constexpr uint8_t AM18X5_I2C_ADDR = 0x69;
@@ -333,6 +346,7 @@ private:
     uint8_t subscribedOscEvents_;
     Am18x5OscEventHandler oscEventHandler_;
     void* oscEventHandlerContext_;
+    IntrusiveList<ExRtcEventHandler> eventHandlers_;
 }; // class Am18x5
 
 

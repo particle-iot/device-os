@@ -410,7 +410,7 @@ private:
             source = source->next;
         }
 
-        return hal_exrtc_command(HAL_EXRTC_INSTANCE_DEFAULT, HAL_EXRTC_COMMAND_SLEEP, &sleep, nullptr, nullptr);
+        return hal_exrtc_command(HAL_EXRTC_INSTANCE_DEFAULT, HAL_EXRTC_COMMAND_SLEEP, &sleep, 0, nullptr);
 #else
         return SYSTEM_ERROR_NOT_SUPPORTED;
 #endif

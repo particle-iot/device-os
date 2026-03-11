@@ -37,3 +37,4 @@ endif
 
 CPPFLAGS +=
 
+export LC_COLLATE := C

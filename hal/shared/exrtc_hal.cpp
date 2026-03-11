@@ -52,32 +52,9 @@ const uint32_t AM18X5_SUPPORTED_CAPS =
         HAL_EXRTC_CAPS_EXTI_LEVEL_TRIGGER |
         HAL_EXRTC_CAPS_WATCHDOG;
 
-struct RtcEventHandler {
-    hal_exrtc_event_handler_t handler = nullptr;
-    void* context = nullptr;
-} g_eventHandler;
-
 int writeMfgXtalCalibration(const hal_exrtc_calibration_data_t* data) {
     CHECK_TRUE(data && data->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
-    hal_exrtc_calibration_data_t stored = {};
-    stored.version = HAL_EXRTC_API_VERSION;
-    stored.size = sizeof(stored);
-    stored.value = data->value;
-    return SystemCache::instance().set(SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, &stored, sizeof(stored));
-}
-
-void am18x5OscEventHandler(uint8_t events, void* context) {
-    (void)context;
-    uint32_t exrtcEvents = HAL_EXRTC_EVENT_NONE;
-    if (events & Am18x5OscEvent::XT_OSC_FAILURE) {
-        exrtcEvents |= HAL_EXRTC_EVENT_CLOCK_SOURCE_EXTERNAL_FAILURE;
-    }
-    if (events & Am18x5OscEvent::AUTO_CAL_FAILURE) {
-        exrtcEvents |= HAL_EXRTC_EVENT_CALIBRATION_FAILURE;
-    }
-    if (exrtcEvents && g_eventHandler.handler) {
-        g_eventHandler.handler(exrtcEvents, nullptr, g_eventHandler.context);
-    }
+    return SystemCache::instance().set(SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, data, data->size);
 }
 
 struct RtcBinding {
@@ -386,26 +363,32 @@ int hal_exrtc_get_config(hal_exrtc_instance_t instance, hal_exrtc_config_t* conf
     return 0;
 }
 
-void* hal_exrtc_event_handler_add(hal_exrtc_instance_t instance, hal_exrtc_event_handler_t handler, void* context, void* reserved) {
+void* hal_exrtc_event_handler_add(hal_exrtc_instance_t instance, hal_exrtc_event_handler_t handler, void* context, hal_exrtc_event_cleanup_handler_t cleanup, void* reserved) {
     if (instance != HAL_EXRTC_INSTANCE_1) {
         return nullptr;
     }
-    g_eventHandler.handler = handler;
-    g_eventHandler.context = context;
-    if (!Am18x5::getInstance().isPresent()) {
-        return handler ? nullptr : &g_eventHandler;
-    }
-    uint8_t events = handler ? (Am18x5OscEvent::XT_OSC_FAILURE | Am18x5OscEvent::AUTO_CAL_FAILURE) : 0;
-    if (Am18x5::getInstance().onOscillatorEvent(events, handler ? am18x5OscEventHandler : nullptr, nullptr)) {
+    if (!handler) {
+        Am18x5::getInstance().clearEventHandlers();
         return nullptr;
     }
-    return &g_eventHandler;
+    return Am18x5::getInstance().addEventHandler(handler, context, cleanup);
 }
 
-int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, void* arg1, void* reserved) {
+int hal_exrtc_event_handler_del(hal_exrtc_instance_t instance, void* cookie, void* reserved) {
+    CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
+    if (!cookie) {
+        return Am18x5::getInstance().clearEventHandlers();
+    }
+    return Am18x5::getInstance().removeEventHandler(cookie);
+}
+
+int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, uint32_t arg1, void* reserved) {
     CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (cmd == HAL_EXRTC_COMMAND_WRITE_MFG_XTAL_CALIBRATION) {
         return writeMfgXtalCalibration(static_cast<const hal_exrtc_calibration_data_t*>(arg));
+    } else if (cmd == HAL_EXRTC_COMMAND_GET_ID) {
+        CHECK_TRUE(arg && arg1 > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+        return Am18x5::getInstance().getIdString(static_cast<char*>(arg), arg1);
     }
     return Am18x5::getInstance().command(cmd, arg, arg1);
 }
