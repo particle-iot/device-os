@@ -288,7 +288,7 @@ jobs:
             cp $HOME/device-os/build/release-publish.sh $HOME/workspace/release/$BUILD_PLATFORM/
             cp $HOME/device-os/ci/combine_binaries.sh $HOME/workspace/release/$BUILD_PLATFORM/
             cp $HOME/device-os/ci/cf_generate_message.sh $HOME/workspace/release/$BUILD_PLATFORM/
-            docker cp build:/firmware/build/coverage $HOME/workspace/release/
+            docker cp build:/firmware/build/coverage $HOME/workspace/release/ || true
             cp $HOME/device-os/.git/ref $HOME/workspace/release/$BUILD_PLATFORM/ref
             find $HOME/workspace/release
             exit 0
@@ -486,4 +486,3 @@ workflows:
           requires:
             - build-and-test
             - combine-binaries
-
