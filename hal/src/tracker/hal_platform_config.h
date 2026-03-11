@@ -70,3 +70,4 @@
 
 // Save some flash space on assertion strings
 #define HAL_PLATFORM_SHORT_ASSERTS (1)
+#define HAL_PLATFORM_LOW_FLASH_SPACE (1)
