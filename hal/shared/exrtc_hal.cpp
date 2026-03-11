@@ -40,7 +40,6 @@ using namespace particle;
 using namespace particle::services;
 
 namespace {
-
 const uint32_t AM18X5_SUPPORTED_CAPS =
         HAL_EXRTC_CAPS_POWER_GATE |
         HAL_EXRTC_CAPS_CLOCK_SOURCE |
@@ -225,6 +224,14 @@ struct RtcBinding {
         return reinterpret_cast<hal_exrtc_vendor_config_t*>(vendor_.data());
     }
 
+    bool operator==(const RtcBinding& other) const {
+        return loaded_ == other.loaded_ &&
+                memcmp(&device_, &other.device_, sizeof(device_)) == 0 &&
+                memcmp(&config_, &other.config_, sizeof(config_)) == 0 &&
+                vendor_.size() == other.vendor_.size() &&
+                (vendor_.size() == 0 || memcmp(vendor_.data(), other.vendor_.data(), vendor_.size()) == 0);
+    }
+
 private:
     bool loaded_ = false;
     hal_exrtc_binding_t binding_ = {};
@@ -242,6 +249,21 @@ int loadCurrentBinding(RtcBinding* binding) {
         return binding->load(platformDefault);
     }
     return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int bindIfNeededAndResync(RtcBinding& desired, RtcBinding* current = nullptr) {
+    if (current && Am18x5::getInstance().isPresent() && desired == *current) {
+        return SYSTEM_ERROR_NONE;
+    }
+
+    CHECK(Am18x5::getInstance().bind(desired.binding()));
+    hal_rtc_option_t rtc = {};
+    rtc.source = HAL_RTC_SOURCE_INTERNAL;
+    struct timeval tvInt = {};
+    if (!hal_rtc_get_time(&tvInt, &rtc)) {
+        return hal_exrtc_set_time_internal(&tvInt);
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 } // anonymous
@@ -266,8 +288,13 @@ int hal_exrtc_bind(hal_exrtc_instance_t instance, const hal_exrtc_binding_t* bin
 
     RtcBinding loaded;
     CHECK(loaded.load(binding));
+
+    RtcBinding current;
+    const int currentRet = loadCurrentBinding(&current);
+    CHECK_TRUE(currentRet >= 0 || currentRet == SYSTEM_ERROR_NOT_FOUND, currentRet);
+
     CHECK(loaded.store(SystemCacheKey::EXRTC_CONFIG_DATA));
-    return Am18x5::getInstance().bind(loaded.binding());
+    return bindIfNeededAndResync(loaded, currentRet >= 0 ? &current : nullptr);
 }
 
 int hal_exrtc_get_device(hal_exrtc_instance_t instance, hal_exrtc_device_t* device, void* reserved) {
@@ -332,9 +359,10 @@ int hal_exrtc_set_config(hal_exrtc_instance_t instance, const hal_exrtc_config_t
 
     RtcBinding binding;
     CHECK(loadCurrentBinding(&binding));
+    RtcBinding current = binding;
     CHECK(binding.setConfig(const_cast<hal_exrtc_config_t*>(config), const_cast<hal_exrtc_vendor_config_t*>(vendor)));
     CHECK(binding.store(SystemCacheKey::EXRTC_CONFIG_DATA));
-    return Am18x5::getInstance().bind(binding.binding());
+    return bindIfNeededAndResync(binding, &current);
 }
 
 int hal_exrtc_get_config(hal_exrtc_instance_t instance, hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* vendor, void* reserved) {

@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include "hal_platform.h"
+
 #include "dynalib.h"
 
 #ifdef DYNALIB_EXPORT
@@ -30,6 +32,8 @@
 // New HAL functions must be added to the end of this list.
 // GNINRAW
 
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
 DYNALIB_BEGIN(hal_exrtc)
 
 DYNALIB_FN(0, hal_exrtc, hal_exrtc_bind, int(hal_exrtc_instance_t, const hal_exrtc_binding_t*, void*))
@@ -42,3 +46,5 @@ DYNALIB_FN(6, hal_exrtc, hal_exrtc_event_handler_add, void*(hal_exrtc_instance_t
 DYNALIB_FN(7, hal_exrtc, hal_exrtc_command, int(hal_exrtc_instance_t, hal_exrtc_command_t, void*, void*, void*))
 
 DYNALIB_END(hal_exrtc)
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
