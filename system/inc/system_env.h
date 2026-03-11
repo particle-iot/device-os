@@ -258,7 +258,7 @@ private:
         int readValue(const VarEntry& var, char* buf, size_t bufSize);
         int readName(const VarEntry& var, char* buf, size_t bufSize);
 
-        fs::File& fileHandleForSource(VarSource src) {
+        fs::File& fileForSource(VarSource src) {
             return (src == VarSource::APP) ? appFile : snapshotFile;
         }
 
@@ -274,7 +274,6 @@ private:
     static int loadEnv(EnvData& env, bool& hasStaged, bool tryStaged);
     static int loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src);
     static int loadEnvFile(EnvData& env, const char* path, VarSource src);
-    static int parseEnvFile(EnvData& env, fs::File& file, VarSource src);
 };
 
 // Helper functions that return `true` if the variable is defined and valid, or `false` if the

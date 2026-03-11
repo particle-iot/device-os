@@ -47,8 +47,8 @@ const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
 const size_t HASH_PRIME_SIZES[] = { 5, 11, 23, 37, 53, 97, 127, 193, 283, 389, 577, 769, 1153 };
-const unsigned HASH_MAX_LOAD_FACTOR_N = 3;
-const unsigned HASH_MAX_LOAD_FACTOR_D = 4;
+const unsigned HASH_MAX_LOAD_FACTOR_N = 1; // Numerator
+const unsigned HASH_MAX_LOAD_FACTOR_D = 1; // Denominator
 
 class ValueStream: public InputStream {
 public:
@@ -263,7 +263,7 @@ int Env::EnvData::readValue(const VarEntry& var, char* buf, size_t bufSize) {
         return 0;
     }
     fs::FsLock lock;
-    auto& file = fileHandleForSource((VarSource)var.src);
+    auto& file = fileForSource((VarSource)var.src);
     CHECK(file.seek(var.valOffs));
     size_t bytesToRead = std::min<size_t>(var.valSize, bufSize - 1);
     size_t bytesRead = CHECK(file.read(buf, bytesToRead));
@@ -279,7 +279,7 @@ int Env::EnvData::readName(const VarEntry& var, char* buf, size_t bufSize) {
         return 0;
     }
     fs::FsLock lock;
-    auto& file = fileHandleForSource((VarSource)var.src);
+    auto& file = fileForSource((VarSource)var.src);
     CHECK(file.seek(var.nameOffs));
     size_t bytesToRead = std::min<size_t>(var.nameSize, bufSize - 1);
     size_t bytesRead = CHECK(file.read(buf, bytesToRead));
@@ -416,7 +416,7 @@ int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
-    auto& file = env_->fileHandleForSource((VarSource)var->src);
+    auto& file = env_->fileForSource((VarSource)var->src);
     std::unique_ptr<ValueStream> s(new(std::nothrow) ValueStream(file, var->valOffs, var->valSize));
     if (!s) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -494,7 +494,7 @@ int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSour
         if (r >= 0) {
             hasStaged = true;
             // Rename the staged file
-            auto& file = env.fileHandleForSource(src);
+            auto& file = env.fileForSource(src);
             CHECK(file.close());
             auto newPath = currentPathForSource(src);
             CHECK(fs::rename(path, newPath));
@@ -523,19 +523,16 @@ int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSour
 }
 
 int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
-    fs::File file;
+    auto& file = env.fileForSource(src);
     CHECK(file.open(path, LFS_O_RDONLY));
+
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
     // the corresponding file on the device (see `init()`)
     size_t size = CHECK(file.size());
-    if (size > 0) {
-        CHECK(parseEnvFile(env, file, src));
+    if (!size) {
+        return 0;
     }
-    env.fileHandleForSource(src) = std::move(file); // Keep the file open
-    return 0;
-}
 
-int Env::parseEnvFile(EnvData& env, fs::File& file, VarSource src) {
     pb_istream_t stream = {};
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
@@ -619,7 +616,18 @@ int Env::parseEnvFile(EnvData& env, fs::File& file, VarSource src) {
         var.valSize = d->valSize;
         var.src = d->src;
 
+        // Remember the current position in the file as EnvData::add() may change it
+        auto pos = d->file.tell();
+        if (pos < 0) {
+            d->error = pos;
+            return false;
+        }
         int r = d->env.add(d->name, std::move(var));
+        if (r < 0) {
+            d->error = r;
+            return false;
+        }
+        r = d->file.seek(pos);
         if (r < 0) {
             d->error = r;
             return false;
