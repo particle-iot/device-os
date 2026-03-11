@@ -35,10 +35,15 @@
 extern const char* TIME_FORMAT_DEFAULT;
 extern const char* TIME_FORMAT_ISO8601_FULL;
 
+enum class TimeSource : uint8_t {
+    DEFAULT = HAL_RTC_SOURCE_DEFAULT,
+    INTERNAL = HAL_RTC_SOURCE_INTERNAL,
+    EXTERNAL = HAL_RTC_SOURCE_EXTERNAL
+};
 
 class TimeClass {
 public:
-    TimeClass(hal_rtc_source_t source = HAL_RTC_SOURCE_DEFAULT);
+    TimeClass(TimeSource source = TimeSource::DEFAULT);
 
 	// Arduino time and date functions
 	int     hour();            			// current hour
@@ -69,7 +74,8 @@ public:
 	float	   zone();						// retrieve the current timezone
 	void    setTime(time_t t);			// set the given time as unix/rtc time
 
-    hal_rtc_source_t getTimeSource();             // get RTC time source
+    TimeSource timeSource();             // get RTC time source
+    TimeSource getTimeSource() { return timeSource(); }
 
     operator bool() const;
     bool isValid() const;
@@ -122,7 +128,7 @@ public:
     const char* getFormat() const { return format_spec; }
 
 private:
-    hal_rtc_source_t source_;
+    TimeSource source_;
     const char* format_spec;
     String timeFormatImpl(tm* calendar_time, const char* format, int time_zone);
 };

@@ -171,13 +171,21 @@ public:
         return device_.i2c.address;
     }
 
-    Concrete& interrupt(hal_pin_t pin) {
+    Concrete& interruptPin(hal_pin_t pin) {
         device_.i2c.pin_int = pin;
         return self();
     }
 
-    hal_pin_t interrupt() const {
+    hal_pin_t interruptPin() const {
         return device_.i2c.pin_int;
+    }
+
+    Concrete& interrupt(hal_pin_t pin) {
+        return interruptPin(pin);
+    }
+
+    hal_pin_t interrupt() const {
+        return interruptPin();
     }
 
     Concrete& pins(const Vector<hal_pin_t>& gpios) {
@@ -327,6 +335,10 @@ public:
         return *this;
     }
 
+    hal_pin_t watchdogPin() const {
+        return this->pin(0);
+    }
+
     Am18x5Configuration& xtalCalibration(int8_t value) {
         vendor_.xtal_calibration = value;
         vendor_.xtal_calibration_set = true;
@@ -422,7 +434,7 @@ private:
 class ExRtcBase: public TimeClass {
 public:
     explicit ExRtcBase(hal_exrtc_instance_t instance)
-            : TimeClass(),
+            : TimeClass(TimeSource::EXTERNAL),
             instance_(instance) {
     }
 
