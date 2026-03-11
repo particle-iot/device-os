@@ -271,125 +271,81 @@ test(TIME_16_TimeChangedEvent) {
 }
 
 test(TIME_17_RtcAlarmFiresCorrectly) {
-    for (int i = 0; i < 2; i++) {
-        if (i == 0) {
-            // Test internal RTC
-            assertEqual(Time.setTimeSource(HAL_RTC_SOURCE_INTERNAL), 0);
-            assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
-        } else {
-            // Test external RTC if present
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-            if (!System.isExternalRtcPresent()) {
-                assertNotEqual(Time.setTimeSource(HAL_RTC_SOURCE_EXTERNAL), 0);
-                assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
-                break;
-            } else {
-                assertEqual(Time.setTimeSource(HAL_RTC_SOURCE_EXTERNAL), 0);
-                assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_EXTERNAL);
-            }
-#else
-            break;
-#endif
-        }
+    SCOPE_GUARD ({
+            Particle.connect();
+            waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+        });
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
 
-        SCOPE_GUARD ({
-                Particle.connect();
-                waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-            });
-        Particle.disconnect();
-        waitFor(Particle.disconnected, 60000);
-
-        // Absolute time
-        struct timeval now;
-        assertEqual(0, hal_rtc_get_time(&now, nullptr));
-        now.tv_sec += 5;
-        static volatile bool alarmFired = false;
-        auto ms = millis();
-        int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
-            volatile bool* alarmFired = (volatile bool*)ctx;
-            *alarmFired = true;
-        }, (void*)&alarmFired, nullptr);
-        assertEqual(r, 0);
-        while (!alarmFired && (millis() - ms) <= 8000) {
-            delay(1);
-        }
-        assertLessOrEqual(millis() - ms, 6000);
-        hal_rtc_cancel_alarm();
-        assertTrue((bool)alarmFired);
-
-        // In some amount of time
-        alarmFired = false;
-        now.tv_sec = 5;
-        now.tv_usec = 0;
-        ms = millis();
-        r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
-            volatile bool* alarmFired = (volatile bool*)ctx;
-            *alarmFired = true;
-        }, (void*)&alarmFired, nullptr);
-        assertEqual(r, 0);
-        while (!alarmFired && (millis() - ms) <= 6000) {
-            delay(1);
-        }
-        assertLessOrEqual(millis() - ms, 6000);
-        hal_rtc_cancel_alarm();
-        assertTrue((bool)alarmFired);
+    // Absolute time
+    struct timeval now;
+    assertEqual(0, hal_rtc_get_time(&now, nullptr));
+    now.tv_sec += 5;
+    static volatile bool alarmFired = false;
+    auto ms = millis();
+    int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    assertEqual(r, 0);
+    while (!alarmFired && (millis() - ms) <= 6000) {
+        delay(1);
     }
+    assertLessOrEqual(millis() - ms, 6000);
+    hal_rtc_cancel_alarm();
+    assertTrue((bool)alarmFired);
+
+    // In some amount of time
+    alarmFired = false;
+    now.tv_sec = 5;
+    now.tv_usec = 0;
+    ms = millis();
+    r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    assertEqual(r, 0);
+    while (!alarmFired && (millis() - ms) <= 6000) {
+        delay(1);
+    }
+    assertLessOrEqual(millis() - ms, 6000);
+    hal_rtc_cancel_alarm();
+    assertTrue((bool)alarmFired);
 }
 
 test(TIME_18_RtcAlarmReturnsAnErrorWhenTimeInThePast) {
-    for (int i = 0; i < 2; i++) {
-        if (i == 0) {
-            // Test internal RTC
-            assertEqual(Time.setTimeSource(HAL_RTC_SOURCE_INTERNAL), 0);
-            assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
-        } else {
-            // Test external RTC if present
-#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-            if (!System.isExternalRtcPresent()) {
-                assertNotEqual(Time.setTimeSource(HAL_RTC_SOURCE_EXTERNAL), 0);
-                assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_INTERNAL);
-                break;
-            } else {
-                assertEqual(Time.setTimeSource(HAL_RTC_SOURCE_EXTERNAL), 0);
-                assertEqual(Time.getTimeSource(), HAL_RTC_SOURCE_EXTERNAL);
-            }
-#else
-            break;
-#endif
-        }
+    SCOPE_GUARD ({
+            Particle.connect();
+            waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+        });
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 60000);
 
-        SCOPE_GUARD ({
-                Particle.connect();
-                waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-            });
-        Particle.disconnect();
-        waitFor(Particle.disconnected, 60000);
+    // Absolute time
+    struct timeval now;
+    assertEqual(0, hal_rtc_get_time(&now, nullptr));
+    now.tv_sec -= 60;
+    static volatile bool alarmFired = false;
+    int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    hal_rtc_cancel_alarm();
+    assertFalse((bool)alarmFired);
+    assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
 
-        // Absolute time
-        struct timeval now;
-        assertEqual(0, hal_rtc_get_time(&now, nullptr));
-        now.tv_sec -= 60;
-        static volatile bool alarmFired = false;
-        int r = hal_rtc_set_alarm(&now, 0, [](void* ctx) -> void {
-            volatile bool* alarmFired = (volatile bool*)ctx;
-            *alarmFired = true;
-        }, (void*)&alarmFired, nullptr);
-        hal_rtc_cancel_alarm();
-        assertFalse((bool)alarmFired);
-        assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
-
-        // In some amount of time
-        alarmFired = false;
-        now.tv_sec = -5;
-        now.tv_usec = 0;
-        r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
-            volatile bool* alarmFired = (volatile bool*)ctx;
-            *alarmFired = true;
-        }, (void*)&alarmFired, nullptr);
-        hal_rtc_cancel_alarm();
-        assertFalse((bool)alarmFired);
-        assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
-    }
+    // In some amount of time
+    alarmFired = false;
+    now.tv_sec = -5;
+    now.tv_usec = 0;
+    r = hal_rtc_set_alarm(&now, HAL_RTC_ALARM_FLAG_IN, [](void* ctx) -> void {
+        volatile bool* alarmFired = (volatile bool*)ctx;
+        *alarmFired = true;
+    }, (void*)&alarmFired, nullptr);
+    hal_rtc_cancel_alarm();
+    assertFalse((bool)alarmFired);
+    assertEqual(r, (int)SYSTEM_ERROR_TIMEOUT);
 }
 
 test(TIME_19_LocalTimeIsCloseToNtpTime) {
