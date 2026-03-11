@@ -38,11 +38,17 @@ test('04_cleanup_env', async function () {
     await unsetDeviceVariables(api, deviceId);
 });
 
-test('05_cleanup_env', async function() {
+test('05_cleanup_env', async function () {
     await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('06_cleanup_env', async function() {
+test('06_cleanup_env', async function () {
+});
+
+test('07_cleanup_env', async function() {
+});
+
+test('08_cleanup_env', async function() {
 
 });
 

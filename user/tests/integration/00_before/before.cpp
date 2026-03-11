@@ -167,3 +167,25 @@ test(06_cleanup_env) {
 }
 
 #endif // HAL_PLATFORM_ENV
+
+test(07_cleanup_env) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
+    expectSystemReset();
+    System.reset();
+#endif
+}
+
+test(08_cleanup_env) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    const auto status = ExternalTime.status();
+    assertTrue(status.valid());
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    assertFalse(status.builtIn());
+    assertFalse(status.bound());
+#else
+    assertTrue(status.builtIn());
+    assertTrue(status.bound());
+#endif
+#endif
+}
