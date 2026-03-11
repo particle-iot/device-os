@@ -81,7 +81,7 @@ static void Refresh_UnixTime_Cache(time_t unix_time)
     }
 }
 
-TimeClass::TimeClass(hal_rtc_source_t source)
+TimeClass::TimeClass(TimeSource source)
         : source_(source),
           format_spec(TIME_FORMAT_DEFAULT) {
 }
@@ -289,19 +289,19 @@ void TimeClass::setTime(time_t t)
     };
     hal_rtc_option_t opt = {};
     opt.size = sizeof(opt);
-    opt.source = source_;
+    opt.source = static_cast<hal_rtc_source_t>(source_);
     if (!hal_rtc_set_time(&tv, &opt)) {
         system_notify_time_changed((uint32_t)time_changed_manually, nullptr, nullptr);
     }
 }
 
-hal_rtc_source_t TimeClass::getTimeSource() {
+TimeSource TimeClass::timeSource() {
     hal_rtc_option_t opt = {};
     opt.size = sizeof(opt);
-    opt.source = source_;
+    opt.source = static_cast<hal_rtc_source_t>(source_);
     struct timeval tv = {};
     hal_rtc_get_time(&tv, &opt);
-    return opt.source;
+    return static_cast<TimeSource>(opt.source);
 }
 
 /* return string representation for the given time */
@@ -389,14 +389,14 @@ TimeClass::operator bool() const
 }
 
 TimeClass& __fetch_global_Time() {
-    static TimeClass t; // HAL_RTC_SOURCE_DEFAULT
+    static TimeClass t; // TimeSource::DEFAULT
     return t;
 }
 
 #if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 TimeClass& __fetch_global_InternalTime() {
-    static TimeClass t(HAL_RTC_SOURCE_INTERNAL);
+    static TimeClass t(TimeSource::INTERNAL);
     return t;
 }
 
