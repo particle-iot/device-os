@@ -47,3 +47,18 @@ test(time_valid)
 {
     API_COMPILE(Time.isValid());
 }
+
+test(time_source)
+{
+    TimeSource source;
+    API_COMPILE(source = TimeSource::DEFAULT);
+    API_COMPILE(source = TimeSource::INTERNAL);
+    API_COMPILE(source = TimeSource::EXTERNAL);
+    API_COMPILE(source = Time.timeSource());
+    API_COMPILE(source = Time.getTimeSource());
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    API_COMPILE(source = InternalTime.timeSource());
+    API_COMPILE(source = InternalTime.getTimeSource());
+#endif
+    (void)source;
+}

@@ -89,9 +89,9 @@ using ExRtcOnEventStdFunction = std::function<void(RtcEvents events)>;
 
 using RtcStatusFlags = EnumFlags<RtcStatusFlag>;
 
-class ExRtcEventSubscription {
+class RtcEventSubscription {
 public:
-    explicit ExRtcEventSubscription(void* cookie = nullptr)
+    explicit RtcEventSubscription(void* cookie = nullptr)
             : cookie_(cookie) {
     }
 
@@ -465,41 +465,41 @@ public:
         hal_exrtc_event_handler_del(instance_, nullptr, nullptr);
     }
 
-    void off(const ExRtcEventSubscription& subscription) const {
+    void off(const RtcEventSubscription& subscription) const {
         if (subscription) {
             hal_exrtc_event_handler_del(instance_, subscription.getCookie(), nullptr);
         }
     }
 
-    ExRtcEventSubscription onEvent(ExRtcOnEventCallback callback, void* context = nullptr) {
+    RtcEventSubscription onEvent(ExRtcOnEventCallback callback, void* context = nullptr) {
         if (!callback) {
-            return ExRtcEventSubscription();
+            return RtcEventSubscription();
         }
         auto handler = new(std::nothrow) EventHandler();
         if (!handler) {
-            return ExRtcEventSubscription();
+            return RtcEventSubscription();
         }
         handler->rawCallback = callback;
         handler->rawContext = context;
         auto cookie = hal_exrtc_event_handler_add(instance_, onEventCallback, handler, destroyEventHandler, nullptr);
-        return ExRtcEventSubscription(cookie);
+        return RtcEventSubscription(cookie);
     }
 
-    ExRtcEventSubscription onEvent(const ExRtcOnEventStdFunction& callback) {
+    RtcEventSubscription onEvent(const ExRtcOnEventStdFunction& callback) {
         if (!callback) {
-            return ExRtcEventSubscription();
+            return RtcEventSubscription();
         }
         auto handler = new(std::nothrow) EventHandler();
         if (!handler) {
-            return ExRtcEventSubscription();
+            return RtcEventSubscription();
         }
         handler->callback = callback;
         auto cookie = hal_exrtc_event_handler_add(instance_, onEventStdFunctionCallback, handler, destroyEventHandler, nullptr);
-        return ExRtcEventSubscription(cookie);
+        return RtcEventSubscription(cookie);
     }
 
     template<typename T>
-    ExRtcEventSubscription onEvent(void(T::*callback)(RtcEvents), T* instance) {
+    RtcEventSubscription onEvent(void(T::*callback)(RtcEvents), T* instance) {
         return onEvent((callback && instance) ? std::bind(callback, instance, std::placeholders::_1) : ExRtcOnEventStdFunction(nullptr));
     }
 

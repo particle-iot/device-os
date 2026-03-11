@@ -165,6 +165,8 @@ test(system_sleep)
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::ULTRA_LOW_POWER)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::POWER_OFF).duration(10s)); (void)r; });
+    API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::POWER_OFF).gpio(PinType::RTC, FALLING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, RISING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, FALLING)); (void)r; });
     API_COMPILE({ SystemSleepResult r = System.sleep(SystemSleepConfiguration().gpio(WKP, CHANGE)); (void)r; });
@@ -488,3 +490,158 @@ test(system_power_management) {
     API_COMPILE({ auto getSocBitPrecision = getConf.socBitPrecision(); (void)getSocBitPrecision; });
 }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
+
+#if HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+
+void exrtcEventHandler(particle::RtcEvents events, void* context) {
+}
+
+class ExRtcEventsHandler {
+public:
+    void handler(particle::RtcEvents events) {}
+};
+
+template <typename T>
+void testTimeApi(T& time) {
+    const char* format = nullptr;
+    time_t now = 0;
+    API_COMPILE(now = time.now());
+    API_COMPILE(now = time.local());
+    API_COMPILE(time.setTime(1234));
+    API_COMPILE(time.timeStr());
+    API_COMPILE(time.timeStr(1234));
+    API_COMPILE(time.format(TIME_FORMAT_DEFAULT));
+    API_COMPILE(time.format(TIME_FORMAT_ISO8601_FULL));
+    API_COMPILE(time.format(1234, TIME_FORMAT_ISO8601_FULL));
+    API_COMPILE(time.setFormat(TIME_FORMAT_ISO8601_FULL));
+    API_COMPILE(format = time.getFormat());
+    API_COMPILE(time.isValid());
+    API_COMPILE(time.timeSource());
+    API_COMPILE(time.getTimeSource());
+    (void)format;
+    (void)now;
+}
+
+test(system_external_rtc) {
+    auto config = particle::RtcConfiguration();
+    config.type(particle::RtcType::UNKNOWN)
+          .capabilities(particle::RtcCap::CLOCK_SOURCE | particle::RtcCap::WATCHDOG)
+          .i2c(Wire, 0x69)
+          .interruptPin(PIN_INVALID)
+          .interrupt(PIN_INVALID)
+          .defaultTimeSource(true)
+          .sleepExtiCheck(true)
+          .clockSource(particle::RtcClockSource::EXTERNAL);
+    config.pin(0, PIN_INVALID)
+          .pins(Vector<hal_pin_t>())
+          .pins(static_cast<const hal_pin_t*>(nullptr), 0);
+
+    API_COMPILE({ auto valid = config.valid(); (void)valid; });
+    API_COMPILE({ auto error = config.error(); (void)error; });
+    API_COMPILE({ auto type = config.type(); (void)type; });
+    API_COMPILE({ auto caps = config.capabilities(); (void)caps; });
+    API_COMPILE({ auto wire = config.interface(); (void)wire; });
+    API_COMPILE({ auto address = config.address(); (void)address; });
+    API_COMPILE({ auto intPin = config.interruptPin(); (void)intPin; });
+    API_COMPILE({ auto intPin = config.interrupt(); (void)intPin; });
+    API_COMPILE({ auto pin = config.pin(0); (void)pin; });
+    API_COMPILE({ auto defaultTimeSource = config.defaultTimeSource(); (void)defaultTimeSource; });
+    API_COMPILE({ auto sleepExtiCheck = config.sleepExtiCheck(); (void)sleepExtiCheck; });
+    API_COMPILE({ auto clockSource = config.clockSource(); (void)clockSource; });
+    API_COMPILE({ auto event = particle::RtcEvent::CALIBRATION_FAILURE; (void)event; });
+    API_COMPILE({ auto event = particle::RtcEvent::CLOCK_SOURCE_EXTERNAL_FAILURE; (void)event; });
+
+    API_COMPILE({ auto r = ExternalTime.enable(config); (void)r; });
+    API_COMPILE({ auto r = ExternalTime.setConfig(config); (void)r; });
+    API_COMPILE({ auto r = ExternalTime.getConfig(config); (void)r; });
+    API_COMPILE({ auto getConfig = ExternalTime.getConfig(); (void)getConfig; });
+    API_COMPILE({ auto status = ExternalTime.status(); (void)status; });
+    API_COMPILE({ auto valid = ExternalTime.status().valid(); (void)valid; });
+    API_COMPILE({ auto error = ExternalTime.status().error(); (void)error; });
+    API_COMPILE({ auto valid = (bool)ExternalTime.status(); (void)valid; });
+    API_COMPILE({ auto type = ExternalTime.status().type(); (void)type; });
+    API_COMPILE({ auto flags = ExternalTime.status().flags(); (void)flags; });
+    API_COMPILE({ auto supportedCapabilities = ExternalTime.status().supportedCapabilities(); (void)supportedCapabilities; });
+    API_COMPILE({ auto optionalCapabilities = ExternalTime.status().optionalCapabilities(); (void)optionalCapabilities; });
+    API_COMPILE({ auto enabledCapabilities = ExternalTime.status().enabledCapabilities(); (void)enabledCapabilities; });
+    API_COMPILE({ auto clockSource = ExternalTime.status().clockSource(); (void)clockSource; });
+    API_COMPILE({ auto builtIn = ExternalTime.status().builtIn(); (void)builtIn; });
+    API_COMPILE({ auto bound = ExternalTime.status().bound(); (void)bound; });
+    API_COMPILE({ auto present = ExternalTime.status().present(); (void)present; });
+    API_COMPILE({ auto ready = ExternalTime.status().ready(); (void)ready; });
+    API_COMPILE({ auto id = ExternalTime.id(); (void)id; });
+    API_COMPILE({ auto r = ExternalTime.disable(); (void)r; });
+
+    auto sub = particle::RtcEventSubscription();
+    auto handler = ExRtcEventsHandler();
+    API_COMPILE(sub = ExternalTime.onEvent(exrtcEventHandler, nullptr));
+    API_COMPILE(sub = ExternalTime.onEvent([](particle::RtcEvents events) {}));
+    API_COMPILE(sub = ExternalTime.onEvent(&ExRtcEventsHandler::handler, &handler));
+    API_COMPILE(ExternalTime.off(sub));
+    API_COMPILE(ExternalTime.off());
+    API_COMPILE({ auto valid = (bool)sub; (void)valid; });
+
+    testTimeApi(ExternalTime);
+}
+
+#if HAL_PLATFORM_AM18X5
+test(system_am18x5) {
+    auto config = particle::Am18x5Configuration();
+    config.i2c(Wire)
+          .interruptPin(PIN_INVALID)
+          .interrupt(PIN_INVALID)
+          .watchdogPin(PIN_INVALID)
+          .defaultTimeSource(true)
+          .sleepExtiCheck(true)
+          .clockSource(particle::RtcClockSource::EXTERNAL)
+          .xtalCalibration(-45);
+    config.pin(0, PIN_INVALID)
+          .pins(Vector<hal_pin_t>())
+          .pins(static_cast<const hal_pin_t*>(nullptr), 0);
+
+    API_COMPILE({ auto valid = config.valid(); (void)valid; });
+    API_COMPILE({ auto error = config.error(); (void)error; });
+    API_COMPILE({ auto wire = config.interface(); (void)wire; });
+    API_COMPILE({ auto intPin = config.interruptPin(); (void)intPin; });
+    API_COMPILE({ auto intPin = config.interrupt(); (void)intPin; });
+    API_COMPILE({ auto wdiPin = config.watchdogPin(); (void)wdiPin; });
+    API_COMPILE({ auto pin = config.pin(0); (void)pin; });
+    API_COMPILE({ auto defaultTimeSource = config.defaultTimeSource(); (void)defaultTimeSource; });
+    API_COMPILE({ auto sleepExtiCheck = config.sleepExtiCheck(); (void)sleepExtiCheck; });
+    API_COMPILE({ auto clockSource = config.clockSource(); (void)clockSource; });
+
+    API_COMPILE({ auto r = Am18x5.enable(config); (void)r; });
+    API_COMPILE({ auto r = Am18x5.setConfig(config); (void)r; });
+    API_COMPILE({ auto r = Am18x5.getConfig(config); (void)r; });
+    API_COMPILE({ auto getConfig = Am18x5.getConfig(); (void)getConfig; });
+    API_COMPILE({ auto status = Am18x5.status(); (void)status; });
+    API_COMPILE({ auto valid = Am18x5.status().valid(); (void)valid; });
+    API_COMPILE({ auto error = Am18x5.status().error(); (void)error; });
+    API_COMPILE({ auto valid = (bool)Am18x5.status(); (void)valid; });
+    API_COMPILE({ auto type = Am18x5.status().type(); (void)type; });
+    API_COMPILE({ auto flags = Am18x5.status().flags(); (void)flags; });
+    API_COMPILE({ auto supportedCapabilities = Am18x5.status().supportedCapabilities(); (void)supportedCapabilities; });
+    API_COMPILE({ auto optionalCapabilities = Am18x5.status().optionalCapabilities(); (void)optionalCapabilities; });
+    API_COMPILE({ auto enabledCapabilities = Am18x5.status().enabledCapabilities(); (void)enabledCapabilities; });
+    API_COMPILE({ auto clockSource = Am18x5.status().clockSource(); (void)clockSource; });
+    API_COMPILE({ auto builtIn = Am18x5.status().builtIn(); (void)builtIn; });
+    API_COMPILE({ auto bound = Am18x5.status().bound(); (void)bound; });
+    API_COMPILE({ auto present = Am18x5.status().present(); (void)present; });
+    API_COMPILE({ auto ready = Am18x5.status().ready(); (void)ready; });
+    API_COMPILE({ auto id = Am18x5.id(); (void)id; });
+    API_COMPILE({ auto r = Am18x5.disable(); (void)r; });
+
+    auto sub = particle::RtcEventSubscription();
+    auto handler = ExRtcEventsHandler();
+    API_COMPILE(sub = Am18x5.onEvent(exrtcEventHandler, nullptr));
+    API_COMPILE(sub = Am18x5.onEvent([](particle::RtcEvents events) {}));
+    API_COMPILE(sub = Am18x5.onEvent(&ExRtcEventsHandler::handler, &handler));
+    API_COMPILE(Am18x5.off(sub));
+    API_COMPILE(Am18x5.off());
+    API_COMPILE({ auto valid = (bool)sub; (void)valid; });
+
+    testTimeApi(Am18x5);
+}
+#endif // HAL_PLATFORM_AM18X5
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
