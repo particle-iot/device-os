@@ -76,6 +76,12 @@ enum class RtcClockSource : uint8_t {
     EXTERNAL = HAL_EXRTC_CLOCK_SOURCE_EXTERNAL,
 };
 
+enum class Am18x5AutoCalibration : uint8_t {
+    DISABLE = HAL_EXRTC_AM18X5_AUTO_CAL_DISABLE,
+    EVERY_1024_SEC = HAL_EXRTC_AM18X5_AUTO_CAL_EVERY_1024_SEC,
+    EVERY_512_SEC = HAL_EXRTC_AM18X5_AUTO_CAL_EVERY_512_SEC,
+};
+
 enum class RtcEvent : uint32_t {
     NONE = HAL_EXRTC_EVENT_NONE,
     CALIBRATION_FAILURE = HAL_EXRTC_EVENT_CALIBRATION_FAILURE,
@@ -249,6 +255,15 @@ public:
         return static_cast<RtcClockSource>(config_.clock_source);
     }
 
+    Concrete& clockOutputFrequency(uint32_t hz) {
+        config_.clock_output_frequency = hz;
+        return self();
+    }
+
+    uint32_t clockOutputFrequency() const {
+        return config_.clock_output_frequency;
+    }
+
     hal_exrtc_binding_t toHalBinding() const {
         hal_exrtc_binding_t binding = {};
         binding.size = sizeof(binding);
@@ -351,6 +366,15 @@ public:
 
     bool xtalCalibrationSet() const {
         return vendor_.xtal_calibration_set;
+    }
+
+    Am18x5Configuration& autoCalibration(Am18x5AutoCalibration mode) {
+        vendor_.auto_calibration = static_cast<uint8_t>(mode);
+        return *this;
+    }
+
+    Am18x5AutoCalibration autoCalibration() const {
+        return static_cast<Am18x5AutoCalibration>(vendor_.auto_calibration);
     }
 
      hal_exrtc_vendor_config_t* vendorConfig() const {

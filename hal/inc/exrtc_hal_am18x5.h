@@ -25,6 +25,12 @@
 extern "C" {
 #endif // __cplusplus
 
+typedef enum hal_exrtc_am18x5_auto_calibration_t {
+    HAL_EXRTC_AM18X5_AUTO_CAL_DISABLE = 0x00,
+    HAL_EXRTC_AM18X5_AUTO_CAL_EVERY_1024_SEC = 0x02,
+    HAL_EXRTC_AM18X5_AUTO_CAL_EVERY_512_SEC = 0x03,
+} hal_exrtc_am18x5_auto_calibration_t;
+
 typedef struct hal_exrtc_vendor_config_am18x5_t {
     hal_exrtc_vendor_config_t base;
 
@@ -35,6 +41,7 @@ typedef struct hal_exrtc_vendor_config_am18x5_t {
         uint32_t flags;
     };
     int8_t xtal_calibration;
+    hal_exrtc_am18x5_auto_calibration_t auto_calibration;
 } hal_exrtc_vendor_config_am18x5_t;
 
 #define HAL_EXRTC_TYPE_AM18X5_DEFAULT_ADDRESS (0x69)

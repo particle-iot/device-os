@@ -525,13 +525,14 @@ void testTimeApi(T& time) {
 test(system_external_rtc) {
     auto config = particle::RtcConfiguration();
     config.type(particle::RtcType::UNKNOWN)
-          .capabilities(particle::RtcCap::CLOCK_SOURCE | particle::RtcCap::WATCHDOG)
+          .capabilities(particle::RtcCap::CLOCK_SOURCE | particle::RtcCap::WATCHDOG | particle::RtcCap::CLOCK_OUTPUT)
           .i2c(Wire, 0x69)
           .interruptPin(PIN_INVALID)
           .interrupt(PIN_INVALID)
           .defaultTimeSource(true)
           .sleepExtiCheck(true)
-          .clockSource(particle::RtcClockSource::EXTERNAL);
+          .clockSource(particle::RtcClockSource::EXTERNAL)
+          .clockOutputFrequency(32768);
     config.pin(0, PIN_INVALID)
           .pins(Vector<hal_pin_t>())
           .pins(static_cast<const hal_pin_t*>(nullptr), 0);
@@ -548,6 +549,7 @@ test(system_external_rtc) {
     API_COMPILE({ auto defaultTimeSource = config.defaultTimeSource(); (void)defaultTimeSource; });
     API_COMPILE({ auto sleepExtiCheck = config.sleepExtiCheck(); (void)sleepExtiCheck; });
     API_COMPILE({ auto clockSource = config.clockSource(); (void)clockSource; });
+    API_COMPILE({ auto frequency = config.clockOutputFrequency(); (void)frequency; });
     API_COMPILE({ auto event = particle::RtcEvent::CALIBRATION_FAILURE; (void)event; });
     API_COMPILE({ auto event = particle::RtcEvent::CLOCK_SOURCE_EXTERNAL_FAILURE; (void)event; });
 
@@ -565,6 +567,7 @@ test(system_external_rtc) {
     API_COMPILE({ auto optionalCapabilities = ExternalTime.status().optionalCapabilities(); (void)optionalCapabilities; });
     API_COMPILE({ auto enabledCapabilities = ExternalTime.status().enabledCapabilities(); (void)enabledCapabilities; });
     API_COMPILE({ auto clockSource = ExternalTime.status().clockSource(); (void)clockSource; });
+    API_COMPILE({ auto calibration = ExternalTime.status().xtalCalibration(); (void)calibration; });
     API_COMPILE({ auto builtIn = ExternalTime.status().builtIn(); (void)builtIn; });
     API_COMPILE({ auto bound = ExternalTime.status().bound(); (void)bound; });
     API_COMPILE({ auto present = ExternalTime.status().present(); (void)present; });
@@ -594,6 +597,9 @@ test(system_am18x5) {
           .defaultTimeSource(true)
           .sleepExtiCheck(true)
           .clockSource(particle::RtcClockSource::EXTERNAL)
+          .clockOutputFrequency(32768)
+          .capabilities(particle::RtcCap::CLOCK_OUTPUT | particle::RtcCap::AUTO_CALIBRATION)
+          .autoCalibration(particle::Am18x5AutoCalibration::EVERY_512_SEC)
           .xtalCalibration(-45);
     config.pin(0, PIN_INVALID)
           .pins(Vector<hal_pin_t>())
@@ -609,6 +615,11 @@ test(system_am18x5) {
     API_COMPILE({ auto defaultTimeSource = config.defaultTimeSource(); (void)defaultTimeSource; });
     API_COMPILE({ auto sleepExtiCheck = config.sleepExtiCheck(); (void)sleepExtiCheck; });
     API_COMPILE({ auto clockSource = config.clockSource(); (void)clockSource; });
+    API_COMPILE({ auto frequency = config.clockOutputFrequency(); (void)frequency; });
+    API_COMPILE({ auto caps = config.capabilities(); (void)caps; });
+    API_COMPILE({ auto calibration = config.xtalCalibration(); (void)calibration; });
+    API_COMPILE({ auto calibrationSet = config.xtalCalibrationSet(); (void)calibrationSet; });
+    API_COMPILE({ auto autoCalibration = config.autoCalibration(); (void)autoCalibration; });
 
     API_COMPILE({ auto r = Am18x5.enable(config); (void)r; });
     API_COMPILE({ auto r = Am18x5.setConfig(config); (void)r; });
@@ -624,6 +635,7 @@ test(system_am18x5) {
     API_COMPILE({ auto optionalCapabilities = Am18x5.status().optionalCapabilities(); (void)optionalCapabilities; });
     API_COMPILE({ auto enabledCapabilities = Am18x5.status().enabledCapabilities(); (void)enabledCapabilities; });
     API_COMPILE({ auto clockSource = Am18x5.status().clockSource(); (void)clockSource; });
+    API_COMPILE({ auto calibration = Am18x5.status().xtalCalibration(); (void)calibration; });
     API_COMPILE({ auto builtIn = Am18x5.status().builtIn(); (void)builtIn; });
     API_COMPILE({ auto bound = Am18x5.status().bound(); (void)bound; });
     API_COMPILE({ auto present = Am18x5.status().present(); (void)present; });
