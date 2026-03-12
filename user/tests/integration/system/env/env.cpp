@@ -19,6 +19,7 @@
 #include "unit-test/unit-test.h"
 #include "test_suite.h"
 #include "check.h"
+#include "muon_test_util.h"
 
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     // { "comm.coap", LOG_LEVEL_ALL },
@@ -233,6 +234,11 @@ test(04_particle_ble_enable_false) {
 test(05_particle_wifi_enable_init) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
@@ -391,6 +397,11 @@ test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
 test(10_particle_wifi_enable_cleanup) {
 #if HAL_PLATFORM_ETHERNET
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::unconfigureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     expectSystemReset();
     System.reset();
 #endif // HAL_PLATFORM_ETHERNET
@@ -401,6 +412,11 @@ test(10_particle_wifi_enable_cleanup) {
 test(11_particle_ethernet_enable_init) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     skipEthernet = false;
     System.clearEnv(false /* reset */);
     expectSystemReset();
@@ -503,6 +519,11 @@ test(15_particle_ethernet_enable_false_connect_through_other_ifaces) {
 
 test(16_particle_ethernet_enable_cleanup) {
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     expectSystemReset();
     System.reset();
 }
