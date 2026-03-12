@@ -192,7 +192,7 @@ test(08_verify_external_rtc_default_state) {
 }
 
 test(09_report_muon_presence) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     assertEqual(0, pushMailboxMsg(particle::test::detectMuonBoard() ? "muon=true" : "muon=false", 5000));
 #else
     assertEqual(0, pushMailboxMsg("muon=false", 5000));
@@ -200,7 +200,7 @@ test(09_report_muon_presence) {
 }
 
 test(10_configure_muon_board_and_exrtc) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
         return;
@@ -213,7 +213,7 @@ test(10_configure_muon_board_and_exrtc) {
 }
 
 test(11_verify_muon_exrtc_configuration) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
         return;
