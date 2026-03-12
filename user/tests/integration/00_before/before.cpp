@@ -205,7 +205,7 @@ test(10_configure_muon_board_and_exrtc) {
         skip();
         return;
     }
-    assertEqual(particle::test::configureMuonBoard(), (int)SYSTEM_ERROR_NONE);
+    assertEqual(particle::test::configureMuonBoard(false), (int)SYSTEM_ERROR_NONE);
     assertEqual(particle::test::configureMuonExrtc(), (int)SYSTEM_ERROR_NONE);
     expectSystemReset();
     System.reset();

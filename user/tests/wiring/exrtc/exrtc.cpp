@@ -287,6 +287,12 @@ void assertTimeSourcesInSync() {
 ExRtcSuiteState initSuiteState() {
     auto state = readSuiteState();
     if (state.magic == EXRTC_SUITE_STATE_MAGIC && state.initialized) {
+#if !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+        if (!state.shouldRun) {
+            state.shouldRun = true;
+            writeSuiteState(state);
+        }
+#endif
         return state;
     }
 
@@ -301,10 +307,14 @@ ExRtcSuiteState initSuiteState() {
         writeSuiteState(state);
         return state;
     }
+#else
+    state.shouldRun = true;
 #endif
 
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     const auto status = ExternalTime.status();
     state.shouldRun = status.valid() && status.bound() && status.present() && status.ready();
+#endif
 
     auto config = ExternalTime.getConfig();
     if (config.valid()) {
@@ -331,7 +341,7 @@ RtcConfiguration baselineConfig(const ExRtcSuiteState& state) {
 } // anonymous
 
 test(EXRTC_00_initialize_suite_state) {
-    const auto state = initSuiteState();
+    auto state = initSuiteState();
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     if (!state.isMuon) {
         skip();
@@ -347,6 +357,13 @@ test(EXRTC_00_initialize_suite_state) {
 
     const auto config = ExternalTime.getConfig();
     assertTrue(config.valid());
+
+#if !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    state.defaultTimeSource = config.defaultTimeSource();
+    state.clockSource = (uint8_t)config.clockSource();
+    state.capabilities = config.capabilities().value();
+    writeSuiteState(state);
+#endif
 }
 
 test(EXRTC_01_time_sources_are_in_sync_on_boot) {
