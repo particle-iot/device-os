@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits>
+#include <memory>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -164,11 +165,109 @@ ssize_t SystemCache::get(uint16_t key, uint8_t* value, uint16_t length, int inde
 }
 
 int SystemCache::set(uint16_t key, const uint8_t* value, uint16_t length, int index) {
-    int r = del(key, index);
-    if (!(r == SYSTEM_ERROR_NONE || r == SYSTEM_ERROR_NOT_FOUND)) {
+    if (fd_ < 0) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    uint16_t existingSize = 0;
+    ssize_t existingPos = find(key, index, &existingSize);
+    if (existingPos == SYSTEM_ERROR_NOT_FOUND) {
+        return add(key, value, length);
+    }
+    if (existingPos < 0) {
+        return (int)existingPos;
+    }
+
+    FileFooter footer = {};
+    int r = readFooter(footer);
+    if (r) {
         return r;
     }
-    return add(key, value, length);
+
+    std::unique_ptr<uint8_t[]> inBuf;
+    if (footer.size > 0) {
+        inBuf.reset(new(std::nothrow) uint8_t[footer.size]);
+        if (!inBuf) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        r = (int)seek(0);
+        if (r >= 0) {
+            r = (int)readExact(inBuf.get(), footer.size);
+        }
+        if (r < 0) {
+            return r;
+        }
+    }
+
+    const size_t newEntrySize = sizeof(TlvHeader) + length;
+    std::unique_ptr<uint8_t[]> outBuf(new(std::nothrow) uint8_t[footer.size + newEntrySize]);
+    if (!outBuf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+
+    size_t pos = 0;
+    size_t outPos = 0;
+    int currentIndex = 0;
+    bool replaced = false;
+
+    while (pos < footer.size) {
+        if (footer.size - pos < sizeof(TlvHeader)) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        auto* header = reinterpret_cast<TlvHeader*>(inBuf.get() + pos);
+        if (header->magic != HEADER_MAGIC) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        const size_t entrySize = sizeof(TlvHeader) + header->length;
+        if (entrySize > footer.size - pos) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        const bool keyMatch = header->key == key;
+        const bool replaceEntry = keyMatch && (index < 0 || currentIndex == index);
+        if (!replaceEntry) {
+            memcpy(outBuf.get() + outPos, inBuf.get() + pos, entrySize);
+            outPos += entrySize;
+        } else {
+            replaced = true;
+        }
+
+        if (keyMatch) {
+            ++currentIndex;
+        }
+        pos += entrySize;
+    }
+
+    TlvHeader newHeader = {};
+    newHeader.magic = HEADER_MAGIC;
+    newHeader.key = key;
+    newHeader.length = length;
+    memcpy(outBuf.get() + outPos, &newHeader, sizeof(newHeader));
+    outPos += sizeof(newHeader);
+    if (length > 0) {
+        memcpy(outBuf.get() + outPos, value, length);
+        outPos += length;
+    }
+
+    footer.magic = FILE_MAGIC;
+    footer.size = outPos;
+
+    r = (int)seek(0);
+    if (r >= 0 && outPos > 0) {
+        r = (int)writeExact(outBuf.get(), outPos);
+    }
+    if (r >= 0) {
+        r = (int)writeExact(&footer, sizeof(footer));
+    }
+    if (r < 0) {
+        return r;
+    }
+    if (::ftruncate(fd_, footer.size + (off_t)sizeof(footer)) < 0) {
+        return systemErrorFromErrno(errno);
+    }
+    return sync();
 }
 
 int SystemCache::add(uint16_t key, const uint8_t* value, uint16_t length) {
@@ -216,72 +315,84 @@ int SystemCache::del(uint16_t key, int index) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    bool deleted = false;
-    for (;;) {
-        uint16_t dataSize = 0;
-        ssize_t pos = find(key, index, &dataSize);
-        if (pos < 0) {
-            if (index < 0 && deleted) {
-                return SYSTEM_ERROR_NONE;
-            }
-            return (int)pos;
+    FileFooter footer = {};
+    int r = readFooter(footer);
+    if (r) {
+        return r;
+    }
+
+    std::unique_ptr<uint8_t[]> buf;
+    if (footer.size > 0) {
+        buf.reset(new(std::nothrow) uint8_t[footer.size]);
+        if (!buf) {
+            return SYSTEM_ERROR_NO_MEMORY;
         }
-
-        FileFooter footer = {};
-        int r = readFooter(footer);
-        if (r) {
-            return r;
+        r = (int)seek(0);
+        if (r >= 0) {
+            r = (int)readExact(buf.get(), footer.size);
         }
-
-        const ssize_t entrySize = sizeof(TlvHeader) + dataSize;
-        const ssize_t readStart = pos + entrySize;
-        const ssize_t footerPos = footer.size;
-        const size_t tailSize = footerPos >= readStart ? (size_t)(footerPos - readStart) : 0;
-
-        if (tailSize) {
-            auto* buf = (uint8_t*)malloc(tailSize);
-            if (!buf) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
-            r = (int)seek(readStart);
-            if (r >= 0) {
-                r = (int)readExact(buf, tailSize);
-            }
-            if (r >= 0) {
-                r = (int)seek(pos);
-            }
-            if (r >= 0) {
-                r = (int)writeExact(buf, tailSize);
-            }
-            free(buf);
-            if (r < 0) {
-                return r;
-            }
-        } else {
-            r = (int)seek(pos);
-            if (r < 0) {
-                return r;
-            }
-        }
-
-        footer.size -= entrySize;
-        r = (int)writeExact(&footer, sizeof(footer));
         if (r < 0) {
             return r;
         }
-        if (::ftruncate(fd_, footer.size + (off_t)sizeof(footer)) < 0) {
-            return systemErrorFromErrno(errno);
-        }
-        r = sync();
-        if (r) {
-            return r;
+    }
+
+    size_t pos = 0;
+    size_t outPos = 0;
+    int currentIndex = 0;
+    bool deleted = false;
+
+    while (pos < footer.size) {
+        if (footer.size - pos < sizeof(TlvHeader)) {
+            return SYSTEM_ERROR_BAD_DATA;
         }
 
-        deleted = true;
-        if (index >= 0) {
-            return SYSTEM_ERROR_NONE;
+        auto* header = reinterpret_cast<TlvHeader*>(buf.get() + pos);
+        if (header->magic != HEADER_MAGIC) {
+            return SYSTEM_ERROR_BAD_DATA;
         }
+
+        const size_t entrySize = sizeof(TlvHeader) + header->length;
+        if (entrySize > footer.size - pos) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+
+        const bool keyMatch = header->key == key;
+        const bool deleteEntry = keyMatch && (index < 0 || currentIndex == index);
+
+        if (!deleteEntry) {
+            if (outPos != pos) {
+                memmove(buf.get() + outPos, buf.get() + pos, entrySize);
+            }
+            outPos += entrySize;
+        } else {
+            deleted = true;
+        }
+
+        if (keyMatch) {
+            ++currentIndex;
+        }
+        pos += entrySize;
     }
+
+    if (!deleted) {
+        return SYSTEM_ERROR_NOT_FOUND;
+    }
+
+    footer.size = outPos;
+    r = (int)seek(0);
+    if (r >= 0 && outPos > 0) {
+        r = (int)writeExact(buf.get(), outPos);
+    }
+    if (r >= 0) {
+        r = (int)writeExact(&footer, sizeof(footer));
+    }
+    if (r < 0) {
+        return r;
+    }
+    if (::ftruncate(fd_, footer.size + (off_t)sizeof(footer)) < 0) {
+        return systemErrorFromErrno(errno);
+    }
+    return sync();
 }
 
 int SystemCache::dataSize(uint16_t key, int index) {
