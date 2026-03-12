@@ -67,18 +67,52 @@ inline int configureMuonBoard() {
 #endif
 }
 
+inline int unconfigureMuonBoard() {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
+    powerConfig.auxiliaryPowerControlPin(PIN_INVALID).interruptPin(LOW_BAT_UC);
+    int ret = System.setPowerConfiguration(powerConfig);
+    if (ret != SYSTEM_ERROR_NONE) {
+        return ret;
+    }
+
+    if_wiznet_pin_remap remap = {};
+    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
+    System.disableFeature(FEATURE_ETHERNET_DETECTION);
+    remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
+    remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
+    remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
+    return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
+#else
+    return SYSTEM_ERROR_NONE;
+#endif
+}
+
 inline int configureMuonExrtc() {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_AM18X5
     auto config = Am18x5Configuration()
             .i2c(Wire)
             .defaultTimeSource(true)
+            .sleepExtiCheck(true)
             .interruptPin(PIN_INVALID)
             .watchdogPin(PIN_INVALID)
+            .xtalCalibration(-45)
             .clockSource(RtcClockSource::EXTERNAL)
             .capabilities(RtcCap::AUTO_CLOCK_SOURCE_INTERNAL_ON_FAIL);
     return Am18x5.enable(config);
 #else
     return SYSTEM_ERROR_NONE;
+#endif
+}
+
+inline bool isMuonBoardUnconfigured() {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    const auto powerConfig = System.getPowerConfiguration();
+    return powerConfig.auxiliaryPowerControlPin() == PIN_INVALID &&
+            powerConfig.interruptPin() == LOW_BAT_UC &&
+            !System.featureEnabled(FEATURE_ETHERNET_DETECTION);
+#else
+    return true;
 #endif
 }
 

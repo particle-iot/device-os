@@ -345,6 +345,14 @@ public:
         return *this;
     }
 
+    int8_t xtalCalibration() const {
+        return vendor_.xtal_calibration;
+    }
+
+    bool xtalCalibrationSet() const {
+        return vendor_.xtal_calibration_set;
+    }
+
      hal_exrtc_vendor_config_t* vendorConfig() const {
         return const_cast<decltype(vendor_.base)*>(&vendor_.base);
     }
@@ -407,6 +415,10 @@ public:
 
     RtcClockSource clockSource() const {
         return static_cast<RtcClockSource>(status_.clock_source);
+    }
+
+    int32_t xtalCalibration() const {
+        return status_.xtal_calibration;
     }
 
     bool builtIn() const {

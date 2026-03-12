@@ -166,25 +166,6 @@ enum Am18x5OscEvent : uint8_t {
 
 typedef void (*Am18x5OscEventHandler)(uint8_t event, void* context);
 
-typedef struct am18x5_manufacturing_config_t {
-    uint16_t version;
-    uint16_t size;
-    uint8_t default_rtc;
-    uint8_t wdi_pin;
-    uint8_t int_pin;
-    hal_i2c_interface_t i2c_if;
-    uint8_t rc_fallback;
-    uint8_t rc_on_battery;
-    Am18x5Oscillator osc_src;
-    int8_t osc_cal_xt;
-    uint8_t clk_out_en;
-    Am18x5SqwFrequency clk_out_freq;
-    Am18x5AutoCalibration auto_calibration;
-    uint32_t mfg_magic;
-    int8_t mfg_osc_cal_xt; // Read only
-    uint8_t reserved[12];
-} __attribute__((packed)) am18x5_manufacturing_config_t;
-
 typedef struct am18x5_config_t {
     uint16_t version;
     uint16_t size;
@@ -276,6 +257,9 @@ private:
     int loadLegacyMfgOscCalibration(int32_t* cal) const;
     int detect();
     int applyConfig();
+    int configuredXtalCalibration() const;
+    int effectiveXtalCalibration() const;
+    int readXtalCalibration(int32_t* cal) const;
     int updateEventHandlers();
     int setPsw(bool val) const; // This is dangerous, make it private for now!
 
@@ -332,6 +316,7 @@ private:
     static constexpr time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 
     bool initialized_;
+    bool explicitXtalCalibrationSet_;
     uint8_t alarmYear_;
     AlarmHandler alarmHandler_;
     void* alarmHandlerContext_;

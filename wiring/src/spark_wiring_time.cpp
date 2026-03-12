@@ -226,7 +226,7 @@ time32_t TimeClass::now()
     struct timeval tv = {};
     hal_rtc_option_t opt = {};
     opt.size = sizeof(opt);
-    opt.source = source_;
+    opt.source = static_cast<hal_rtc_source_t>(source_);
     hal_rtc_get_time(&tv, &opt);
     return tv.tv_sec;
 }
@@ -371,7 +371,7 @@ bool TimeClass::isValid() const
 {
     hal_rtc_option_t opt = {};
     opt.size = sizeof(opt);
-    opt.source = source_;
+    opt.source = static_cast<hal_rtc_source_t>(source_);
     bool rtcstate = hal_rtc_time_is_valid(&opt);
     if (rtcstate)
         return rtcstate;

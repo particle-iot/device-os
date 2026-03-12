@@ -155,8 +155,9 @@ typedef struct hal_exrtc_status_t {
     uint32_t reserved;
 
     hal_exrtc_clock_source_t clock_source;
+    int32_t xtal_calibration;
 
-    uint32_t reserved1[4]; 
+    uint32_t reserved1[3];
 } hal_exrtc_status_t;
 
 typedef struct hal_exrtc_binding_t {
