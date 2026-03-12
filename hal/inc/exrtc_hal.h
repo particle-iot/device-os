@@ -138,8 +138,9 @@ typedef struct hal_exrtc_config_t {
     uint32_t caps_enable; // hal_exrtc_capability_t
 
     hal_exrtc_clock_source_t clock_source;
+    uint32_t clock_output_frequency;
 
-    uint32_t reserved[4];
+    uint32_t reserved[3];
 } hal_exrtc_config_t;
 
 typedef struct hal_exrtc_status_t {

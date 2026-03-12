@@ -95,6 +95,51 @@ int canonicalizeTimeval(struct timeval* tv) {
     return SYSTEM_ERROR_NONE;
 }
 
+int frequencyToSqw(uint32_t hz, Am18x5SqwFrequency* freq) {
+    CHECK_TRUE(freq, SYSTEM_ERROR_INVALID_ARGUMENT);
+    switch (hz) {
+    case 32768: *freq = Am18x5SqwFrequency::HZ_32768; return SYSTEM_ERROR_NONE;
+    case 8192: *freq = Am18x5SqwFrequency::HZ_8192; return SYSTEM_ERROR_NONE;
+    case 4096: *freq = Am18x5SqwFrequency::HZ_4096; return SYSTEM_ERROR_NONE;
+    case 2048: *freq = Am18x5SqwFrequency::HZ_2048; return SYSTEM_ERROR_NONE;
+    case 1024: *freq = Am18x5SqwFrequency::HZ_1024; return SYSTEM_ERROR_NONE;
+    case 512: *freq = Am18x5SqwFrequency::HZ_512; return SYSTEM_ERROR_NONE;
+    case 256: *freq = Am18x5SqwFrequency::HZ_256; return SYSTEM_ERROR_NONE;
+    case 128: *freq = Am18x5SqwFrequency::HZ_128; return SYSTEM_ERROR_NONE;
+    case 64: *freq = Am18x5SqwFrequency::HZ_64; return SYSTEM_ERROR_NONE;
+    case 32: *freq = Am18x5SqwFrequency::HZ_32; return SYSTEM_ERROR_NONE;
+    case 16: *freq = Am18x5SqwFrequency::HZ_16; return SYSTEM_ERROR_NONE;
+    case 8: *freq = Am18x5SqwFrequency::HZ_8; return SYSTEM_ERROR_NONE;
+    case 4: *freq = Am18x5SqwFrequency::HZ_4; return SYSTEM_ERROR_NONE;
+    case 2: *freq = Am18x5SqwFrequency::HZ_2; return SYSTEM_ERROR_NONE;
+    case 1: *freq = Am18x5SqwFrequency::HZ_1; return SYSTEM_ERROR_NONE;
+    default:
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+}
+
+uint32_t sqwToFrequency(Am18x5SqwFrequency freq) {
+    switch (freq) {
+    case Am18x5SqwFrequency::HZ_32768: return 32768;
+    case Am18x5SqwFrequency::HZ_8192: return 8192;
+    case Am18x5SqwFrequency::HZ_4096: return 4096;
+    case Am18x5SqwFrequency::HZ_2048: return 2048;
+    case Am18x5SqwFrequency::HZ_1024: return 1024;
+    case Am18x5SqwFrequency::HZ_512: return 512;
+    case Am18x5SqwFrequency::HZ_256: return 256;
+    case Am18x5SqwFrequency::HZ_128: return 128;
+    case Am18x5SqwFrequency::HZ_64: return 64;
+    case Am18x5SqwFrequency::HZ_32: return 32;
+    case Am18x5SqwFrequency::HZ_16: return 16;
+    case Am18x5SqwFrequency::HZ_8: return 8;
+    case Am18x5SqwFrequency::HZ_4: return 4;
+    case Am18x5SqwFrequency::HZ_2: return 2;
+    case Am18x5SqwFrequency::HZ_1: return 1;
+    default:
+        return 0;
+    }
+}
+
 } // anonymous namespace
 
 Am18x5::Am18x5()
@@ -182,6 +227,9 @@ int Am18x5::bind(const hal_exrtc_binding_t* binding) {
             Am18x5Oscillator::INTERNAL_RC : Am18x5Oscillator::EXTERNAL_CRYSTAL;
     config.clk_out_en = !!(binding->config->caps_enable & HAL_EXRTC_CAPS_CLOCK_OUTPUT);
     config.clk_out_freq = Am18x5SqwFrequency::HZ_32768;
+    if (binding->config->clock_output_frequency > 0) {
+        CHECK(frequencyToSqw(binding->config->clock_output_frequency, &config.clk_out_freq));
+    }
     config.auto_calibration = (binding->config->caps_enable & HAL_EXRTC_CAPS_AUTO_CALIBRATION) ?
             Am18x5AutoCalibration::AUTO_CAL_EVERY_1024_SEC : Am18x5AutoCalibration::AUTO_CAL_DISABLE;
     config.mfg_magic = HAL_EXRTC_MFG_MAGIC;
@@ -200,6 +248,9 @@ int Am18x5::bind(const hal_exrtc_binding_t* binding) {
         if (vendor->xtal_calibration_set) {
             explicitXtalCalibrationSet_ = true;
             config.osc_cal_xt = vendor->xtal_calibration;
+        }
+        if (binding->config->caps_enable & HAL_EXRTC_CAPS_AUTO_CALIBRATION) {
+            config.auto_calibration = static_cast<decltype(config.auto_calibration)>(vendor->auto_calibration);
         }
     }
     if (!haveLegacyMfgCal) {
@@ -270,6 +321,7 @@ int Am18x5::getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* ven
     }
     exrtcConfig.clock_source = config_.osc_src == Am18x5Oscillator::INTERNAL_RC ?
             HAL_EXRTC_CLOCK_SOURCE_INTERNAL : HAL_EXRTC_CLOCK_SOURCE_EXTERNAL;
+    exrtcConfig.clock_output_frequency = sqwToFrequency(config_.clk_out_freq);
     if (config_.rc_on_battery) {
         exrtcConfig.caps_enable |= HAL_EXRTC_CAPS_AUTO_CLOCK_SOURCE_INTERNAL_ON_BATTERY;
     }
@@ -292,6 +344,7 @@ int Am18x5::getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* ven
         amVendor.base.type = HAL_EXRTC_TYPE_AM18X5;
         amVendor.xtal_calibration_set = explicitXtalCalibrationSet_;
         amVendor.xtal_calibration = config_.osc_cal_xt;
+        amVendor.auto_calibration = static_cast<uint8_t>(config_.auto_calibration);
         memcpy(vendor, &amVendor, std::min<size_t>(vendor->size, sizeof(amVendor)));
     }
 
