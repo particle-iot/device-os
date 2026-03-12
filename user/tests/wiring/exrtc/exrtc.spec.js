@@ -1,6 +1,6 @@
 suite('EXRTC');
 
-platform('bsom', 'b5som', 'esomx', 'msom', 'tracker');
+platform('bsom', 'b5som', 'msom', 'tracker'); // esomx?
 timeout(5 * 60 * 1000);
 
 let device = null;
