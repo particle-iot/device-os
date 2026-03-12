@@ -110,6 +110,7 @@ public:
             }
         }
 
+        /* update timeInfo_ */
         backupYear(&time);
         
         /* Convert to timestamp(seconds from 1970.1.1 00:00:00)*/
@@ -186,17 +187,9 @@ public:
         return tv.tv_sec > UNIX_TIME_20180101000000;
     }
 
-    void backupYear(struct tm* tm) {
-        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
-        RRAM->RTC_YEAR = tm->tm_year;
-        RRAM->RTC_YEAR |= YEAR_VALID_MARKER;
-    }
-
-    void restoreYear(struct tm* tm) {
-        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
-        if (RRAM->RTC_YEAR & YEAR_VALID_MARKER) {
-            tm->tm_year = RRAM->RTC_YEAR & ~(YEAR_VALID_MARKER);
-        }
+    bool isTimeInfoValid() {
+        time_t tv_sec = mktime(&timeInfo_);
+        return tv_sec >= UNIX_TIME_20000101000000;
     }
 
     void rtcAlarmHandlerImpl() {
@@ -292,11 +285,31 @@ public:
         *wday = week;
     }
 
+    void backupYear(struct tm* tm) {
+        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+        RRAM->RTC_YEAR = tm->tm_year;
+        RRAM->RTC_YEAR |= YEAR_VALID_MARKER;
+        memcpy(&timeInfo_, tm, sizeof(struct tm));
+    }
+
+    void restoreYear(struct tm* tm) {
+        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+        if (RRAM->RTC_YEAR < YEAR_VALID_MARKER || !isTimeInfoValid() ||
+                (int)(RRAM->RTC_YEAR & ~(YEAR_VALID_MARKER)) != timeInfo_.tm_year) {
+            // Tie timeInfo_ to RTC and RRAM reset/power domain essentially
+            time_t zero = 0;
+            memcpy(&timeInfo_, localtime(&zero), sizeof(timeInfo_));
+        }
+        memcpy(tm, &timeInfo_, sizeof(timeInfo_));
+    }
+
 private:
     static struct tm timeInfo_;
     hal_rtc_alarm_handler alarmHandler_;
     void* alarmContext_;
 };
+
+retained_system struct tm RealtekRtc::timeInfo_ = {};
 
 RealtekRtc rtcInstance;
 
