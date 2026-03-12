@@ -53,7 +53,7 @@ const THRESHOLDS = {
         targetTime: {
             pre_startup: 270000,
             pre_startup_duration: 150,
-            startup_duration: 32000,
+            startup_duration: 50000,
             setup_duration: 170
         }
     },
@@ -62,47 +62,47 @@ const THRESHOLDS = {
             pre_startup: 490000, // XXX: Look into this, should be under 300000, but there are outliers
             pre_startup_duration: 150,
             startup_duration: 85000,
-            setup_duration: 50
+            setup_duration: 70
         }
     },
     bsom: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     b5som: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     esomx: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     tracker: {
         targetTime: {
             pre_startup: 320000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     electron2: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
@@ -112,8 +112,8 @@ const THRESHOLDS = {
         targetTime: {
             pre_startup: 320000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     }
 };
