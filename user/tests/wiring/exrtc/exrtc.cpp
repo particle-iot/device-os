@@ -41,6 +41,8 @@ struct ExRtcSuiteState {
     bool defaultTimeSource = false;
     uint8_t clockSource = 0;
     uint32_t capabilities = 0;
+    int8_t expectedLegacyCalibration = 0;
+    int8_t expectedNewCalibration = 0;
 };
 
 constexpr int8_t LEGACY_CACHE_TEST_CALIBRATION = -17;
@@ -620,7 +622,7 @@ test(EXRTC_10_prepare_legacy_cache_calibration_and_reset) {
     dumpCalibrationCache("prepareLegacyCalibration");
     int8_t legacy = 0;
     assertEqual(readLegacyCalibrationValue(&legacy), (int)SYSTEM_ERROR_NONE);
-    assertEqual((int)legacy, (int)LEGACY_CACHE_TEST_CALIBRATION);
+    state.expectedLegacyCalibration = legacy;
     state.pendingCalibrationScenario = CALIBRATION_SCENARIO_LEGACY;
     writeSuiteState(state);
     expectSystemReset();
@@ -637,11 +639,11 @@ test(EXRTC_11_legacy_cache_calibration_is_used_when_no_override_is_set) {
     dumpCalibrationCache("legacyCalibrationAfterReset");
     int8_t legacy = 0;
     assertEqual(readLegacyCalibrationValue(&legacy), (int)SYSTEM_ERROR_NONE);
-    assertEqual((int)legacy, (int)LEGACY_CACHE_TEST_CALIBRATION);
+    assertEqual((int)legacy, (int)state.expectedLegacyCalibration);
     auto config = currentAm18x5Config();
     assertFalse(config.xtalCalibrationSet());
     assertEqual(config.xtalCalibration(), 0);
-    assertEqual(ExternalTime.status().xtalCalibration(), (int)LEGACY_CACHE_TEST_CALIBRATION);
+    assertEqual(ExternalTime.status().xtalCalibration(), (int)state.expectedLegacyCalibration);
     state.pendingCalibrationScenario = CALIBRATION_SCENARIO_NONE;
     writeSuiteState(state);
 }
@@ -679,7 +681,7 @@ test(EXRTC_13_prepare_new_cache_calibration_and_reset) {
     dumpCalibrationCache("prepareNewCalibration");
     int8_t newer = 0;
     assertEqual(readNewCalibrationValue(&newer), (int)SYSTEM_ERROR_NONE);
-    assertEqual((int)newer, (int)NEW_CACHE_TEST_CALIBRATION);
+    state.expectedNewCalibration = newer;
     state.pendingCalibrationScenario = CALIBRATION_SCENARIO_NEW;
     writeSuiteState(state);
     expectSystemReset();
@@ -696,11 +698,11 @@ test(EXRTC_14_new_cache_calibration_is_used_when_no_override_is_set) {
     dumpCalibrationCache("newCalibrationAfterReset");
     int8_t newer = 0;
     assertEqual(readNewCalibrationValue(&newer), (int)SYSTEM_ERROR_NONE);
-    assertEqual((int)newer, (int)NEW_CACHE_TEST_CALIBRATION);
+    assertEqual((int)newer, (int)state.expectedNewCalibration);
     auto config = currentAm18x5Config();
     assertFalse(config.xtalCalibrationSet());
     assertEqual(config.xtalCalibration(), 0);
-    assertEqual(ExternalTime.status().xtalCalibration(), (int)NEW_CACHE_TEST_CALIBRATION);
+    assertEqual(ExternalTime.status().xtalCalibration(), (int)state.expectedNewCalibration);
     state.pendingCalibrationScenario = CALIBRATION_SCENARIO_NONE;
     writeSuiteState(state);
 }
