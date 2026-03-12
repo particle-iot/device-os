@@ -20,6 +20,9 @@ before(function() {
 
     device = this.particle.devices[0];
     deviceId = device.id;
+    device.on('mailbox', (msg) => {
+        console.log('mailbox msg', msg);
+    });
 });
 
 test('01_erase_factory_module', async function () {
@@ -52,11 +55,16 @@ test('08_verify_external_rtc_default_state', async function() {
 
 });
 
-test('09_configure_muon_board_and_exrtc', async function() {
+test('09_report_muon_presence', async function() {
+    const msg = device.mailBox.pop();
+    console.log(`Muon detected: ${msg.d === 'muon=true' ? 'yes' : 'no'}`);
+});
+
+test('10_configure_muon_board_and_exrtc', async function() {
 
 });
 
-test('10_verify_muon_exrtc_configuration', async function() {
+test('11_verify_muon_exrtc_configuration', async function() {
 
 });
 

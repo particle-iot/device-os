@@ -191,9 +191,18 @@ test(08_verify_external_rtc_default_state) {
 #endif
 }
 
-test(09_configure_muon_board_and_exrtc) {
+test(09_report_muon_presence) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    assertEqual(0, pushMailboxMsg(particle::test::detectMuonBoard() ? "muon=true" : "muon=false", 5000));
+#else
+    assertEqual(0, pushMailboxMsg("muon=false", 5000));
+#endif
+}
+
+test(10_configure_muon_board_and_exrtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     if (!particle::test::detectMuonBoard()) {
+        skip();
         return;
     }
     assertEqual(particle::test::configureMuonBoard(), (int)SYSTEM_ERROR_NONE);
@@ -203,9 +212,10 @@ test(09_configure_muon_board_and_exrtc) {
 #endif
 }
 
-test(10_verify_muon_exrtc_configuration) {
+test(11_verify_muon_exrtc_configuration) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     if (!particle::test::detectMuonBoard()) {
+        skip();
         return;
     }
     const auto status = ExternalTime.status();

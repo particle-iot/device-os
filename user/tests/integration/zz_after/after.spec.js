@@ -51,6 +51,12 @@ test('07_disable_external_rtc', async function () {
 test('08_verify_external_rtc_default_state', async function () {
 });
 
+test('09_unconfigure_muon_board', async function () {
+});
+
+test('10_verify_muon_board_unconfigured', async function () {
+});
+
 after(function() {
     // console.log('after js runs');
 });

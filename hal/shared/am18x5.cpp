@@ -39,6 +39,7 @@
 #include "rtc_hal.h"
 #include "exrtc_hal_internal.h"
 #include "system_cache.h"
+#include "delay_hal.h"
 
 using namespace particle;
 namespace {
@@ -98,6 +99,7 @@ int canonicalizeTimeval(struct timeval* tv) {
 
 Am18x5::Am18x5()
         : initialized_(false),
+          explicitXtalCalibrationSet_(false),
           alarmYear_(0),
           alarmHandler_(nullptr),
           alarmHandlerContext_(nullptr),
@@ -148,7 +150,7 @@ int Am18x5::loadMfgOscCalibration(int32_t* cal) const {
     CHECK_TRUE(cal, SYSTEM_ERROR_INVALID_ARGUMENT);
     hal_exrtc_calibration_data_t stored = {};
     int r = particle::services::SystemCache::instance().get(particle::services::SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, &stored, sizeof(stored));
-    if (r == SYSTEM_ERROR_NONE) {
+    if (r >= 0) {
         CHECK_TRUE(stored.size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_BAD_DATA);
         *cal = stored.value;
         return SYSTEM_ERROR_NONE;
@@ -191,15 +193,17 @@ int Am18x5::bind(const hal_exrtc_binding_t* binding) {
         config.mfg_osc_cal_xt = static_cast<int8_t>(legacyMfgCal);
     }
 
+    explicitXtalCalibrationSet_ = false;
     if (binding->vendor) {
         CHECK_TRUE(binding->vendor->type == HAL_EXRTC_TYPE_AM18X5, SYSTEM_ERROR_INVALID_ARGUMENT);
         auto vendor = reinterpret_cast<const hal_exrtc_vendor_config_am18x5_t*>(binding->vendor);
         if (vendor->xtal_calibration_set) {
+            explicitXtalCalibrationSet_ = true;
             config.osc_cal_xt = vendor->xtal_calibration;
         }
     }
     if (!haveLegacyMfgCal) {
-        config.mfg_osc_cal_xt = config.osc_cal_xt;
+        config.mfg_osc_cal_xt = explicitXtalCalibrationSet_ ? config.osc_cal_xt : HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
     }
 
     CHECK(setConfig(&config));
@@ -286,7 +290,7 @@ int Am18x5::getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* ven
         amVendor.base.size = sizeof(amVendor);
         amVendor.base.version = HAL_EXRTC_API_VERSION;
         amVendor.base.type = HAL_EXRTC_TYPE_AM18X5;
-        amVendor.xtal_calibration_set = true;
+        amVendor.xtal_calibration_set = explicitXtalCalibrationSet_;
         amVendor.xtal_calibration = config_.osc_cal_xt;
         memcpy(vendor, &amVendor, std::min<size_t>(vendor->size, sizeof(amVendor)));
     }
@@ -327,6 +331,7 @@ int Am18x5::getStatus(hal_exrtc_status_t* status) const {
         exrtcStatus.clock_source = config_.osc_src == Am18x5Oscillator::INTERNAL_RC ?
                 HAL_EXRTC_CLOCK_SOURCE_INTERNAL : HAL_EXRTC_CLOCK_SOURCE_EXTERNAL;
     }
+    exrtcStatus.xtal_calibration = effectiveXtalCalibration();
     memcpy(status, &exrtcStatus, std::min<size_t>(status->size, sizeof(exrtcStatus)));
     return SYSTEM_ERROR_NONE;
 }
@@ -352,6 +357,56 @@ int Am18x5::getConfig(am18x5_config_t* config) {
     CHECK_TRUE(config && (config->size > 0), SYSTEM_ERROR_INVALID_ARGUMENT);
     memcpy(config, &config_, std::min<size_t>(config_.size, config->size));
     LOG(INFO, "Get EXRTC config version: %d, size: %d", config_.version, config_.size);
+    return SYSTEM_ERROR_NONE;
+}
+
+int Am18x5::configuredXtalCalibration() const {
+    return explicitXtalCalibrationSet_ ? config_.osc_cal_xt : config_.mfg_osc_cal_xt;
+}
+
+int Am18x5::effectiveXtalCalibration() const {
+    int32_t calibration = 0;
+    if (initialized_ && !readXtalCalibration(&calibration)) {
+        return calibration;
+    }
+    return configuredXtalCalibration();
+}
+
+int Am18x5::readXtalCalibration(int32_t* cal) const {
+    Am18x5Lock lock;
+    CHECK_TRUE(cal, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
+
+    uint8_t oscStatus = 0;
+    CHECK(readRegister(Am18x5Register::OSC_STATUS, &oscStatus));
+    const uint8_t xtcal = (oscStatus & OSC_STATUS_XTCAL_MASK) >> OSC_STATUS_XTCAL_SHIFT;
+
+    uint8_t calibration = 0;
+    CHECK(readRegister(Am18x5Register::CAL_XT, &calibration));
+    const bool cmdx = calibration & CAL_XT_CMDX_MASK;
+    int offsetx = calibration & CAL_XT_OFFSETX_MASK;
+    if (offsetx & 0x40) {
+        offsetx -= 0x80;
+    }
+
+    switch (xtcal) {
+    case 0:
+        *cal = cmdx ? offsetx * 2 : offsetx;
+        break;
+    case 1:
+        CHECK_FALSE(cmdx, SYSTEM_ERROR_BAD_DATA);
+        *cal = offsetx - 64;
+        break;
+    case 2:
+        CHECK_FALSE(cmdx, SYSTEM_ERROR_BAD_DATA);
+        *cal = offsetx - 128;
+        break;
+    case 3:
+        *cal = cmdx ? (offsetx * 2) - 192 : offsetx - 192;
+        break;
+    default:
+        return SYSTEM_ERROR_BAD_DATA;
+    }
     return SYSTEM_ERROR_NONE;
 }
 
@@ -451,7 +506,13 @@ int Am18x5::end() {
 int Am18x5::reset() {
     Am18x5Lock lock;
     CHECK_TRUE(initialized_, SYSTEM_ERROR_INVALID_STATE);
-    return writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_SOFTWARE_RESET);
+    CHECK(writeRegister(Am18x5Register::CONFIG_KEY, CONFIG_KEY_SOFTWARE_RESET));
+    // IMPORTANT: need to wait for an actual reset to happen otherwise we might
+    // start writing into registers before it does.
+    // I've seen issues trying to do this sanely i.e. polling some POR status bits
+    // etc. So, we delay 100ms.
+    HAL_Delay_Milliseconds(100);
+    return 0;
 }
 
 int Am18x5::applyConfig() {
@@ -488,7 +549,7 @@ int Am18x5::applyConfig() {
     CHECK(writeRegister(Am18x5Register::OSC_CONTROL, oscControl));
 
     // Digital calibration to improve accuracy.
-    CHECK(xtOscillatorDigitalCalibration(config_.osc_cal_xt));
+    CHECK(xtOscillatorDigitalCalibration(configuredXtalCalibration()));
 
     // Enable square wave output on the CLKOUT pin
     if (config_.clk_out_en) {

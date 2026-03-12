@@ -299,6 +299,7 @@ test(WATCHDDOG_100_reload_value_is_calculated_correctly) {
 test(WATCHDOG_EXT_01_capabilities) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
     WatchdogInfo info;
     assertEqual(0, ExternalWatchdog.getInfo(info));
@@ -310,6 +311,7 @@ test(WATCHDOG_EXT_01_capabilities) {
 test(WATCHDOG_EXT_02_timeout_reset) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
 
     WatchdogInfo info;
@@ -335,6 +337,7 @@ test(WATCHDOG_EXT_02_timeout_reset) {
 test(WATCHDOG_EXT_03_stoppable) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(5s));
     delay(1s);
@@ -345,6 +348,7 @@ test(WATCHDOG_EXT_03_stoppable) {
 test(WATCHDOG_EXT_04_reconfigurable) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(5s));
     delay(4s);
@@ -356,6 +360,7 @@ test(WATCHDOG_EXT_04_reconfigurable) {
 test(WATCHDOG_EXT_05_hibernate_mode_running) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(5s));
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
@@ -366,6 +371,7 @@ test(WATCHDOG_EXT_05_hibernate_mode_running) {
 test(WATCHDOG_EXT_06_running_after_waking_up) {
     if (!shouldRunExternalWatchdogTests()) {
         skip();
+        return;
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(10s));
 

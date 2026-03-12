@@ -22,6 +22,7 @@
 #include "softcrc32.h"
 #include "check.h"
 #include "storage_hal.h"
+#include "muon_test_util.h"
 
 namespace {
 
@@ -185,5 +186,27 @@ test(08_verify_external_rtc_default_state) {
     assertTrue(status.builtIn());
     assertTrue(status.bound());
 #endif
+#endif
+}
+
+test(09_unconfigure_muon_board) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (!particle::test::detectMuonBoard()) {
+        skip();
+        return;
+    }
+    assertEqual(particle::test::unconfigureMuonBoard(), (int)SYSTEM_ERROR_NONE);
+    expectSystemReset();
+    System.reset();
+#endif
+}
+
+test(10_verify_muon_board_unconfigured) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (!particle::test::detectMuonBoard()) {
+        skip();
+        return;
+    }
+    assertTrue(particle::test::isMuonBoardUnconfigured());
 #endif
 }

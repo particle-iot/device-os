@@ -39,6 +39,25 @@ typedef struct hal_exrtc_vendor_config_am18x5_t {
 
 #define HAL_EXRTC_TYPE_AM18X5_DEFAULT_ADDRESS (0x69)
 
+typedef struct am18x5_manufacturing_config_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t default_rtc;
+    uint8_t wdi_pin;
+    uint8_t int_pin;
+    hal_i2c_interface_t i2c_if;
+    uint8_t rc_fallback;
+    uint8_t rc_on_battery;
+    uint8_t osc_src;
+    int8_t osc_cal_xt;
+    uint8_t clk_out_en;
+    uint8_t clk_out_freq;
+    uint8_t auto_calibration;
+    uint32_t mfg_magic;
+    int8_t mfg_osc_cal_xt; // Read only
+    uint8_t reserved[12];
+} __attribute__((packed)) am18x5_manufacturing_config_t;
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
