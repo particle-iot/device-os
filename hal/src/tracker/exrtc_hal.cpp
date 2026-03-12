@@ -53,8 +53,8 @@ hal_exrtc_binding_t* hal_exrtc_default_binding() {
         vendor.base.size = sizeof(vendor);
         vendor.base.version = HAL_EXRTC_API_VERSION;
         vendor.base.type = HAL_EXRTC_TYPE_AM18X5;
-        vendor.xtal_calibration_set = true;
-        vendor.xtal_calibration = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
+        // vendor.xtal_calibration_set = true;
+        // vendor.xtal_calibration = HAL_PLATFORM_EXTERNAL_RTC_CAL_XT;
 
         binding.size = sizeof(binding);
         binding.version = HAL_EXRTC_API_VERSION;

@@ -344,7 +344,7 @@ int Am18x5::getConfig(hal_exrtc_config_t* config, hal_exrtc_vendor_config_t* ven
         amVendor.base.type = HAL_EXRTC_TYPE_AM18X5;
         amVendor.xtal_calibration_set = explicitXtalCalibrationSet_;
         amVendor.xtal_calibration = config_.osc_cal_xt;
-        amVendor.auto_calibration = static_cast<uint8_t>(config_.auto_calibration);
+        amVendor.auto_calibration = static_cast<hal_exrtc_am18x5_auto_calibration_t>(config_.auto_calibration);
         memcpy(vendor, &amVendor, std::min<size_t>(vendor->size, sizeof(amVendor)));
     }
 

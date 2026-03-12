@@ -46,13 +46,18 @@ inline bool detectMuonBoard() {
 #endif
 }
 
-inline int configureMuonBoard() {
+inline int configureMuonBoard(bool enableEthernet = true) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
     powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7);
     int ret = System.setPowerConfiguration(powerConfig);
     if (ret != SYSTEM_ERROR_NONE) {
         return ret;
+    }
+
+    if (!enableEthernet) {
+        System.disableFeature(FEATURE_ETHERNET_DETECTION);
+        return SYSTEM_ERROR_NONE;
     }
 
     if_wiznet_pin_remap remap = {};

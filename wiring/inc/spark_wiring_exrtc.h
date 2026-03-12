@@ -369,7 +369,7 @@ public:
     }
 
     Am18x5Configuration& autoCalibration(Am18x5AutoCalibration mode) {
-        vendor_.auto_calibration = static_cast<uint8_t>(mode);
+        vendor_.auto_calibration = static_cast<hal_exrtc_am18x5_auto_calibration_t>(mode);
         return *this;
     }
 
