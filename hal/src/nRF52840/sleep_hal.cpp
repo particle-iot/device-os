@@ -1297,14 +1297,12 @@ static int enterPowerOffMode(const hal_sleep_config_t* config) {
     hal_exrtc_sleep_config_t sleep = {};
     sleep.version = HAL_EXRTC_API_VERSION;
     sleep.size = sizeof(sleep);
-    sleep.exti_mode = CHANGE;
 
     auto source = config->wakeup_sources;
     while (source) {
         if (source->type == HAL_WAKEUP_SOURCE_TYPE_GPIO) {
             auto gpio = reinterpret_cast<const hal_wakeup_source_gpio_t*>(source);
             CHECK_TRUE(gpio->type == HAL_PIN_TYPE_RTC, SYSTEM_ERROR_NOT_SUPPORTED);
-            CHECK_TRUE(sleep.exti_mode == CHANGE, SYSTEM_ERROR_NOT_SUPPORTED);
             switch (gpio->mode) {
                 case FALLING:
                 case RISING: {
