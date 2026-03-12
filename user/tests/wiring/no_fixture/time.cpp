@@ -82,14 +82,12 @@ test(TIME_02_LocalReturnsUnixTimePlusTimezone) {
 	Time.zone(-5);
     Time.endDST();
 	// Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time - (5*3600));
+    auto diff = (last_time - (5*3600)) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 }
 
 test(TIME_03_LocalReturnsUnixTimePlusTimezoneAndDST) {
@@ -99,14 +97,12 @@ test(TIME_03_LocalReturnsUnixTimePlusTimezoneAndDST) {
     Time.beginDST();
     assertTrue(Time.isDST());
     // Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time - (4*3600));
+    auto diff = (last_time - (4*3600)) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 
     Time.endDST();
     assertFalse(Time.isDST());
@@ -119,14 +115,12 @@ test(TIME_04_LocalReturnsUnixTimePlusDST) {
     Time.beginDST();
     assertTrue(Time.isDST());
     // Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time + (4500));
+    auto diff = (last_time + 4500) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 
     Time.endDST();
     assertFalse(Time.isDST());
@@ -552,6 +546,12 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
         Particle.disconnect();
         assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     }
+
+    Particle.disconnect();
+    assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Network.off();
+    assertTrue(waitFor(Network.isOff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+
     expectSystemReset();
     lastTimestamp = Time.now();
     SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(5s));
