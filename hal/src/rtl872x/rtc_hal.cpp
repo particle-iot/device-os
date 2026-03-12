@@ -38,6 +38,8 @@ namespace {
 const time_t UNIX_TIME_20180101000000 = 1514764800UL;  // 2018/01/01 00:00:00
 const time_t UNIX_TIME_20000101000000 = 946684800UL;   // 2000/01/01 00:00:00
 
+const uint32_t YEAR_VALID_MARKER = 0x80000000;
+
 const int CFG_RTC_PRIORITY = 5;
 
 class RealtekRtc {
@@ -72,7 +74,7 @@ public:
         CHECK_TRUE(tv, SYSTEM_ERROR_INVALID_ARGUMENT);
 
         struct tm time = {};
-        memcpy(&time, &timeInfo_, sizeof(struct tm));
+        restoreYear(&time);
 
         // hour, min, sec get from RTC
         RTC_TimeTypeDef rtcTimeStruct;
@@ -108,8 +110,7 @@ public:
             }
         }
 
-        /* update timeInfo_ */
-        memcpy((void*)&timeInfo_, (void*)&time, sizeof(struct tm));
+        backupYear(&time);
         
         /* Convert to timestamp(seconds from 1970.1.1 00:00:00)*/
         tv->tv_sec = mktime(&time);
@@ -127,7 +128,7 @@ public:
         rtcTimeStruct.RTC_Minutes = timeinfo->tm_min;
         rtcTimeStruct.RTC_Seconds = timeinfo->tm_sec;
         CHECK_TRUE(RTC_SetTime(RTC_Format_BIN, &rtcTimeStruct) == 1, SYSTEM_ERROR_INTERNAL);
-        memcpy(&timeInfo_, timeinfo, sizeof(struct tm));
+        backupYear(timeinfo);
         return SYSTEM_ERROR_NONE;
     }
 
@@ -185,9 +186,17 @@ public:
         return tv.tv_sec > UNIX_TIME_20180101000000;
     }
 
-    bool isTimeInfoValid() {
-        time_t tv_sec = mktime(&timeInfo_);
-        return tv_sec >= UNIX_TIME_20000101000000;
+    void backupYear(struct tm* tm) {
+        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+        RRAM->RTC_YEAR = tm->tm_year;
+        RRAM->RTC_YEAR |= YEAR_VALID_MARKER;
+    }
+
+    void restoreYear(struct tm* tm) {
+        RRAM_TypeDef* RRAM = ((RRAM_TypeDef *) RRAM_BASE);
+        if (RRAM->RTC_YEAR & YEAR_VALID_MARKER) {
+            tm->tm_year = RRAM->RTC_YEAR & ~(YEAR_VALID_MARKER);
+        }
     }
 
     void rtcAlarmHandlerImpl() {
@@ -288,8 +297,6 @@ private:
     hal_rtc_alarm_handler alarmHandler_;
     void* alarmContext_;
 };
-
-retained_system struct tm RealtekRtc::timeInfo_ = {};
 
 RealtekRtc rtcInstance;
 
