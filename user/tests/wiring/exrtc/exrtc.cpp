@@ -21,6 +21,9 @@
 #include "test_system_cache.h"
 #include "exrtc_hal_am18x5.h"
 #include "exrtc_hal_internal.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #if HAL_PLATFORM_EXTERNAL_RTC
 
@@ -29,6 +32,8 @@ namespace {
 constexpr uint32_t EXRTC_SUITE_STATE_MAGIC = 0x45525443; // ERTC
 constexpr int EXRTC_EEPROM_ADDR = 0;
 constexpr int EXRTC_MAX_TIME_DRIFT_SECONDS = 10;
+const char* const SYSTEM_CACHE_PATH = "/sys/cache.dat";
+const char* const SYSTEM_CACHE_BACKUP_PATH = "/sys/cache.dat.bak";
 
 struct ExRtcSuiteState {
     uint32_t magic = EXRTC_SUITE_STATE_MAGIC;
@@ -43,6 +48,9 @@ struct ExRtcSuiteState {
     uint32_t capabilities = 0;
     int8_t expectedLegacyCalibration = 0;
     int8_t expectedNewCalibration = 0;
+    bool legacyCalibrationExistedAtStart = false;
+    bool newCalibrationExistedAtStart = false;
+    bool cacheBackupAvailable = false;
 };
 
 constexpr int8_t LEGACY_CACHE_TEST_CALIBRATION = -17;
@@ -150,6 +158,54 @@ int withSystemCache(const std::function<int(particle::test::SystemCache&)>& fn) 
         cache.deInit();
     });
     return fn(cache);
+}
+
+int copyFile(const char* src, const char* dst) {
+    int in = ::open(src, O_RDONLY);
+    if (in < 0) {
+        return errno == ENOENT ? SYSTEM_ERROR_NOT_FOUND : SYSTEM_ERROR_IO;
+    }
+    SCOPE_GUARD({
+        ::close(in);
+    });
+
+    int out = ::open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (out < 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    SCOPE_GUARD({
+        ::close(out);
+    });
+
+    char buf[512];
+    for (;;) {
+        const ssize_t r = ::read(in, buf, sizeof(buf));
+        if (r < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return SYSTEM_ERROR_IO;
+        }
+        if (r == 0) {
+            break;
+        }
+        ssize_t written = 0;
+        while (written < r) {
+            const ssize_t w = ::write(out, buf + written, r - written);
+            if (w < 0) {
+                if (errno == EINTR) {
+                    continue;
+                }
+                return SYSTEM_ERROR_IO;
+            }
+            written += w;
+        }
+    }
+
+    if (::fsync(out) < 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 bool cacheKeyExists(particle::test::SystemCacheKey key) {
@@ -342,6 +398,8 @@ RtcConfiguration baselineConfig(const ExRtcSuiteState& state) {
 
 } // anonymous
 
+#include "hex_to_bytes.h"
+
 test(EXRTC_00_initialize_suite_state) {
     auto state = initSuiteState();
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
@@ -359,6 +417,18 @@ test(EXRTC_00_initialize_suite_state) {
 
     const auto config = ExternalTime.getConfig();
     assertTrue(config.valid());
+
+    state.wroteLegacyCalibration = false;
+    state.wroteNewCalibration = false;
+    state.pendingCalibrationScenario = CALIBRATION_SCENARIO_NONE;
+    state.expectedLegacyCalibration = 0;
+    state.expectedNewCalibration = 0;
+    state.legacyCalibrationExistedAtStart = cacheKeyExists(particle::test::SystemCacheKey::AM18X5_MANUFACTURING_CONFIG);
+    state.newCalibrationExistedAtStart = cacheKeyExists(particle::test::SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION);
+    int backupResult = copyFile(SYSTEM_CACHE_PATH, SYSTEM_CACHE_BACKUP_PATH);
+    state.cacheBackupAvailable = backupResult == SYSTEM_ERROR_NONE;
+    assertTrue(backupResult == SYSTEM_ERROR_NONE || backupResult == SYSTEM_ERROR_NOT_FOUND);
+    writeSuiteState(state);
 
 #if !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     state.defaultTimeSource = config.defaultTimeSource();
@@ -787,6 +857,13 @@ test(EXRTC_99_restore_default_configuration) {
         assertEqual(deleteCacheKey(particle::test::SystemCacheKey::AM18X5_MANUFACTURING_CONFIG), (int)SYSTEM_ERROR_NONE);
     }
 
+    if (state.legacyCalibrationExistedAtStart) {
+        assertTrue(cacheKeyExists(particle::test::SystemCacheKey::AM18X5_MANUFACTURING_CONFIG));
+    }
+    if (state.newCalibrationExistedAtStart) {
+        assertTrue(cacheKeyExists(particle::test::SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION));
+    }
+
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     if (state.isMuon) {
         assertEqual(particle::test::configureMuonExrtc(), (int)SYSTEM_ERROR_NONE);
@@ -814,6 +891,13 @@ test(EXRTC_99_restore_default_configuration) {
     state.initialized = false;
     state.shouldRun = false;
     writeSuiteState(state);
+
+    if (state.cacheBackupAvailable) {
+        assertEqual(copyFile(SYSTEM_CACHE_BACKUP_PATH, SYSTEM_CACHE_PATH), (int)SYSTEM_ERROR_NONE);
+        ::unlink(SYSTEM_CACHE_BACKUP_PATH);
+        expectSystemReset();
+        System.reset();
+    }
 }
 
 #else
