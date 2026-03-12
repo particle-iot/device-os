@@ -21,6 +21,7 @@
 #include "resolvapi.h"
 #include "ifapi.h"
 #include "icmp_echo.h"
+#include "muon_test_util.h"
 
 struct NetworkIp4Config {
     SockAddr addr;
@@ -345,6 +346,11 @@ static bool isEthernetPresent() {
 
 test(NETWORK_CONFIG_ETH_01_enable_feature) {
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
     System.reset();
@@ -712,6 +718,11 @@ test(NETWORK_CONFIG_ETH_98_ping_gw_latency_default_config) {
 
 test(NETWORK_CONFIG_ETH_99_disable_feature) {
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::unconfigureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
     System.reset();

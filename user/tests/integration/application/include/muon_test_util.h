@@ -48,6 +48,35 @@ inline bool detectMuonBoard() {
 #endif
 }
 
+inline int configureMuonEthernet() {
+#if HAL_PLATFORM_ETHERNET
+    System.enableFeature(FEATURE_ETHERNET_DETECTION);
+
+    if_wiznet_pin_remap remap = {};
+    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
+    remap.cs_pin = A3;
+    remap.reset_pin = PIN_INVALID;
+    remap.int_pin = A4;
+    return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
+#endif // HAL_PLATFORM_ETHERNET
+    return 0;
+}
+
+inline int unconfigureMuonEthernet() {
+#if HAL_PLATFORM_ETHERNET
+    System.disableFeature(FEATURE_ETHERNET_DETECTION);
+
+    if_wiznet_pin_remap remap = {};
+    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
+    System.disableFeature(FEATURE_ETHERNET_DETECTION);
+    remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
+    remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
+    remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
+    return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
+#endif // HAL_PLATFORM_ETHERNET
+    return 0;
+}
+
 inline int configureMuonBoard(bool enableEthernet = true) {
 #if HAL_PLATFORM_POWER_MANAGEMENT
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
@@ -58,20 +87,9 @@ inline int configureMuonBoard(bool enableEthernet = true) {
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-#if HAL_PLATFORM_ETHERNET
-    if (!enableEthernet) {
-        System.disableFeature(FEATURE_ETHERNET_DETECTION);
-        return SYSTEM_ERROR_NONE;
+    if (enableEthernet) {
+        return configureMuonEthernet();
     }
-
-    if_wiznet_pin_remap remap = {};
-    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    System.enableFeature(FEATURE_ETHERNET_DETECTION);
-    remap.cs_pin = A3;
-    remap.reset_pin = PIN_INVALID;
-    remap.int_pin = A4;
-    return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-#endif // HAL_PLATFORM_ETHERNET
     return 0;
 }
 
@@ -85,16 +103,7 @@ inline int unconfigureMuonBoard() {
     }
 #endif // HAL_PLATFORM_POWER_MANAGEMENT
 
-#if HAL_PLATFORM_ETHERNET
-    if_wiznet_pin_remap remap = {};
-    remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    System.disableFeature(FEATURE_ETHERNET_DETECTION);
-    remap.cs_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_CS_PIN_DEFAULT;
-    remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
-    remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
-    return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-#endif // HAL_PLATFORM_ETHERNET
-    return 0;
+    return unconfigureMuonEthernet();
 }
 
 inline int configureMuonExrtc() {
