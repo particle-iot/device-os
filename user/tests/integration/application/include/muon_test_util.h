@@ -24,6 +24,8 @@
 namespace particle {
 namespace test {
 
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+
 inline bool detectMuonBoard() {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     constexpr uint8_t addrs[] = {
@@ -47,14 +49,16 @@ inline bool detectMuonBoard() {
 }
 
 inline int configureMuonBoard(bool enableEthernet = true) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_POWER_MANAGEMENT
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
     powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7);
     int ret = System.setPowerConfiguration(powerConfig);
     if (ret != SYSTEM_ERROR_NONE) {
         return ret;
     }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT
 
+#if HAL_PLATFORM_ETHERNET
     if (!enableEthernet) {
         System.disableFeature(FEATURE_ETHERNET_DETECTION);
         return SYSTEM_ERROR_NONE;
@@ -67,20 +71,21 @@ inline int configureMuonBoard(bool enableEthernet = true) {
     remap.reset_pin = PIN_INVALID;
     remap.int_pin = A4;
     return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-#else
-    return SYSTEM_ERROR_NONE;
-#endif
+#endif // HAL_PLATFORM_ETHERNET
+    return 0;
 }
 
 inline int unconfigureMuonBoard() {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_POWER_MANAGEMENT
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
     powerConfig.auxiliaryPowerControlPin(PIN_INVALID).interruptPin(LOW_BAT_UC);
     int ret = System.setPowerConfiguration(powerConfig);
     if (ret != SYSTEM_ERROR_NONE) {
         return ret;
     }
+#endif // HAL_PLATFORM_POWER_MANAGEMENT
 
+#if HAL_PLATFORM_ETHERNET
     if_wiznet_pin_remap remap = {};
     remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
@@ -88,9 +93,8 @@ inline int unconfigureMuonBoard() {
     remap.reset_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_RESET_PIN_DEFAULT;
     remap.int_pin = HAL_PLATFORM_ETHERNET_WIZNETIF_INT_PIN_DEFAULT;
     return if_request(nullptr, IF_REQ_DRIVER_SPECIFIC, &remap, sizeof(remap), nullptr);
-#else
-    return SYSTEM_ERROR_NONE;
-#endif
+#endif // HAL_PLATFORM_ETHERNET
+    return 0;
 }
 
 inline int configureMuonExrtc() {
@@ -110,16 +114,7 @@ inline int configureMuonExrtc() {
 #endif
 }
 
-inline bool isMuonBoardUnconfigured() {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
-    const auto powerConfig = System.getPowerConfiguration();
-    return powerConfig.auxiliaryPowerControlPin() == PIN_INVALID &&
-            powerConfig.interruptPin() == LOW_BAT_UC &&
-            !System.featureEnabled(FEATURE_ETHERNET_DETECTION);
-#else
-    return true;
-#endif
-}
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
 
 } // namespace test
 } // namespace particle

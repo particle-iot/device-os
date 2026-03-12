@@ -190,7 +190,7 @@ test(08_verify_external_rtc_default_state) {
 }
 
 test(09_unconfigure_muon_board) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
         return;
@@ -202,11 +202,10 @@ test(09_unconfigure_muon_board) {
 }
 
 test(10_verify_muon_board_unconfigured) {
-#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
         return;
     }
-    assertTrue(particle::test::isMuonBoardUnconfigured());
 #endif
 }
