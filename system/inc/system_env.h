@@ -46,6 +46,7 @@ const size_t MAX_ENV_NAME_LEN = 128;
 class Env: public SystemAssetHandler {
 public:
     enum VarSource {
+        INVALID = 0,
         APP,
         SNAPSHOT
     };
@@ -191,21 +192,21 @@ public:
         }
         char nameBuf[MAX_ENV_NAME_LEN + 1];
         for (int i = 0; i < env_->buckets.size(); ++i) {
-            auto v = env_->buckets.at(i);
-            while (v) {
-                int r = env_->readName(*v, nameBuf, sizeof(nameBuf));
-                if (r < 0) {
-                    return r;
-                }
-                r = env_->readValue(*v, buf, bufSize);
-                if (r < 0) {
-                    return r;
-                }
-                r = fn(VarInfo(nameBuf, (VarSource)v->src, v->valSize));
-                if (r < 0) {
-                    return r;
-                }
-                v = v->next;
+            const auto& v = env_->buckets.at(i);
+            if (v.src == VarSource::INVALID) { // Empty bucket
+                continue;
+            }
+            int r = env_->readName(v, nameBuf, sizeof(nameBuf));
+            if (r < 0) {
+                return r;
+            }
+            r = env_->readValue(v, buf, bufSize);
+            if (r < 0) {
+                return r;
+            }
+            r = fn(VarInfo(nameBuf, (VarSource)v.src, v.valSize));
+            if (r < 0) {
+                return r;
             }
         }
         return env_->size;
@@ -232,7 +233,6 @@ public:
 
 private:
     struct VarEntry {
-        VarEntry* next;
         uint32_t hash;
         uint16_t valOffs;
         uint16_t valSize;
@@ -245,12 +245,10 @@ private:
         fs::File appFile;
         fs::File snapshotFile;
         std::unique_ptr<char[]> snapshotHash;
-        Vector<VarEntry*> buckets;
-        size_t size;
+        Vector<VarEntry> buckets;
+        int size;
 
         EnvData();
-        EnvData(const EnvData&) = delete;
-        ~EnvData();
 
         int add(const char* name, VarEntry var);
         const VarEntry* find(const char* name);
@@ -261,8 +259,6 @@ private:
         fs::File& fileForSource(VarSource src) {
             return (src == VarSource::APP) ? appFile : snapshotFile;
         }
-
-        EnvData& operator=(const EnvData&) = delete;
     };
 
     std::unique_ptr<EnvData> env_;

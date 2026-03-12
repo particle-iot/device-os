@@ -46,9 +46,9 @@ const auto APP_FILE_STAGED = "/sys/env_app.staged";
 const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
-const size_t HASH_PRIME_SIZES[] = { 5, 11, 23, 37, 53, 97, 127, 193, 283, 389, 577, 769, 1153 };
-const unsigned HASH_MAX_LOAD_FACTOR_N = 1; // Numerator
-const unsigned HASH_MAX_LOAD_FACTOR_D = 1; // Denominator
+const int HASH_PRIME_SIZES[] = { 5, 11, 23, 37, 53, 73, 97, 149, 193, 293, 389, 577, 769, 1153 };
+const int HASH_MAX_LOAD_FACTOR_N = 3;
+const int HASH_MAX_LOAD_FACTOR_D = 4; // 3/4 == 0.75
 
 class ValueStream: public InputStream {
 public:
@@ -168,73 +168,86 @@ Env::EnvData::EnvData() :
         size(0) {
 }
 
-Env::EnvData::~EnvData() {
-    for (int i = 0; i < buckets.size(); ++i) {
-        auto v = buckets.at(i);
-        while (v) {
-            auto next = v->next;
-            delete v;
-            v = next;
-        }
-    }
-}
-
 int Env::EnvData::add(const char* name, VarEntry var) {
     auto hash = strHash(name);
-    size_t bucketCount = buckets.size();
-    if (bucketCount) {
+    if (!buckets.isEmpty()) {
         char nameBuf[MAX_ENV_NAME_LEN + 1];
-        auto v = buckets.at(hash % bucketCount);
-        while (v) {
-            CHECK(readName(*v, nameBuf, sizeof(nameBuf)));
+        int startIdx = hash % buckets.size();
+        int idx = startIdx;
+        for (;;) {
+            auto& v = buckets[idx];
+            if (v.src == VarSource::INVALID) { // Empty bucket
+                break;
+            }
+            CHECK(readName(v, nameBuf, sizeof(nameBuf)));
             if (std::strcmp(nameBuf, name) == 0) {
                 // Replace the existing entry
-                var.hash = hash;
-                var.next = v->next;
-                *v = std::move(var);
+                v = std::move(var);
+                v.hash = hash;
                 return 0;
             }
-            v = v->next;
+            if (++idx == buckets.size()) {
+                idx = 0;
+            }
+            if (idx == startIdx) {
+                break;
+            }
         }
     }
-    if (!bucketCount || (size + 1) * HASH_MAX_LOAD_FACTOR_D > bucketCount * HASH_MAX_LOAD_FACTOR_N) {
+    if ((size + 1) * HASH_MAX_LOAD_FACTOR_D > buckets.size() * HASH_MAX_LOAD_FACTOR_N) {
         // Rehash
-        size_t newBucketCount = 0;
+        int newBucketCount = 0;
         for (unsigned i = 0; i < sizeof(HASH_PRIME_SIZES) / sizeof(HASH_PRIME_SIZES[0]); ++i) {
-            if (HASH_PRIME_SIZES[i] > bucketCount) {
+            if (HASH_PRIME_SIZES[i] > buckets.size()) {
                 newBucketCount = HASH_PRIME_SIZES[i];
                 break;
             }
         }
         if (!newBucketCount) {
-            newBucketCount = bucketCount * 2 - 1;
+            newBucketCount = buckets.size() * 2 - 1;
         }
-        Vector<VarEntry*> newBuckets;
+        Vector<VarEntry> newBuckets;
         if (!newBuckets.resize(newBucketCount)) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
-        for (unsigned i = 0; i < bucketCount; ++i) {
-            auto v = buckets.at(i);
-            while (v) {
-                auto next = v->next;
-                auto idx = v->hash % newBucketCount;
-                v->next = newBuckets.at(idx);
-                newBuckets[idx] = v;
-                v = next;
+        for (auto& v: buckets) {
+            if (v.src == VarSource::INVALID) { // Empty bucket
+                continue;
+            }
+            int startIdx = v.hash % newBuckets.size();
+            int idx = startIdx;
+            for (;;) {
+                if (newBuckets[idx].src == VarSource::INVALID) {
+                    newBuckets[idx] = std::move(v);
+                    break;
+                }
+                if (++idx == newBuckets.size()) {
+                    idx = 0;
+                }
+                if (idx == startIdx) {
+                    return SYSTEM_ERROR_INTERNAL; // No empty bucket found
+                }
             }
         }
         buckets = std::move(newBuckets);
-        bucketCount = newBucketCount;
     }
     // Add a new entry
-    std::unique_ptr<VarEntry> v(new(std::nothrow) VarEntry(var));
-    if (!v) {
-        return SYSTEM_ERROR_NO_MEMORY;
+    int startIdx = hash % buckets.size();
+    int idx = startIdx;
+    for (;;) {
+        auto& v = buckets[idx];
+        if (v.src == VarSource::INVALID) { // Empty bucket
+            v = std::move(var);
+            v.hash = hash;
+            break;
+        }
+        if (++idx == buckets.size()) {
+            idx = 0;
+        }
+        if (idx == startIdx) {
+            return SYSTEM_ERROR_INTERNAL; // No empty bucket found
+        }
     }
-    v->hash = hash;
-    auto idx = hash % bucketCount;
-    v->next = buckets.at(idx);
-    buckets[idx] = v.release();
     ++size;
     return 0;
 }
@@ -244,18 +257,28 @@ const Env::VarEntry* Env::EnvData::find(const char* name) {
         return nullptr;
     }
     char nameBuf[MAX_ENV_NAME_LEN + 1];
-    auto v = buckets.at(strHash(name) % buckets.size());
-    while (v) {
-        int r = readName(*v, nameBuf, sizeof(nameBuf));
+    auto hash = strHash(name);
+    int startIdx = hash % buckets.size();
+    int idx = startIdx;
+    for (;;) {
+        auto& v = buckets[idx];
+        if (v.src == VarSource::INVALID) { // Empty bucket
+            return nullptr;
+        }
+        int r = readName(v, nameBuf, sizeof(nameBuf));
         if (r < 0) {
             return nullptr;
         }
         if (std::strcmp(nameBuf, name) == 0) {
-            break; // Found
+            return &v; // Found
         }
-        v = v->next;
+        if (++idx == buckets.size()) {
+            idx = 0;
+        }
+        if (idx == startIdx) {
+            return nullptr;
+        }
     }
-    return v;
 }
 
 int Env::EnvData::readValue(const VarEntry& var, char* buf, size_t bufSize) {
