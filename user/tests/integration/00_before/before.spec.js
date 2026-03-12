@@ -34,21 +34,29 @@ test('03_enable_listening_mode', async function () {
 
 });
 
-test('04_cleanup_env', async function () {
+test('04_clear_env', async function () {
     await unsetDeviceVariables(api, deviceId);
 });
 
-test('05_cleanup_env', async function () {
+test('05_restore_cloud_after_env_clear', async function () {
     await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('06_cleanup_env', async function () {
+test('06_finalize_env_clear', async function () {
 });
 
-test('07_cleanup_env', async function() {
+test('07_disable_external_rtc', async function() {
 });
 
-test('08_cleanup_env', async function() {
+test('08_verify_external_rtc_default_state', async function() {
+
+});
+
+test('09_configure_muon_board_and_exrtc', async function() {
+
+});
+
+test('10_verify_muon_exrtc_configuration', async function() {
 
 });
 

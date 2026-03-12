@@ -22,6 +22,7 @@
 #include "softcrc32.h"
 #include "check.h"
 #include "storage_hal.h"
+#include "muon_test_util.h"
 
 namespace {
 
@@ -143,7 +144,7 @@ test(03_enable_listening_mode) {
 }
 
 #if HAL_PLATFORM_ENV
-test(04_cleanup_env) {
+test(04_clear_env) {
     System.clearEnv(false /* reset */);
     unlink("/sys/env_app");
     unlink("/sys/env_app.staged");
@@ -154,7 +155,7 @@ test(04_cleanup_env) {
     System.reset();
 }
 
-test(05_cleanup_env) {
+test(05_restore_cloud_after_env_clear) {
     prepareForFirmwareUpdate();
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
@@ -162,13 +163,13 @@ test(05_cleanup_env) {
     // We are supposed to get an empty env
 }
 
-test(06_cleanup_env) {
+test(06_finalize_env_clear) {
     completeFirmwareUpdate();
 }
 
 #endif // HAL_PLATFORM_ENV
 
-test(07_cleanup_env) {
+test(07_disable_external_rtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
     expectSystemReset();
@@ -176,7 +177,7 @@ test(07_cleanup_env) {
 #endif
 }
 
-test(08_cleanup_env) {
+test(08_verify_external_rtc_default_state) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     const auto status = ExternalTime.status();
     assertTrue(status.valid());
@@ -187,5 +188,30 @@ test(08_cleanup_env) {
     assertTrue(status.builtIn());
     assertTrue(status.bound());
 #endif
+#endif
+}
+
+test(09_configure_muon_board_and_exrtc) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (!particle::test::detectMuonBoard()) {
+        return;
+    }
+    assertEqual(particle::test::configureMuonBoard(), (int)SYSTEM_ERROR_NONE);
+    assertEqual(particle::test::configureMuonExrtc(), (int)SYSTEM_ERROR_NONE);
+    expectSystemReset();
+    System.reset();
+#endif
+}
+
+test(10_verify_muon_exrtc_configuration) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    if (!particle::test::detectMuonBoard()) {
+        return;
+    }
+    const auto status = ExternalTime.status();
+    assertTrue(status.valid());
+    assertTrue(status.bound());
+    assertTrue(status.present());
+    assertTrue(status.ready());
 #endif
 }
