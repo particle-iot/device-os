@@ -30,7 +30,7 @@
 #include "filesystem.h"
 #include "c_string.h"
 
-#include "spark_wiring_map.h"
+#include "spark_wiring_vector.h"
 
 namespace particle {
 
@@ -38,8 +38,19 @@ class InputStream;
 
 namespace system {
 
+/**
+ * Maximum length of an environment variable name.
+ */
+const size_t MAX_ENV_NAME_LEN = 128;
+
 class Env: public SystemAssetHandler {
 public:
+    enum VarSource {
+        INVALID = 0,
+        APP = 1,
+        SNAPSHOT = 2
+    };
+
     /**
      * Variable info.
      */
@@ -49,18 +60,18 @@ public:
          */
         const char* name;
         /**
+         * Variable source.
+         */
+        VarSource source;
+        /**
          * Size of the variable value not including '\0'.
          */
         size_t size;
-        /**
-         * Whether this is an application variable.
-         */
-        bool isApp;
 
-        VarInfo(const char* name, size_t size, bool isApp) :
+        VarInfo(const char* name, VarSource src, size_t size) :
                 name(name),
-                size(size),
-                isApp(isApp) {
+                source(src),
+                size(size) {
         }
     };
 
@@ -143,8 +154,8 @@ public:
      * @param name Variable name.
      * @return `true` if the variable is defined, otherwise `false`.
      */
-    bool has(const char* name) const {
-        return vars_.entries.has(name);
+    bool has(const char* name) {
+        return env_.find(name);
     }
 
     /**
@@ -153,7 +164,7 @@ public:
      * @return Number of variables.
      */
     size_t count() const {
-        return vars_.entries.size();
+        return env_.size;
     }
 
     /**
@@ -175,67 +186,30 @@ public:
      *         `system_error_t` or the negative value returned by the callback.
      */
     template<typename F>
-    int forEach(F&& fn) {
-        for (const auto& entry: vars_.entries) {
-            const auto& name = entry.first;
-            const auto& var = entry.second;
-            int r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP));
+    int forEach(F&& fn, char* buf = nullptr, size_t bufSize = 0) {
+        char nameBuf[MAX_ENV_NAME_LEN + 1];
+        for (const auto& v: env_.buckets) {
+            if (v.src == VarSource::INVALID) { // Empty bucket
+                continue;
+            }
+            int r = env_.readName(v, nameBuf, sizeof(nameBuf));
+            if (r < 0) {
+                return r;
+            }
+            r = env_.readValue(v, buf, bufSize);
+            if (r < 0) {
+                return r;
+            }
+            r = fn(VarInfo(nameBuf, (VarSource)v.src, v.valSize));
             if (r < 0) {
                 return r;
             }
         }
-        return vars_.entries.size();
-    }
-
-    /**
-     * Invoke a callback for each defined variable.
-     *
-     * The callback must have the signature `int(const Env::VarInfo&, const char*)` and return 0 on
-     * success. The second argument is a pointer to the buffer provided by the caller where the value
-     * of the variable will be stored:
-     * ```
-     * char val[128];
-     * Env::instance().forEach(val, sizeof(val), [](const Env::VarInfo& var, const char* val) {
-     *     LOG(INFO, "%s=%s", var.name, val);
-     *     return 0;
-     * });
-     * ```
-     *
-     * Note that depending on the buffer size and the actual size of the variable value (`VarInfo::size`),
-     * the value in the buffer can be truncated (but still terminated with `\0`).
-     *
-     * If the callback returns a negative value, the enumeration stops and the value is returned to
-     * the caller of this method.
-     *
-     * @param buf Buffer for the variable value.
-     * @param bufSize Buffer size.
-     * @param fn Callback.
-     * @return On success, the number of defined variables, otherwise an error code defined by
-     *         `system_error_t` or the negative value returned by the callback.
-     */
-    template<typename F>
-    int forEach(char* buf, size_t bufSize, F&& fn) {
-        for (const auto& entry: vars_.entries) {
-            const auto& name = entry.first;
-            const auto& var = entry.second;
-            int r = readValue(var, buf, bufSize);
-            if (r < 0) {
-                return r;
-            }
-            r = fn(VarInfo(name.data(), var.valSize, var.src == VarSource::APP), buf);
-            if (r < 0) {
-                return r;
-            }
-        }
-        return vars_.entries.size();
+        return env_.size;
     }
 
     const char* snapshotHash() const {
-        return vars_.snapshotHash.get();
-    }
-
-    bool hasSnapshot() const {
-        return snapshotFile_.isOpen();
+        return env_.snapshotHash.get();
     }
 
     int clear();
@@ -250,37 +224,47 @@ public:
     static Env& instance();
 
 private:
-    enum VarSource {
-        APP,
-        SNAPSHOT
-    };
-
     struct VarEntry {
+        uint32_t hash;
         uint16_t valOffs;
         uint16_t valSize;
-        VarSource src;
+        uint16_t nameOffs;
+        uint8_t nameSize;
+        uint8_t src; // VarSource
+
+        VarEntry();
     };
 
-    typedef Map<CString, VarEntry, CString::Less> VarEntries;
-
-    struct Vars {
-        VarEntries entries;
+    struct EnvData {
+        fs::File appFile;
+        fs::File snapshotFile;
         std::unique_ptr<char[]> snapshotHash;
+        Vector<VarEntry> buckets;
+        int size;
+
+        EnvData();
+
+        int add(const char* name, VarEntry var);
+        const VarEntry* find(const char* name);
+
+        int readValue(const VarEntry& var, char* buf, size_t bufSize);
+        int readName(const VarEntry& var, char* buf, size_t bufSize);
+
+        fs::File& fileForSource(VarSource src) {
+            return (src == VarSource::APP) ? appFile : snapshotFile;
+        }
     };
 
-    Vars vars_;
-    fs::File appFile_;
-    fs::File snapshotFile_;
+    EnvData env_;
 
     Env() = default; // Use instance()
 
     int updateBootloaderVars();
-    int readValue(const VarEntry& var, char* buf, size_t bufSize);
 
-    static int loadVars(bool tryStaged, fs::File& appFile, fs::File& snapshotFile, Vars& vars, bool& hasStaged);
-    static int loadVarsForSource(bool tryStaged, VarSource src, fs::File& file, Vars& vars, bool& hasStaged);
-    static int loadVarsFile(const char* path, VarSource src, fs::File& file, Vars& vars);
-    static int readVars(VarSource src, fs::File& file, Vars& vars);
+    static int loadEnv(EnvData& env, bool& hasStaged, bool tryStaged);
+    static int loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src);
+    static int loadEnvFile(EnvData& env, const char* path, VarSource src);
+    static int parseEnv(EnvData& env, VarSource src);
 };
 
 // Helper functions that return `true` if the variable is defined and valid, or `false` if the

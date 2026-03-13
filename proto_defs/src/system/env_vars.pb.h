@@ -10,6 +10,11 @@
 #endif
 
 /* Struct definitions */
+typedef struct _particle_system_EnvVars_Var { 
+    pb_callback_t name; 
+    pb_callback_t value; 
+} particle_system_EnvVars_Var;
+
 typedef PB_BYTES_ARRAY_T(32) particle_system_EnvVars_hash_t;
 /* *
  A snapshot of environment variables. */
@@ -19,11 +24,6 @@ typedef struct _particle_system_EnvVars {
     uint64_t updated_at; /* /< Time the snapshot was created, in milliseconds since the Unix epoch. */
 } particle_system_EnvVars;
 
-typedef struct _particle_system_EnvVars_Var { 
-    char name[129]; 
-    pb_callback_t value; 
-} particle_system_EnvVars_Var;
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,16 +31,16 @@ extern "C" {
 
 /* Initializer values for message structs */
 #define particle_system_EnvVars_init_default     {{{NULL}, NULL}, {0, {0}}, 0}
-#define particle_system_EnvVars_Var_init_default {"", {{NULL}, NULL}}
+#define particle_system_EnvVars_Var_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_system_EnvVars_init_zero        {{{NULL}, NULL}, {0, {0}}, 0}
-#define particle_system_EnvVars_Var_init_zero    {"", {{NULL}, NULL}}
+#define particle_system_EnvVars_Var_init_zero    {{{NULL}, NULL}, {{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
+#define particle_system_EnvVars_Var_name_tag     1
+#define particle_system_EnvVars_Var_value_tag    2
 #define particle_system_EnvVars_vars_tag         1
 #define particle_system_EnvVars_hash_tag         2
 #define particle_system_EnvVars_updated_at_tag   3
-#define particle_system_EnvVars_Var_name_tag     1
-#define particle_system_EnvVars_Var_value_tag    2
 
 /* Struct field encoding specification for nanopb */
 #define particle_system_EnvVars_FIELDLIST(X, a) \
@@ -52,7 +52,7 @@ X(a, STATIC,   SINGULAR, FIXED64,  updated_at,        3)
 #define particle_system_EnvVars_vars_MSGTYPE particle_system_EnvVars_Var
 
 #define particle_system_EnvVars_Var_FIELDLIST(X, a) \
-X(a, STATIC,   SINGULAR, STRING,   name,              1) \
+X(a, CALLBACK, SINGULAR, STRING,   name,              1) \
 X(a, CALLBACK, SINGULAR, STRING,   value,             2)
 #define particle_system_EnvVars_Var_CALLBACK pb_default_field_callback
 #define particle_system_EnvVars_Var_DEFAULT NULL

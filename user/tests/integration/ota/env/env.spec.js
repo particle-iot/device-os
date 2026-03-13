@@ -140,7 +140,23 @@ test('02_start_local_env_update', async function() {
 test('03_check_local_env_update', async function() {
 });
 
-test('04_prepare_on_connect_env_update', async function() {
+test('04_start_big_env_update', async function() {
+	const env = {};
+	for (let i = 0; i < 1000; ++i) {
+		const num = (i + 1).toString().padStart(4, '0');
+		const name = randomString(15, 30).toUpperCase() + '_' + num;
+		const val = nonce + '_' + num;
+		env[name] = val;
+	}
+	const assetData = await createEnvVarsAssetModule(env, undefined /* snapshot */, Infinity /* maxSize */, Infinity /* maxVars */);
+	const assetPath = await tempy.write(assetData, { name: 'env_vars.bin' });
+	await device.flash(assetPath);
+});
+
+test('05_check_big_env_update', async function() {
+});
+
+test('06_prepare_on_connect_env_update', async function() {
 	await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
 		ops: [
 			{ op: 'Set', key: 'DEV_VAR2', value: 'dev 22 ' + nonce },
@@ -152,18 +168,18 @@ test('04_prepare_on_connect_env_update', async function() {
 	});
 });
 
-test('05_start_on_connect_env_update', async function() {
+test('07_start_on_connect_env_update', async function() {
 	// Snapshot update should start automatically
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('06_complete_on_connect_env_update', async function() {
+test('08_complete_on_connect_env_update', async function() {
 });
 
-test('07_check_on_connect_env_update', async function() {
+test('09_check_on_connect_env_update', async function() {
 });
 
-test('08_start_ad_hoc_env_update', async function() {
+test('10_start_ad_hoc_env_update', async function() {
 	const bundleZip = await createApplicationAndAssetBundle(appBinary, [], {
 		'APP_VAR1': 'app 1 ' + nonce,
 		'APP_VAR2': 'app 2 ' + nonce
@@ -171,13 +187,13 @@ test('08_start_ad_hoc_env_update', async function() {
 	await flash(this, bundleZip, { filename: 'bundle.zip' });
 });
 
-test('09_complete_ad_hoc_env_update', async function() {
+test('11_complete_ad_hoc_env_update', async function() {
 });
 
-test('10_check_ad_hoc_env_update', async function() {
+test('12_check_ad_hoc_env_update', async function() {
 });
 
-test('11_start_immediate_device_env_update', async function() {
+test('13_start_immediate_device_env_update', async function() {
 	await patch(api, `/v1/products/${productId}/env/${deviceId}`, {
 		ops: [
 			// Override app variables
@@ -193,10 +209,10 @@ test('11_start_immediate_device_env_update', async function() {
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('12_complete_immediate_device_env_update', async function() {
+test('14_complete_immediate_device_env_update', async function() {
 });
 
-test('13_check_immediate_device_env_update', async function() {
+test('15_check_immediate_device_env_update', async function() {
 });
 
 test('97_cleanup', async function() {

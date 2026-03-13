@@ -490,7 +490,7 @@ int getEnv(ctrl_request* req) {
             if (n >= sizeof(pbVar.name)) {
                 return SYSTEM_ERROR_INTERNAL; // Too long variable name
             }
-            pbVar.is_app = var.isApp;
+            pbVar.is_app = (var.source == Env::VarSource::APP);
 
             ctx->var = &var;
             pbVar.value.arg = ctx;
