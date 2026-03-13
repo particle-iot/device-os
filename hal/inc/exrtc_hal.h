@@ -23,9 +23,23 @@
 #if HAL_PLATFORM_EXTERNAL_RTC
 
 #include "rtc_hal.h"
+#include "i2c_hal.h"
 #include "system_tick_hal.h"
 #include <stdint.h>
 #include <time.h>
+
+#define HAL_EXRTC_CONFIG_VERSION            1
+
+typedef struct hal_exrtc_config_t {
+    uint16_t version;
+    uint16_t size;
+    uint8_t wdi_pin;
+    uint8_t int_pin;
+    hal_i2c_interface_t i2c_if;
+    uint8_t i2c_addr;
+    int8_t osc_cal_xt;
+    uint8_t reserved[7];
+} hal_exrtc_config_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +48,7 @@ extern "C" {
 typedef hal_rtc_alarm_handler hal_exrtc_alarm_handler;
 typedef hal_rtc_alarm_flags hal_exrtc_alarm_flags;
 
-int hal_exrtc_init(void* reserved);
+int hal_exrtc_init(const hal_exrtc_config_t* config, void* reserved);
 int hal_exrtc_set_time(const struct timeval* tv, void* reserved);
 int hal_exrtc_get_time(struct timeval* tv, void* reserved);
 int hal_exrtc_set_alarm(const struct timeval* tv, uint32_t flags, hal_exrtc_alarm_handler handler, void* context, void* reserved);
