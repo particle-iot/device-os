@@ -3,6 +3,7 @@
 
 #include "application.h"
 
+#include "system_env.h"
 #include "random.h"
 
 #include "unit-test/unit-test.h"
@@ -27,6 +28,20 @@ retained char nonce[11] = {};
 
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
 std::atomic<int> firmwareUpdateProgressCount;
+
+template<typename F>
+inline bool forEachVar(F&& fn) {
+    int r = system_list_env([](const char* name, const char* /* val */, size_t /* valSize */, void* arg) {
+        auto fn = (F*)arg;
+        bool ok = (*fn)(name);
+        return ok ? 0 : -1;
+    }, &fn, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
+    return r >= 0;
+}
+
+int varCount() {
+    return system_list_env(nullptr /* fn */, nullptr /* arg */, nullptr /* buf */, 0 /* buf_size */, nullptr /* reserved */);
+}
 
 String findVarWithValue(const String& val) {
     for (const auto& name: System.listEnv()) {
@@ -376,48 +391,68 @@ test(03_check_local_env_update) {
     System.reset();
 }
 
-test(04_prepare_on_connect_env_update) {
+test(04_start_big_env_update) {
 }
 
-test(05_start_on_connect_env_update) {
+test(05_check_big_env_update) {
+    assertEqual(varCount(), 1000);
+    bool ok = forEachVar([](String name) {
+        auto pos = name.indexOf('_');
+        if (pos < 0) {
+            return false;
+        }
+        auto suffix = name.substring(pos, name.length());
+        auto val = System.getEnv(name);
+        if (val != nonce + suffix) {
+            return false;
+        }
+        return true;
+    });
+    assertTrue(ok);
+}
+
+test(06_prepare_on_connect_env_update) {
+}
+
+test(07_start_on_connect_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(06_complete_on_connect_env_update) {
+test(08_complete_on_connect_env_update) {
     completeFirmwareUpdate();
 }
 
-test(07_check_on_connect_env_update) {
+test(09_check_on_connect_env_update) {
     assertEqual(System.getEnv("DEV_VAR1"), String("dev 11 ") + nonce);
     assertEqual(System.getEnv("DEV_VAR2"), String("dev 22 ") + nonce);
 }
 
-test(08_start_ad_hoc_env_update) {
+test(10_start_ad_hoc_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(09_complete_ad_hoc_env_update) {
+test(11_complete_ad_hoc_env_update) {
     completeFirmwareUpdate(true /* expectSafeMode */);
 }
 
-test(10_check_ad_hoc_env_update) {
+test(12_check_ad_hoc_env_update) {
     // Application variables
     assertEqual(System.getEnv("APP_VAR1"), String("app 1 ") + nonce);
     assertEqual(System.getEnv("APP_VAR2"), String("app 2 ") + nonce);
 }
 
-test(11_start_immediate_device_env_update) {
+test(13_start_immediate_device_env_update) {
     prepareForFirmwareUpdate();
     connect();
 }
 
-test(12_complete_immediate_device_env_update) {
+test(14_complete_immediate_device_env_update) {
     completeFirmwareUpdate();
 }
 
-test(13_check_immediate_device_env_update) {
+test(15_check_immediate_device_env_update) {
     // Application variables
     assertEqual(System.getEnv("APP_VAR1"), String("app 1 ") + nonce);
     assertEqual(System.getEnv("APP_VAR2"), String("dev app 2 ") + nonce); // Overridden
