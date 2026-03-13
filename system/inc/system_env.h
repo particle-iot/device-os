@@ -271,6 +271,7 @@ private:
     static int loadEnv(EnvData& env, bool& hasStaged, bool tryStaged);
     static int loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src);
     static int loadEnvFile(EnvData& env, const char* path, VarSource src);
+    static int parseEnv(EnvData& env, VarSource src);
 };
 
 // Helper functions that return `true` if the variable is defined and valid, or `false` if the

@@ -31,6 +31,7 @@
 #include "file_util.h"
 #include "nanopb_misc.h"
 #include "logging.h"
+#include "scope_guard.h"
 #include "check.h"
 
 #include "system/env_vars.pb.h"
@@ -548,17 +549,30 @@ int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
     auto& file = env.fileForSource(src);
     CHECK(file.open(path, LFS_O_RDONLY));
 
+    NAMED_SCOPE_GUARD(closeFile, {
+        int r = file.close();
+        if (r < 0) {
+            LOG(ERROR, "Error while closing file: %d", r);
+        }
+    });
+
     size_t size = CHECK(file.size());
     if (size > MAX_ENV_FILE_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
     // the corresponding file on the device (see `init()`)
-    if (!size) {
-        return 0;
+    if (size > 0) {
+        CHECK(parseEnv(env, src));
     }
 
+    closeFile.dismiss(); // Keep the file open
+    return 0;
+}
+
+int Env::parseEnv(EnvData& env, VarSource src) {
     pb_istream_t stream = {};
+    auto& file = env.fileForSource(src);
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
 
     char nameBuf[MAX_ENV_NAME_LEN + 1] = {};
