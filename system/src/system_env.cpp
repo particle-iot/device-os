@@ -46,9 +46,7 @@ const auto APP_FILE_STAGED = "/sys/env_app.staged";
 const auto SNAPSHOT_FILE_CURRENT = "/sys/env_snapshot";
 const auto SNAPSHOT_FILE_STAGED = "/sys/env_snapshot.staged";
 
-const int HASH_PRIME_SIZES[] = { 5, 11, 23, 37, 53, 73, 97, 149, 193, 293, 389, 577, 769, 1153 };
-const int HASH_MAX_LOAD_FACTOR_N = 3;
-const int HASH_MAX_LOAD_FACTOR_D = 4; // 3/4 == 0.75
+const size_t MAX_ENV_FILE_SIZE = 65535;
 
 class ValueStream: public InputStream {
 public:
@@ -164,50 +162,69 @@ uint32_t strHash(const char* s) { // djb2
 
 } // unnamed
 
+Env::VarEntry::VarEntry() :
+        hash(0),
+        valOffs(0),
+        valSize(0),
+        nameOffs(0),
+        nameSize(0),
+        src(VarSource::INVALID) {
+    static_assert(std::numeric_limits<decltype(valOffs)>::max() >= MAX_ENV_FILE_SIZE - 1);
+    static_assert(std::numeric_limits<decltype(valSize)>::max() >= MAX_ENV_FILE_SIZE);
+    static_assert(std::numeric_limits<decltype(nameOffs)>::max() >= MAX_ENV_FILE_SIZE - 1);
+    static_assert(std::numeric_limits<decltype(nameSize)>::max() >= MAX_ENV_NAME_LEN);
+}
+
 Env::EnvData::EnvData() :
         size(0) {
 }
 
 int Env::EnvData::add(const char* name, VarEntry var) {
-    auto hash = strHash(name);
-    if (!buckets.isEmpty()) {
-        char nameBuf[MAX_ENV_NAME_LEN + 1];
-        int startIdx = hash % buckets.size();
-        int idx = startIdx;
-        for (;;) {
-            auto& v = buckets[idx];
-            if (v.src == VarSource::INVALID) { // Empty bucket
-                break;
-            }
-            CHECK(readName(v, nameBuf, sizeof(nameBuf)));
-            if (std::strcmp(nameBuf, name) == 0) {
-                // Replace the existing entry
-                v = std::move(var);
-                v.hash = hash;
-                return 0;
-            }
-            if (++idx == buckets.size()) {
-                idx = 0;
-            }
-            if (idx == startIdx) {
-                break;
-            }
+    static const int primeSizes[] = { 5, 11, 23, 37, 53, 73, 97, 149, 193, 293, 389, 577, 769, 1153 };
+
+    if (buckets.isEmpty() && !buckets.resize(primeSizes[0])) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    var.hash = strHash(name);
+    int startIdx = var.hash % buckets.size();
+    int idx = startIdx;
+    char nameBuf[MAX_ENV_NAME_LEN + 1];
+    for (;;) {
+        auto& v = buckets[idx];
+        if (v.src == VarSource::INVALID) { // Empty bucket
+            // Add a new entry
+            v = std::move(var);
+            break;
+        }
+        CHECK(readName(v, nameBuf, sizeof(nameBuf)));
+        if (std::strcmp(nameBuf, name) == 0) {
+            // Replace the existing entry
+            v = std::move(var);
+            return 0;
+        }
+        if (++idx == buckets.size()) {
+            idx = 0;
+        }
+        if (idx == startIdx) {
+            return SYSTEM_ERROR_INTERNAL; // Hash table is full
         }
     }
-    if ((size + 1) * HASH_MAX_LOAD_FACTOR_D > buckets.size() * HASH_MAX_LOAD_FACTOR_N) {
-        // Rehash
-        int newBucketCount = 0;
-        for (unsigned i = 0; i < sizeof(HASH_PRIME_SIZES) / sizeof(HASH_PRIME_SIZES[0]); ++i) {
-            if (HASH_PRIME_SIZES[i] > buckets.size()) {
-                newBucketCount = HASH_PRIME_SIZES[i];
+    ++size;
+
+    // Rehash if the load factor exceeds 0.75
+    if (size * 4 > buckets.size() * 3) {
+        int newSize = 0;
+        for (unsigned i = 1; i < sizeof(primeSizes) / sizeof(primeSizes[0]); ++i) {
+            if (primeSizes[i] > buckets.size()) {
+                newSize = primeSizes[i];
                 break;
             }
         }
-        if (!newBucketCount) {
-            newBucketCount = buckets.size() * 2 - 1;
+        if (!newSize) {
+            newSize = buckets.size() * 3 / 2;
         }
         Vector<VarEntry> newBuckets;
-        if (!newBuckets.resize(newBucketCount)) {
+        if (!newBuckets.resize(newSize)) {
             return SYSTEM_ERROR_NO_MEMORY;
         }
         for (auto& v: buckets) {
@@ -225,30 +242,12 @@ int Env::EnvData::add(const char* name, VarEntry var) {
                     idx = 0;
                 }
                 if (idx == startIdx) {
-                    return SYSTEM_ERROR_INTERNAL; // No empty bucket found
+                    return SYSTEM_ERROR_INTERNAL; // Hash table is full
                 }
             }
         }
         buckets = std::move(newBuckets);
     }
-    // Add a new entry
-    int startIdx = hash % buckets.size();
-    int idx = startIdx;
-    for (;;) {
-        auto& v = buckets[idx];
-        if (v.src == VarSource::INVALID) { // Empty bucket
-            v = std::move(var);
-            v.hash = hash;
-            break;
-        }
-        if (++idx == buckets.size()) {
-            idx = 0;
-        }
-        if (idx == startIdx) {
-            return SYSTEM_ERROR_INTERNAL; // No empty bucket found
-        }
-    }
-    ++size;
     return 0;
 }
 
@@ -256,10 +255,10 @@ const Env::VarEntry* Env::EnvData::find(const char* name) {
     if (buckets.isEmpty()) {
         return nullptr;
     }
-    char nameBuf[MAX_ENV_NAME_LEN + 1];
     auto hash = strHash(name);
     int startIdx = hash % buckets.size();
     int idx = startIdx;
+    char nameBuf[MAX_ENV_NAME_LEN + 1];
     for (;;) {
         auto& v = buckets[idx];
         if (v.src == VarSource::INVALID) { // Empty bucket
@@ -549,9 +548,12 @@ int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
     auto& file = env.fileForSource(src);
     CHECK(file.open(path, LFS_O_RDONLY));
 
+    size_t size = CHECK(file.size());
+    if (size > MAX_ENV_FILE_SIZE) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
     // the corresponding file on the device (see `init()`)
-    size_t size = CHECK(file.size());
     if (!size) {
         return 0;
     }

@@ -47,8 +47,8 @@ class Env: public SystemAssetHandler {
 public:
     enum VarSource {
         INVALID = 0,
-        APP,
-        SNAPSHOT
+        APP = 1,
+        SNAPSHOT = 2
     };
 
     /**
@@ -191,8 +191,7 @@ public:
             return 0;
         }
         char nameBuf[MAX_ENV_NAME_LEN + 1];
-        for (int i = 0; i < env_->buckets.size(); ++i) {
-            const auto& v = env_->buckets.at(i);
+        for (const auto& v: env_->buckets) {
             if (v.src == VarSource::INVALID) { // Empty bucket
                 continue;
             }
@@ -239,6 +238,8 @@ private:
         uint16_t nameOffs;
         uint8_t nameSize;
         uint8_t src; // VarSource
+
+        VarEntry();
     };
 
     struct EnvData {
