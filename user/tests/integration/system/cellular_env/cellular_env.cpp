@@ -655,5 +655,9 @@ test(98_cleanup) {
 }
 
 test(99_cleanup) {
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
     completeFirmwareUpdate();
 }
