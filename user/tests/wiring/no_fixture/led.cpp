@@ -3,6 +3,7 @@
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
 #include "rgbled_hal.h"
+#include "muon_test_util.h"
 #include <stdio.h>
 
 #ifdef abs
@@ -242,6 +243,10 @@ test(LED_11_MirroringWorks) {
     const pin_t pins[3] = {A3, A4, A5};
 # else
     // SoM
+    if (particle::test::detectMuonBoard()) {
+        skip();
+        return;
+    }
     const hal_pin_t pins[3] = {A1, A0, A7};
 # endif // PLATFORM_ID == PLATFORM_ARGON || PLATFORM_ID == PLATFORM_BORON || PLATFORM_ID == PLATFORM_ELECTRON2
 #elif HAL_PLATFORM_RTL872X

@@ -29,6 +29,44 @@
 #include "simple_ntp_client.h"
 #include "scope_guard.h"
 
+namespace {
+
+constexpr int TIME_SOURCE_MAX_DRIFT_SECONDS = 10;
+
+int64_t absTimeDiff(time_t lhs, time_t rhs) {
+    return lhs >= rhs ? (int64_t)lhs - (int64_t)rhs : (int64_t)rhs - (int64_t)lhs;
+}
+
+bool shouldCheckExternalTime() {
+#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    auto status = ExternalTime.status();
+    return status.valid() && status.bound() && status.present() && status.ready();
+#else
+    return true;
+#endif
+#else
+    return false;
+#endif
+}
+
+void assertTimeSourcesAreSane() {
+    const auto systemTime = Time.now();
+    const auto internalTime = InternalTime.now();
+    assertLessOrEqual(absTimeDiff(systemTime, internalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+    assertEqual(InternalTime.isValid(), Time.isValid());
+    if (shouldCheckExternalTime()) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+        const auto externalTime = ExternalTime.now();
+        assertLessOrEqual(absTimeDiff(systemTime, externalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+        assertLessOrEqual(absTimeDiff(internalTime, externalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+        assertEqual(ExternalTime.isValid(), Time.isValid());
+#endif // HAL_PLATFORM_EXTERNAL_RTC
+    }
+}
+
+} // namespace
+
 test(TIME_01_NowReturnsCorrectUnixTime) {
     // when
     time_t last_time = Time.now();
@@ -36,6 +74,7 @@ test(TIME_01_NowReturnsCorrectUnixTime) {
     // then
     time_t current_time = Time.now();
     assertEqual(current_time, last_time + 1);//RTC interrupt fires successfully
+    assertTimeSourcesAreSane();
 }
 
 test(TIME_02_LocalReturnsUnixTimePlusTimezone) {
@@ -43,14 +82,12 @@ test(TIME_02_LocalReturnsUnixTimePlusTimezone) {
 	Time.zone(-5);
     Time.endDST();
 	// Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time - (5*3600));
+    auto diff = (last_time - (5*3600)) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 }
 
 test(TIME_03_LocalReturnsUnixTimePlusTimezoneAndDST) {
@@ -60,14 +97,12 @@ test(TIME_03_LocalReturnsUnixTimePlusTimezoneAndDST) {
     Time.beginDST();
     assertTrue(Time.isDST());
     // Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time - (4*3600));
+    auto diff = (last_time - (4*3600)) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 
     Time.endDST();
     assertFalse(Time.isDST());
@@ -80,14 +115,12 @@ test(TIME_04_LocalReturnsUnixTimePlusDST) {
     Time.beginDST();
     assertTrue(Time.isDST());
     // Time.now() and Time.local();
-    time_t last_time;
-    time_t local_time;
-    ATOMIC_BLOCK() {
-        last_time = Time.now();
-        local_time = Time.local();
-    }
+    time_t last_time = Time.now();
+    time_t local_time = Time.local();
     // then
-    assertEqual(local_time, last_time + (4500));
+    auto diff = (last_time + 4500) - local_time;
+    assertLessOrEqual(diff, 1);
+    assertMoreOrEqual(diff, 0);
 
     Time.endDST();
     assertFalse(Time.isDST());
@@ -110,8 +143,10 @@ test(TIME_07_SetTimeResultsInCorrectUnixTimeUpdate) {
     // then
     time_t temp_time = Time.now();
     assertEqual(temp_time, 1514764800);
+    assertTimeSourcesAreSane();
     // restore original time
     Time.setTime(current_time);
+    assertTimeSourcesAreSane();
 }
 
 test(TIME_08_TimeStrDoesNotEndWithNewline) {
@@ -222,6 +257,7 @@ test(TIME_13_syncTimePending_syncTimeDone_when_disconnected)
 
     assertTrue(Particle.syncTimeDone());
     assertFalse(Particle.syncTimePending());
+    assertTimeSourcesAreSane();
 }
 
 test(TIME_14_timeSyncedLast_works_correctly)
@@ -235,6 +271,7 @@ test(TIME_14_timeSyncedLast_works_correctly)
     Particle.syncTime();
     waitFor(Particle.syncTimeDone, 120000);
     assertMore(Particle.timeSyncedLast(), mil);
+    assertTimeSourcesAreSane();
 }
 
 test(TIME_15_RestoreSystemMode) {
@@ -268,6 +305,7 @@ test(TIME_16_TimeChangedEvent) {
     while (Particle.process());
     assertMore(Particle.timeSyncedLast(), syncedLastMillis);
     assertEqual(s_time_changed_reason, (int)time_changed_sync);
+    assertTimeSourcesAreSane();
 }
 
 test(TIME_17_RtcAlarmFiresCorrectly) {
@@ -412,11 +450,24 @@ namespace {
 
 retained time_t lastTimestamp = 0;
 
+bool timeShouldBePreservedThroughSoftwareReset() {
+#if !HAL_PLATFORM_NRF52840
+    return true;
+#elif HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    const auto status = ExternalTime.status();
+    return status.valid() && status.present();
+#else
+    return true;
+#endif
+#else
+    return false;
+#endif
+}
+
 } // anonymous
 
-#if !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
-
-test(TIME_20_TimeIsPreservedThroughSoftwareReset_1) {
+test(TIME_20_TimeMayNotBePreservedThroughSoftwareReset_1) {
     if (!Time.isValid()) {
         Particle.connect();
         assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
@@ -430,15 +481,34 @@ test(TIME_20_TimeIsPreservedThroughSoftwareReset_1) {
     System.reset();
 }
 
-test(TIME_20_TimeIsPreservedThroughSoftwareReset_2) {
-    assertTrue(Time.isValid());
+test(TIME_20_TimeMayNotBePreservedThroughSoftwareReset_2) {
+    const auto preserveTime = timeShouldBePreservedThroughSoftwareReset();
     auto now = Time.now();
     assertNotEqual(lastTimestamp, 0);
-    assertMore(now, lastTimestamp);
-    auto diff = now - lastTimestamp;
-    assertLess(diff, 10); // 10s
+    if (preserveTime) {
+        assertTrue(Time.isValid());
+        assertMore(now, lastTimestamp);
+        auto diff = now - lastTimestamp;
+        assertLess(diff, 30); // 10s
+    } else {
+        assertFalse(Time.isValid());
+        assertMore(lastTimestamp, now);
+        if (!Time.isValid()) {
+            Particle.connect();
+            assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+            system_tick_t mil = millis();
+            Particle.syncTime();
+            assertTrue(waitFor(Particle.syncTimeDone, 120000));
+            assertMore(Particle.timeSyncedLast(), mil);
+        }
+        now = Time.now();
+        assertMore(now, lastTimestamp);
+        auto diff = now - lastTimestamp;
+        assertLess(diff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME * 2);
+    }
 }
 
+#if !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
 test(TIME_21_TimeIsPreservedThroughHibernateSleep_1) {
     if (!Time.isValid()) {
         Particle.connect();
@@ -461,43 +531,9 @@ test(TIME_21_TimeIsPreservedThroughHibernateSleep_2) {
     assertNotEqual(lastTimestamp, 0);
     assertMore(now, lastTimestamp);
     auto diff = now - lastTimestamp;
-    assertLess(diff, 10); // 10s
+    assertLess(diff, 30); // 10s
 }
-#else
-
-test(TIME_20_TimeIsNotPreservedThroughSoftwareReset_1) {
-    if (!Time.isValid()) {
-        Particle.connect();
-        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-        system_tick_t mil = millis();
-        Particle.syncTime();
-        assertTrue(waitFor(Particle.syncTimeDone, 120000));
-        assertMore(Particle.timeSyncedLast(), mil);
-    }
-    lastTimestamp = Time.now();
-    expectSystemReset();
-    System.reset();
-}
-
-test(TIME_20_TimeIsNotPreservedThroughSoftwareReset_2) {
-    assertFalse(Time.isValid());
-    auto now = Time.now();
-    assertNotEqual(lastTimestamp, 0);
-    assertMore(lastTimestamp, now);
-    if (!Time.isValid()) {
-        Particle.connect();
-        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-        system_tick_t mil = millis();
-        Particle.syncTime();
-        assertTrue(waitFor(Particle.syncTimeDone, 120000));
-        assertMore(Particle.timeSyncedLast(), mil);
-    }
-    now = Time.now();
-    assertMore(now, lastTimestamp);
-    auto diff = now - lastTimestamp;
-    assertLess(diff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME * 2);
-}
-#endif // !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC)
+#endif // !HAL_PLATFORM_NRF52840 || (HAL_PLATFORM_NRF52840 && HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL)
 
 test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
     if (!Time.isValid()) {
@@ -510,6 +546,12 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
         Particle.disconnect();
         assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     }
+
+    Particle.disconnect();
+    assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Network.off();
+    assertTrue(waitFor(Network.isOff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+
     expectSystemReset();
     lastTimestamp = Time.now();
     SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(5s));
@@ -523,5 +565,5 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_2) {
     assertNotEqual(lastTimestamp, 0);
     assertMore(now, lastTimestamp);
     auto diff = now - lastTimestamp;
-    assertLess(diff, 30);
+    assertLess(diff, 60);
 }

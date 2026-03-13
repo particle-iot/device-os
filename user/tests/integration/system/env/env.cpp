@@ -19,6 +19,7 @@
 #include "unit-test/unit-test.h"
 #include "test_suite.h"
 #include "check.h"
+#include "muon_test_util.h"
 
 // Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 //     // { "comm.coap", LOG_LEVEL_ALL },
@@ -80,6 +81,76 @@ bool waitListening(bool state, system_tick_t timeout = LISTENING_MODE_STATE_CHAN
 
 #endif // HAL_PLATFORM_BLE
 
+enum class FirmwareUpdateStatus {
+    NONE,
+    STARTED,
+    SUCCESS,
+    ERROR
+};
+
+auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+std::atomic<int> firmwareUpdateProgressCount;
+
+void firmwareUpdateEventHandler(system_event_t, int data, void*) {
+    switch (data) {
+    case firmware_update_begin:
+        Test::out->println("firmware_update_begin");
+        firmwareUpdateStatus = FirmwareUpdateStatus::STARTED;
+        break;
+    case firmware_update_complete:
+        Test::out->println("firmware_update_complete");
+        firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
+        break;
+    case firmware_update_progress:
+        ++firmwareUpdateProgressCount;
+        break;
+    default:
+        Test::out->printlnf("Unexpected firmware update status: %d", data);
+        firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
+        break;
+    }
+}
+
+void prepareForFirmwareUpdate() {
+    System.disableReset();
+    System.on(firmware_update, firmwareUpdateEventHandler);
+    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+    firmwareUpdateProgressCount = 0;
+}
+
+void completeFirmwareUpdate(bool expectSafeMode = false) {
+    bool ok = false;
+    auto t1 = millis();
+    for (;;) {
+        Particle.process();
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
+            ok = true;
+            break;
+        }
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::ERROR) {
+            Test::out->println("Firmware update failed");
+            break;
+        }
+        // The JS part of the test waits until the OTA completes so the timeout here is for
+        // finalizing the update on the device
+        if (millis() - t1 >= 30000) {
+            Test::out->println("Firmware update timeout");
+            break;
+        }
+    }
+    Test::out->printlnf("firmware_update_progress count: %d", firmwareUpdateProgressCount.load());
+    System.off(firmware_update);
+    if (ok) {
+        if (expectSafeMode) {
+            TestRunner::instance()->expectSafeMode();
+        } else {
+            TestRunner::instance()->expectSystemReset();
+        }
+    }
+    assertTrue(ok);
+    System.enableReset();
+}
+
 } // anonymous
 
 #if HAL_PLATFORM_BLE
@@ -137,20 +208,23 @@ test(04_particle_ble_enable_false) {
     assertTrue(waitListening(false));
 
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
-    // WiFi is not affected
-    System.disableUpdates();
-    SCOPE_GUARD({
-        Particle.disconnect();
-        waitForNot(Particle.connected, 1000);
-        System.enableUpdates();
-    });
+    if (TestSuite::instance()->network() == NETWORK_INTERFACE_WIFI_STA ||
+        TestSuite::instance()->network() == NETWORK_INTERFACE_ALL) {
+        // WiFi is not affected
+        System.disableUpdates();
+        SCOPE_GUARD({
+            Particle.disconnect();
+            waitForNot(Particle.connected, 1000);
+            System.enableUpdates();
+        });
 
-    WiFi.on();
-    assertTrue(waitFor(WiFi.isOn, 5000));
-    WiFi.connect();
-    Particle.connect();
-    assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        WiFi.on();
+        assertTrue(waitFor(WiFi.isOn, 5000));
+        WiFi.connect();
+        Particle.connect();
+        assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+        assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    }
 #endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
@@ -160,6 +234,11 @@ test(04_particle_ble_enable_false) {
 test(05_particle_wifi_enable_init) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
@@ -269,9 +348,7 @@ test(08_particle_wifi_enable_false) {
 test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
     bool shouldConnect = false;
 #if HAL_PLATFORM_CELLULAR
-    if (TestSuite::instance()->network() == 0) {
-        shouldConnect = true;
-    }
+    shouldConnect = TestSuite::instance()->network() == NETWORK_INTERFACE_CELLULAR || TestSuite::instance()->network() == NETWORK_INTERFACE_ALL;
 #endif // HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_ETHERNET
     if (isEthernetPresent()) {
@@ -287,7 +364,7 @@ test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
     assertTrue(System.hasEnv("PARTICLE_WIFI_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_WIFI_ENABLE"), String("false"));
 
-    assertEqual((int)TestSuite::instance()->network(), (int)0);
+    assertNotEqual((int)TestSuite::instance()->network(), (int)NETWORK_INTERFACE_WIFI_STA);
 
     System.disableUpdates();
     SCOPE_GUARD({
@@ -320,6 +397,11 @@ test(09_particle_wifi_enable_false_connect_through_other_ifaces) {
 test(10_particle_wifi_enable_cleanup) {
 #if HAL_PLATFORM_ETHERNET
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::unconfigureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     expectSystemReset();
     System.reset();
 #endif // HAL_PLATFORM_ETHERNET
@@ -330,6 +412,11 @@ test(10_particle_wifi_enable_cleanup) {
 test(11_particle_ethernet_enable_init) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     skipEthernet = false;
     System.clearEnv(false /* reset */);
     expectSystemReset();
@@ -432,13 +519,34 @@ test(15_particle_ethernet_enable_false_connect_through_other_ifaces) {
 
 test(16_particle_ethernet_enable_cleanup) {
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     expectSystemReset();
     System.reset();
 }
 #endif // HAL_PLATFORM_ETHERNET
 
-test(99_cleanup) {
+test(97_cleanup) {
     System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
     expectSystemReset();
     System.reset();
+}
+
+test(98_cleanup) {
+    prepareForFirmwareUpdate();
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(99_cleanup) {
+    completeFirmwareUpdate();
 }

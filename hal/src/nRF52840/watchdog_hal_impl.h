@@ -22,23 +22,6 @@
 #include "check.h"
 #include "nrfx_wdt.h"
 #include "logging.h"
-#include "static_recursive_mutex.h"
-
-static Watchdog* getWatchdogInstance(hal_watchdog_instance_t instance);
-
-class WatchdogLock {
-public:
-    WatchdogLock() {
-        mutex_.lock();
-    }
-
-    ~WatchdogLock() {
-        mutex_.unlock();
-    }
-
-private:
-    StaticRecursiveMutex mutex_;
-};
 
 /**
  * @brief The watchdog reset behavior is the same as the pin reset behavior.
@@ -60,7 +43,7 @@ private:
  * @note When the device starts running again, after a reset, or waking up from OFF mode,
  * the watchdog configuration registers will be available for configuration again.
  */
-class Nrf52Watchdog : public Watchdog {
+class Nrf52Watchdog : public WatchdogBase {
 public:
     int init(const hal_watchdog_config_t* config) {
         CHECK_FALSE(started(), SYSTEM_ERROR_INVALID_STATE);
@@ -129,7 +112,7 @@ public:
 
 private:
     Nrf52Watchdog(uint32_t mandatoryCaps, uint32_t optionalCaps, uint32_t minTimeout, uint32_t maxTimeout)
-            : Watchdog(mandatoryCaps, optionalCaps, minTimeout, maxTimeout),
+            : WatchdogBase(mandatoryCaps, optionalCaps, minTimeout, maxTimeout),
               initialized_(false) {
     }
 
@@ -137,12 +120,8 @@ private:
 
     static void nrf52WatchdogEventHandler() {
         // NOTE: The max amount of time we can spend in WDT interrupt is two cycles of 32768[Hz] clock - after that, reset occurs
-        auto pInstance = getWatchdogInstance(HAL_WATCHDOG_INSTANCE1);
-        if (!pInstance) {
-            return;
-        }
-        if (pInstance->info_.config.enable_caps & HAL_WATCHDOG_CAPS_NOTIFY) {
-            pInstance->notify();
+        if (Nrf52Watchdog::instance()->info_.config.enable_caps & HAL_WATCHDOG_CAPS_NOTIFY) {
+            Nrf52Watchdog::instance()->notify();
         }
     }
 
@@ -152,71 +131,5 @@ private:
     static constexpr uint32_t WATCHDOG_MIN_TIMEOUT = 0;
     static constexpr uint32_t WATCHDOG_MAX_TIMEOUT = 131071999; // 0xFFFFFFFF / 32.768
 };
-
-static Watchdog* getWatchdogInstance(hal_watchdog_instance_t instance) {
-    static Watchdog* watchdog[HAL_PLATFORM_HW_WATCHDOG_COUNT] = {
-        Nrf52Watchdog::instance(),
-        // Add pointer to new watchdog here.
-    };
-    CHECK_TRUE(instance < sizeof(watchdog) / sizeof(watchdog[0]), nullptr);
-    return watchdog[instance];
-}
-
-
-/**** Watchdog HAL APIs ****/
-
-int hal_watchdog_set_config(hal_watchdog_instance_t instance, const hal_watchdog_config_t* config, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->init(config);
-}
-
-int hal_watchdog_on_expired_callback(hal_watchdog_instance_t instance, hal_watchdog_on_expired_callback_t callback, void* context, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->setOnExpiredCallback(callback, context);
-}
-
-int hal_watchdog_start(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->start();
-}
-
-int hal_watchdog_stop(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->stop();
-}
-
-int hal_watchdog_refresh(hal_watchdog_instance_t instance, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    return pInstance->refresh();
-}
-
-int hal_watchdog_get_info(hal_watchdog_instance_t instance, hal_watchdog_info_t* info, void* reserved) {
-    WatchdogLock lk();
-    auto pInstance = getWatchdogInstance(instance);
-    CHECK_TRUE(pInstance, SYSTEM_ERROR_NOT_FOUND);
-    // Update info.state according to the status register.
-    // The System.reset() will reset the info, but not the watchdog
-    pInstance->started();
-    return pInstance->getInfo(info);
-}
-
-// Backward compatibility for nRF52
-bool hal_watchdog_reset_flagged_deprecated(void) {
-    return false;
-}
-
-void hal_watchdog_refresh_deprecated() {
-    hal_watchdog_refresh(HAL_WATCHDOG_INSTANCE1, nullptr);
-}
 
 #endif // HAL_PLATFORM_HW_WATCHDOG

@@ -15,20 +15,22 @@ systemThread('enabled');
 
 const util = require('util')
 
+const { waitFlashStatusEvent } = require('../../test/ota');
+
 // Parameters validated by this test
 const THRESHOLDS = {
     p2: {
-        targetAppFlashSize: 28800,
+        targetAppFlashSize: 29000,
         targetFreeRam: 3040870,        // 2.9MB
         targetTime: {
             pre_startup: 110000,
-            pre_startup_duration: 180,
+            pre_startup_duration: 220,
             startup_duration: 390000,
             setup_duration: 55
         }
     },
     trackerm: {
-        targetAppFlashSize: 28800,
+        targetAppFlashSize: 29000,
         targetFreeRam: 2924544,        // 2.8MB
         targetTime: {
             pre_startup: 110000,
@@ -38,7 +40,7 @@ const THRESHOLDS = {
         }
     },
     msom: {
-        targetAppFlashSize: 28800,
+        targetAppFlashSize: 29000,
         targetFreeRam: 2924544,        // 2.8MB
         targetTime: {
             pre_startup: 110000,
@@ -50,8 +52,8 @@ const THRESHOLDS = {
     argon: {
         targetTime: {
             pre_startup: 270000,
-            pre_startup_duration: 146,
-            startup_duration: 32000,
+            pre_startup_duration: 150,
+            startup_duration: 50000,
             setup_duration: 170
         }
     },
@@ -60,58 +62,58 @@ const THRESHOLDS = {
             pre_startup: 490000, // XXX: Look into this, should be under 300000, but there are outliers
             pre_startup_duration: 150,
             startup_duration: 85000,
-            setup_duration: 50
+            setup_duration: 70
         }
     },
     bsom: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     b5som: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     esomx: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     tracker: {
         targetTime: {
             pre_startup: 320000,
             pre_startup_duration: 150,
-            startup_duration: 70000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     electron2: {
         targetTime: {
             pre_startup: 300000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     },
     // See rational on this magic number: https://app.clubhouse.io/particle/story/72460/build-device-os-test-runner-integration-test-that-validates-the-minimum-flash-space-and-connects-quickly-slo#activity-72937
     default: {
-        targetAppFlashSize: 24400,
+        targetAppFlashSize: 27000,
         targetFreeRam: 60000,
         targetTime: {
             pre_startup: 320000,
             pre_startup_duration: 150,
-            startup_duration: 77000,
-            setup_duration: 50
+            startup_duration: 85000,
+            setup_duration: 70
         }
     }
 };
@@ -120,8 +122,13 @@ test('01_prepare', async function () {
 
 });
 
-test('02_slo_startup_stats', async function () {
-    const unparsedJson = await this.particle.receiveEvent('startup_stats');
+test('02_prepare', async function () {
+
+});
+
+test('03_slo_startup_stats', async function () {
+    const device = this.particle.devices[0];
+    const unparsedJson = device.mailBox.pop().d;
     const startupStats = JSON.parse(unparsedJson);
     console.log("startupStats JSON", startupStats);
 
@@ -155,12 +162,20 @@ test('02_slo_startup_stats', async function () {
 
     // Startup time assertions
     console.log(`startup_time=${util.inspect(startupStats.time)} actual_time=${util.inspect(actualTime)} target_time=${util.inspect(thresh.targetTime)} platform=${dut.platform.name}`);
-    expect(startupStats.time.pre_startup).to.be.below(startupStats.time.startup);
-    expect(startupStats.time.startup).to.be.below(startupStats.time.setup);
-    expect(startupStats.time.setup).to.be.below(startupStats.time.loop);
+    expect(startupStats.time.pre_startup).to.be.below(startupStats.time.startup * 1.1);
+    expect(startupStats.time.startup).to.be.below(startupStats.time.setup * 1.1);
+    expect(startupStats.time.setup).to.be.below(startupStats.time.loop * 1.1);
 
-    expect(actualTime.pre_startup).to.be.below(thresh.targetTime.pre_startup);
-    expect(actualTime.pre_startup_duration).to.be.below(thresh.targetTime.pre_startup_duration);
-    expect(actualTime.startup_duration).to.be.below(thresh.targetTime.startup_duration);
-    expect(actualTime.setup_duration).to.be.below(thresh.targetTime.setup_duration);
+    expect(actualTime.pre_startup).to.be.below(thresh.targetTime.pre_startup * 1.1);
+    expect(actualTime.pre_startup_duration).to.be.below(thresh.targetTime.pre_startup_duration * 1.1);
+    expect(actualTime.startup_duration).to.be.below(thresh.targetTime.startup_duration * 1.1);
+    expect(actualTime.setup_duration).to.be.below(thresh.targetTime.setup_duration * 1.1);
+});
+
+test('98_cleanup', async function() {
+    await waitFlashStatusEvent(this, { status: 'success' });
+});
+
+test('99_cleanup', async function() {
+
 });

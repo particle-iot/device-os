@@ -22,30 +22,101 @@
 #include "softcrc32.h"
 #include "check.h"
 #include "storage_hal.h"
+#include "muon_test_util.h"
 
 namespace {
 
-    bool getFactoryModule(hal_module_t* factoryModule) {
-        // Search the platform modules for the factory module
-        hal_system_info_t info = {};
-        info.size = sizeof(info);
-        const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
-        if (r != 0) {
-            return false;
-        }
-        SCOPE_GUARD({
-            system_info_free_unstable(&info, nullptr /* reserved */);
-        });
-
-        for (size_t i = 0; i < info.module_count; ++i) {
-            const auto& module = info.modules[i];
-            if (module.bounds.store == MODULE_STORE_FACTORY) {
-                *factoryModule = module;
-                return true;
-            }
-        }
+bool getFactoryModule(hal_module_t* factoryModule) {
+    // Search the platform modules for the factory module
+    hal_system_info_t info = {};
+    info.size = sizeof(info);
+    const int r = system_info_get_unstable(&info, 0 /* flags */, nullptr /* reserved */);
+    if (r != 0) {
         return false;
     }
+    SCOPE_GUARD({
+        system_info_free_unstable(&info, nullptr /* reserved */);
+    });
+
+    for (size_t i = 0; i < info.module_count; ++i) {
+        const auto& module = info.modules[i];
+        if (module.bounds.store == MODULE_STORE_FACTORY) {
+            *factoryModule = module;
+            return true;
+        }
+    }
+    return false;
+}
+
+enum class FirmwareUpdateStatus {
+    NONE,
+    STARTED,
+    SUCCESS,
+    ERROR
+};
+
+auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+std::atomic<int> firmwareUpdateProgressCount;
+
+void firmwareUpdateEventHandler(system_event_t, int data, void*) {
+    switch (data) {
+    case firmware_update_begin:
+        Test::out->println("firmware_update_begin");
+        firmwareUpdateStatus = FirmwareUpdateStatus::STARTED;
+        break;
+    case firmware_update_complete:
+        Test::out->println("firmware_update_complete");
+        firmwareUpdateStatus = FirmwareUpdateStatus::SUCCESS;
+        break;
+    case firmware_update_progress:
+        ++firmwareUpdateProgressCount;
+        break;
+    default:
+        Test::out->printlnf("Unexpected firmware update status: %d", data);
+        firmwareUpdateStatus = FirmwareUpdateStatus::ERROR;
+        break;
+    }
+}
+
+void prepareForFirmwareUpdate() {
+    System.disableReset();
+    System.on(firmware_update, firmwareUpdateEventHandler);
+    firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
+    firmwareUpdateProgressCount = 0;
+}
+
+void completeFirmwareUpdate(bool expectSafeMode = false) {
+    bool ok = false;
+    auto t1 = millis();
+    for (;;) {
+        Particle.process();
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS) {
+            ok = true;
+            break;
+        }
+        if (firmwareUpdateStatus == FirmwareUpdateStatus::ERROR) {
+            Test::out->println("Firmware update failed");
+            break;
+        }
+        // The JS part of the test waits until the OTA completes so the timeout here is for
+        // finalizing the update on the device
+        if (millis() - t1 >= 30000) {
+            Test::out->println("Firmware update timeout");
+            break;
+        }
+    }
+    Test::out->printlnf("firmware_update_progress count: %d", firmwareUpdateProgressCount.load());
+    System.off(firmware_update);
+    if (ok) {
+        if (expectSafeMode) {
+            TestRunner::instance()->expectSafeMode();
+        } else {
+            TestRunner::instance()->expectSystemReset();
+        }
+    }
+    assertTrue(ok);
+    System.enableReset();
+}
 
 } // namespace
 
@@ -70,4 +141,87 @@ test(02_remove_static_ip) {
 
 test(03_enable_listening_mode) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
+}
+
+#if HAL_PLATFORM_ENV
+test(04_clear_env) {
+    System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
+
+    expectSystemReset();
+    System.reset();
+}
+
+test(05_restore_cloud_after_env_clear) {
+    prepareForFirmwareUpdate();
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    // We are supposed to get an empty env
+}
+
+test(06_finalize_env_clear) {
+    completeFirmwareUpdate();
+}
+
+#endif // HAL_PLATFORM_ENV
+
+test(07_disable_external_rtc) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
+    expectSystemReset();
+    System.reset();
+#endif
+}
+
+test(08_verify_external_rtc_default_state) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+    const auto status = ExternalTime.status();
+    assertTrue(status.valid());
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    assertFalse(status.builtIn());
+    assertFalse(status.bound());
+#else
+    assertTrue(status.builtIn());
+    assertTrue(status.bound());
+#endif
+#endif
+}
+
+test(09_report_muon_presence) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    assertEqual(0, pushMailboxMsg(particle::test::detectMuonBoard() ? "muon=true" : "muon=false", 5000));
+#else
+    assertEqual(0, pushMailboxMsg("muon=false", 5000));
+#endif
+}
+
+test(10_configure_muon_board_and_exrtc) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (!particle::test::detectMuonBoard()) {
+        skip();
+        return;
+    }
+    assertEqual(particle::test::configureMuonBoard(false), (int)SYSTEM_ERROR_NONE);
+    assertEqual(particle::test::configureMuonExrtc(), (int)SYSTEM_ERROR_NONE);
+    expectSystemReset();
+    System.reset();
+#endif
+}
+
+test(11_verify_muon_exrtc_configuration) {
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (!particle::test::detectMuonBoard()) {
+        skip();
+        return;
+    }
+    const auto status = ExternalTime.status();
+    assertTrue(status.valid());
+    assertTrue(status.bound());
+    assertTrue(status.present());
+    assertTrue(status.ready());
+#endif
 }

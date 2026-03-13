@@ -31,4 +31,6 @@
 
 typedef uint32_t system_tick_t;
 
+#define SYSTEM_TICK_WAIT_FOREVER (0xfffffff)
+
 #endif

@@ -41,6 +41,7 @@ for PLATFORM in $CI_RELEASE_PLATFORMS; do
     popd
     ls -laR $RELEASE_OUTPUT
     ./release-publish.sh --release-directory $RELEASE_OUTPUT
+    bash /firmware/ci/module-size.sh "$PLATFORM" "$RELEASE_OUTPUT/$RELEASE_REF/$PLATFORM" system-part1 /firmware
     ls -laR $RELEASE_OUTPUT
     pushd $RELEASE_OUTPUT
     # rename "s/.zip/-$RELEASE_REF.zip/" */publish/*.zip

@@ -32,6 +32,15 @@
 #define SINGLE_THREADED_BLOCK()
 #endif // HAL_PLATFORM_RTL872X
 
+static bool isTrackerOne() {
+#if (PLATFORM_ID == PLATFORM_TRACKER)
+    if (System.hardwareInfo().model() == PLATFORM_TRACKER_MODEL_TRACKERONE) {
+        return true;
+    }
+#endif
+    return false;
+}
+
 test(GPIO_01_PinModeSetResultsInCorrectMode) {
     PinMode mode[] = {
         OUTPUT,
@@ -81,6 +90,11 @@ test(GPIO_03_NoDigitalWriteWhenPinSelectedIsOutOfRange) {
 }
 
 test(GPIO_04_DigitalWriteOnPinResultsInCorrectDigitalRead) {
+    if (isTrackerOne()) {
+        skip();
+        return;
+    }
+
     hal_pin_t pin = A0;//pin under test
     PinMode mode[] = {
         OUTPUT,
@@ -183,6 +197,10 @@ test(GPIO_07_pulseIn_TimesOutAfter3Seconds) {
 }
 
 test(GPIO_08_DigitalReadWorksMixedWithAnalogRead) {
+    if (isTrackerOne()) {
+        skip();
+        return;
+    }
     pin_t pin = A0;
 
     pinMode(pin, INPUT_PULLUP);

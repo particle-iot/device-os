@@ -127,7 +127,7 @@ test(I2C_02_test_acquire_wire1_buffer) {
 }
 #endif
 
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 test(I2C_03_long_read_rtc)
 {
     // Test > 32 byte reads by reading from AM18x5 RTC peripheral
@@ -174,7 +174,7 @@ test(I2C_03_long_read_rtc)
     assertEqual(longReadBuffer[ID1_REGISTER], ID1_REGISTER_VALUE);
 }
 
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 
 #if (HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL == 0) && (HAL_PLATFORM_PMIC_BQ24195)
 

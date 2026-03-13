@@ -35,11 +35,9 @@
 #include "timer_hal.h"
 #include "rtc_hal.h"
 #include "interrupts_hal.h"
-
-#if PLATFORM_ID == PLATFORM_TRACKER
+#if HAL_PLATFORM_EXTERNAL_RTC
 #include "exrtc_hal.h"
-#endif // PLATFORM_ID == PLATFORM_TRACKER
-
+#endif
 #endif
 
 /**
@@ -91,19 +89,19 @@ DYNALIB_FN(BASE_IDX + 16, hal, HAL_EEPROM_Put, void(uint32_t, const void *, size
 DYNALIB_FN(BASE_IDX + 17, hal, HAL_EEPROM_Clear, void(void))
 DYNALIB_FN(BASE_IDX + 18, hal, HAL_EEPROM_Has_Pending_Erase, bool(void))
 DYNALIB_FN(BASE_IDX + 19, hal, HAL_EEPROM_Perform_Pending_Erase, void(void))
-DYNALIB_FN(BASE_IDX + 20, hal, hal_rtc_time_is_valid, bool(void*))
+DYNALIB_FN(BASE_IDX + 20, hal, hal_rtc_time_is_valid, bool(hal_rtc_option_t*))
 
 DYNALIB_FN(BASE_IDX + 21, hal, hal_timer_millis, uint64_t(void*))
 DYNALIB_FN(BASE_IDX + 22, hal, hal_timer_micros, uint64_t(void*))
 
-DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, void*))
-DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, void*))
+DYNALIB_FN(BASE_IDX + 23, hal, hal_rtc_get_time, int(struct timeval*, hal_rtc_option_t*))
+DYNALIB_FN(BASE_IDX + 24, hal, hal_rtc_set_time, int(const struct timeval*, hal_rtc_option_t*))
 
 #if PLATFORM_ID == PLATFORM_TRACKER
-DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog, int(system_tick_t, void*))
-DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog, int(void*))
-DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits, void(system_tick_t*, system_tick_t*, void*))
+DYNALIB_FN(BASE_IDX + 25, hal, hal_exrtc_enable_watchdog_deprecated, int(system_tick_t, void*))
+DYNALIB_FN(BASE_IDX + 26, hal, hal_exrtc_feed_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 27, hal, hal_exrtc_disable_watchdog_deprecated, int(void*))
+DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits_deprecated, void(system_tick_t*, system_tick_t*, void*))
 #define BASE_IDX2 (BASE_IDX + 29)
 #else
 #define BASE_IDX2 (BASE_IDX + 25)

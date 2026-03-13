@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2025 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -54,9 +54,11 @@
 
 // Control 1 Bits Mask
 #define CONTROL1_STOP_MASK          0x80
+#define CONTROL1_STOP_SHIFT         (7)
 #define CONTROL1_1224_MASK          0x40
 #define CONTROL1_1224_SHIFT         (6)
 #define CONTROL1_OUTB_MASK          0x20
+#define CONTROL1_OUTB_SHIFT         (5)
 #define CONTROL1_OUT_MASK           0x10
 #define CONTROL1_RSP_MASK           0x08
 #define CONTROL1_ARST_MASK          0x04
@@ -83,7 +85,9 @@
 
 // SQW Bit Mask
 #define SQW_SQWE_MASK               0x80
+#define SQW_SQWE_SHIFT              (7)
 #define SQW_SQFS_MASK               0x1F
+#define SQW_SQFS_SHIFT              (0)
 
 // Calibration Bits Mask
 #define CAL_XT_CMDX_MASK            0x80
@@ -97,6 +101,7 @@
 #define SLEEP_CONTROL_SLRES_MASK    0x40 // When 1, assert nRST low when the Power Control SM is in the SLEEP state.
 #define SLEEP_CONTROL_EX2P_MASK     0x20 // When 1, the external interrupt XT2 will trigger on a rising edge of the WDI pin.
 #define SLEEP_CONTROL_EX1P_MASK     0x10 // When 1, the external interrupt XT1 will trigger on a rising edge of the EXTI pin.
+#define SLEEP_CONTROL_EX1P_SHIFT    (4)
 #define SLEEP_CONTROL_SLST_MASK     0x08 // Set when the AM18X5 enters Sleep Mode
 #define SLEEP_CONTROL_SLTO_MASK     0x07 // The number of 7.8 ms periods after SLP is set until the Power Control SM goes into the SLEEP state.
 
@@ -122,10 +127,13 @@
 #define OSC_CONTROL_OSEL_MASK       0x80
 #define OSC_CONTROL_OSEL_SHIFT      (7)
 #define OSC_CONTROL_ACAL_MASK       0x60
+#define OSC_CONTROL_ACAL_SHIFT      (5)
 #define OSC_CONTROL_AOS_MASK        0x10
 #define OSC_CONTROL_AOS_SHIFT       (4)
 #define OSC_CONTROL_FOS_MASK        0x08
+#define OSC_CONTROL_FOS_SHIFT       (3)
 #define OSC_CONTROL_PWGT_MASK       0x04
+#define OSC_CONTROL_PWGT_SHIFT      (2)
 #define OSC_CONTROL_OFIE_MASK       0x02
 #define OSC_CONTROL_ACIE_MASK       0x01
 
@@ -133,8 +141,10 @@
 #define OSC_STATUS_XTCAL_MASK       0xC0
 #define OSC_STATUS_XTCAL_SHIFT      (6)
 #define OSC_STATUS_LKO2_MASK        0x20
+#define OSC_STATUS_LKO2_SHIFT       (5)
 #define OSC_STATUS_OMODE_MASK       0x10
 #define OSC_STATUS_OF_MASK          0x02
+#define OSC_STATUS_OF_SHIFT         (2)
 #define OSC_STATUS_ACF_MASK         0x01
 
 // Trickle Bits Mask
@@ -162,6 +172,13 @@
 #define OUTPUT_CTRL_O4EN_MASK       0x04
 #define OUTPUT_CTRL_O3EN_MASK       0x02
 #define OUTPUT_CTRL_O1EN_MASK       0x01
+
+#define EXTENSION_RAM_EXIN_MASK     0x10
+
+// Configuration Keys
+#define CONFIG_KEY_SOFTWARE_RESET   0x3C
+#define CONFIG_KEY_PRIMARY          0x9D
+#define CONFIG_KEY_OSC_CONTROL      0xA1
 
 #endif // HAL_PLATFORM_EXTERNAL_RTC
 

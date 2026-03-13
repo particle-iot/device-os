@@ -1,5 +1,41 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+RELEASE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+flash_suffix() {
+    local platform="$1"
+    local size_file
+    local used available pct
+
+    size_file="$(find "${RELEASE_DIR}/${platform}" -name 'system-part1.size' | head -n 1)"
+    if [ ! -f "$size_file" ]; then
+        return 0
+    fi
+
+    # shellcheck disable=SC1090
+    . "$size_file"
+    if [ -z "${used}" ] || [ -z "${available}" ] || [ "${available}" = "0" ]; then
+        return 0
+    fi
+
+    pct="$(awk -v u="$used" -v a="$available" 'BEGIN { printf "%.1f", (u * 100.0) / a }')"
+    awk -v u="$used" -v a="$available" -v p="$pct" \
+        'BEGIN { printf " (%d/%d KiB, %s%%)", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
+}
+
+platform_msg() {
+    local label="$1"
+    local platform
+    platform="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
+
+    if echo -e "${failures}" | grep -q "PLATFORM=\"${platform}\""; then
+        echo ":scrum_closed: ${label}$(flash_suffix "${platform}")\\n"
+    else
+        echo ":scrum_finished: ${label}$(flash_suffix "${platform}")\\n"
+    fi
+}
+
 RESULT_STATUS="passed"
 RESULT_COLOR="#00ff00"
 
@@ -34,14 +70,12 @@ EOF
 
 ADDITIONAL_BLOCKS=""
 
-if [ "${RESULT_STATUS}" == "failed" ]; then
-    # No more than 10 fields, unit tests separately
-    if echo -e "${failures}" | grep -q "PLATFORM=\"unit-test\""; then
-        msg=":scrum_closed: Unit tests"
-    else
-        msg=":scrum_finished: Unit tests"
-    fi
-    ADDITIONAL_BLOCKS=$(cat <<EOF
+if echo -e "${failures}" | grep -q "PLATFORM=\"unit-test\""; then
+    msg=":scrum_closed: Unit tests"
+else
+    msg=":scrum_finished: Unit tests"
+fi
+ADDITIONAL_BLOCKS=$(cat <<EOF
 ,{
     "type": "section",
     "text": {
@@ -52,28 +86,24 @@ if [ "${RESULT_STATUS}" == "failed" ]; then
 EOF
 )
 
-    # Do not add new platforms here, there is a limit of 10 currently, see a block below instead
-    fields=""
-    for p in Argon Boron BSoM B5SoM Tracker TrackerM ESomX P2 GCC Newhal; do
-        if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
-            msg=":scrum_closed: $p\\n"
-        else
-            msg=":scrum_finished: $p\\n"
-        fi
-        field=$(cat <<EOF
+# Do not add new platforms here, there is a limit of 10 currently, see a block below instead
+fields=""
+for p in Argon Boron BSoM B5SoM Tracker TrackerM ESomX P2 GCC Newhal; do
+    msg="$(platform_msg "$p")"
+    field=$(cat <<EOF
 {
     "type": "mrkdwn",
     "text": "${msg}"
 }
 EOF
 )
-        comma=","
-        if [ "${fields}" == "" ]; then
-            comma=""
-        fi
-        fields="${fields}${comma}${field}"
-    done
-    ADDITIONAL_BLOCKS+=$(cat <<EOF
+    comma=","
+    if [ "${fields}" == "" ]; then
+        comma=""
+    fi
+    fields="${fields}${comma}${field}"
+done
+ADDITIONAL_BLOCKS+=$(cat <<EOF
 ,{
     "type": "section",
     "fields": [
@@ -83,27 +113,23 @@ EOF
 EOF
 )
 
-    fields=""
-    for p in MSoM Electron2; do
-        if echo -e "${failures}" | grep -q "PLATFORM=\"${p,,}\""; then
-            msg=":scrum_closed: $p\\n"
-        else
-            msg=":scrum_finished: $p\\n"
-        fi
-        field=$(cat <<EOF
+fields=""
+for p in MSoM Electron2; do
+    msg="$(platform_msg "$p")"
+    field=$(cat <<EOF
 {
     "type": "mrkdwn",
     "text": "${msg}"
 }
 EOF
 )
-        comma=","
-        if [ "${fields}" == "" ]; then
-            comma=""
-        fi
-        fields="${fields}${comma}${field}"
-    done
-    ADDITIONAL_BLOCKS+=$(cat <<EOF
+    comma=","
+    if [ "${fields}" == "" ]; then
+        comma=""
+    fi
+    fields="${fields}${comma}${field}"
+done
+ADDITIONAL_BLOCKS+=$(cat <<EOF
 ,{
     "type": "section",
     "fields": [
@@ -113,7 +139,7 @@ EOF
 EOF
 )
 
-
+if [ "${RESULT_STATUS}" == "failed" ]; then
     if [ "${CIRCLE_ARTIFACTS_URL}" == "" ]; then
         msg=":scrum_closed: Artifacts"
     else

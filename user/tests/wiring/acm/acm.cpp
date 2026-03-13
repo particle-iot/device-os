@@ -16,6 +16,7 @@
  */
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "muon_test_util.h"
 
 const uint32_t WIFI_CONNECT_TIMEOUT_MS = 5 * 60 * 1000;
 const uint32_t DISCONNECT_TIMEOUT_MS = 5 * 60 * 1000;
@@ -177,6 +178,11 @@ void preferSwitchTest(NetworkClass& network, bool connect, bool& ok) {
 #if HAL_PLATFORM_ETHERNET
 test(ACM_00_prepare_ethernet) {
     System.enableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::configureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
     System.reset();
@@ -381,6 +387,11 @@ test(ACM_14_disable_ethernet) {
         return;
     }
     System.disableFeature(FEATURE_ETHERNET_DETECTION);
+#if HAL_PLATFORM_HW_FORM_FACTOR_SOM
+    if (particle::test::detectMuonBoard()) {
+        particle::test::unconfigureMuonEthernet();
+    }
+#endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
     System.reset();

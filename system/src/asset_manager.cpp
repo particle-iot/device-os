@@ -344,6 +344,8 @@ int AssetManager::storeAsset(const hal_module_t* module) {
         availableAssets_.clear();
         CHECK(fs::mount(fs));
 
+        rmrf(info.name().c_str(), FILESYSTEM_INSTANCE_ASSET_STORAGE);
+
         // Save the module to the asset filesystem
         CHECK(stream.seek(0));
         CHECK(saveToFile(stream, info.name().c_str(), fs));

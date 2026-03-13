@@ -30,3 +30,4 @@ PROVIDE (link_dynalib_location_offset_hal_watchdog         = 108);
 PROVIDE (link_dynalib_location_offset_hal_backup_ram       = 112);
 PROVIDE (link_dynalib_location_offset_system_asset_manager = 116);
 PROVIDE (link_dynalib_location_offset_system_ledger        = 120);
+PROVIDE (link_dynalib_location_offset_hal_exrtc            = 124);

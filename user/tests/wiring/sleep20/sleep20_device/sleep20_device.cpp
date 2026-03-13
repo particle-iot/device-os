@@ -250,7 +250,7 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin_1) {
     SleepResult result = {};
 
 // Tracker supports waking up device from hibernate mode by external RTC
-#if !HAL_PLATFORM_EXTERNAL_RTC
+#if !HAL_PLATFORM_EXTERNAL_RTC || HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
     result = System.sleep(SLEEP_MODE_DEEP, 3s);
     assertNotEqual(result.error(), SYSTEM_ERROR_NONE); // Gen3 doesn't support RTC wakeup source.
 #endif
@@ -276,7 +276,7 @@ test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Analog_P
 }
 
 // Tracker support waking up device from hibernate mode by external RTC
-#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 test(06_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
 
@@ -297,7 +297,7 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
     assertEqual(System.resetReason(), (int)RESET_REASON_POWER_MANAGEMENT);
 }
-#endif // HAL_PLATFORM_EXTERNAL_RTC
+#endif // HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 #endif // !HAL_PLATFORM_RTL872X
 
 #if HAL_PLATFORM_RTL872X

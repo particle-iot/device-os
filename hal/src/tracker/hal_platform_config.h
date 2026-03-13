@@ -39,9 +39,10 @@
 #define HAL_PLATFORM_DEMUX (1)
 
 #define HAL_PLATFORM_EXTERNAL_RTC (1)
+#define HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL (0)
+#define HAL_PLATFORM_AM18X5 (1)
 #define HAL_PLATFORM_EXTERNAL_RTC_I2C (HAL_I2C_INTERFACE2)
 #define HAL_PLATFORM_EXTERNAL_RTC_I2C_ADDR (0x69)
-#define HAL_PLATFORM_EXTERNAL_RTC_CAL_XT (-45) // This value should be calculated and averaged at 25 celsius degrees during manufacturing
 
 #define HAL_PLATFORM_I2C3 (1)
 
@@ -69,3 +70,4 @@
 
 // Save some flash space on assertion strings
 #define HAL_PLATFORM_SHORT_ASSERTS (1)
+#define HAL_PLATFORM_LOW_FLASH_SPACE (1)

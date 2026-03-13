@@ -1,6 +1,44 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+namespace {
+
+constexpr int TIME_SOURCE_MAX_DRIFT_SECONDS = 10;
+
+int64_t absTimeDiff(time_t lhs, time_t rhs) {
+    return lhs >= rhs ? (int64_t)lhs - (int64_t)rhs : (int64_t)rhs - (int64_t)lhs;
+}
+
+bool shouldCheckExternalTime() {
+#if HAL_PLATFORM_EXTERNAL_RTC
+#if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+    auto status = ExternalTime.status();
+    return status.valid() && status.bound() && status.present() && status.ready();
+#else
+    return true;
+#endif
+#else
+    return false;
+#endif
+}
+
+void assertTimeSourcesAreSane() {
+    const auto systemTime = Time.now();
+    const auto internalTime = InternalTime.now();
+    assertLessOrEqual(absTimeDiff(systemTime, internalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+    assertEqual(InternalTime.isValid(), Time.isValid());
+    if (shouldCheckExternalTime()) {
+#if HAL_PLATFORM_EXTERNAL_RTC
+        const auto externalTime = ExternalTime.now();
+        assertLessOrEqual(absTimeDiff(systemTime, externalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+        assertLessOrEqual(absTimeDiff(internalTime, externalTime), TIME_SOURCE_MAX_DRIFT_SECONDS);
+        assertEqual(ExternalTime.isValid(), Time.isValid());
+#endif // HAL_PLATFORM_EXTERNAL_RTC
+    }
+}
+
+} // namespace
+
 test(TIME_01_SyncTimeInAutomaticMode) {
     set_system_mode(AUTOMATIC);
     assertEqual(System.mode(),AUTOMATIC);
@@ -44,6 +82,7 @@ test(TIME_01_SyncTimeInAutomaticMode) {
         //     syncedCurrentUnix-syncedLastUnix, syncedCurrentMillis-syncedLastMillis);
         assertMore(syncedCurrentMillis, syncedLastMillis);
         assertMore(syncedCurrentUnix, syncedLastUnix);
+        assertTimeSourcesAreSane();
     } // for()
 }
 
@@ -81,5 +120,6 @@ test(TIME_02_SyncTimeInManualMode) {
         //     syncedCurrentUnix-syncedLastUnix, syncedCurrentMillis-syncedLastMillis);
         assertMore(syncedCurrentMillis, syncedLastMillis);
         assertMore(syncedCurrentUnix, syncedLastUnix);
+        assertTimeSourcesAreSane();
     } // for()
 }

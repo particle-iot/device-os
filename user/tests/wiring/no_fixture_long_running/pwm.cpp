@@ -17,6 +17,15 @@ struct PinMapping {
     hal_pin_t pin;
 };
 
+static bool isTrackerOne() {
+#if (PLATFORM_ID == PLATFORM_TRACKER)
+    if (System.hardwareInfo().model() == PLATFORM_TRACKER_MODEL_TRACKERONE) {
+        return true;
+    }
+#endif
+    return false;
+}
+
 #define PIN(p) {#p, p}
 
 const PinMapping pwm_pins[] = {
@@ -271,6 +280,9 @@ test(PWM_07_AnalogWriteWithFrequencyOnPinResultsInCorrectAnalogValue) {
 #if !HAL_PLATFORM_RTL872X
 test(PWM_08_LowDCAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
+    if (pin == D0 && isTrackerOne()) {
+        return;
+    }
     out->printlnf("Pin: %s", name);
 
     // when
@@ -486,6 +498,9 @@ test(PWM_09_LowFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 
 test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
+    if (pin == D0 && isTrackerOne()) {
+        return;
+    }
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -588,6 +603,9 @@ test(PWM_10_HighFrequencyAnalogWriteOnPinResultsInCorrectPulseWidth) {
 
 test(PWM_11_PwmSleep) {
     for_all_pwm_pins([](hal_pin_t pin, const char* name) {
+    if (pin == D0 && isTrackerOne()) {
+        return;
+    }
     out->printlnf("Pin: %s", name);
     // when
     pinMode(pin, OUTPUT);
@@ -626,6 +644,9 @@ test(PWM_11_PwmSleep) {
 
 test(PWM_12_CompherensiveResolutionFrequency) {
     for_all_pwm_pins([&](uint16_t pin, const char* name) {
+        if (pin == D0 && isTrackerOne()) {
+            return;
+        }
         out->printlnf("Pin: %s", name);
         // when
         pinMode(pin, OUTPUT);

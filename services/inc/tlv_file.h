@@ -46,6 +46,7 @@ public:
     int set(uint16_t key, const uint8_t* value, uint16_t length, int index = -1);
     int add(uint16_t key, const uint8_t* value, uint16_t length);
     int del(uint16_t key, int index = -1);
+    int dataSize(uint16_t key, int index = -1);
 
 private:
     struct FileFooter {

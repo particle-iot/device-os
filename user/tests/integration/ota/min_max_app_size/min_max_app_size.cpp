@@ -319,3 +319,8 @@ test(36_usb_flash_original_application_busy_wait) {
 
 test(37_check_original_application) {
 }
+
+test(99_cleanup) {
+    // Just in case
+    System.enableReset();
+}

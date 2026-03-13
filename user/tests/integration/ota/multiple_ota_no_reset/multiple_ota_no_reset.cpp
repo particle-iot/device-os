@@ -108,3 +108,8 @@ test(04_validate_module_info) {
     // The app hash should not have changed
     assertEqual(strcmp(appHash, origAppHash), 0);
 }
+
+test(99_cleanup) {
+    // Just in case
+    System.enableReset();
+}

@@ -24,6 +24,7 @@
 #include "service_debug.h"
 #include "system_error.h"
 #include <algorithm>
+#include "check.h"
 
 /* FIXME: once filesystem interface is finalized, convert the implementation not to use
  * LittleFS API.
@@ -106,6 +107,19 @@ ssize_t TlvFile::size() {
     }
 
     return lfs_file_size(lfs(), &file_);
+}
+
+int TlvFile::dataSize(uint16_t key, int index) {
+    FsLock lk(fs_);
+
+    if (!open_) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    uint16_t sz = 0;
+    CHECK(find(key, index, &sz));
+
+    return (int)sz;
 }
 
 ssize_t TlvFile::get(uint16_t key, uint8_t* value, uint16_t length, int index) {

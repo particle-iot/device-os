@@ -81,7 +81,10 @@ static void Refresh_UnixTime_Cache(time_t unix_time)
     }
 }
 
-const char* TimeClass::format_spec = TIME_FORMAT_DEFAULT;
+TimeClass::TimeClass(TimeSource source)
+        : source_(source),
+          format_spec(TIME_FORMAT_DEFAULT) {
+}
 
 /* current hour */
 int TimeClass::hour()
@@ -221,7 +224,10 @@ time32_t TimeClass::now()
 {
     (void)isValid();
     struct timeval tv = {};
-    hal_rtc_get_time(&tv, nullptr);
+    hal_rtc_option_t opt = {};
+    opt.size = sizeof(opt);
+    opt.source = static_cast<hal_rtc_source_t>(source_);
+    hal_rtc_get_time(&tv, &opt);
     return tv.tv_sec;
 }
 
@@ -281,9 +287,21 @@ void TimeClass::setTime(time_t t)
         .tv_sec = t,
         .tv_usec = 0
     };
-    if (!hal_rtc_set_time(&tv, nullptr)) {
+    hal_rtc_option_t opt = {};
+    opt.size = sizeof(opt);
+    opt.source = static_cast<hal_rtc_source_t>(source_);
+    if (!hal_rtc_set_time(&tv, &opt)) {
         system_notify_time_changed((uint32_t)time_changed_manually, nullptr, nullptr);
     }
+}
+
+TimeSource TimeClass::timeSource() {
+    hal_rtc_option_t opt = {};
+    opt.size = sizeof(opt);
+    opt.source = static_cast<hal_rtc_source_t>(source_);
+    struct timeval tv = {};
+    hal_rtc_get_time(&tv, &opt);
+    return static_cast<TimeSource>(opt.source);
 }
 
 /* return string representation for the given time */
@@ -349,15 +367,18 @@ String TimeClass::timeFormatImpl(tm* calendar_time, const char* format, int time
     return String(buf);
 }
 
-bool TimeClass::isValid()
+bool TimeClass::isValid() const
 {
-    bool rtcstate = hal_rtc_time_is_valid(nullptr);
+    hal_rtc_option_t opt = {};
+    opt.size = sizeof(opt);
+    opt.source = static_cast<hal_rtc_source_t>(source_);
+    bool rtcstate = hal_rtc_time_is_valid(&opt);
     if (rtcstate)
         return rtcstate;
     if (System.mode() == AUTOMATIC && system_thread_get_state(nullptr) == spark::feature::DISABLED)
     {
         waitUntil(Particle.syncTimeDone);
-        return hal_rtc_time_is_valid(nullptr);
+        return hal_rtc_time_is_valid(&opt);
     }
     return rtcstate;
 }
@@ -367,5 +388,16 @@ TimeClass::operator bool() const
   return isValid();
 }
 
+TimeClass& __fetch_global_Time() {
+    static TimeClass t; // TimeSource::DEFAULT
+    return t;
+}
 
-TimeClass Time;
+#if HAL_PLATFORM_EXTERNAL_RTC
+
+TimeClass& __fetch_global_InternalTime() {
+    static TimeClass t(TimeSource::INTERNAL);
+    return t;
+}
+
+#endif // HAL_PLATFORM_EXTERNAL_RTC

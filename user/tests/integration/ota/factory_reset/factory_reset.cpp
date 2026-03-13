@@ -238,3 +238,8 @@ test(11_cleanup_factory_slot) {
 }
 
 #endif // HAL_PLATFORM_NRF52840
+
+test(99_cleanup) {
+    // Just in case
+    System.enableReset();
+}

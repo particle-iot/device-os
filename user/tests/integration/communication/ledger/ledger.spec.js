@@ -6,7 +6,7 @@ const Particle = require('particle-api-js');
 
 const DEVICE_TO_CLOUD_LEDGER = 'test-device-to-cloud';
 const CLOUD_TO_DEVICE_LEDGER = 'test-cloud-to-device';
-const ORG_ID = 'particle'; // Set this constant undefined to use the sandbox account
+const ORG_ID = 'particle-hil'; // Set this constant undefined to use the sandbox account
 
 let api;
 let auth;
