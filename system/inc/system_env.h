@@ -155,7 +155,7 @@ public:
      * @return `true` if the variable is defined, otherwise `false`.
      */
     bool has(const char* name) {
-        return env_ ? !!env_->find(name) : false;
+        return env_.find(name);
     }
 
     /**
@@ -164,7 +164,7 @@ public:
      * @return Number of variables.
      */
     size_t count() const {
-        return env_ ? env_->size : 0;
+        return env_.size;
     }
 
     /**
@@ -187,19 +187,16 @@ public:
      */
     template<typename F>
     int forEach(F&& fn, char* buf = nullptr, size_t bufSize = 0) {
-        if (!env_) {
-            return 0;
-        }
         char nameBuf[MAX_ENV_NAME_LEN + 1];
-        for (const auto& v: env_->buckets) {
+        for (const auto& v: env_.buckets) {
             if (v.src == VarSource::INVALID) { // Empty bucket
                 continue;
             }
-            int r = env_->readName(v, nameBuf, sizeof(nameBuf));
+            int r = env_.readName(v, nameBuf, sizeof(nameBuf));
             if (r < 0) {
                 return r;
             }
-            r = env_->readValue(v, buf, bufSize);
+            r = env_.readValue(v, buf, bufSize);
             if (r < 0) {
                 return r;
             }
@@ -208,15 +205,15 @@ public:
                 return r;
             }
         }
-        return env_->size;
+        return env_.size;
     }
 
     const char* snapshotHash() const {
-        return env_ ? env_->snapshotHash.get() : nullptr;
+        return env_.snapshotHash.get();
     }
 
     bool hasSnapshot() const {
-        return env_ ? env_->snapshotFile.isOpen() : false;
+        return env_.snapshotFile.isOpen();
     }
 
     int clear();
@@ -262,7 +259,7 @@ private:
         }
     };
 
-    std::unique_ptr<EnvData> env_;
+    EnvData env_;
 
     Env() = default; // Use instance()
 

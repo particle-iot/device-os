@@ -320,22 +320,15 @@ int Env::init() {
     fs::FsLock lock;
     CHECK(fs::mount());
 
-    std::unique_ptr<EnvData> env(new(std::nothrow) EnvData());
-    if (!env) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-
+    EnvData env;
     bool hasStaged = false;
-    int r = loadEnv(*env, hasStaged, true /* tryStaged */);
+    int r = loadEnv(env, hasStaged, true /* tryStaged */);
     if (r < 0) {
         if (hasStaged) {
             // Ignore the staged files as a fallback
-            env.reset(new(std::nothrow) EnvData());
-            if (!env) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
+            env = EnvData();
             hasStaged = false;
-            r = loadEnv(*env, hasStaged, false /* tryStaged */);
+            r = loadEnv(env, hasStaged, false /* tryStaged */);
         }
         if (r < 0) {
             LOG(ERROR, "Error while loading env vars: %d", r);
@@ -344,20 +337,18 @@ int Env::init() {
     }
 
     // Clean up empty files
-    if (env->appFile.isOpen() && env->appFile.size() == 0) {
-        env->appFile.close();
+    if (env.appFile.isOpen() && env.appFile.size() == 0) {
+        env.appFile.close();
         fs::remove(APP_FILE_CURRENT);
         fs::remove(APP_FILE_STAGED);
     }
-    if (env->snapshotFile.isOpen() && env->snapshotFile.size() == 0) {
-        env->snapshotFile.close();
+    if (env.snapshotFile.isOpen() && env.snapshotFile.size() == 0) {
+        env.snapshotFile.close();
         fs::remove(SNAPSHOT_FILE_CURRENT);
         fs::remove(SNAPSHOT_FILE_STAGED);
     }
 
-    if (env->size) {
-        env_ = std::move(env);
-    }
+    env_ = std::move(env);
 
     r = updateBootloaderVars();
     if (r < 0) {
@@ -370,22 +361,16 @@ int Env::init() {
 }
 
 int Env::get(const char* name, char* buf, size_t bufSize) {
-    if (!env_) {
-        return SYSTEM_ERROR_ENV_NOT_FOUND;
-    }
-    auto var = env_->find(name);
+    auto var = env_.find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
-    CHECK(env_->readValue(*var, buf, bufSize));
+    CHECK(env_.readValue(*var, buf, bufSize));
     return var->valSize;
 }
 
 int Env::get(const char* name, CString& val) {
-    if (!env_) {
-        return SYSTEM_ERROR_ENV_NOT_FOUND;
-    }
-    auto var = env_->find(name);
+    auto var = env_.find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
@@ -394,7 +379,7 @@ int Env::get(const char* name, CString& val) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     auto v = CString::wrap(buf); // Takes ownership over the buffer
-    CHECK(env_->readValue(*var, buf, var->valSize + 1));
+    CHECK(env_.readValue(*var, buf, var->valSize + 1));
     val = std::move(v);
     return var->valSize;
 }
@@ -432,14 +417,11 @@ int Env::get(const char* name, bool& val) {
 }
 
 int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
-    if (!env_) {
-        return SYSTEM_ERROR_ENV_NOT_FOUND;
-    }
-    auto var = env_->find(name);
+    auto var = env_.find(name);
     if (!var) {
         return SYSTEM_ERROR_ENV_NOT_FOUND;
     }
-    auto& file = env_->fileForSource((VarSource)var->src);
+    auto& file = env_.fileForSource((VarSource)var->src);
     std::unique_ptr<ValueStream> s(new(std::nothrow) ValueStream(file, var->valOffs, var->valSize));
     if (!s) {
         return SYSTEM_ERROR_NO_MEMORY;
@@ -449,7 +431,7 @@ int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
 }
 
 int Env::clear() {
-    if (!env_) {
+    if (!env_.size) {
         return 0;
     }
     fs::FsLock lock;
