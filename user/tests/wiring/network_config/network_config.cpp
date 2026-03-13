@@ -341,7 +341,34 @@ test(NETWORK_CONFIG_WIFI_99_connect) {
 
 static bool isEthernetPresent() {
     if_t iface = nullptr;
-    return !if_get_by_index(NETWORK_INTERFACE_ETHERNET, &iface);
+    if (if_get_by_index(NETWORK_INTERFACE_ETHERNET, &iface)) {
+        return false;
+    }
+
+    unsigned flags = 0;
+    if_get_flags(iface, &flags);
+
+    if (flags & (IFF_LOWER_UP | IFF_UP) == (IFF_LOWER_UP | IFF_UP)) {
+        return true;
+    }
+
+    Ethernet.on();
+    Ethernet.connect();
+
+    bool ok = false;
+    for (auto start = millis(); millis() - start <= 10000;) {
+        flags = 0;
+        if_get_flags(iface, &flags);
+        if (flags & IFF_LOWER_UP) {
+            ok = true;
+            break;
+        }
+    }
+
+    Ethernet.disconnect();
+    Ethernet.off();
+
+    return ok;
 }
 
 test(NETWORK_CONFIG_ETH_01_enable_feature) {
