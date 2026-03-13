@@ -377,7 +377,7 @@ void rtlLowLevelInit() {
         HAL_WRITE32(SYSTEM_CTRL_BASE_LP, REG_AON_BOOT_REASON1, temp);
         // Retention Ram reset
         // Only clear sys stuff used by the SDK and part of RRAM_TypeDef again used by the SDK
-        _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RRAM_USER_RSVD));
+        _memset((void*)RETENTION_RAM_BASE, 0, RETENTION_RAM_SYS_OFFSET + offsetof(RRAM_TypeDef, RTC_YEAR));
         assert_param(sizeof(RRAM_TypeDef) <= 0xB0);
     }
 
