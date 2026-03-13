@@ -348,6 +348,12 @@ int Env::init() {
         fs::remove(SNAPSHOT_FILE_STAGED);
     }
 
+    // Close the files if they only contain metadata but not variables
+    if (!env.size) {
+        env.appFile.close();
+        env.snapshotFile.close();
+    }
+
     env_ = std::move(env);
 
     r = updateBootloaderVars();

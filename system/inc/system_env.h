@@ -212,10 +212,6 @@ public:
         return env_.snapshotHash.get();
     }
 
-    bool hasSnapshot() const {
-        return env_.snapshotFile.isOpen();
-    }
-
     int clear();
 
     // Reimplemented from SystemAssetHandler
