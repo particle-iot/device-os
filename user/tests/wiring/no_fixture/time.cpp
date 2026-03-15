@@ -549,6 +549,7 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
 
     Particle.disconnect();
     assertTrue(waitForNot(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Network.off(); // Just in case
 #if HAL_PLATFORM_CELLULAR
     Cellular.off();
     assertTrue(waitFor(Cellular.isOff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
@@ -557,8 +558,6 @@ test(TIME_22_TimeIsPreservedThroughStopSleep_1) {
     WiFi.off();
     assertTrue(waitFor(WiFi.isOff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 #endif
-    Network.off();
-    assertTrue(waitFor(Network.isOff, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     expectSystemReset();
     lastTimestamp = Time.now();

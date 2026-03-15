@@ -25,6 +25,10 @@ before(function() {
     });
 });
 
+after(function() {
+    device.removeAllListeners('mailbox');
+});
+
 test('01_erase_factory_module', async function () {
 
 });

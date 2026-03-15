@@ -178,7 +178,14 @@ test(POWER_SAVING_05_check_current_thread) {
     assertTrue(appThread);
 }
 
-test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network) {
+namespace {
+
+SystemSleepResult result_06;
+system_tick_t start_06 = 0;
+
+}
+
+test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_1) {
     skip();
     return;
 
@@ -212,17 +219,19 @@ test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode
     assertLessOrEqual(period, 1280 + 128);
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 30000));
-    system_tick_t start = millis();
+    start_06 = millis();
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
         .duration(60s)
         .network(NETWORK_INTERFACE_CELLULAR);
-    SystemSleepResult result = System.sleep(config);
+    result_06 = System.sleep(config);
 
     // in sleep for 60s, should wake up after 30s due to function call
+}
 
-    assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
-    assertLessOrEqual(millis() - start, 50 * 1000);
+test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_2) {
+    assertEqual((int)result_06.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
+    assertLessOrEqual(millis() - start_06, 50 * 1000);
 }
 
 test(POWER_SAVING_07_check_function_argument_value) {

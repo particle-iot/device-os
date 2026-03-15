@@ -273,7 +273,7 @@ static void checkError(system_tick_t expectedTo) {
 
 #endif // HAL_PLATFORM_RTL872X
 
-test(WATCHDDOG_100_reload_value_is_calculated_correctly) {
+test(WATCHDOG_09_reload_value_is_calculated_correctly) {
     constexpr system_tick_t TEST_LOOP_CNT = 100;
 
     WatchdogInfo info;

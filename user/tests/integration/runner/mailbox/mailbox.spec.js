@@ -12,6 +12,10 @@ before(function() {
     });
 });
 
+after(function() {
+    device.removeAllListeners('mailbox');
+});
+
 test('01_mailbox', async function () {
     expect(device.mailBox).to.eql([
         {t: 2, d: 'test'},

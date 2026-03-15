@@ -50,22 +50,11 @@ before(function() {
             skipTest = true;
             return;
         }
-        // console.log('waiting for device to enter low power');
-        await delayMs(30000);
-        // console.log('waking up device with a function call');
-        let lastError;
-        try {
-            let resp = await api.callFunction({ deviceId, name: 'fnlp1', argument: 'argument string low power sleep', auth });
-            // console.log(resp.body.return_value + ' == ' + (returnVal+1));
-            expect(resp.body.return_value).to.equal(returnVal + 1);
-        } catch (e) {
-            lastError = e;
-        }
-        if (lastError) {
-            // console.log(lastError);
-            throw lastError;
-        }
     });
+});
+
+after(function() {
+    device.removeAllListeners('mailbox');
 });
 
 test('POWER_SAVING_00_setup', async function() {
@@ -118,7 +107,32 @@ test('POWER_SAVING_05_check_current_thread', async function () {
     // See power_saving_mode.cpp
 });
 
-test('POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network', async function() {
+test('POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_1', async function() {
+    if (skipTest) {
+        return;
+    }
+
+    // See power_saving_mode.cpp
+
+    // console.log('waiting for device to enter low power');
+    await delayMs(30000);
+    // console.log('waking up device with a function call');
+    let lastError;
+    try {
+        let resp = await api.callFunction({ deviceId, name: 'fnlp1', argument: 'argument string low power sleep', auth });
+        // console.log(resp.body.return_value + ' == ' + (returnVal+1));
+        expect(resp.body.return_value).to.equal(returnVal + 1);
+    } catch (e) {
+        lastError = e;
+    }
+    if (lastError) {
+        // console.log(lastError);
+        throw lastError;
+    }
+});
+
+
+test('POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_2', async function() {
     if (skipTest) {
         return;
     }
