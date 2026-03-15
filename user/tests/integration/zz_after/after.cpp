@@ -145,12 +145,12 @@ test(03_enable_listening_mode) {
 
 #if HAL_PLATFORM_ENV
 test(04_clear_env) {
+    expectSystemReset();
     System.clearEnv(false /* reset */);
     unlink("/sys/env_app");
     unlink("/sys/env_app.staged");
     unlink("/sys/env_snapshot");
     unlink("/sys/env_snapshot.staged");
-    expectSystemReset();
     System.reset();
 }
 

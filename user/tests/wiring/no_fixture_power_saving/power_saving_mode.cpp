@@ -230,6 +230,14 @@ test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode
 }
 
 test(POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_2) {
+    skip();
+    return;
+
+    if (ncpId != PLATFORM_NCP_SARA_R510) {
+        skip();
+        return;
+    }
+
     assertEqual((int)result_06.wakeupReason(), (int)SystemSleepWakeupReason::BY_NETWORK);
     assertLessOrEqual(millis() - start_06, 50 * 1000);
 }

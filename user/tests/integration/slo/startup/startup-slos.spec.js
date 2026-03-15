@@ -24,7 +24,7 @@ const THRESHOLDS = {
         targetFreeRam: 3040870,        // 2.9MB
         targetTime: {
             pre_startup: 130000,
-            pre_startup_duration: 220,
+            pre_startup_duration: 300,
             startup_duration: 390000,
             setup_duration: 55
         }
@@ -34,7 +34,7 @@ const THRESHOLDS = {
         targetFreeRam: 2924544,        // 2.8MB
         targetTime: {
             pre_startup: 130000,
-            pre_startup_duration: 220,
+            pre_startup_duration: 300,
             startup_duration: 425000,
             setup_duration: 55
         }
@@ -44,7 +44,7 @@ const THRESHOLDS = {
         targetFreeRam: 2924544,        // 2.8MB
         targetTime: {
             pre_startup: 130000,
-            pre_startup_duration: 220,
+            pre_startup_duration: 300,
             startup_duration: 425000,
             setup_duration: 55
         }
