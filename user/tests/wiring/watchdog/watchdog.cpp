@@ -384,4 +384,13 @@ test(WATCHDOG_EXT_06_running_after_waking_up) {
     checkExternalWatchdogState(WatchdogState::STARTED);
 }
 
+test(WATCHDOG_EXT_99_cleanup) {
+    if (!shouldRunExternalWatchdogTests()) {
+        skip();
+        return;
+    }
+    assertEqual(0, ExternalWatchdog.stop());
+    checkExternalWatchdogState(WatchdogState::STOPPED);
+}
+
 #endif // HAL_PLATFORM_EXTERNAL_RTC

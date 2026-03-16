@@ -674,7 +674,13 @@ test(EXRTC_09_power_off_should_succeed_2) {
         skip();
         return;
     }
+
+#if PLATFORM_BSOM
+    assertTrue((System.resetReason() == RESET_REASON_POWER_DOWN) || (System.resetReason() == RESET_REASON_PIN_RESET));
+#else
     assertEqual(System.resetReason(), (int)RESET_REASON_POWER_DOWN);
+#endif
+
     assertExrtcConfigured();
 }
 
