@@ -46,11 +46,6 @@ void prepareOta(bool connect = true, bool compressedOta = true) {
 }
 
 void waitOta() {
-    SCOPE_GUARD({
-        System.off(all_events);
-        System.enableReset();
-    });
-
     for (auto start = millis(); millis() - start <= 20 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
@@ -68,8 +63,6 @@ void waitOta() {
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);
     assertNotEqual((int)updateResult, (int)SYSTEM_ERROR_OTA);
-    
-    assertEqual(0, TestRunner::instance()->pushMailbox(Test::MailboxEntry().type(Test::MailboxEntry::Type::RESET_PENDING), 5000));
 }
 
 void highPriorityFunc() {
@@ -188,8 +181,17 @@ test(02_ota_max_application_start) {
     prepareOta(true, false);
 }
 
-test(03_ota_max_application_wait) {
+test(03_ota_max_application_wait_1) {
     waitOta();
+}
+
+test(03_ota_max_application_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(04_check_max_application) {
@@ -199,8 +201,17 @@ test(05_ota_original_application_start) {
     prepareOta(true, false);
 }
 
-test(06_ota_original_application_wait) {
+test(06_ota_original_application_wait_1) {
     waitOta();
+}
+
+test(06_ota_original_application_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(07_check_original_application) {
@@ -210,8 +221,17 @@ test(08_ota_max_application_compressed_start) {
     prepareOta();
 }
 
-test(09_ota_max_application_compressed_wait) {
+test(09_ota_max_application_compressed_wait_1) {
     waitOta();
+}
+
+test(09_ota_max_application_compressed_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(10_check_max_application) {
@@ -221,8 +241,17 @@ test(11_ota_original_application_compressed_start) {
     prepareOta();
 }
 
-test(12_ota_original_application_compressed_wait) {
+test(12_ota_original_application_compressed_wait_1) {
     waitOta();
+}
+
+test(12_ota_original_application_compressed_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(13_check_original_application) {
@@ -232,8 +261,17 @@ test(14_usb_flash_max_application_start) {
     prepareOta(false);
 }
 
-test(15_usb_flash_max_application_wait) {
+test(15_usb_flash_max_application_wait_1) {
     waitOta();
+}
+
+test(15_usb_flash_max_application_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(16_check_max_application) {
@@ -243,8 +281,17 @@ test(17_usb_flash_original_application_start) {
     prepareOta(false);
 }
 
-test(18_usb_flash_original_application_wait) {
+test(18_usb_flash_original_application_wait_1) {
     waitOta();
+}
+
+test(18_usb_flash_original_application_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(19_check_original_application) {
@@ -254,8 +301,17 @@ test(20_usb_flash_max_application_compressed_start) {
     prepareOta(false);
 }
 
-test(21_usb_flash_max_application_compressed_wait) {
+test(21_usb_flash_max_application_compressed_wait_1) {
     waitOta();
+}
+
+test(21_usb_flash_max_application_compressed_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(22_check_max_application) {
@@ -265,8 +321,17 @@ test(23_usb_flash_original_application_compressed_start) {
     prepareOta(false);
 }
 
-test(24_usb_flash_original_application_compressed_wait) {
+test(24_usb_flash_original_application_compressed_wait_1) {
     waitOta();
+}
+
+test(24_usb_flash_original_application_compressed_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(25_check_original_application) {
@@ -277,8 +342,17 @@ test(26_ota_max_application_busy_start) {
     prepareOta(true, false);
 }
 
-test(27_ota_max_application_busy_wait) {
+test(27_ota_max_application_busy_wait_1) {
     waitOta();
+}
+
+test(27_ota_max_application_busy_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(28_check_max_application) {
@@ -289,8 +363,17 @@ test(29_ota_original_application_busy_start) {
     prepareOta(true, false);
 }
 
-test(30_ota_original_application_busy_wait) {
+test(30_ota_original_application_busy_wait_1) {
     waitOta();
+}
+
+test(30_ota_original_application_busy_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(31_check_original_application) {
@@ -301,8 +384,17 @@ test(32_usb_flash_max_application_busy_start) {
     prepareOta(false);
 }
 
-test(33_usb_flash_max_application_busy_wait) {
+test(33_usb_flash_max_application_busy_wait_1) {
     waitOta();
+}
+
+test(33_usb_flash_max_application_busy_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(34_check_max_application) {
@@ -313,8 +405,17 @@ test(35_usb_flash_original_application_busy_start) {
     prepareOta(false);
 }
 
-test(36_usb_flash_original_application_busy_wait) {
+test(36_usb_flash_original_application_busy_wait_1) {
     waitOta();
+}
+
+test(36_usb_flash_original_application_busy_wait_2) {
+    System.off(all_events);
+    expectSystemReset();
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(37_check_original_application) {

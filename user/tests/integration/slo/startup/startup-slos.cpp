@@ -174,6 +174,16 @@ test(98_cleanup) {
     // We are supposed to get an empty env
 }
 
-test(99_cleanup) {
+test(99_cleanup_1) {
     completeFirmwareUpdate();
+}
+
+test(99_cleanup_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }

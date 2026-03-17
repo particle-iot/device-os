@@ -162,8 +162,18 @@ test(05_restore_cloud_after_env_clear) {
     // We are supposed to get an empty env
 }
 
-test(06_finalize_env_clear) {
+test(06_finalize_env_clear_1) {
     completeFirmwareUpdate();
+}
+
+test(06_finalize_env_clear_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }
 #endif // HAL_PLATFORM_ENV
 

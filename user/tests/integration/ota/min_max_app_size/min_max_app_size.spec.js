@@ -208,7 +208,10 @@ test('02_ota_max_application_start', async function () {
 	await flash(this, appFile);
 });
 
-test('03_ota_max_application_wait', async function () {
+test('03_ota_max_application_wait_1', async function () {
+});
+
+test('03_ota_max_application_wait_2', async function () {
 });
 
 test('04_check_max_application', async function() {
@@ -220,7 +223,10 @@ test('05_ota_original_application_start', async function () {
 	await flash(this, appFile);
 });
 
-test('06_ota_original_application_wait', async function () {
+test('06_ota_original_application_wait_1', async function () {
+});
+
+test('06_ota_original_application_wait_2', async function () {
 });
 
 test('07_check_original_application', async function() {
@@ -235,7 +241,10 @@ test('08_ota_max_application_compressed_start', async function () {
 	await flash(this, appFile);
 });
 
-test('09_ota_max_application_compressed_wait', async function () {
+test('09_ota_max_application_compressed_wait_1', async function () {
+});
+
+test('09_ota_max_application_compressed_wait_2', async function () {
 });
 
 test('10_check_max_application', async function() {
@@ -247,7 +256,10 @@ test('11_ota_original_application_compressed_start', async function () {
 	await flash(this, appFile);
 });
 
-test('12_ota_original_application_compressed_wait', async function () {
+test('12_ota_original_application_compressed_wait_1', async function () {
+});
+
+test('12_ota_original_application_compressed_wait_2', async function () {
 });
 
 test('13_check_original_application', async function() {
@@ -261,7 +273,10 @@ test('14_usb_flash_max_application_start', async function () {
 	await usbDevice.updateFirmware(maxAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('15_usb_flash_max_application_wait', async function () {
+test('15_usb_flash_max_application_wait_1', async function () {
+});
+
+test('15_usb_flash_max_application_wait_2', async function () {
 });
 
 test('16_check_max_application', async function() {
@@ -273,7 +288,10 @@ test('17_usb_flash_original_application_start', async function () {
 	await usbDevice.updateFirmware(origAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('18_usb_flash_original_application_wait', async function () {
+test('18_usb_flash_original_application_wait_1', async function () {
+});
+
+test('18_usb_flash_original_application_wait_2', async function () {
 });
 
 test('19_check_original_application', async function() {
@@ -287,7 +305,10 @@ test('20_usb_flash_max_application_compressed_start', async function () {
 	await usbDevice.updateFirmware(await compressModule(maxAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('21_usb_flash_max_application_compressed_wait', async function () {
+test('21_usb_flash_max_application_compressed_wait_1', async function () {
+});
+
+test('21_usb_flash_max_application_compressed_wait_2', async function () {
 });
 
 test('22_check_max_application', async function() {
@@ -299,7 +320,10 @@ test('23_usb_flash_original_application_compressed_start', async function () {
 	await usbDevice.updateFirmware(await compressModule(origAppData), { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('24_usb_flash_original_application_compressed_wait', async function () {
+test('24_usb_flash_original_application_compressed_wait_1', async function () {
+});
+
+test('24_usb_flash_original_application_compressed_wait_2', async function () {
 });
 
 test('25_check_original_application', async function() {
@@ -315,7 +339,10 @@ test('26_ota_max_application_busy_start', async function () {
 	await flash(this, appFile);
 });
 
-test('27_ota_max_application_busy_wait', async function () {
+test('27_ota_max_application_busy_wait_1', async function () {
+});
+
+test('27_ota_max_application_busy_wait_2', async function () {
 });
 
 test('28_check_max_application', async function() {
@@ -327,7 +354,10 @@ test('29_ota_original_application_busy_start', async function () {
 	await flash(this, appFile);
 });
 
-test('30_ota_original_application_busy_wait', async function () {
+test('30_ota_original_application_busy_wait_1', async function () {
+});
+
+test('30_ota_original_application_busy_wait_2', async function () {
 });
 
 test('31_check_original_application', async function() {
@@ -341,7 +371,10 @@ test('32_usb_flash_max_application_busy_start', async function () {
 	await usbDevice.updateFirmware(maxAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('33_usb_flash_max_application_busy_wait', async function () {
+test('33_usb_flash_max_application_busy_wait_1', async function () {
+});
+
+test('33_usb_flash_max_application_busy_wait_2', async function () {
 });
 
 test('34_check_max_application', async function() {
@@ -353,9 +386,16 @@ test('35_usb_flash_original_application_busy_start', async function () {
 	await usbDevice.updateFirmware(origAppData, { timeout: 10 * 60 * 1000 /* Fails with default with old particle-usb versions */});
 });
 
-test('36_usb_flash_original_application_busy_wait', async function () {
+test('36_usb_flash_original_application_busy_wait_1', async function () {
+});
+
+test('36_usb_flash_original_application_busy_wait_2', async function () {
 });
 
 test('37_check_original_application', async function() {
 	await checkOriginalApplication();
+});
+
+test('99_cleanup', async function () {
+
 });

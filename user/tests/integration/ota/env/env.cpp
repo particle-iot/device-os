@@ -419,8 +419,18 @@ test(07_start_on_connect_env_update) {
     connect();
 }
 
-test(08_complete_on_connect_env_update) {
+test(08_complete_on_connect_env_update_1) {
     completeFirmwareUpdate();
+}
+
+test(08_complete_on_connect_env_update_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }
 
 test(09_check_on_connect_env_update) {
@@ -433,8 +443,18 @@ test(10_start_ad_hoc_env_update) {
     connect();
 }
 
-test(11_complete_ad_hoc_env_update) {
+test(11_complete_ad_hoc_env_update_1) {
     completeFirmwareUpdate(true /* expectSafeMode */);
+}
+
+test(11_complete_ad_hoc_env_update_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }
 
 test(12_check_ad_hoc_env_update) {
@@ -448,8 +468,18 @@ test(13_start_immediate_device_env_update) {
     connect();
 }
 
-test(14_complete_immediate_device_env_update) {
+test(14_complete_immediate_device_env_update_1) {
     completeFirmwareUpdate();
+}
+
+test(14_complete_immediate_device_env_update_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }
 
 test(15_check_immediate_device_env_update) {
@@ -462,14 +492,13 @@ test(15_check_immediate_device_env_update) {
 }
 
 test(97_cleanup) {
-    // Just in case
-    System.enableReset();
+    expectSystemReset();
     System.clearEnv(false /* reset */);
     unlink("/sys/env_app");
     unlink("/sys/env_app.staged");
     unlink("/sys/env_snapshot");
     unlink("/sys/env_snapshot.staged");
-    expectSystemReset();
+    System.enableReset();
     System.reset();
 }
 
@@ -481,6 +510,16 @@ test(98_cleanup) {
     // We are supposed to get an empty env
 }
 
-test(99_cleanup) {
+test(99_cleanup_1) {
     completeFirmwareUpdate();
+}
+
+test(99_cleanup_2) {
+    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
+        expectSystemReset();
+        System.enableReset();
+        // Should normally be unreachable
+        delay(5000);
+        System.reset();
+    }
 }

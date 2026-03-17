@@ -334,8 +334,12 @@ test('01_ad_hoc_ota_start', async function() {
 	await flash(this, bundle, `bundle_${timestamp}.zip`);
 });
 
-test('02_ad_hoc_ota_wait', async function() {
+test('02_ad_hoc_ota_wait_1', async function() {
 });
+
+test('02_ad_hoc_ota_wait_2', async function() {
+});
+
 
 test('03_ad_hoc_ota_complete', async function() {
 	const deviceReported = JSON.parse(device.mailBox.pop().d);
@@ -358,7 +362,10 @@ test('04_ad_hoc_ota_asset_repeat_start', async function() {
 	await flash(this, module, asset.name);
 });
 
-test('05_ad_hoc_ota_asset_repeat_wait', async function() {
+test('05_ad_hoc_ota_asset_repeat_wait_1', async function() {
+});
+
+test('05_ad_hoc_ota_asset_repeat_wait_2', async function() {
 });
 
 test('06_ad_hoc_ota_asset_repeat_complete', async function() {
@@ -393,7 +400,10 @@ test('08_product_ota_start', async function() {
 	expect(Number(dev.body.firmware_version)).to.not.equal(Number(productVersion));
 });
 
-test('09_product_ota_wait', async function() {
+test('09_product_ota_wait_1', async function() {
+});
+
+test('09_product_ota_wait_2', async function() {
 });
 
 test('10_product_ota_complete', async function() {
@@ -447,7 +457,11 @@ test('16_assets_add_extra_asset_start', async function() {
 	await flash(this, module, asset.name);
 });
 
-test('17_assets_add_extra_asset_wait', async function() {
+test('17_assets_add_extra_asset_wait_1', async function() {
+
+});
+
+test('17_assets_add_extra_asset_wait_2', async function() {
 
 });
 

@@ -173,7 +173,10 @@ test('07_start_on_connect_env_update', async function() {
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('08_complete_on_connect_env_update', async function() {
+test('08_complete_on_connect_env_update_1', async function() {
+});
+
+test('08_complete_on_connect_env_update_2', async function() {
 });
 
 test('09_check_on_connect_env_update', async function() {
@@ -187,7 +190,10 @@ test('10_start_ad_hoc_env_update', async function() {
 	await flash(this, bundleZip, { filename: 'bundle.zip' });
 });
 
-test('11_complete_ad_hoc_env_update', async function() {
+test('11_complete_ad_hoc_env_update_1', async function() {
+});
+
+test('11_complete_ad_hoc_env_update_2', async function() {
 });
 
 test('12_check_ad_hoc_env_update', async function() {
@@ -209,7 +215,10 @@ test('13_start_immediate_device_env_update', async function() {
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('14_complete_immediate_device_env_update', async function() {
+test('14_complete_immediate_device_env_update_1', async function() {
+});
+
+test('14_complete_immediate_device_env_update_2', async function() {
 });
 
 test('15_check_immediate_device_env_update', async function() {
@@ -223,6 +232,10 @@ test('98_cleanup', async function() {
 	await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('99_cleanup', async function() {
+test('99_cleanup_1', async function() {
+	
+});
+
+test('99_cleanup_2', async function() {
 	
 });

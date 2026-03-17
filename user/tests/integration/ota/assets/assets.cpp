@@ -220,12 +220,7 @@ test(01_ad_hoc_ota_start) {
     System.assetsHandled();
 }
 
-test(02_ad_hoc_ota_wait) {
-    SCOPE_GUARD({
-        System.off(all_events);
-        System.enableReset();
-    });
-
+test(02_ad_hoc_ota_wait_1) {
     for (auto start = millis(); millis() - start <= 5 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
@@ -238,7 +233,15 @@ test(02_ad_hoc_ota_wait) {
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);
     assertNotEqual((int)updateResult, (int)SYSTEM_ERROR_OTA);
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000));
+}
+
+test(02_ad_hoc_ota_wait_2) {
+    System.off(all_events);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000);
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(03_ad_hoc_ota_complete) {
@@ -265,13 +268,7 @@ test(04_ad_hoc_ota_asset_repeat_start) {
     assertTrue(waitFor(Particle.connected, 5 * 60 * 1000));
 }
 
-test(05_ad_hoc_ota_asset_repeat_wait) {
-    SCOPE_GUARD({
-        System.off(all_events);
-        System.enableReset();
-        testAsset.reset();
-    });
-
+test(05_ad_hoc_ota_asset_repeat_wait_1) {
     for (auto start = millis(); millis() - start <= 5 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
@@ -297,8 +294,16 @@ test(05_ad_hoc_ota_asset_repeat_wait) {
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);
     assertNotEqual((int)updateResult, (int)SYSTEM_ERROR_OTA);
-    
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+}
+
+test(05_ad_hoc_ota_asset_repeat_wait_2) {
+    testAsset.reset();
+    System.off(all_events);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(06_ad_hoc_ota_asset_repeat_complete) {
@@ -337,12 +342,7 @@ test(08_product_ota_start) {
     System.assetsHandled();
 }
 
-test(09_product_ota_wait) {
-    SCOPE_GUARD({
-        System.off(all_events);
-        System.enableReset();
-    });
-
+test(09_product_ota_wait_1) {
     for (auto start = millis(); millis() - start <= 5 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
@@ -355,7 +355,15 @@ test(09_product_ota_wait) {
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);
     assertNotEqual((int)updateResult, (int)SYSTEM_ERROR_OTA);
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000));
+}
+
+test(09_product_ota_wait_2) {
+    System.off(all_events);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000);
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(10_product_ota_complete) {
@@ -368,7 +376,7 @@ test(10_product_ota_complete) {
 
 test(11_product_ota_complete_handled) {
     System.assetsHandled(true);
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
     System.reset();
 }
 
@@ -423,12 +431,7 @@ test(16_assets_add_extra_asset_start) {
     assertTrue(waitFor(Particle.connected, 5 * 60 * 1000));
 }
 
-test(17_assets_add_extra_asset_wait) {
-    SCOPE_GUARD({
-        System.off(all_events);
-        System.enableReset();
-    });
-
+test(17_assets_add_extra_asset_wait_1) {
     for (auto start = millis(); millis() - start <= 5 * 60 * 1000;) {
         if (updateResult == firmware_update_complete || updateResult == firmware_update_failed || updateResult == firmware_update_pending) {
             break;
@@ -441,7 +444,15 @@ test(17_assets_add_extra_asset_wait) {
 
     assertNotEqual((int)updateResult, (int)firmware_update_failed);
     assertNotEqual((int)updateResult, (int)SYSTEM_ERROR_OTA);
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+}
+
+test(17_assets_add_extra_asset_wait_2) {
+    System.off(all_events);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    System.enableReset();
+    // Should not reach normally
+    delay(5000);
+    System.reset();
 }
 
 test(18_assets_add_extra_asset_complete) {

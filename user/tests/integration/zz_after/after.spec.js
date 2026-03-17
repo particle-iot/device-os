@@ -42,7 +42,10 @@ test('05_restore_cloud_after_env_clear', async function () {
     await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('06_finalize_env_clear', async function () {
+test('06_finalize_env_clear_1', async function () {
+});
+
+test('06_finalize_env_clear_2', async function () {
 });
 
 test('07_disable_external_rtc', async function () {

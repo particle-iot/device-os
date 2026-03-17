@@ -104,7 +104,12 @@ test('98_cleanup', async function() {
     await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('99_cleanup', async function() {
+test('99_cleanup_1', async function() {
+    delete this.test.parent.particle.network;
+    this.test.parent.particle.suiteInitialized = false;
+});
+
+test('99_cleanup_2', async function() {
     delete this.test.parent.particle.network;
     this.test.parent.particle.suiteInitialized = false;
 });
