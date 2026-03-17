@@ -663,7 +663,7 @@ test(99_cleanup_1) {
 }
 
 test(99_cleanup_2) {
-    if (g_skipTests) {
+    if (g_SkipTests) {
         skip();
         return;
     }
