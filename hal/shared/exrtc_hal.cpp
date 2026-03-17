@@ -57,6 +57,11 @@ int writeMfgXtalCalibration(const hal_exrtc_calibration_data_t* data) {
     return SystemCache::instance().set(SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, data, data->size);
 }
 
+int readMfgXtalCalibration(hal_exrtc_calibration_data_t* data) {
+    CHECK_TRUE(data && data->size >= sizeof(uint16_t) * 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+    return SystemCache::instance().get(SystemCacheKey::EXRTC_MFG_XTAL_CALIBRATION, data, data->size);
+}
+
 struct RtcBinding {
     RtcBinding() = default;
 
@@ -386,6 +391,8 @@ int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, vo
     CHECK_TRUE(instance == HAL_EXRTC_INSTANCE_1, SYSTEM_ERROR_INVALID_ARGUMENT);
     if (cmd == HAL_EXRTC_COMMAND_WRITE_MFG_XTAL_CALIBRATION) {
         return writeMfgXtalCalibration(static_cast<const hal_exrtc_calibration_data_t*>(arg));
+    } else if (cmd == HAL_EXRTC_COMMAND_READ_MFG_XTAL_CALIBRATION) {
+        return readMfgXtalCalibration(static_cast<hal_exrtc_calibration_data_t*>(arg));
     } else if (cmd == HAL_EXRTC_COMMAND_GET_ID) {
         CHECK_TRUE(arg && arg1 > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
         return Am18x5::getInstance().getIdString(static_cast<char*>(arg), arg1);

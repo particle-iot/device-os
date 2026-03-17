@@ -175,7 +175,8 @@ typedef enum hal_exrtc_command_t {
     HAL_EXRTC_COMMAND_NONE = 0,
     HAL_EXRTC_COMMAND_WRITE_MFG_XTAL_CALIBRATION = 1,
     HAL_EXRTC_COMMAND_SLEEP = 2,
-    HAL_EXRTC_COMMAND_GET_ID = 3
+    HAL_EXRTC_COMMAND_GET_ID = 3,
+    HAL_EXRTC_COMMAND_READ_MFG_XTAL_CALIBRATION = 4
 } hal_exrtc_command_t;
 
 typedef struct hal_exrtc_calibration_data_t {
