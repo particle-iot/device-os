@@ -283,7 +283,7 @@ test(1_particle_cellular_preferred_bands_init) {
 
     if (getModemType() != ModemType::UNSUPPORTED) {
         Cellular.on();
-        assertTrue(waitFor(Cellular.isOn, 120000));
+        assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
         CellularBandMask preferred = makeExpectedPostEnvBandMask();
         Log.info("Computed preferred bands mask: %s", (const char*)preferred.toString());
@@ -308,7 +308,7 @@ test(2_particle_cellular_preferred_bands_default) {
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
             (modemType == ModemType::QUECTEL)) {
@@ -348,7 +348,7 @@ test(3_particle_cellular_preferred_bands_set) {
     assertEqual(System.getEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"), String("0"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     if (modemType == ModemType::UBLOX) {
         // Should be supported now if profile setup properly due to env vars
@@ -385,7 +385,7 @@ test(4_particle_cellular_forbidden_bands_init) {
     System.clearEnv(false /* reset */);
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     CellularBandMask forbidden = ~makeExpectedPostEnvBandMask();
     Log.info("Computed forbidden bands mask: %s", (const char*)forbidden.toString());
@@ -409,7 +409,7 @@ test(5_particle_cellular_forbidden_bands_default) {
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
             (modemType == ModemType::QUECTEL)) {
@@ -452,7 +452,7 @@ test(6_particle_cellular_forbidden_bands_set) {
     assertEqual(System.getEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"), String((const char*)forbidden.toString()));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     if (modemType == ModemType::UBLOX) {
         // Should be supported now if profile setup properly due to env vars
@@ -506,7 +506,7 @@ test(8_particle_cellular_preferred_plmn_default) {
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_PLMN"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     Cellular.connect();
     assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
 
@@ -541,7 +541,7 @@ test(9_particle_cellular_preferred_plmn_set) {
             String("310410,310260,311480"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     Cellular.connect();
     assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
 
@@ -583,7 +583,7 @@ test(11_particle_cellular_env_vars_cleared_verify_defaults) {
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_PLMN"));
 
     Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, 120000));
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     Cellular.connect();
     assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 

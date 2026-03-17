@@ -196,7 +196,7 @@ test(CELLULAR_06_on_off_validity_check) {
     assertNotEqual(ret, (int)RESP_OK);
 
     Cellular.on();
-    waitFor(Cellular.isOn, 30000);
+    waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
     assertTrue(Cellular.isOn());
     assertFalse(Cellular.isOff());
 

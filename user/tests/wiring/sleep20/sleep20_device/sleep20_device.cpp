@@ -848,7 +848,7 @@ test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
         assertTrue(waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME));
         Log.trace("    >> Powering on the modem...");
         Cellular.on();
-        assertTrue(waitFor(Cellular.isOn, 60000));
+        assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 #elif HAL_PLATFORM_WIFI
         WiFi.off();
         assertTrue(waitFor(WiFi.isOff, 60000));
@@ -867,7 +867,7 @@ test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
 
         Log.trace("    >> Waiting for the modem to be turned on...");
 #if HAL_PLATFORM_CELLULAR
-        assertTrue(waitFor(Cellular.isOn, 60000));
+        assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 #elif HAL_PLATFORM_WIFI
         assertTrue(waitFor(WiFi.isOn, 60000));
 #endif
@@ -882,13 +882,13 @@ test(36_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Of
         Log.trace("    >> Powering on the modem...");
 #if HAL_PLATFORM_CELLULAR
         Cellular.on();
-        assertTrue(waitFor(Cellular.isOn, 60000));
+        assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
         Log.trace("    >> Powering off the modem...");
         Cellular.off();
         assertTrue(waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME));
 #elif HAL_PLATFORM_WIFI
         WiFi.on();
-        assertTrue(waitFor(WiFi.isOn, 60000));
+        assertTrue(waitFor(WiFi.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
         Log.trace("    >> Powering off the modem...");
         WiFi.off();
         assertTrue(waitFor(WiFi.isOff, 60000));

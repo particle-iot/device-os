@@ -232,7 +232,7 @@ test(NETWORK_CONFIG_WIFI_05_dhcp_with_gw_and_dns_override) {
     assertTrue(networkInterfaceConfigMatches(conf, storedConf));
 
     WiFi.connect();
-    assertTrue(waitFor(WiFi.ready, 60000));
+    assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     assertTrue((bool)WiFi.dhcpServerIP());
     
