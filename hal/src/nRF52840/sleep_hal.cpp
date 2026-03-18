@@ -758,6 +758,13 @@ static int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_sourc
     if (mode == HAL_SLEEP_MODE_HIBERNATE || mode == HAL_SLEEP_MODE_POWER_OFF) {
 #if !HAL_PLATFORM_EXTERNAL_RTC
         return SYSTEM_ERROR_NOT_SUPPORTED;
+#elif HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
+        hal_exrtc_status_t status = {};
+        status.size = sizeof(status);
+        status.version = HAL_EXRTC_API_VERSION;
+        if (hal_exrtc_get_status(HAL_EXRTC_INSTANCE_DEFAULT, &status, nullptr, nullptr) < 0 || !(status.status & HAL_EXRTC_STATUS_READY)) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
 #endif
     }
     return SYSTEM_ERROR_NONE;
