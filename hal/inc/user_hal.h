@@ -38,6 +38,8 @@ typedef struct hal_user_module_descriptor {
 
 int hal_user_module_get_descriptor(hal_user_module_descriptor* desc);
 
+#define HAL_USER_MODULE_MIN_VERSION_WITH_PRE_STARTUP (10)
+
 #ifdef __cplusplus
 }
 #endif

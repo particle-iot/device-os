@@ -42,7 +42,9 @@ void system_part1_init() {
 
 void PRE_STARTUP() {
     if (run_user_module()) {
-        user_descriptor.pre_startup();
+        if (user_descriptor.pre_startup) {
+            user_descriptor.pre_startup();
+        }
     }
 }
 

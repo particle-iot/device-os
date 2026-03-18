@@ -72,6 +72,7 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
         if (desc) {
             desc->info = info;
             desc->pre_init = &module_user_pre_init_compat;
+            desc->pre_startup = nullptr;
             desc->init = &module_user_init_compat;
             desc->loop = &module_user_loop_compat;
             desc->setup = &module_user_setup_compat;
@@ -86,7 +87,11 @@ int hal_user_module_get_descriptor(hal_user_module_descriptor* desc) {
     if (desc) {
         desc->info = info;
         desc->pre_init = &module_user_pre_init;
-        desc->pre_startup = &module_user_pre_startup;
+        if (module_version(&info) >= HAL_USER_MODULE_MIN_VERSION_WITH_PRE_STARTUP) {
+            desc->pre_startup = &module_user_pre_startup;
+        } else {
+            desc->pre_startup = nullptr;
+        }
         desc->init = &module_user_init;
         desc->loop = &module_user_loop;
         desc->setup = &module_user_setup;
