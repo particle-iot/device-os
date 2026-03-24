@@ -213,6 +213,11 @@ int hal_exrtc_event_handler_del(hal_exrtc_instance_t instance, void* cookie, voi
 
 int hal_exrtc_command(hal_exrtc_instance_t instance, hal_exrtc_command_t cmd, void* arg, uint32_t arg1, void* reserved);
 
+// For Tracker-specific backwards compatibility
+#if PLATFORM_ID == PLATFORM_TRACKER
+#include "exrtc_hal_compat.h"
+#endif // PLATFORM_ID == PLATFORM_TRACKER
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
