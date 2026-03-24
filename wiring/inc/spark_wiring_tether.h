@@ -102,7 +102,9 @@ public:
     }
 
     int bind(const TetherSerialConfig& config);
+#if HAL_PLATFORM_PPP_SERVER_USB
     int bind(const TetherUSBConfig config);
+#endif
 
 private:
     TetherInterface activeInterface_ = TetherInterface::NONE;

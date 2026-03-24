@@ -86,6 +86,7 @@ int TetherClass::bind(const TetherSerialConfig& config) {
     return SYSTEM_ERROR_NOT_FOUND;
 }
 
+#if HAL_PLATFORM_PPP_SERVER_USB
 int TetherClass::bind(const TetherUSBConfig config) {
     if_t iface = nullptr;
     if_get_by_index(*this, &iface);
@@ -101,6 +102,7 @@ int TetherClass::bind(const TetherUSBConfig config) {
     }
     return SYSTEM_ERROR_NOT_FOUND;
 }
+#endif // HAL_PLATFORM_PPP_SERVER_USB
 
 } // spark
 

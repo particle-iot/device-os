@@ -565,6 +565,7 @@ int usb_uart_init(uint8_t *rx_buf, uint16_t rx_buf_size, uint8_t *tx_buf, uint16
 
     m_usb_instance.mode = USB_MODE_CDC_UART;
     m_usb_instance.ev_group = xEventGroupCreate();
+    SPARK_ASSERT(m_usb_instance.ev_group);
 
     return 0;
 }

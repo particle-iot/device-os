@@ -15,6 +15,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_PPP_SERVER 
+#if HAL_PLATFORM_PPP_SERVER_USB
+
 #include "serial_usb_stream.h"
 
 #include "concurrent_hal.h"
@@ -180,3 +185,5 @@ EventGroupHandle_t SerialUSBStream::eventGroup() {
 }
 
 } // particle
+#endif // HAL_PLATFORM_PPP_SERVER
+#endif // HAL_PLATFORM_PPP_SERVER_USB

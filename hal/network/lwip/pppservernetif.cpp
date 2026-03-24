@@ -166,17 +166,24 @@ int PppServerNetif::start() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    LOG(INFO, "Starting PppServerNetif interface on %s", settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE ? "USART" : "USB");
-
     if (settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
         auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, (uint32_t)settings_.baud, (uint32_t)settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial);
         serial_ = std::move(serial);
-    } else {
+    } 
+#if HAL_PLATFORM_PPP_SERVER_USB
+    else if(settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
         auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.usbserial, (uint32_t)settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial)
         serial_ = std::move(serial);
     }
+#endif
+    else {
+        // No valid interface in settings_
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+
+    LOG(INFO, "Starting PppServerNetif interface on %s", settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE ? "USART" : "USB");
 
     dns_ = std::make_unique<Dns>();
     SPARK_ASSERT(dns_);
@@ -345,9 +352,16 @@ int PppServerNetif::start() {
         auto self = static_cast<PppServerNetif*>(data);
         CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
 
-        unsigned int baud = self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE
-          ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
-          : static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        unsigned int baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        }
+#if HAL_PLATFORM_PPP_SERVER_USB
+        else if (self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialUSBStream*>(self->serial_.get())->baudrate();
+        }
+#endif
         request->sendResponse("+IPR: %u", baud);
         return 0;
     }, this));
@@ -367,9 +381,17 @@ int PppServerNetif::start() {
     auto connectRequest = [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
         auto self = static_cast<PppServerNetif*>(data);
         auto client = (net::ppp::Client*)&self->client_;
-        unsigned int baud = self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE
-          ? static_cast<SerialUSBStream*>(self->serial_.get())->baudrate()
-          : static_cast<SerialStream*>(self->serial_.get())->baudrate();
+
+        unsigned int baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        }
+#if HAL_PLATFORM_PPP_SERVER_USB
+        else if (self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialUSBStream*>(self->serial_.get())->baudrate();
+        }
+#endif
 
         request->sendResponse("CONNECT %u", baud);
         request->setFinalResponse(AtServerRequest::CONNECT);
