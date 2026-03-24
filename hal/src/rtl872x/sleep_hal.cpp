@@ -62,6 +62,8 @@ namespace {
 
 uint32_t psramSleepMarker = 0;
 
+constexpr system_tick_t SLEEP_INTERNAL_RTC_MAX_SLEEP_TIME = 32767933;
+
 } // anonymous
 
 class SleepClass {
@@ -463,11 +465,27 @@ private:
     }
 
     int validateRtcWakeupSource(hal_sleep_mode_t mode, const hal_wakeup_source_rtc_t* rtc) {
+        if ((rtc->ms / 1000) == 0) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
         // It uses a 32.768KHz timer, max counter = 0x3FFFFFFF/32768 * 1000 = 32768000(ms).
         // But due to the simplified calculation formula in SOCPS_AONTimer(), the maximum
         // argument is 32767933, otherwise, the calculated timer counter will overflow.
-        if ((rtc->ms / 1000) == 0 || rtc->ms > 32767933) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        if (rtc->ms > SLEEP_INTERNAL_RTC_MAX_SLEEP_TIME) {
+#if !HAL_PLATFORM_EXTERNAL_RTC
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+#else
+            if (mode == HAL_SLEEP_MODE_POWER_OFF) {
+                hal_exrtc_status_t status = {};
+                status.size = sizeof(status);
+                status.version = HAL_EXRTC_API_VERSION;
+                if (hal_exrtc_get_status(HAL_EXRTC_INSTANCE_DEFAULT, &status, nullptr, nullptr) < 0 || !(status.status & HAL_EXRTC_STATUS_READY)) {
+                    return SYSTEM_ERROR_NOT_SUPPORTED;
+                }
+            } else {
+                return SYSTEM_ERROR_NOT_SUPPORTED;
+            }
+#endif // !HAL_PLATFORM_EXTERNAL_RTC
         }
         return SYSTEM_ERROR_NONE;
     }
