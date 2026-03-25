@@ -71,6 +71,7 @@ const uint64_t QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95 = 0x100002;     // Band 66
 // BG95-S5
 const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95_S5 = 0xF0E189F;   // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,27,28 [all default enabled]
 const uint64_t QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95_S5 = 0x100002;  // Band 66,85 enabled
+//const uint64_t QUECTEL_NCP_BANDMASK_NTN_1_64_BG95_S5 = 0x07; // NTN Band 23, 255, 256 enabled
 
 // BG96-MC
 const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC = 0x40090E189F;  // Bands 1,2,3,4,5,8,12,13,17(shows up in mask, but not listed in datasheet),
