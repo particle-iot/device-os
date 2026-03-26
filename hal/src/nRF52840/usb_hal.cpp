@@ -67,9 +67,9 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
 		if (p_rx_buffer == NULL) {
 			p_rx_buffer = (uint8_t *)malloc(USB_RX_BUFFER_SIZE);
 		}
-        usb_uart_init(p_rx_buffer, USB_RX_BUFFER_SIZE, p_tx_buffer, USB_TX_BUFFER_SIZE);
+        usb_uart_init(p_rx_buffer, USB_RX_BUFFER_SIZE, p_tx_buffer, USB_TX_BUFFER_SIZE, true);
     } else {
-        usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
+        usb_uart_init(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size, false);
     }
 
     __set_BASEPRI(st);

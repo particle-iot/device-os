@@ -24,11 +24,28 @@
 #include "spark_wiring_network.h"
 #include "system_network.h"
 #include "spark_wiring_usartserial.h"
+#include "spark_wiring_usbserial.h"
 #include "ifapi.h"
 #include "scope_guard.h"
 #include "check.h"
 
 namespace particle {
+
+enum class TetherInterface {
+    NONE,
+    USART,
+    USB
+};
+
+struct TetherUSBConfig {
+    TetherUSBConfig();
+
+    TetherUSBConfig& usbserial(USBSerial& s = Serial);
+    USBSerial& usbserial() const;
+
+private: 
+    USBSerial& usbSerial_;
+};
 
 struct TetherSerialConfig {
     TetherSerialConfig();
@@ -52,46 +69,6 @@ class TetherClass : public spark::NetworkClass {
 public:
     TetherClass() :
             NetworkClass(NETWORK_INTERFACE_PPP_SERVER) {
-    }
-
-    void on() {
-        network_on(*this, 0, 0, NULL);
-    }
-
-    void off() {
-        network_off(*this, 0, 0, NULL);
-    }
-
-    void connect(unsigned flags=0) {
-        network_connect(*this, flags, 0, NULL);
-    }
-
-    bool connecting(void) {
-        return network_connecting(*this, 0, NULL);
-    }
-
-    void disconnect() {
-        network_disconnect(*this, NETWORK_DISCONNECT_REASON_USER, NULL);
-    }
-
-    void listen(bool begin=true) {
-        network_listen(*this, begin ? 0 : 1, NULL);
-    }
-
-    void setListenTimeout(uint16_t timeout) {
-        network_set_listen_timeout(*this, timeout, NULL);
-    }
-
-    uint16_t getListenTimeout(void) {
-        return network_get_listen_timeout(*this, 0, NULL);
-    }
-
-    bool listening(void) {
-        return network_listening(*this, 0, NULL);
-    }
-
-    bool ready() {
-        return network_ready(*this, 0,  NULL);
     }
 
     IPAddress localIP() {
@@ -120,7 +97,17 @@ public:
         return IPAddress();
     }
 
+    TetherInterface activeSerialInterface() {
+        return activeInterface_;
+    }
+
     int bind(const TetherSerialConfig& config);
+#if HAL_PLATFORM_PPP_SERVER_USB
+    int bind(const TetherUSBConfig config);
+#endif
+
+private:
+    TetherInterface activeInterface_ = TetherInterface::NONE;
 };
 
 extern TetherClass Tether;

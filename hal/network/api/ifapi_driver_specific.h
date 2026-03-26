@@ -32,7 +32,8 @@ typedef enum if_req_driver_specific_type {
     IF_REQ_DRIVER_SPECIFIC_WIZNET_PIN_REMAP = 1,
     // FIXME: for compatibility
     IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP = IF_REQ_DRIVER_SPECIFIC_WIZNET_PIN_REMAP,
-    IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS = 2
+    IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS = 2,
+    IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS = 2
 } if_req_driver_specific_type;
 
 typedef struct if_wiznet_pin_remap {
@@ -42,14 +43,19 @@ typedef struct if_wiznet_pin_remap {
     uint16_t int_pin;
 } if_wiznet_pin_remap;
 
-typedef struct if_req_ppp_server_uart_settings {
+typedef struct if_req_ppp_server_serial_settings {
     if_req_driver_specific base;
     uint8_t serial;
-    uint8_t reserved[3];
+    uint8_t usbserial;
+    uint8_t reserved[2];
     uint32_t baud;
     uint32_t config;
     uint32_t reserved1;
-} if_req_ppp_server_uart_settings;
+} __attribute__((__packed__)) if_req_ppp_server_serial_settings;
+
+#define IF_REQ_INVALID_SERIAL_INTERFACE (0xFF)
+
+typedef if_req_ppp_server_serial_settings if_req_ppp_server_uart_settings;
 
 #ifdef __cplusplus
 }

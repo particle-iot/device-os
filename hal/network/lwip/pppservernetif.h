@@ -26,6 +26,7 @@
 #include <lwip/pbuf.h>
 #include "ppp_client.h"
 #include "serial_stream.h"
+#include "serial_usb_stream.h"
 #include "at_server.h"
 
 #ifdef __cplusplus
@@ -98,11 +99,11 @@ private:
     std::atomic_bool exit_;
     particle::net::ppp::Client client_;
     std::atomic<if_power_state_t> pwrState_;
-    std::unique_ptr<SerialStream> serial_;
+    std::unique_ptr<EventGroupBasedStream> serial_;
     std::unique_ptr<Dns> dns_;
     std::unique_ptr<::particle::ThreadRunner> dnsRunner_;
     std::unique_ptr<particle::net::nat::Nat64> nat_;
-    if_req_ppp_server_uart_settings settings_;
+    if_req_ppp_server_serial_settings settings_;
     std::unique_ptr<AtServer> server_;
 
 };

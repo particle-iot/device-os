@@ -140,10 +140,11 @@ PppServerNetif::PppServerNetif()
     client_.setNotifyCallback(pppEventHandlerCb, this);
     client_.start();
 
-    // Defaults
+    // Defaults, assume USART
     settings_.serial = HAL_PLATFORM_PPP_SERVER_USART;
     settings_.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
     settings_.config = HAL_PLATFORM_PPP_SERVER_USART_FLAGS;
+    settings_.usbserial = IF_REQ_INVALID_SERIAL_INTERFACE;
 }
 
 PppServerNetif::~PppServerNetif() {
@@ -165,11 +166,24 @@ int PppServerNetif::start() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    LOG(TRACE, "Starting PppServerNetif interface");
+    if (settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+        auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, (uint32_t)settings_.baud, (uint32_t)settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
+        SPARK_ASSERT(serial);
+        serial_ = std::move(serial);
+    } 
+#if HAL_PLATFORM_PPP_SERVER_USB
+    else if(settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+        auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.usbserial, (uint32_t)settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
+        SPARK_ASSERT(serial)
+        serial_ = std::move(serial);
+    }
+#endif
+    else {
+        // No valid interface in settings_
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
 
-    auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, settings_.baud, settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
-    SPARK_ASSERT(serial);
-    serial_ = std::move(serial);
+    LOG(INFO, "Starting PppServerNetif interface on %s", settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE ? "USART" : "USB");
 
     dns_ = std::make_unique<Dns>();
     SPARK_ASSERT(dns_);
@@ -289,29 +303,39 @@ int PppServerNetif::start() {
     }, nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IFC", "+IFC: (0-2)(0-2)"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data;
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        if (stream->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {
-            request->sendResponse("+IFC: 2,2");
-        } else {
+        auto self = static_cast<PppServerNetif*>(data);
+        if (self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            // It's a SerialUSBStream — no flow control concept, just respond 0,0
             request->sendResponse("+IFC: 0,0");
+        } else {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+            if (stream->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {
+                request->sendResponse("+IFC: 2,2");
+            } else {
+                request->sendResponse("+IFC: 0,0");
+            }
         }
         return 0;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+IFC", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data;
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        int v[2] = {};
-        CHECK_TRUE(request->scanf("%d,%d", &v[0], &v[1]) == 2, SYSTEM_ERROR_INVALID_ARGUMENT);
-        if (v[0] == 2 || v[1] == 2) {
-            auto c = stream->config() | SERIAL_FLOW_CONTROL_RTS_CTS;
-            return stream->setConfig(c);
-        } else if (v[0] == 0 || v[1] == 0) {
-            auto c = stream->config() & (~SERIAL_FLOW_CONTROL_RTS_CTS);
-            return stream->setConfig(c);
-        }
+        auto self = static_cast<PppServerNetif*>(data);
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+            int v[2] = {};
+            CHECK_TRUE(request->scanf("%d,%d", &v[0], &v[1]) == 2, SYSTEM_ERROR_INVALID_ARGUMENT);
+            if (v[0] == 2 || v[1] == 2) {
+                auto c = stream->config() | SERIAL_FLOW_CONTROL_RTS_CTS;
+                return stream->setConfig(c);
+            } else if (v[0] == 0 || v[1] == 0) {
+                auto c = stream->config() & (~SERIAL_FLOW_CONTROL_RTS_CTS);
+                return stream->setConfig(c);
+            }
+        } 
         return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGEREP", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CREG", nullptr));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+CGREG", nullptr));
@@ -325,23 +349,51 @@ int PppServerNetif::start() {
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+COPS", "+COPS: 0,0,\"Particle\""));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::TEST, "+IPR", "+IPR: (0,9600,19200,38400,57600,115200,230400,460800,921600),()"));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::READ, "+IPR", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data;
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
-        request->sendResponse("+IPR: %u", stream->baudrate());
+        auto self = static_cast<PppServerNetif*>(data);
+        CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
+
+        unsigned int baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        }
+#if HAL_PLATFORM_PPP_SERVER_USB
+        else if (self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialUSBStream*>(self->serial_.get())->baudrate();
+        }
+#endif
+        request->sendResponse("+IPR: %u", baud);
         return 0;
-    }, serial_.get()));
+    }, this));
     server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WRITE, "+IPR", [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto stream = (SerialStream*)data;
-        CHECK_TRUE(stream, SYSTEM_ERROR_INVALID_STATE);
+        auto self = static_cast<PppServerNetif*>(data);
         int v = 0;
         CHECK_TRUE(request->scanf("%d", &v) == 1, SYSTEM_ERROR_INVALID_ARGUMENT);
         CHECK_TRUE(v > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
-        CHECK(stream->setBaudRate(v));
+        CHECK_TRUE(self->serial_.get(), SYSTEM_ERROR_INVALID_STATE);
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            auto stream = static_cast<SerialStream*>(self->serial_.get());
+            CHECK(stream->setBaudRate(v));
+        }
         return 0;
-    }, serial_.get()));
+    }, this));
     auto connectRequest = [](AtServerRequest* request, AtServerCommandType type, const char* command, void* data) -> int {
-        auto client = (net::ppp::Client*)data;
-        request->sendResponse("CONNECT %u", ((SerialStream*)request->server()->config().stream())->baudrate());
+        auto self = static_cast<PppServerNetif*>(data);
+        auto client = (net::ppp::Client*)&self->client_;
+
+        unsigned int baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
+
+        if (self->settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialStream*>(self->serial_.get())->baudrate();
+        }
+#if HAL_PLATFORM_PPP_SERVER_USB
+        else if (self->settings_.usbserial != IF_REQ_INVALID_SERIAL_INTERFACE) {
+            baud = static_cast<SerialUSBStream*>(self->serial_.get())->baudrate();
+        }
+#endif
+
+        request->sendResponse("CONNECT %u", baud);
         request->setFinalResponse(AtServerRequest::CONNECT);
         request->server()->suspend();
         client->setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
@@ -357,8 +409,8 @@ int PppServerNetif::start() {
         client->notifyEvent(ppp::Client::EVENT_LOWER_UP);
         return 0;
     };
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WILDCARD, "D*", connectRequest, &client_));
-    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "D", connectRequest, &client_));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::WILDCARD, "D*", connectRequest, this));
+    server_->addCommandHandler(AtServerCommandHandler(AtServerCommandType::ONE_INT_ARG, "D", connectRequest, this));
     
     SPARK_ASSERT(os_thread_create(&thread_, "pppserver", OS_THREAD_PRIORITY_NETWORK, &PppServerNetif::loop, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH) == 0);
     return 0;
@@ -515,12 +567,12 @@ void PppServerNetif::mempEventHandler(memp_t type, unsigned available, unsigned 
 
 int PppServerNetif::request(if_req_driver_specific* req, size_t size) {
     CHECK_TRUE(req, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(req->type == IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_UART_SETTINGS, SYSTEM_ERROR_INVALID_ARGUMENT);
-    CHECK_TRUE(size >= sizeof(if_req_ppp_server_uart_settings), SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(req->type == IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS, SYSTEM_ERROR_INVALID_ARGUMENT);
+    CHECK_TRUE(size >= sizeof(if_req_ppp_server_serial_settings), SYSTEM_ERROR_INVALID_ARGUMENT);
 
-    auto settings = (if_req_ppp_server_uart_settings*)req;
+    auto settings = (if_req_ppp_server_serial_settings*)req;
     memcpy(&settings_, settings, std::min(sizeof(settings_), size));
-    LOG(INFO, "Update PPP server netif settings: serial=%u baud=%u config=%08x", (unsigned)settings->serial, settings->baud, settings->config);
+    LOG(TRACE, "Update PPP server netif settings: usb=%u serial=%u baud=%u config=%08x", (unsigned)settings->usbserial, (unsigned)settings->serial, settings->baud, settings->config);
     return 0;
 }
 
