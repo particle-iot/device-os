@@ -68,6 +68,11 @@ const uint64_t QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95 = 0x100002;     // Band 66
 // const uint64_t QUECTEL_NCP_BANDMASK_CATNB_1_64_BG95 = 0x90E189F;      // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,27,28 [all default enabled]
 // const uint64_t QUECTEL_NCP_BANDMASK_CATNB_65_128_BG95 = 0x100002;     // Band 66,85 enabled
 
+// BG95-S5
+const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95_S5 = 0xF0E189F;   // Bands 1,2,3,4,5,8,12,13,18,19,20,25,26,27,28 [all default enabled]
+const uint64_t QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95_S5 = 0x100002;  // Band 66,85 enabled
+//const uint64_t QUECTEL_NCP_BANDMASK_NTN_1_64_BG95_S5 = 0x07; // NTN Band 23, 255, 256 enabled
+
 // BG96-MC
 const uint64_t QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC = 0x40090E189F;  // Bands 1,2,3,4,5,8,12,13,17(shows up in mask, but not listed in datasheet),
                                                                         //       18,19,20,25,26(v1.2 hardware),28,39
@@ -91,6 +96,8 @@ inline uint64_t getBandMaskByNcpIdForRAT(int ncpid, CellularAccessTechnology rat
                 return upper ? UBLOX_NCP_BANDMASK_65_128_R410 : (legacy ? UBLOX_NCP_BANDMASK_1_64_R410_LEGACY : UBLOX_NCP_BANDMASK_1_64_R410);
             case PLATFORM_NCP_QUECTEL_BG95_M5:
                 return upper ? QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95 : QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95;
+            case PLATFORM_NCP_QUECTEL_BG95_S5:
+                return upper ? QUECTEL_NCP_BANDMASK_CATM1_65_128_BG95_S5 : QUECTEL_NCP_BANDMASK_CATM1_1_64_BG95_S5;
             case PLATFORM_NCP_QUECTEL_BG96:
                 return upper ? 0 : QUECTEL_NCP_BANDMASK_CATM1_1_64_BG96_MC;
             case PLATFORM_NCP_QUECTEL_EG91_E:

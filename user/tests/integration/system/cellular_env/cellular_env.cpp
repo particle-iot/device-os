@@ -68,6 +68,7 @@ ModemType getModemType() {
 
     switch (getNcpId()) {
         case PLATFORM_NCP_QUECTEL_BG95_M5:
+        case PLATFORM_NCP_QUECTEL_BG95_S5:
         case PLATFORM_NCP_QUECTEL_BG96:
         case PLATFORM_NCP_QUECTEL_EG91_NAX:
         case PLATFORM_NCP_QUECTEL_EG91_E:
@@ -266,8 +267,9 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
 #if HAL_PLATFORM_CELLULAR
 
 test(1_particle_cellular_preferred_bands_init) {
-    if (TestSuite::instance()->network() != NETWORK_INTERFACE_ALL &&
-            TestSuite::instance()->network() != NETWORK_INTERFACE_CELLULAR) {
+    if (getModemType() == ModemType::UNSUPPORTED ||
+        (TestSuite::instance()->network() != NETWORK_INTERFACE_ALL &&
+         TestSuite::instance()->network() != NETWORK_INTERFACE_CELLULAR)) {
         g_SkipTests = true;
     } else {
         g_SkipTests = false;

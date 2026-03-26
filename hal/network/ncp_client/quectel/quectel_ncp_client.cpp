@@ -1047,17 +1047,23 @@ int QuectelNcpClient::setupBands() {
     char qbandGsmStr[4+1] = {};
     char qbandLteStr[32+1] = {};
     char qbandCatNbStr[32+1] = {};
-    // BG95_M5: +QCFG: "band",0xf,0x100002000000000f0e189f,0x10004200000000090e189f <GSM>,<CAT-M1-1-128>,<CAT-NB-1-128>
-    auto retBand = CHECK_PARSER(respBand.scanf("+QCFG: \"band\",0x%4[^,],0x%32[^,],0x%32[^,]", qbandGsmStr, qbandLteStr, qbandCatNbStr));
+    char qbandNtnStr[3+1] = {};
+    // BG95_M5: +QCFG: "band",0xf,0x100002000000000f0e189f,0x10004200000000090e189f     <GSM>,<CAT-M1-1-128>,<CAT-NB-1-128>
+    // BG95_S5: +QCFG: "band",0xf,0x100002000000000f0e189f,0x10004200000000090e189f,0x7 <GSM>,<CAT-M1-1-128>,<CAT-NB-1-128>,<NTN_NB-IoT_bandval>
+    auto retBand = CHECK_PARSER(respBand.scanf("+QCFG: \"band\",0x%4[^,],0x%32[^,],0x%32[^,],%s", qbandGsmStr, qbandLteStr, qbandCatNbStr, qbandNtnStr));
     CHECK_PARSER_OK(respBand.readResult());
-
-    if (retBand == 3) {
+    if (retBand == 3 || retBand == 4) {
         CellularBandMask bandsCurrent(qbandLteStr);
 
         if (bandsCurrent != envPreferredBands) {
             // Apply band changes immediately, no reboot required.
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, true /* check */));
-            CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr));
+            if (retBand == 3) {
+                CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr));    
+            } else if (retBand == 4) {
+                CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr, qbandNtnStr));
+            }
+            
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
         }
     }
@@ -1226,6 +1232,7 @@ int QuectelNcpClient::configurePlmn() {
 
     auto ncp_id = ncpId();
     if (ncp_id != PLATFORM_NCP_QUECTEL_BG95_M5 &&
+            ncp_id != PLATFORM_NCP_QUECTEL_BG95_S5 &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_NAX &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_EX &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_E) {
@@ -1424,6 +1431,7 @@ int QuectelNcpClient::initReady(ModemState state) {
 
     configuredPlmn_ = false;
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5 ||
+            ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 ||
             ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
