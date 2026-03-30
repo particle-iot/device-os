@@ -24,6 +24,7 @@
 #include "check.h"
 
 extern "C" {
+#include "device_lock.h"
 #include "rtl8721d.h"
 #include "rtl8721d_efuse.h"
 }
@@ -42,10 +43,25 @@ int efuse_read_logical(uint32_t offset, uint8_t* buf, size_t size) {
 
     bool dataConsistent = false;
     for (int i = 0; i < 5 && !dataConsistent; i++) {
+        // There are places in ambd_sdk where efuses might be read as well (e.g. BLE stack)
+        // This is not a thread safe operation, so now those places are guarded with a lock in the SDK
+        // Use the same lock here as well.
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
+#endif
         EFUSE_LMAP_READ(efuseBuf);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
+#endif
         uint32_t crc1 = HAL_Core_Compute_CRC32(efuseBuf, EFUSE_LOGICAL_SIZE);
 
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_lock(RT_DEV_LOCK_EFUSE);
+#endif
         EFUSE_LMAP_READ(efuseBuf);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        device_mutex_unlock(RT_DEV_LOCK_EFUSE);
+#endif
         uint32_t crc2 = HAL_Core_Compute_CRC32(efuseBuf, EFUSE_LOGICAL_SIZE);
 
         dataConsistent = (crc1 == crc2);

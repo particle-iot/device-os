@@ -29,10 +29,6 @@
                                          (type) == HAL_DEVICE_MAC_WIFI_AP || \
                                          (type) == HAL_DEVICE_MAC_ETHERNET)
 
-#define LOGICAL_EFUSE_SIZE      1024
-#define EFUSE_SUCCESS           1
-#define EFUSE_FAILURE           0
-
 #define BLE_MAC_OFFSET          0x190
 #define WIFI_MAC_OFFSET         0x11A
 #define MOBILE_SECRET_OFFSET    0x160
