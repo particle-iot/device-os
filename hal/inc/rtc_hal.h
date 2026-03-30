@@ -62,14 +62,6 @@ void hal_rtc_cancel_alarm(void);
 time32_t hal_rtc_get_unixtime_deprecated(void);
 void hal_rtc_set_unixtime_deprecated(time32_t value);
 
-// For Tracker-specific backwards compatibility
-#if PLATFORM_ID == PLATFORM_TRACKER
-void hal_exrtc_get_watchdog_limits_deprecated(system_tick_t* low, system_tick_t* high, void* reserved);
-int hal_exrtc_enable_watchdog_deprecated(system_tick_t ms, void* reserved);
-int hal_exrtc_disable_watchdog_deprecated(void* reserved);
-int hal_exrtc_feed_watchdog_deprecated(void* reserved);
-#endif // PLATFORM_ID == PLATFORM_TRACKER
-
 #ifdef __cplusplus
 }
 #endif
