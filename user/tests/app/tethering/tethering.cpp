@@ -23,6 +23,10 @@ SYSTEM_MODE(SEMI_AUTOMATIC);
 
 /* executes once at startup */
 void setup() {
+    // M-Hat requires this to enable USART communication to SBC
+    pinMode(A0, OUTPUT);
+    digitalWrite(A0, HIGH);
+
     // waitUntil(Serial.isConnected);
     // Enable Cellular
     Cellular.on();

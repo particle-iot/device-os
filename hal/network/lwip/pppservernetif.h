@@ -26,7 +26,6 @@
 #include <lwip/pbuf.h>
 #include "ppp_client.h"
 #include "serial_stream.h"
-#include "serial_usb_stream.h"
 #include "at_server.h"
 
 #ifdef __cplusplus

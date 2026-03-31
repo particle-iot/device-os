@@ -57,7 +57,9 @@ LOG_SOURCE_CATEGORY("net.pppserver");
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #include "network/ncp/cellular/ncp.h"
 #include "cellular_hal.h"
-
+#if HAL_PLATFORM_PPP_SERVER_USB
+#include "serial_usb_stream.h"
+#endif
 
 using namespace particle::net;
 
