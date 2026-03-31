@@ -463,7 +463,6 @@ public:
 
     int enableEvent(HAL_USART_Pvt_Events event) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
 
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
@@ -499,20 +498,23 @@ public:
 
     int disableEvent(HAL_USART_Pvt_Events event) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
 
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             RxLock lk(this);
             UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-            UART_RXDMACmd(uartInstance, ENABLE);
+            if (!useInterrupt()) {
+                UART_RXDMACmd(uartInstance, ENABLE);    
+            }
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
             TxLock lk(this);
             UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-            UART_TXDMACmd(uartInstance, ENABLE);
+            if (!useInterrupt()) {
+                UART_TXDMACmd(uartInstance, ENABLE);
+            }
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
         }
 
@@ -520,8 +522,6 @@ public:
     }
 
     int waitEvent(uint32_t events, system_tick_t timeout) {
-        CHECK_FALSE(useInterrupt(), SYSTEM_ERROR_NOT_SUPPORTED);
-
         CHECK(enableEvent((HAL_USART_Pvt_Events)events));
 
         auto res = xEventGroupWaitBits(evGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
@@ -584,13 +584,13 @@ public:
                     }
                 } else {
                     UART_TXDMACmd(uartInstance, ENABLE);
-                    BaseType_t yield = pdFALSE;
                     if (!uart->transmitting_) {
                         uart->busy_ = false; // All bytes sent if no new DMA transfers are in progress
                     }
-                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
-                        portYIELD_FROM_ISR(yield);
-                    }
+                }
+                BaseType_t yield = pdFALSE;
+                if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
+                    portYIELD_FROM_ISR(yield);
                 }
                 break;
             }
@@ -608,11 +608,11 @@ public:
                         }
                         uart->startReceiver();
                     } else {
-                        BaseType_t yield = pdFALSE;
-                        if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-                            portYIELD_FROM_ISR(yield);
-                        }
                         UART_RXDMACmd(uartInstance, ENABLE);
+                    }
+                    BaseType_t yield = pdFALSE;
+                    if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
+                        portYIELD_FROM_ISR(yield);
                     }
                 }
                 break;
