@@ -123,7 +123,7 @@ proc openocd_print_memory {address length} {
     } else {
         mem2array value 8 $address $length
     }
-    
+
     echo ""
     echo "---------------------------------------------------------"
     echo "  Offset| 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F"
@@ -286,6 +286,7 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
     global MSG_FLASH_DATA_BUF_SIZE
     global RESULT_OK
     global RESULT_ERROR
+    global JIMTCL_VERSION
 
     rtl872x_init
     set size [file size $file]
@@ -310,7 +311,7 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
         mww [expr {$pc_msg_data_mem_addr + 0x04}] $address
         mww [expr {$pc_msg_data_mem_addr + 0x08}] $size
         mww $pc_msg_avail_mem_addr 1
-    
+
         set fake_progress 0
         while {[wait_response 500] == 0} {
             sleep 500
@@ -322,47 +323,89 @@ proc rtl872x_flash_write_bin_ext {file address auto_erase auto_verify} {
     }
 
     # Write binary file
-    # The load_image command has a size limitation for the load file.
-    # On Realtek MCU, the RAM address stats at 0x80000, which allows us to load a up-to-512KB file.
-    # If the file is larger than 512KB, we'll split it into sevral 512KB pieces.
-    set tmp_file_path "/tmp"
-    global tcl_platform
-    if {$tcl_platform(platform) eq "windows"} {
-        set tmp_file_path "C:/tmp"
-        file mkdir $tmp_file_path
-    }
+    # Use write_memory for reliable data transfer (JimTcl >= 0.80).
+    # For older JimTcl, fall back to the slower load_image approach.
 
-    set file_counts 0
-    set f [open $file rb]
-    fconfigure $f -translation binary
-    for {set i 0} {$i < $size} {set i [expr {$i + [expr {512 * 1024}]}]} {
-        set bin_data [read $f [expr {512 * 1024}]]
-        set f_tmp [open "$tmp_file_path/op_file_$file_counts.bin" wb]
-        puts $f_tmp $bin_data
-        close $f_tmp
-        incr file_counts
-    }
-    close $f
-
+    set data_buf_addr [expr {$pc_msg_data_mem_addr + 0x10}]
     set startTime [clock milliseconds]
-    echo "Program flash: $file_counts files in total"
-    for {set file_num 0} {$file_num < $file_counts} {incr file_num} {
-        set op_file "$tmp_file_path/op_file_$file_num.bin"
-        set op_file_size [expr {[file size $op_file] - 1}] ;# file read command will read an extra newline char
-        set op_file_address [expr {$address + [expr {512 * 1024 * $file_num}]}]
-        # echo "file: $tmp_file_path/op_file_$file_num.bin, size: $op_file_size, address: [format "%X" $op_file_address]"
-        for {set i 0} {$i < $op_file_size} {set i [expr {$i + $MSG_FLASH_DATA_BUF_SIZE}]} {
-            set write_size [expr {[expr {$op_file_size - $i > $MSG_FLASH_DATA_BUF_SIZE}] ? $MSG_FLASH_DATA_BUF_SIZE : [expr {$op_file_size - $i}]}]
+
+    if {$JIMTCL_VERSION > 0.79} {
+        echo "Program flash: using write_memory"
+
+        set f [open $file rb]
+        fconfigure $f -translation binary
+        set file_data [read $f]
+        close $f
+
+        for {set offset 0} {$offset < $size} {set offset [expr {$offset + $MSG_FLASH_DATA_BUF_SIZE}]} {
+            set write_size [expr {[expr {$size - $offset > $MSG_FLASH_DATA_BUF_SIZE}] ? $MSG_FLASH_DATA_BUF_SIZE : [expr {$size - $offset}]}]
+            set flash_addr [expr {$address + $offset}]
+
+            set chunk_data [string range $file_data $offset [expr {$offset + $write_size - 1}]]
+            set byte_list [list]
+            for {set j 0} {$j < [string length $chunk_data]} {incr j} {
+                lappend byte_list [scan [string index $chunk_data $j] %c]
+            }
+
             mww [expr {$pc_msg_data_mem_addr + 0x00}] $CMD_FLASH_WRITE
-            mww [expr {$pc_msg_data_mem_addr + 0x04}] [expr {$op_file_address + $i}]
+            mww [expr {$pc_msg_data_mem_addr + 0x04}] $flash_addr
             mww [expr {$pc_msg_data_mem_addr + 0x08}] $write_size
-            load_image $op_file [expr {$pc_msg_data_mem_addr + 0x10 - $i}] bin [expr {$pc_msg_data_mem_addr + 0x10}] $write_size 
-            # echo "write size: $write_size, offset: $i, address: [expr $op_file_address + $i]"
-            progress_bar $i $op_file_size
+            write_memory $data_buf_addr 8 $byte_list
+            progress_bar $offset $size
             mww $pc_msg_avail_mem_addr 1
             wait_response 0
+
+            if {[expr {[openocd_read_register [expr {$mcu_msg_data_mem_addr + 0x00}]] != $RESULT_OK}]} {
+                error "Flash write FAILED at offset $offset (address 0x[format %X $flash_addr])"
+            }
+        }
+    } else {
+        echo "Program flash: using load_image (legacy mode)"
+        global tcl_platform env
+        if {$tcl_platform(platform) eq "windows"} {
+            set tmp_file_path $env(TEMP)
+        } else {
+            set tmp_file_path "/tmp"
+        }
+        set tmp_prefix "rtl872x_[pid]"
+
+        set file_counts 0
+        set f [open $file rb]
+        fconfigure $f -translation binary
+        for {set i 0} {$i < $size} {set i [expr {$i + [expr {512 * 1024}]}]} {
+            set bin_data [read $f [expr {512 * 1024}]]
+            set f_tmp [open "$tmp_file_path/${tmp_prefix}_$file_counts.bin" wb]
+            puts -nonewline $f_tmp $bin_data
+            close $f_tmp
+            incr file_counts
+        }
+        close $f
+
+        echo "Program flash: $file_counts files in total"
+        for {set file_num 0} {$file_num < $file_counts} {incr file_num} {
+            set op_file "$tmp_file_path/${tmp_prefix}_$file_num.bin"
+            set op_file_size [file size $op_file]
+            set op_file_address [expr {$address + [expr {512 * 1024 * $file_num}]}]
+            for {set i 0} {$i < $op_file_size} {set i [expr {$i + $MSG_FLASH_DATA_BUF_SIZE}]} {
+                set write_size [expr {[expr {$op_file_size - $i > $MSG_FLASH_DATA_BUF_SIZE}] ? $MSG_FLASH_DATA_BUF_SIZE : [expr {$op_file_size - $i}]}]
+                mww [expr {$pc_msg_data_mem_addr + 0x00}] $CMD_FLASH_WRITE
+                mww [expr {$pc_msg_data_mem_addr + 0x04}] [expr {$op_file_address + $i}]
+                mww [expr {$pc_msg_data_mem_addr + 0x08}] $write_size
+                load_image $op_file [expr {$pc_msg_data_mem_addr + 0x10 - $i}] bin [expr {$pc_msg_data_mem_addr + 0x10}] $write_size
+                progress_bar $i $op_file_size
+                mww $pc_msg_avail_mem_addr 1
+                wait_response 0
+
+                if {[expr {[openocd_read_register [expr {$mcu_msg_data_mem_addr + 0x00}]] != $RESULT_OK}]} {
+                    error "Flash write FAILED at offset $i (address 0x[format %X [expr {$op_file_address + $i}]])"
+                }
+            }
+        }
+        for {set i 0} {$i < $file_counts} {incr i} {
+            catch {file delete "$tmp_file_path/${tmp_prefix}_$i.bin"}
         }
     }
+
     progress_bar 100 100
     set timelapse [expr {[expr {[clock milliseconds] - $startTime}] / 1000.0}]
     echo "\nO.K. Program time: [format "%.3f" $timelapse]s, speed: [format "%.3f" [expr {[expr {$size / 1024.0}] / $timelapse}]]KB/s"
@@ -554,7 +597,7 @@ proc crc32 {instr} {
     }
     set timelapse [expr {[expr {[clock milliseconds] - $startTime}] / 1000.0}]
     echo "\nCRC calculation time: [format "%.3f" $timelapse]s"
-    
+
     return [expr {$crc_value ^ 0xFFFFFFFF}]
 }
 
