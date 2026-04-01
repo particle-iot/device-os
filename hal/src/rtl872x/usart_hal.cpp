@@ -501,21 +501,35 @@ public:
 
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
-            RxLock lk(this);
-            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-            if (!useInterrupt()) {
-                UART_RXDMACmd(uartInstance, ENABLE);    
+            if (data() <= 0) {
+                RxLock lk(this);
+                if (!useInterrupt()) {
+                    UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
+                    UART_RXDMACmd(uartInstance, DISABLE);
+                }
+                if (!receiving_) {
+                    startReceiver();
+                }
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
             }
-            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
-            TxLock lk(this);
-            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-            if (!useInterrupt()) {
-                UART_TXDMACmd(uartInstance, ENABLE);
+            if (space() <= 0) {
+                TxLock lk(this);
+                xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+                if (!useInterrupt()) {
+                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+                    // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
+                    UART_TXDMACmd(uartInstance, DISABLE);
+                }
+                if (!transmitting_) {
+                    startTransmission();
+                }
+            } else {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
             }
-            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
         }
 
         return SYSTEM_ERROR_NONE;
