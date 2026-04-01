@@ -463,6 +463,9 @@ public:
 
     int enableEvent(HAL_USART_Pvt_Events event) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        if (useInterrupt()) {
+            return 0;
+        }
 
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
@@ -504,8 +507,8 @@ public:
             if (data() <= 0) {
                 RxLock lk(this);
                 if (!useInterrupt()) {
-                    UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
-                    UART_RXDMACmd(uartInstance, DISABLE);
+                    UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+                    UART_RXDMACmd(uartInstance, ENABLE);
                 }
                 if (!receiving_) {
                     startReceiver();
@@ -520,9 +523,8 @@ public:
                 TxLock lk(this);
                 xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
                 if (!useInterrupt()) {
-                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
-                    // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
-                    UART_TXDMACmd(uartInstance, DISABLE);
+                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+                    UART_TXDMACmd(uartInstance, ENABLE);
                 }
                 if (!transmitting_) {
                     startTransmission();
@@ -574,6 +576,8 @@ public:
             // No pending IRQ
             return 0;
         }
+        BaseType_t yield = pdFALSE;
+        bool eventGenerated = false;
         uint8_t intId = (regIir & RUART_IIR_INT_ID) >> 1;
         switch (intId) {
             case RUART_LP_RX_MONITOR_DONE: {
@@ -602,9 +606,8 @@ public:
                         uart->busy_ = false; // All bytes sent if no new DMA transfers are in progress
                     }
                 }
-                BaseType_t yield = pdFALSE;
                 if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
-                    portYIELD_FROM_ISR(yield);
+                    eventGenerated = true;
                 }
                 break;
             }
@@ -624,14 +627,16 @@ public:
                     } else {
                         UART_RXDMACmd(uartInstance, ENABLE);
                     }
-                    BaseType_t yield = pdFALSE;
                     if (xEventGroupSetBitsFromISR(uart->evGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-                        portYIELD_FROM_ISR(yield);
+                        eventGenerated = true;
                     }
                 }
                 break;
             }
             default: break;
+        }
+        if (eventGenerated) {
+            portYIELD_FROM_ISR(yield);
         }
         return 0;
     }
