@@ -26,7 +26,12 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "system_error.h"
+#if HAL_PLATFORM_NRF52840
+#include "usb_hal_cdc.h"
+#endif
+#if HAL_PLATFORM_RTL872X
 #include "usb_hal.h"
+#endif
 
 namespace {
 

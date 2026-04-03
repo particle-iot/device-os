@@ -226,42 +226,6 @@ static int32_t HAL_USB_USART_Receive_Data_Multiple(HAL_USB_USART_Serial serial, 
     return getCdcClassDriver().read(data, size);
 }
 
-int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
-    if (serial != HAL_USB_USART_SERIAL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    // Just in case for now
-    if ((__get_PRIMASK() & 1) || (__get_BASEPRI() != 0)) {
-        return -1;
-    }
-    int32_t available = HAL_USB_USART_Available_Data_For_Write(serial);
-    if (available == 0) {
-        bool needToYield = false;
-        auto prio = uxTaskPriorityGet(nullptr);
-        if (prio >= rtl::RTL_USBD_ISR_PROCESSING_THREAD_PRIORITY) {
-            needToYield = true;
-        }
-        while (true) {
-            available = HAL_USB_USART_Available_Data_For_Write(serial);
-            if (available > 0 || available < 0) {
-                break;
-            }
-            if (needToYield) {
-                HAL_Delay_Milliseconds(1);
-            }
-        }
-    }
-    if (available > 0 && HAL_USB_USART_Is_Connected(serial)) {
-        return getCdcClassDriver().write(&data, sizeof(data));
-    }
-    return -1;
-}
-
-int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
-    CHECK_SECURITY_MODE_PROTECTED();
-    return HAL_USB_USART_Send_Data(serial, data);
-}
-
 static int32_t HAL_USB_USART_Send_Data_Multiple(HAL_USB_USART_Serial serial, const uint8_t* data, size_t size) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -291,6 +255,15 @@ static int32_t HAL_USB_USART_Send_Data_Multiple(HAL_USB_USART_Serial serial, con
         return getCdcClassDriver().write(data, size);
     }
     return -1;
+}
+
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
+    return HAL_USB_USART_Send_Data_Multiple(serial, &data, 1);
+}
+
+int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Send_Data(serial, data);
 }
 
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {

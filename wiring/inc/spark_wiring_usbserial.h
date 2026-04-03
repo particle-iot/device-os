@@ -89,6 +89,10 @@ public:
 #endif
 	}
 
+	HAL_USB_USART_Serial interface() const {
+    	return _serial;
+	}
+
 	using Print::write;
 
 private:
