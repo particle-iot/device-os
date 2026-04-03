@@ -501,37 +501,23 @@ public:
 
     int disableEvent(HAL_USART_Pvt_Events event) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        if (useInterrupt()) {
+            return 0;
+        }
 
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
-            if (data() <= 0) {
-                RxLock lk(this);
-                if (!useInterrupt()) {
-                    UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
-                    UART_RXDMACmd(uartInstance, ENABLE);
-                }
-                if (!receiving_) {
-                    startReceiver();
-                }
-            } else {
-                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
-            }
+            RxLock lk(this);
+            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+            UART_RXDMACmd(uartInstance, ENABLE);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
-            if (space() <= 0) {
-                TxLock lk(this);
-                xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
-                if (!useInterrupt()) {
-                    UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-                    UART_TXDMACmd(uartInstance, ENABLE);
-                }
-                if (!transmitting_) {
-                    startTransmission();
-                }
-            } else {
-                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
-            }
+            TxLock lk(this);
+            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+            UART_TXDMACmd(uartInstance, ENABLE);
+            xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
         }
 
         return SYSTEM_ERROR_NONE;
