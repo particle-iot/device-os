@@ -87,7 +87,7 @@ public:
     }
 
     bool isEnabled() const {
-        return state_ == HAL_I2C_STATE_ENABLED;
+        return configured_ && state_ == HAL_I2C_STATE_ENABLED;
     }
 
     int init(const hal_i2c_config_t* conf) {
@@ -137,11 +137,11 @@ public:
             heapBuffer_ = false;
         }
         configured_ = false;
-        state_ = HAL_I2C_STATE_DISABLED;
         return SYSTEM_ERROR_NONE;
     }
 
     int begin(hal_i2c_mode_t mode, uint8_t address) {
+        CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
         if (isEnabled()) {
             end();
         }
@@ -555,6 +555,18 @@ public:
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
+    void acquire() {
+        acquired_ = true;
+    }
+
+    void release() {
+        acquired_ = false;
+    }
+
+    bool isAcquired() const {
+        return acquired_;
+    }
+
     static I2cClass* getInstance(hal_i2c_interface_t i2c) {
         static I2cClass i2cs[] = {
             { I2C0_DEV, SDA, SCL }
@@ -585,7 +597,8 @@ private:
               mutex_(nullptr),
               slaveRxCache_(nullptr),
               slaveRxCacheLen_(0),
-              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2) {
+              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2),
+              acquired_(false) {
     }
     ~I2cClass() = default;
 
@@ -797,6 +810,8 @@ private:
     std::unique_ptr<uint8_t[]> slaveRxCache_;
     volatile uint16_t slaveRxCacheLen_;
     uint16_t slaveRxCacheDepth_;
+
+    volatile bool acquired_;
 };
 
 class I2cLock {
@@ -819,26 +834,7 @@ private:
 
 int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-
-// sc-137389
-#if HAL_PLATFORM_PMIC_BQ24195
-    bool wasEnabled = instance->isEnabled();
-#endif // #if HAL_PLATFORM_PMIC_BQ24195
-
-    auto ret = instance->init(config);
-
-// sc-137389
-#if HAL_PLATFORM_PMIC_BQ24195
-    if (ret == SYSTEM_ERROR_NONE) {
-        if (i2c == HAL_PLATFORM_PMIC_BQ24195_I2C) {
-            if (wasEnabled) {
-                ret = instance->begin(I2C_MODE_MASTER, 0x00);
-            }
-        }
-    }
-#endif // #if HAL_PLATFORM_PMIC_BQ24195
-
-    return ret;
+    return instance->init(config);
 }
 
 void hal_i2c_set_speed(hal_i2c_interface_t i2c, uint32_t speed, void* reserved) {
@@ -869,7 +865,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
         return;
     }
     I2cLock lk(instance);
-    if (hal_i2c_is_enabled(i2c, nullptr)) {
+    if (hal_i2c_is_enabled(i2c, nullptr) && !hal_i2c_is_acquired(i2c, nullptr)) {
         instance->end();
     }
 }
@@ -890,10 +886,10 @@ uint32_t hal_i2c_request(hal_i2c_interface_t i2c, uint8_t address, uint8_t quant
 
 int32_t hal_i2c_request_ex(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* config, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 0);
+    I2cLock lk(instance);
     if (!hal_i2c_is_enabled(i2c, nullptr) || !config) {
         return 0;
     }
-    I2cLock lk(instance);
     return instance->requestFrom(config);
 }
 
@@ -915,37 +911,46 @@ uint8_t hal_i2c_end_transmission(hal_i2c_interface_t i2c, uint8_t stop, void* re
 
 int hal_i2c_end_transmission_ext(hal_i2c_interface_t i2c, uint8_t stop, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_INVALID_ARGUMENT);
+    I2cLock lk(instance);
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    I2cLock lk(instance);
     return instance->endTransmission(stop);
 }
 
 uint32_t hal_i2c_write(hal_i2c_interface_t i2c, uint8_t data, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), 0);
+    I2cLock lk(instance);
     if (!hal_i2c_is_enabled(i2c, nullptr)) {
         return 0;
     }
-    I2cLock lk(instance);
     return instance->write(data);
 }
 
 int32_t hal_i2c_available(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return instance->available();
 }
 
 int32_t hal_i2c_read(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return instance->read();
 }
 
 int32_t hal_i2c_peek(hal_i2c_interface_t i2c, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return instance->peek();
 }
 
@@ -955,6 +960,9 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
         return;
     }
     I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return;
+    }
     instance->flush();
 }
 
@@ -1016,5 +1024,28 @@ int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
 int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved) {
     auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
     I2cLock lk(instance);
+    if (!hal_i2c_is_enabled(i2c, nullptr)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     return instance->transaction(tx_config, rx_config);
+}
+
+int hal_i2c_acquire(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    instance->acquire();
+    return SYSTEM_ERROR_NONE;
+}
+
+int hal_i2c_release(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
+    I2cLock lk(instance);
+    instance->release();
+    return SYSTEM_ERROR_NONE;
+}
+
+bool hal_i2c_is_acquired(hal_i2c_interface_t i2c, void* reserved) {
+    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), false);
+    I2cLock lk(instance);
+    return instance->isAcquired();
 }
