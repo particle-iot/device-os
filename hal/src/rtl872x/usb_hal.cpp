@@ -219,7 +219,14 @@ int32_t HAL_USB_USART_Receive_Data_protected(HAL_USB_USART_Serial serial, uint8_
     return HAL_USB_USART_Receive_Data(serial, peek);
 }
 
-int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
+static int32_t HAL_USB_USART_Receive_Data_Multiple(HAL_USB_USART_Serial serial, uint8_t* data, size_t size) {
+    if (serial != HAL_USB_USART_SERIAL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return getCdcClassDriver().read(data, size);
+}
+
+static int32_t HAL_USB_USART_Send_Data_Multiple(HAL_USB_USART_Serial serial, const uint8_t* data, size_t size) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
@@ -245,9 +252,13 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
         }
     }
     if (available > 0 && HAL_USB_USART_Is_Connected(serial)) {
-        return getCdcClassDriver().write(&data, sizeof(data));
+        return getCdcClassDriver().write(data, size);
     }
     return -1;
+}
+
+int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
+    return HAL_USB_USART_Send_Data_Multiple(serial, &data, 1);
 }
 
 int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
@@ -306,3 +317,26 @@ HAL_USB_State HAL_USB_Get_State(void* reserved) {
 int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, void* reserved) {
     return 0;
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+int hal_usb_cdc_pvt_get_event_group_handle(EventGroupHandle_t* handle) {
+    return getCdcClassDriver().eventGroup(handle);
+}
+
+int hal_usb_cdc_pvt_wait_event(uint32_t events, system_tick_t timeout) {
+    return getCdcClassDriver().waitEvent(events, timeout);
+}
+
+int hal_usb_cdc_pvt_send_data(const char* data, size_t size) {
+    return HAL_USB_USART_Send_Data_Multiple(HAL_USB_USART_SERIAL, (uint8_t*)data, size);
+}
+
+int hal_usb_cdc_pvt_recv_data(char* data, size_t size) {
+    return HAL_USB_USART_Receive_Data_Multiple(HAL_USB_USART_SERIAL, (uint8_t*)data, size);
+}
+#ifdef __cplusplus
+}
+#endif // __cplusplus

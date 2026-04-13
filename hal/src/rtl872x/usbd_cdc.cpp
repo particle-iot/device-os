@@ -47,6 +47,8 @@ CdcClassDriver::CdcClassDriver()
     os_timer_create(&txTimer_, HAL_PLATFORM_USB_CDC_TX_PERIOD_MS, txTimerCallback, this, true /* oneshot */, nullptr);
     SPARK_ASSERT(txTimer_);
 #endif // !HAL_PLATFORM_USB_SOF
+    eventGroup_ = xEventGroupCreate();
+    SPARK_ASSERT(eventGroup_);
 }
 
 CdcClassDriver::~CdcClassDriver() {
@@ -61,6 +63,7 @@ CdcClassDriver::~CdcClassDriver() {
         txTimer_ = nullptr;
     }
 #endif // !HAL_PLATFORM_USB_SOF
+    vEventGroupDelete(eventGroup_);
 }
 
 int CdcClassDriver::init(unsigned cfgIdx) {
@@ -236,9 +239,9 @@ int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
     txBuffer_.consumeCommit(txBuffer_.consumePending());
     txState_ = false;
 
-
     startTx();
 
+    xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_WRITABLE);
     return 0;
 }
 
@@ -257,6 +260,8 @@ int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_
             setOpenState(true);
             rxState_ = false;
             startRx();
+
+            xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_READABLE);
             return 0;
         }
     }
@@ -615,3 +620,29 @@ int CdcClassDriver::stopTxTimer() {
 void CdcClassDriver::useDummyIntEp(bool state) {
     useDummyIntEp_ = state;
 }
+
+int CdcClassDriver::enableEvent(HAL_USART_Pvt_Events event) {
+    if (event & HAL_USART_PVT_EVENT_READABLE) {
+        if (available() > 0) {
+            xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_READABLE);
+        }
+    }
+
+    if (event & HAL_USART_PVT_EVENT_WRITABLE) {
+        if (availableForWrite() > 0) {
+            xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+        }
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int CdcClassDriver::waitEvent(uint32_t events, system_tick_t timeout) {
+    CHECK_FALSE(enableEvent((HAL_USART_Pvt_Events)events), SYSTEM_ERROR_INVALID_STATE);
+    return xEventGroupWaitBits(eventGroup_, events, pdTRUE, pdFALSE, timeout / portTICK_RATE_MS);
+}
+
+int CdcClassDriver::eventGroup(EventGroupHandle_t* eventGroup) {
+    *eventGroup = eventGroup_;
+    return 0;
+}
+

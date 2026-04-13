@@ -26,6 +26,9 @@
 #if !HAL_PLATFORM_USB_SOF
 #include "concurrent_hal.h"
 #endif // !HAL_PLATFORM_USB_SOF
+#include "FreeRTOS.h"
+#include "event_groups.h"
+#include "usart_hal_private.h"
 
 namespace particle { namespace usbd {
 
@@ -94,6 +97,10 @@ public:
 
     void useDummyIntEp(bool state);
 
+    int enableEvent(HAL_USART_Pvt_Events event);
+    int eventGroup(EventGroupHandle_t* eventGroup);
+    int waitEvent(uint32_t events, system_tick_t timeout);
+
 protected:
     void setOpenState(bool state);
 
@@ -149,6 +156,8 @@ private:
     os_timer_t txTimer_ = nullptr;
 #endif // !HAL_PLATFORM_USB_SOF
     bool useDummyIntEp_ = false;
+
+    EventGroupHandle_t eventGroup_;
 };
 
 } } /* namespace particle::usbd */

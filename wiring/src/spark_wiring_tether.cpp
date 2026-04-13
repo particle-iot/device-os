@@ -95,7 +95,7 @@ int TetherClass::bind(const TetherUSBConfig config) {
         settings.base.type = IF_REQ_DRIVER_SPECIFIC_PPP_SERVER_SERIAL_SETTINGS;
         settings.serial = IF_REQ_INVALID_SERIAL_INTERFACE;
         settings.baud = HAL_PLATFORM_PPP_SERVER_USART_BAUDRATE;
-        settings.usbserial = config.usbserial();
+        settings.usbserial = config.usbserial().interface();
         CHECK(if_request(iface, IF_REQ_DRIVER_SPECIFIC, &settings, sizeof(settings), nullptr));
         activeInterface_ = TetherInterface::USB;
         return 0;
