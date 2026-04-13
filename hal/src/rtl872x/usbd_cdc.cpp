@@ -241,10 +241,7 @@ int CdcClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t
 
     startTx();
 
-    BaseType_t yield = pdFALSE;
-    if (xEventGroupSetBitsFromISR(eventGroup_, HAL_USART_PVT_EVENT_WRITABLE, &yield) != pdFAIL) {
-        portYIELD_FROM_ISR(yield);
-    }
+    xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_WRITABLE);
     return 0;
 }
 
@@ -264,10 +261,7 @@ int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_
             rxState_ = false;
             startRx();
 
-            BaseType_t yield = pdFALSE;
-            if (xEventGroupSetBitsFromISR(eventGroup_, HAL_USART_PVT_EVENT_READABLE, &yield) != pdFAIL) {
-                portYIELD_FROM_ISR(yield);
-            }
+            xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_READABLE);
             return 0;
         }
     }
