@@ -488,6 +488,7 @@ int Am18x5::begin() {
     CHECK_TRUE(config_.size >= sizeof(am18x5_config_t), SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(config_.i2c_if < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_STATE);
     if (!initialized_) {
+        CHECK(hal_i2c_acquire(config_.i2c_if, HAL_I2C_ACQUIRE_EXTERNAL_RTC, nullptr));
         if (!hal_i2c_is_enabled(config_.i2c_if, nullptr)) {
             hal_i2c_init(config_.i2c_if, nullptr);
             hal_i2c_begin(config_.i2c_if, I2C_MODE_MASTER, 0x00, nullptr);
@@ -531,6 +532,7 @@ int Am18x5::end() {
     int ret = SYSTEM_ERROR_NONE;
     SCOPE_GUARD ({
         initialized_ = false;
+        hal_i2c_release(config_.i2c_if, HAL_I2C_ACQUIRE_EXTERNAL_RTC, nullptr);
     });
     if (config_.wdi_pin != PIN_INVALID) {
         hal_gpio_mode(config_.wdi_pin, INPUT);

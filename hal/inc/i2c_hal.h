@@ -83,6 +83,15 @@ typedef enum hal_i2c_state_t {
     HAL_I2C_STATE_SUSPENDED
 } hal_i2c_state_t;
 
+typedef uint8_t hal_i2c_acquire_flag_t;
+enum {
+    HAL_I2C_ACQUIRE_NONE = 0x00,
+    HAL_I2C_ACQUIRE_PMIC = 0x01,
+    HAL_I2C_ACQUIRE_FUELGAUGE = 0x02,
+    HAL_I2C_ACQUIRE_EXTERNAL_RTC = 0x04,
+    HAL_I2C_ACQUIRE_ALL = 0xFF
+};
+
 /* Exported macros -----------------------------------------------------------*/
 #define CLOCK_SPEED_10KHZ          (uint32_t)10000
 #define CLOCK_SPEED_100KHZ         (uint32_t)100000
@@ -119,8 +128,8 @@ int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved);
 int32_t hal_i2c_lock(hal_i2c_interface_t i2c, void* reserved);
 int32_t hal_i2c_unlock(hal_i2c_interface_t i2c, void* reserved);
 int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved);
-int hal_i2c_acquire(hal_i2c_interface_t i2c, void* reserved);
-int hal_i2c_release(hal_i2c_interface_t i2c, void* reserved);
+int hal_i2c_acquire(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved);
+int hal_i2c_release(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved);
 bool hal_i2c_is_acquired(hal_i2c_interface_t i2c, void* reserved);
 
 void hal_i2c_set_speed_deprecated(uint32_t speed);
