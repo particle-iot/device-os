@@ -35,10 +35,18 @@
 #include "lwip_util.h"
 #include "core_hal.h"
 #include "deviceid_hal.h"
+
+#if HAL_PLATFORM_PPP_SERVER
+#include "pppservernetif.h"
+#endif
+#include "nat.h"
+
 #include "system_env.h"
 
 using namespace particle;
 using namespace particle::net;
+
+nat::Nat64* g_natInstance = nullptr;
 
 namespace particle {
 
@@ -52,6 +60,10 @@ BaseNetif* wl4 = nullptr;
 BaseNetif* wl5 = nullptr;
 /* pp3 - Cellular */
 BaseNetif* pp3 = nullptr;
+#if HAL_PLATFORM_PPP_SERVER
+/* ps6 - PPP Server */
+BaseNetif* ps6 = nullptr;
+#endif
 
 class WifiNetworkManagerInit {
 public:
@@ -195,6 +207,14 @@ int if_init_platform(void*) {
     /* TODO: wl5 - Realtek NCP Access Point */
     (void)wl5;
 
+#if HAL_PLATFORM_PPP_SERVER
+    /* ps6 - PPP Server */
+    ps6 = new PppServerNetif();
+    if (ps6) {
+        ((PppServerNetif*)ps6)->init();
+    }
+#endif
+
     auto m = mallinfo();
     const size_t total = m.uordblks + m.fordblks;
     LOG(TRACE, "Heap: %lu/%lu Kbytes used", m.uordblks / 1000, total / 1000);
@@ -241,6 +261,21 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
     }
 
     return nullptr;
+}
+
+int lwip_hook_ip4_input_post_validation(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
+    if (g_natInstance) {
+        int r = g_natInstance->ip4Input(p, (ip_hdr*)iphdr, inp);
+        if (r) {
+            /* Ip4 hooks do not free the packet if it has been handled by the hook */
+            pbuf_free(p);
+        }
+
+        return r;
+    }
+
+    /* Try to handle locally if not consumed by g_natInstance */
+    return 0;
 }
 
 unsigned char* rltk_wlan_get_ip(int idx) {
