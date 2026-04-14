@@ -35,13 +35,23 @@ public:
     size_t replySize();
     
 private:
+    enum __attribute__((packed)) I2cDevice {
+        STUSB4500 = 0x01,
+        AM1805 = 0x02,
+        TMP112A = 0x04,
+        BQ24195 = 0x08,
+        MAX17043 = 0x10,
+        ATSHA204A = 0x20,
+        LORA = 0x40,
+        RESERVED = 0xFFFF
+    };
+
     JSONBufferWriter replyWriter_;
     char replyBuffer_[64];
 
     void detectBaseBoard();
     void configureBaseBoard(JSONValue value);
-    bool detectI2cSlaves();
-    int configure(bool muon);
+    int configure(String baseBoard);
 };
 
 } // particle

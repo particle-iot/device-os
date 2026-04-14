@@ -72,10 +72,34 @@ size_t BoardConfig::replySize() {
 }
 
 void BoardConfig::detectBaseBoard() {
-    bool isMuon = detectI2cSlaves();
+    constexpr std::pair<I2cDevice, uint8_t> addrs[] = {
+        {STUSB4500, 0x28},
+        {AM1805, 0x69},
+        {TMP112A, 0x48},
+        {BQ24195, 0x6B},
+        {MAX17043, 0x36},
+        {ATSHA204A, 0x64},
+        {LORA, 0x61},
+    };
+    constexpr uint16_t muonI2cDevices = STUSB4500 | AM1805 | TMP112A | BQ24195 | MAX17043 | LORA;
+    constexpr uint16_t mhatI2cDevices = STUSB4500 | AM1805 | TMP112A | BQ24195 | MAX17043 | ATSHA204A;
+
+    Wire.lock();
+    Wire.begin();
+    uint16_t i2cDeviceMask = 0;
+    for (uint8_t i = 0; i < sizeof(addrs) / sizeof(addrs[0]); i++) {
+        Wire.beginTransmission(addrs[i].second);
+        if (Wire.endTransmission() == 0) {
+            i2cDeviceMask |= addrs[i].first;
+        }
+    }
+    Wire.unlock();
+
     replyWriter_.beginObject();
-    if (isMuon) {
+    if (i2cDeviceMask == muonI2cDevices) {
         replyWriter_.name("board").value("muon");
+    } else if (i2cDeviceMask == mhatI2cDevices) {
+        replyWriter_.name("board").value("m-hat");
     } else {
         replyWriter_.name("board").value("none");
     }
@@ -84,39 +108,17 @@ void BoardConfig::detectBaseBoard() {
 
 void BoardConfig::configureBaseBoard(JSONValue value) {
     int ret = SYSTEM_ERROR_INVALID_ARGUMENT;
-    if (value.toString() == "muon") {
-        ret = configure(true);
-    } else if (value.toString() == "none") {
-        ret = configure(false);
-    }
+    ret = configure(static_cast<String>(value.toString()));
     replyWriter_.beginObject();
     replyWriter_.name("status").value(ret);
     replyWriter_.endObject();
 }
 
-bool BoardConfig::detectI2cSlaves() {
-    constexpr uint8_t addrs[] = {
-        0x28,   // STUSB4500 USB PD chip
-        0x69,   // AM18x5 RTC
-        0x48,   // TMP112A temperature sensor
-        0x6B,   // BQ24195 PMIC
-        0x36    // MAX17043 fuel gauge
-    };
-    Wire.begin();
-    for (uint8_t i = 0; i < sizeof(addrs); i++) {
-        Wire.beginTransmission(addrs[i]);
-        if (Wire.endTransmission() != 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
-int BoardConfig::configure(bool muon) {
+int BoardConfig::configure(String baseBoard) {
     Log.info("Set system power configuration");
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
-    if (muon) {
-        powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7);
+    if (baseBoard == "muon" || baseBoard == "m-hat") {
+        powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7).feature(SystemPowerFeature::PMIC_DETECTION);
     } else {
         powerConfig.auxiliaryPowerControlPin(PIN_INVALID).interruptPin(LOW_BAT_UC);
     }
@@ -125,7 +127,7 @@ int BoardConfig::configure(bool muon) {
     Log.info("Set Ethernet configuration");
     if_wiznet_pin_remap remap = {};
     remap.base.type = IF_WIZNET_DRIVER_SPECIFIC_PIN_REMAP;
-    if (muon) {
+    if (baseBoard == "muon") {
         System.enableFeature(FEATURE_ETHERNET_DETECTION);
         remap.cs_pin = A3;
         remap.reset_pin = PIN_INVALID;
