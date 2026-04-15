@@ -35,7 +35,7 @@ public:
     size_t replySize();
     
 private:
-    enum __attribute__((packed)) I2cDevice {
+    enum I2cDevice {
         STUSB4500 = 0x01,
         AM1805 = 0x02,
         TMP112A = 0x04,

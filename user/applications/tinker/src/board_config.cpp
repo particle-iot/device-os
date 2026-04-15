@@ -81,8 +81,9 @@ void BoardConfig::detectBaseBoard() {
         {ATSHA204A, 0x64},
         {LORA, 0x61},
     };
-    constexpr uint16_t muonI2cDevices = STUSB4500 | AM1805 | TMP112A | BQ24195 | MAX17043 | LORA;
-    constexpr uint16_t mhatI2cDevices = STUSB4500 | AM1805 | TMP112A | BQ24195 | MAX17043 | ATSHA204A;
+    constexpr uint16_t essentialI2cDevices = STUSB4500 | AM1805 | TMP112A | BQ24195 | MAX17043;
+    constexpr uint16_t muonI2cDevices = essentialI2cDevices | LORA;
+    constexpr uint16_t mhatI2cDevices = essentialI2cDevices | ATSHA204A;
 
     Wire.lock();
     Wire.begin();
@@ -91,6 +92,20 @@ void BoardConfig::detectBaseBoard() {
         Wire.beginTransmission(addrs[i].second);
         if (Wire.endTransmission() == 0) {
             i2cDeviceMask |= addrs[i].first;
+        }
+    }
+    // If swapping from "none" to "muon", auxiliary power is not enabled by default.
+    // Thus, the LoRa chip is not detected in the first scan.
+    if (i2cDeviceMask == essentialI2cDevices) {
+        PinMode mode = getPinMode(D7);
+        pinMode(D7, OUTPUT);
+        digitalWrite(D7, HIGH); // It's active HIGH on Muon
+        delay(350); // Wait for the LoRa chip to power on, 200ms is estimated to be not sufficient
+        Wire.beginTransmission(0x61); // Lora I2C address
+        if (Wire.endTransmission() == 0) {
+            i2cDeviceMask |= LORA;
+        } else {
+            pinMode(D7, mode);
         }
     }
     Wire.unlock();
@@ -118,7 +133,7 @@ int BoardConfig::configure(String baseBoard) {
     Log.info("Set system power configuration");
     SystemPowerConfiguration powerConfig = System.getPowerConfiguration();
     if (baseBoard == "muon" || baseBoard == "m-hat") {
-        powerConfig.auxiliaryPowerControlPin(D7).interruptPin(A7).feature(SystemPowerFeature::PMIC_DETECTION);
+        powerConfig.auxiliaryPowerControlPin(D7, HIGH).interruptPin(A7).feature(SystemPowerFeature::PMIC_DETECTION);
     } else {
         powerConfig.auxiliaryPowerControlPin(PIN_INVALID).interruptPin(LOW_BAT_UC);
     }
