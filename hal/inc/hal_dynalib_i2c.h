@@ -65,9 +65,6 @@ DYNALIB_FN(20, hal_i2c, hal_i2c_request_ex, int32_t(hal_i2c_interface_t, const h
 DYNALIB_FN(21, hal_i2c, hal_i2c_sleep, int(hal_i2c_interface_t i2c, bool sleep, void* reserved))
 DYNALIB_FN(22, hal_i2c, hal_i2c_end_transmission_ext, int(hal_i2c_interface_t, uint8_t, void*))
 DYNALIB_FN(23, hal_i2c, hal_i2c_transaction, int(hal_i2c_interface_t, const hal_i2c_transmission_config_t*, const hal_i2c_transmission_config_t*, void*))
-DYNALIB_FN(24, hal_i2c, hal_i2c_acquire, int(hal_i2c_interface_t, hal_i2c_acquire_flag_t, void*))
-DYNALIB_FN(25, hal_i2c, hal_i2c_release, int(hal_i2c_interface_t, hal_i2c_acquire_flag_t, void*))
-DYNALIB_FN(26, hal_i2c, hal_i2c_is_acquired, bool(hal_i2c_interface_t, void*))
 
 DYNALIB_END(hal_i2c)
 

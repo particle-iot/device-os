@@ -205,8 +205,6 @@ void PowerManager::init() {
     return;
   }
 
-  hal_i2c_acquire(HAL_PLATFORM_PMIC_BQ24195_I2C, HAL_I2C_ACQUIRE_PMIC | HAL_I2C_ACQUIRE_FUELGAUGE, nullptr);
-
   // IMPORTANT: attach the interrupt handler first
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
   hal_gpio_mode(PMIC_INT, INPUT_PULLUP);
@@ -991,8 +989,6 @@ void PowerManager::deinit() {
       power.setWatchdog(0b01);
     }
   }
-
-  hal_i2c_release(HAL_PLATFORM_PMIC_BQ24195_I2C, HAL_I2C_ACQUIRE_PMIC | HAL_I2C_ACQUIRE_FUELGAUGE, nullptr);
 
 #if HAL_PLATFORM_PMIC_INT_PIN_PRESENT
 #if HAL_PLATFORM_SHARED_INTERRUPT

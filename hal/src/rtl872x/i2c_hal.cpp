@@ -555,18 +555,6 @@ public:
         return SYSTEM_ERROR_INVALID_STATE;
     }
 
-    void acquire(hal_i2c_acquire_flag_t flag) {
-        acquireFlag_ |= flag;
-    }
-
-    void release(hal_i2c_acquire_flag_t flag) {
-        acquireFlag_ &= ~flag;
-    }
-
-    bool isAcquired() const {
-        return acquireFlag_ != HAL_I2C_ACQUIRE_NONE;
-    }
-
     static I2cClass* getInstance(hal_i2c_interface_t i2c) {
         static I2cClass i2cs[] = {
             { I2C0_DEV, SDA, SCL }
@@ -597,8 +585,7 @@ private:
               mutex_(nullptr),
               slaveRxCache_(nullptr),
               slaveRxCacheLen_(0),
-              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2),
-              acquireFlag_(HAL_I2C_ACQUIRE_NONE) {
+              slaveRxCacheDepth_(HAL_PLATFORM_I2C_BUFFER_SIZE(HAL_I2C_INTERFACE1) * 2) {
     }
     ~I2cClass() = default;
 
@@ -810,8 +797,6 @@ private:
     std::unique_ptr<uint8_t[]> slaveRxCache_;
     volatile uint16_t slaveRxCacheLen_;
     uint16_t slaveRxCacheDepth_;
-
-    volatile hal_i2c_acquire_flag_t acquireFlag_;
 };
 
 class I2cLock {
@@ -865,7 +850,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
         return;
     }
     I2cLock lk(instance);
-    if (hal_i2c_is_enabled(i2c, nullptr) && !hal_i2c_is_acquired(i2c, nullptr)) {
+    if (hal_i2c_is_enabled(i2c, nullptr)) {
         instance->end();
     }
 }
@@ -1028,24 +1013,4 @@ int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_conf
         return SYSTEM_ERROR_INVALID_STATE;
     }
     return instance->transaction(tx_config, rx_config);
-}
-
-int hal_i2c_acquire(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    I2cLock lk(instance);
-    instance->acquire(flag);
-    return SYSTEM_ERROR_NONE;
-}
-
-int hal_i2c_release(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), SYSTEM_ERROR_NOT_FOUND);
-    I2cLock lk(instance);
-    instance->release(flag);
-    return SYSTEM_ERROR_NONE;
-}
-
-bool hal_i2c_is_acquired(hal_i2c_interface_t i2c, void* reserved) {
-    auto instance = CHECK_TRUE_RETURN(I2cClass::getInstance(i2c), false);
-    I2cLock lk(instance);
-    return instance->isAcquired();
 }

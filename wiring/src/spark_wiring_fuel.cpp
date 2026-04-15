@@ -282,6 +282,12 @@ int FuelGauge::readConfigRegister(byte &MSB, byte &LSB) {
 
 int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
     std::lock_guard<FuelGauge> l(*this);
+    if (!i2c_.isEnabled()) {
+        i2c_.begin();
+        if (!i2c_.isEnabled()) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
     WireTransmission config(MAX17043_ADDRESS);
     config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
 #if (HAL_PLATFORM_I2C_NUM != 1)
@@ -316,6 +322,12 @@ int FuelGauge::readRegister(byte startAddress, byte &MSB, byte &LSB) {
 
 int FuelGauge::writeRegister(byte address, byte MSB, byte LSB) {
     std::lock_guard<FuelGauge> l(*this);
+    if (!i2c_.isEnabled()) {
+        i2c_.begin();
+        if (!i2c_.isEnabled()) {
+            return SYSTEM_ERROR_INTERNAL;
+        }
+    }
     WireTransmission config(MAX17043_ADDRESS);
     config.timeout(FUELGAUGE_DEFAULT_TIMEOUT);
 #if (HAL_PLATFORM_I2C_NUM != 1)

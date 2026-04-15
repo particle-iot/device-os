@@ -120,7 +120,6 @@ typedef struct nrf5x_i2c_info_t {
     os_mutex_recursive_t        mutex;
     bool                        configured;
     bool                        heap_buffer;
-    hal_i2c_acquire_flag_t      acquire_flag;
 
     void (*callback_on_request)(void);
     void (*callback_on_receive)(int);
@@ -361,8 +360,6 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
             free(i2cMap[i2c].tx_buf); 
             i2cMap[i2c].configured = false;
         }
-    } else {
-        i2cMap[i2c].acquire_flag = HAL_I2C_ACQUIRE_NONE;
     }
 
     if (isConfigValid(config)) {
@@ -428,6 +425,9 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
         return;
     }
+    if (!i2cMap[i2c].configured) {
+        return;
+    }
 
     I2cLock lk(i2c);
 #if PLATFORM_ID == PLATFORM_TRACKER
@@ -481,7 +481,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
     }
 
     I2cLock lk(i2c);
-    if (hal_i2c_is_enabled(i2c, nullptr) && i2cMap[i2c].acquire_flag == HAL_I2C_ACQUIRE_NONE) {
+    if (hal_i2c_is_enabled(i2c, nullptr)) {
         if (twiUninit(i2c) == SYSTEM_ERROR_NONE) {
             i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
         }
@@ -811,30 +811,4 @@ int hal_i2c_sleep(hal_i2c_interface_t i2c, bool sleep, void* reserved) {
 int hal_i2c_transaction(hal_i2c_interface_t i2c, const hal_i2c_transmission_config_t* tx_config, const hal_i2c_transmission_config_t* rx_config, void* reserved) {
     // TODO
     return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int hal_i2c_acquire(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved) {
-    if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    I2cLock lk(i2c);
-    i2cMap[i2c].acquire_flag |= flag;
-    return SYSTEM_ERROR_NONE;
-}
-
-int hal_i2c_release(hal_i2c_interface_t i2c, hal_i2c_acquire_flag_t flag, void* reserved) {
-    if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    I2cLock lk(i2c);
-    i2cMap[i2c].acquire_flag &= ~flag;
-    return SYSTEM_ERROR_NONE;
-}
-
-bool hal_i2c_is_acquired(hal_i2c_interface_t i2c, void* reserved) {
-    if (i2c >= HAL_PLATFORM_I2C_NUM) {
-        return false;
-    }
-    I2cLock lk(i2c);
-    return i2cMap[i2c].acquire_flag != HAL_I2C_ACQUIRE_NONE;
 }

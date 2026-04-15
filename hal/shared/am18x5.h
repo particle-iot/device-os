@@ -303,6 +303,8 @@ private:
     int enableClkOut(Am18x5SqwFrequency freq);
     int disableClkOut();
 
+    int enableInterfaceIfNeeded() const;
+
     int writeRegister(const Am18x5Register reg, uint8_t val, bool bcd = false, bool rw = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
     int writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const;
     int readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd = false, uint8_t mask = 0xFF, uint8_t shift = 0) const;
