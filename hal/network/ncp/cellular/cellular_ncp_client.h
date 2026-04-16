@@ -177,6 +177,7 @@ public:
     virtual int urcs(bool enable) = 0;
     virtual int startNcpFwUpdate(bool update) = 0;
     virtual int dataModeError(int error) = 0;
+    virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose = false);
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :

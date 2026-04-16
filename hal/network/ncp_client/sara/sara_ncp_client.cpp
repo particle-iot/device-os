@@ -2488,6 +2488,10 @@ int SaraNcpClient::urcs(bool enable) {
     return SYSTEM_ERROR_NONE;
 }
 
+int SaraNcpClient::sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
 void SaraNcpClient::connectionState(NcpConnectionState state) {
     if (ncpState_ == NcpState::DISABLED) {
         return;

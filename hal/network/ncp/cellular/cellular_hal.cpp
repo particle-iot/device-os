@@ -653,3 +653,13 @@ int cellular_start_ncp_firmware_update(bool update, void* reserved) {
     CHECK(client->startNcpFwUpdate(update));
     return SYSTEM_ERROR_NONE;
 }
+
+int cellular_send_apdu(const char* cmd, size_t cmdSize, char* resp, size_t* respSize, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    CHECK(client->sendApdu(cmd, cmdSize, resp, *respSize, true /* autoClose */));
+    return 0;
+}

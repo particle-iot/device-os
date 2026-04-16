@@ -37,11 +37,13 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "deviceid_hal.h"
 
 #include "stream_util.h"
+#include "str_util.h"
 
 #include "spark_wiring_interrupts.h"
 
 #include <algorithm>
 #include <limits>
+#include <cstring>
 #include <lwip/memp.h>
 
 #include "ncp_env_var.h"
@@ -2110,6 +2112,77 @@ int QuectelNcpClient::urcs(bool enable) {
 }
 
 int QuectelNcpClient::startNcpFwUpdate(bool update) {
+    return 0;
+}
+
+int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize, bool autoClose) {
+    const NcpClientLock lock(this);
+
+    if (autoClose && cmdSize >= 3 && cmdBuf[0] == '\x00' /* CLA */ && cmdBuf[1] == '\x70' /* INS */ &&
+            cmdBuf[2] == '\x00' /* P1 */) {
+        // For simplicity, don't allow using non-UICC assigned channel numbers together with `autoClose`
+        if (cmdSize < 5 || cmdBuf[3] != '\x00' /* P2 */ || cmdBuf[4] != '\x01' /* Le */) {
+            return SYSTEM_ERROR_INVALID_ARGUMENT;
+        }
+        if (apduChannel_ > 0) {
+            // Close the existing channel
+            int r = closeApduChannel(apduChannel_);
+            if (r < 0) {
+                LOG(ERROR, "Error while closing APDU channel: %d", r);
+            }
+            apduChannel_ = 0;
+        }
+    } else {
+        autoClose = false;
+    }
+
+    CHECK(checkParser());
+
+    auto cmd = parser_.command();
+    cmd.printf("AT+CSIM=%d,\"", (int)(cmdSize * 2));
+
+    char hexBuf[128 + 1];
+    size_t offs = 0;
+    while (offs < cmdSize) {
+        size_t n = std::min(cmdSize - offs, sizeof(hexBuf) / 2);
+        toHex(cmdBuf + offs, n, hexBuf, sizeof(hexBuf));
+        cmd.print(hexBuf);
+        offs += n;
+    }
+    cmd.print("\"");
+
+    auto resp = cmd.send();
+    // XXX: Partial reads cause AtResponse to discard the rest of the current line so read the entire
+    // +CSIM=... response line to a dynamically allocated CString
+    auto respStr = resp.readLine();
+    CHECK_PARSER_OK(resp.readResult());
+
+    if (!startsWith(respStr, "+CSIM:")) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    auto p1 = std::strchr(respStr, '"');
+    auto p2 = std::strrchr(respStr, '"');
+    if (!p1 || !p2 || p1 >= p2) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    respSize = fromHex(p1 + 1, p2 - p1 - 1, respBuf, respSize);
+    return 0;
+}
+
+int QuectelNcpClient::closeApduChannel(int channel) {
+    const NcpClientLock lock(this);
+    CHECK(checkParser());
+
+    auto cmd = parser_.command();
+    cmd.print("AT+CSIM=10,\"007080"); // CLA, INS (MANAGE CHANNEL), P1 (close channel)
+
+    char hexBuf[3];
+    char c = channel;
+    toHex(&c, 1, hexBuf, sizeof(hexBuf));
+    cmd.print(hexBuf); // P2
+
+    cmd.print("00\""); // Le
+    CHECK_PARSER_OK(cmd.exec());
     return 0;
 }
 
