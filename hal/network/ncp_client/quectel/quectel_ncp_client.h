@@ -30,6 +30,7 @@
 #include "serial_stream.h"
 #include "cellular_reg_status.h"
 #include "spark_wiring_vector.h"
+#include "../../../../system/src/util/system_timer.h" // FIXME
 
 namespace particle {
 
@@ -120,6 +121,7 @@ private:
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
     unsigned int fwVersion_ = 0;
+    system::SystemTimer apduChannelTimer_;
     int apduChannel_ = 0;
     bool configuredPlmn_ = false;
 
@@ -180,6 +182,8 @@ private:
     uint32_t getDefaultSerialConfig() const;
     void exitDataModeWithDtr() const;
     int closeApduChannel(int channel);
+
+    static void apduChannelTimeoutCb(void* arg);
 };
 
 inline AtParser* QuectelNcpClient::atParser() {

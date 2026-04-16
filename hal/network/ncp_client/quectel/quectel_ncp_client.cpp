@@ -149,9 +149,12 @@ const int CGDCONT_ATTEMPTS = 5;
 
 const int COPS_MAX_RETRY_CNT = 3;
 
+const int APDU_CHANNEL_AUTO_CLOSE_TIMEOUT = 5 * 60 * 1000;
+
 } // anonymous
 
-QuectelNcpClient::QuectelNcpClient() {
+QuectelNcpClient::QuectelNcpClient() :
+        apduChannelTimer_(apduChannelTimeoutCb, this) {
 }
 
 QuectelNcpClient::~QuectelNcpClient() {
@@ -400,6 +403,10 @@ int QuectelNcpClient::off() {
 
     ready_ = false;
     ncpState(NcpState::OFF);
+
+    apduChannelTimer_.stop();
+    apduChannel_ = 0;
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2116,7 +2123,7 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
 }
 
 int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize, bool autoClose) {
-    const NcpClientLock lock(this);
+    NcpClientLock lock(this);
 
     if (autoClose && cmdSize >= 3 && cmdBuf[0] == '\x00' /* CLA */ && cmdBuf[1] == '\x70' /* INS */ &&
             cmdBuf[2] == '\x00' /* P1 */) {
@@ -2125,7 +2132,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (apduChannel_ > 0) {
-            // Close the existing channel
+            LOG(INFO, "Closing existing APDU channel");
             int r = closeApduChannel(apduChannel_);
             if (r < 0) {
                 LOG(ERROR, "Error while closing APDU channel: %d", r);
@@ -2133,7 +2140,17 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             apduChannel_ = 0;
         }
     } else {
-        autoClose = false;
+        autoClose = false; // Not an open command
+    }
+
+    int cmdChannel = 0;
+    if (cmdSize >= 1) {
+        unsigned char cla = cmdBuf[0];
+        if (!(cla & 0x60)) {
+            cmdChannel = cla & 0x03; // Legacy encoding
+        } else if ((cla & 0x60) == 0x40) {
+            cmdChannel = (cla & 0x0f) + 4; // Extended encoding
+        }
     }
 
     CHECK(checkParser());
@@ -2152,7 +2169,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     cmd.print("\"");
 
     auto resp = cmd.send();
-    // XXX: Partial reads cause AtResponse to discard the rest of the current line so read the entire
+    // XXX: Partial reads cause AtResponse to discard the rest of the line, so read the entire
     // +CSIM=... response line to a dynamically allocated CString
     auto respStr = resp.readLine();
     CHECK_PARSER_OK(resp.readResult());
@@ -2165,12 +2182,24 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     if (!p1 || !p2 || p1 >= p2) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    respSize = fromHex(p1 + 1, p2 - p1 - 1, respBuf, respSize);
+    ++p1;
+    respSize = fromHex(p1, p2 - p1, respBuf, respSize);
+
+    if (autoClose) {
+        char resp[3];
+        size_t n = fromHex(p1, p2 - p1, resp, sizeof(resp));
+        if (n >= 3 && resp[1] == '\x90' /* SW1 */ && resp[2] == '\x00' /* SW2 */) {
+            apduChannel_ = (unsigned char)resp[0];
+            apduChannelTimer_.start(APDU_CHANNEL_AUTO_CLOSE_TIMEOUT);
+        }
+    } else if (cmdChannel > 0 && cmdChannel == apduChannel_) {
+        // Restart the channel inactivity timeout
+        apduChannelTimer_.start(APDU_CHANNEL_AUTO_CLOSE_TIMEOUT);
+    }
     return 0;
 }
 
 int QuectelNcpClient::closeApduChannel(int channel) {
-    const NcpClientLock lock(this);
     CHECK(checkParser());
 
     auto cmd = parser_.command();
@@ -2184,6 +2213,22 @@ int QuectelNcpClient::closeApduChannel(int channel) {
     cmd.print("00\""); // Le
     CHECK_PARSER_OK(cmd.exec());
     return 0;
+}
+
+void QuectelNcpClient::apduChannelTimeoutCb(void* arg) {
+    auto self = static_cast<QuectelNcpClient*>(arg);
+    NcpClientLock lock(self);
+
+    if (self->apduChannel_ <= 0) {
+        return;
+    }
+
+    LOG(INFO, "Closing APDU channel due to timeout");
+    int r = self->closeApduChannel(self->apduChannel_);
+    if (r < 0) {
+        LOG(ERROR, "Error while closing APDU channel: %d", r);
+    }
+    self->apduChannel_ = 0;
 }
 
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
