@@ -48,7 +48,6 @@ namespace {
 class PmicGuard : public PMIC {
 public:
   PmicGuard(bool lock = false) : PMIC(lock) {
-    LOG(TRACE, "PmicGuard");
     if (!hal_i2c_is_enabled(HAL_PLATFORM_PMIC_BQ24195_I2C, nullptr)) {
       hal_i2c_begin(HAL_PLATFORM_PMIC_BQ24195_I2C, I2C_MODE_MASTER, 0x00, nullptr);
       SPARK_ASSERT(hal_i2c_is_enabled(HAL_PLATFORM_PMIC_BQ24195_I2C, nullptr));
@@ -59,7 +58,6 @@ public:
 class FuelGaugeGuard : public FuelGauge {
 public:
   FuelGaugeGuard(bool lock = false) : FuelGauge(lock) {
-    LOG(TRACE, "FuelGaugeGuard");
     if (!hal_i2c_is_enabled(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, nullptr)) {
       hal_i2c_begin(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, I2C_MODE_MASTER, 0x00, nullptr);
       SPARK_ASSERT(hal_i2c_is_enabled(HAL_PLATFORM_FUELGAUGE_MAX17043_I2C, nullptr));

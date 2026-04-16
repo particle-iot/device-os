@@ -82,12 +82,8 @@ extern "C" {
 
 class I2cClass {
 public:
-    bool isConfigured() const {
-        return configured_;
-    }
-
     bool isEnabled() const {
-        return configured_ && state_ == HAL_I2C_STATE_ENABLED;
+        return state_ == HAL_I2C_STATE_ENABLED;
     }
 
     int init(const hal_i2c_config_t* conf) {
@@ -97,7 +93,7 @@ public:
         }
         os_thread_scheduling(true, nullptr);
         lock();
-        if (isConfigured()) {
+        if (state_ != HAL_I2C_STATE_NOT_INITIALIZED) {
             // Configured, but new buffers are invalid
             if (!isConfigValid(conf)){
                 unlock();
@@ -109,7 +105,16 @@ public:
                unlock();
                return SYSTEM_ERROR_NOT_ENOUGH_DATA;
             }
-            CHECK(deInit());
+            if (heapBuffer_) {
+                // The pointers are guaranteed to be non-nullptr when they are inited.
+                free(txBuffer_.buffer_);
+                free(rxBuffer_.buffer_);
+                heapBuffer_ = false;
+                // We've acquired lock, it's safe to not change the state_ here.
+            }
+        } else {
+            // Only initialize the struct to default values when it's not initialized before.
+            I2C_StructInit(&i2cInitStruct_);
         }
         if (isConfigValid(conf)) {
             rxBuffer_.init((uint8_t*)conf->rx_buffer, conf->rx_buffer_size);
@@ -123,25 +128,18 @@ public:
             heapBuffer_ = true;
         }
         slaveRxCacheDepth_ = rxBuffer_.size() * 2;
-        I2C_StructInit(&i2cInitStruct_);
-        configured_ = true;
+        if (state_ == HAL_I2C_STATE_NOT_INITIALIZED) {
+            state_ = HAL_I2C_STATE_DISABLED;
+        } else {
+            // Do nothing
+            // We've just changed the rxBuffer_ and txBuffer_ pointers, leave the state_ as-is.
+        }
         unlock();
         return SYSTEM_ERROR_NONE;
     }
 
-    int deInit() {
-        if (heapBuffer_) {
-            // The pointers are guaranteed to be non-nullptr when they are inited.
-            free(txBuffer_.buffer_);
-            free(rxBuffer_.buffer_);
-            heapBuffer_ = false;
-        }
-        configured_ = false;
-        return SYSTEM_ERROR_NONE;
-    }
-
     int begin(hal_i2c_mode_t mode, uint8_t address) {
-        CHECK_TRUE(configured_, SYSTEM_ERROR_INVALID_STATE);
+        CHECK_FALSE(state_ == HAL_I2C_STATE_NOT_INITIALIZED, SYSTEM_ERROR_INVALID_STATE);
         if (isEnabled()) {
             end();
         }
@@ -576,7 +574,7 @@ private:
             : i2cDev_(i2cDev),
               sdaPin_(sda),
               sclPin_(scl),
-              configured_(false),
+              state_(HAL_I2C_STATE_NOT_INITIALIZED),
               slaveStatus_(I2C_SLAVE_STOPPED),
               heapBuffer_(false),
               i2cInitStruct_(),
@@ -778,7 +776,6 @@ private:
     hal_pin_t sdaPin_;
     hal_pin_t sclPin_;
 
-    bool configured_;
     volatile hal_i2c_state_t state_;
     volatile uint8_t slaveStatus_;
 

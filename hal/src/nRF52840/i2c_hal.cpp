@@ -118,7 +118,6 @@ typedef struct nrf5x_i2c_info_t {
     size_t                      tx_index_tail;
 
     os_mutex_recursive_t        mutex;
-    bool                        configured;
     bool                        heap_buffer;
 
     void (*callback_on_request)(void);
@@ -254,6 +253,8 @@ static int twiUninit(hal_i2c_interface_t i2c, bool reset_pin_configuration = tru
         hal_pin_set_function(i2cMap[i2c].sda_pin, PF_NONE);
     }
 
+    i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
+
     return SYSTEM_ERROR_NONE;
 }
 
@@ -344,7 +345,7 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     }
 #endif // HAL_PLATFORM_PMIC_BQ24195
 
-    if (i2cMap[i2c].configured) {
+    if (i2cMap[i2c].state != HAL_I2C_STATE_NOT_INITIALIZED) {
         // Configured, but new buffers are invalid
         if (!isConfigValid(config)){
             return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -358,7 +359,7 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
         if (i2cMap[i2c].heap_buffer) {
             free(i2cMap[i2c].rx_buf);
             free(i2cMap[i2c].tx_buf); 
-            i2cMap[i2c].configured = false;
+            // We've acquired lock, it's safe to not change the state here.
         }
     }
 
@@ -392,7 +393,6 @@ int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     i2cMap[i2c].rx_index_tail = 0;
     i2cMap[i2c].tx_index_head = 0;
     i2cMap[i2c].tx_index_tail = 0;
-    i2cMap[i2c].configured = true;
     memset((void *)i2cMap[i2c].rx_buf, 0, i2cMap[i2c].rx_buf_size);
     memset((void *)i2cMap[i2c].tx_buf, 0, i2cMap[i2c].tx_buf_size);
 
@@ -425,7 +425,7 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     if (i2c >= HAL_PLATFORM_I2C_NUM) {
         return;
     }
-    if (!i2cMap[i2c].configured) {
+    if (i2cMap[i2c].state == HAL_I2C_STATE_NOT_INITIALIZED) {
         return;
     }
 
@@ -454,9 +454,7 @@ void hal_i2c_begin(hal_i2c_interface_t i2c, hal_i2c_mode_t mode, uint8_t address
     }
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
-    if (twiUninit(i2c) == SYSTEM_ERROR_NONE) {
-        i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
-    }
+    twiUninit(i2c);
 
     if (i2cMap[i2c].state == HAL_I2C_STATE_DISABLED) {
         i2cMap[i2c].rx_index_head = 0;
@@ -482,9 +480,7 @@ void hal_i2c_end(hal_i2c_interface_t i2c, void* reserved) {
 
     I2cLock lk(i2c);
     if (hal_i2c_is_enabled(i2c, nullptr)) {
-        if (twiUninit(i2c) == SYSTEM_ERROR_NONE) {
-            i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
-        }
+        twiUninit(i2c);
     }
 }
 
@@ -676,7 +672,7 @@ void hal_i2c_flush(hal_i2c_interface_t i2c, void* reserved) {
 }
 
 bool hal_i2c_is_enabled(hal_i2c_interface_t i2c,void* reserved) {
-    return i2cMap[i2c].state == HAL_I2C_STATE_ENABLED && i2cMap[i2c].configured;
+    return i2cMap[i2c].state == HAL_I2C_STATE_ENABLED;
 }
 
 void hal_i2c_set_callback_on_received(hal_i2c_interface_t i2c, void (*function)(int),void* reserved) {
@@ -712,9 +708,7 @@ int hal_i2c_reset(hal_i2c_interface_t i2c, uint32_t reserved, void* reserved1) {
     }
 
     // Important: we keep GPIO configuration intact
-    if (twiUninit(i2c, false) == SYSTEM_ERROR_NONE) {
-        i2cMap[i2c].state = HAL_I2C_STATE_DISABLED;
-    }
+    twiUninit(i2c, false);
 
     // Just in case make sure that the pins are correctly configured (they should anyway be at this point)
     hal_gpio_config_t conf = {
