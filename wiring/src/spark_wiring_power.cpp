@@ -1154,11 +1154,6 @@ byte PMIC::getVersion() {
  *******************************************************************************/
 byte PMIC::readRegister(byte startAddress) {
     std::lock_guard<PMIC> l(*this);
-    if (!pmicWireInstance()->isEnabled()) {
-        pmicWireInstance()->begin();
-        // Cannot handle error, just assert.
-        SPARK_ASSERT(pmicWireInstance()->isEnabled());
-    }
     byte DATA = 0;
     WireTransmission config(PMIC_ADDRESS);
     config.timeout(PMIC_DEFAULT_TIMEOUT);
@@ -1196,11 +1191,6 @@ byte PMIC::readRegister(byte startAddress) {
  *******************************************************************************/
 void PMIC::writeRegister(byte address, byte DATA) {
     std::lock_guard<PMIC> l(*this);
-    if (!pmicWireInstance()->isEnabled()) {
-        pmicWireInstance()->begin();
-        // Cannot handle error, just assert.
-        SPARK_ASSERT(pmicWireInstance()->isEnabled());
-    }
     WireTransmission config(PMIC_ADDRESS);
     config.timeout(PMIC_DEFAULT_TIMEOUT);
 #if (HAL_PLATFORM_I2C_NUM != 1)
