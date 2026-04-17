@@ -2226,7 +2226,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             }
         }
     } else if (cmdChannel > 0 && cmdChannel == apduChannel_) {
-        apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
+        apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT); // Restart the inactivity timer
     }
 
     respSize = fromHex(respHex, respHexSize, respBuf, respSize);
@@ -2236,7 +2236,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
 int QuectelNcpClient::closeApduChannel(int channel) {
     // Don't use checkParser() here as this method is also called from initReady()
     auto cmd = parser_.command();
-    cmd.print("AT+CSIM=10,\"007080"); // CLA, INS (MANAGE CHANNEL), P1 (close channel)
+    cmd.print("AT+CSIM=10,\"007080"); // CLA, INS, P1
 
     char hexBuf[3];
     char c = channel;
