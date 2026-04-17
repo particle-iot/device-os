@@ -129,6 +129,62 @@ int getIccid(ctrl_request* req) {
     return 0;
 }
 
+int sendApdu(ctrl_request* req) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    CHECK(client->on());
+
+    struct Context {
+        char apdu[MAX_APDU_SIZE];
+        size_t apduSize;
+        int error;
+    };
+    Context ctx = {};
+
+    PB(ApduRequest) pbReq = {};
+    pbReq.data.arg = &ctx;
+    pbReq.data.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
+        auto ctx = (Context*)*arg;
+        ctx->apduSize = stream->bytes_left;
+        if (ctx->apduSize > MAX_APDU_SIZE) {
+            ctx->error = SYSTEM_ERROR_TOO_LARGE;
+            return false;
+        }
+        if (!pb_read(stream, (pb_byte_t*)ctx->apdu, ctx->apduSize)) {
+            return false;
+        }
+        return true;
+    };
+    int r = decodeRequestMessage(req, &PB(ApduRequest_msg), &pbReq);
+    if (r < 0) {
+        return (ctx.error < 0) ? ctx.error : r;
+    }
+
+    // Use the same buffer to store the response
+    size_t respSize = sizeof(ctx.apdu);
+    CHECK(client->sendApdu(ctx.apdu, ctx.apduSize, ctx.apdu, respSize, true /* autoClose */));
+    ctx.apduSize = respSize;
+
+    PB(ApduReply) pbRep = {};
+    pbRep.data.arg = &ctx;
+    pbRep.data.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+        auto ctx = (const Context*)*arg;
+        if (!pb_encode_tag_for_field(stream, field) ||
+                !pb_encode_string(stream, (const pb_byte_t*)ctx->apdu, ctx->apduSize)) {
+            return false;
+        }
+        return true;
+    };
+    r = encodeReplyMessage(req, &PB(ApduReply_msg), &pbRep);
+    if (r < 0) {
+        return (ctx.error < 0) ? ctx.error : r;
+    }
+    return 0;
+}
+
 } // particle::ctrl::cellular
 
 } // particle::ctrl

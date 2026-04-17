@@ -2194,7 +2194,6 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     if (!s || s - respHex != respHexSize) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    respSize = fromHex(respHex, respHexSize, respBuf, respSize);
 
     if (openChannel || closeChannel) {
         if (respHexSize >= 4) {
@@ -2223,6 +2222,8 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
         // Restart the inactivity timer
         apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
     }
+
+    respSize = fromHex(respHex, respHexSize, respBuf, respSize);
     return 0;
 }
 

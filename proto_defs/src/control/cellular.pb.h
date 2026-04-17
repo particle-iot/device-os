@@ -24,6 +24,16 @@ typedef enum _particle_ctrl_cellular_SimType {
 } particle_ctrl_cellular_SimType;
 
 /* Struct definitions */
+typedef struct _particle_ctrl_cellular_ApduReply { 
+    pb_callback_t data; 
+} particle_ctrl_cellular_ApduReply;
+
+/* *
+ Send a command APDU to the UICC. */
+typedef struct _particle_ctrl_cellular_ApduRequest { 
+    pb_callback_t data; 
+} particle_ctrl_cellular_ApduRequest;
+
 /* *
  Get active SIM card. */
 typedef struct _particle_ctrl_cellular_GetActiveSimRequest { 
@@ -110,6 +120,8 @@ extern "C" {
 #define particle_ctrl_cellular_GetActiveSimReply_init_default {_particle_ctrl_cellular_SimType_MIN}
 #define particle_ctrl_cellular_GetIccidRequest_init_default {0}
 #define particle_ctrl_cellular_GetIccidReply_init_default {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_ctrl_cellular_ApduRequest_init_default {{{NULL}, NULL}}
+#define particle_ctrl_cellular_ApduReply_init_default {{{NULL}, NULL}}
 #define particle_ctrl_cellular_AccessPoint_init_zero {{{NULL}, NULL}, {{NULL}, NULL}, {{NULL}, NULL}, 0}
 #define particle_ctrl_cellular_SetAccessPointRequest_init_zero {_particle_ctrl_cellular_SimType_MIN, particle_ctrl_cellular_AccessPoint_init_zero}
 #define particle_ctrl_cellular_SetAccessPointReply_init_zero {0}
@@ -121,8 +133,12 @@ extern "C" {
 #define particle_ctrl_cellular_GetActiveSimReply_init_zero {_particle_ctrl_cellular_SimType_MIN}
 #define particle_ctrl_cellular_GetIccidRequest_init_zero {0}
 #define particle_ctrl_cellular_GetIccidReply_init_zero {{{NULL}, NULL}, {{NULL}, NULL}}
+#define particle_ctrl_cellular_ApduRequest_init_zero {{{NULL}, NULL}}
+#define particle_ctrl_cellular_ApduReply_init_zero {{{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
+#define particle_ctrl_cellular_ApduReply_data_tag 1
+#define particle_ctrl_cellular_ApduRequest_data_tag 1
 #define particle_ctrl_cellular_GetIccidReply_iccid_tag 1
 #define particle_ctrl_cellular_GetIccidReply_imei_tag 2
 #define particle_ctrl_cellular_AccessPoint_apn_tag 1
@@ -199,6 +215,16 @@ X(a, CALLBACK, SINGULAR, STRING,   imei,              2)
 #define particle_ctrl_cellular_GetIccidReply_CALLBACK pb_default_field_callback
 #define particle_ctrl_cellular_GetIccidReply_DEFAULT NULL
 
+#define particle_ctrl_cellular_ApduRequest_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, BYTES,    data,              1)
+#define particle_ctrl_cellular_ApduRequest_CALLBACK pb_default_field_callback
+#define particle_ctrl_cellular_ApduRequest_DEFAULT NULL
+
+#define particle_ctrl_cellular_ApduReply_FIELDLIST(X, a) \
+X(a, CALLBACK, SINGULAR, BYTES,    data,              1)
+#define particle_ctrl_cellular_ApduReply_CALLBACK pb_default_field_callback
+#define particle_ctrl_cellular_ApduReply_DEFAULT NULL
+
 extern const pb_msgdesc_t particle_ctrl_cellular_AccessPoint_msg;
 extern const pb_msgdesc_t particle_ctrl_cellular_SetAccessPointRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_cellular_SetAccessPointReply_msg;
@@ -210,6 +236,8 @@ extern const pb_msgdesc_t particle_ctrl_cellular_GetActiveSimRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_cellular_GetActiveSimReply_msg;
 extern const pb_msgdesc_t particle_ctrl_cellular_GetIccidRequest_msg;
 extern const pb_msgdesc_t particle_ctrl_cellular_GetIccidReply_msg;
+extern const pb_msgdesc_t particle_ctrl_cellular_ApduRequest_msg;
+extern const pb_msgdesc_t particle_ctrl_cellular_ApduReply_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_ctrl_cellular_AccessPoint_fields &particle_ctrl_cellular_AccessPoint_msg
@@ -223,12 +251,16 @@ extern const pb_msgdesc_t particle_ctrl_cellular_GetIccidReply_msg;
 #define particle_ctrl_cellular_GetActiveSimReply_fields &particle_ctrl_cellular_GetActiveSimReply_msg
 #define particle_ctrl_cellular_GetIccidRequest_fields &particle_ctrl_cellular_GetIccidRequest_msg
 #define particle_ctrl_cellular_GetIccidReply_fields &particle_ctrl_cellular_GetIccidReply_msg
+#define particle_ctrl_cellular_ApduRequest_fields &particle_ctrl_cellular_ApduRequest_msg
+#define particle_ctrl_cellular_ApduReply_fields &particle_ctrl_cellular_ApduReply_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_ctrl_cellular_AccessPoint_size depends on runtime parameters */
 /* particle_ctrl_cellular_SetAccessPointRequest_size depends on runtime parameters */
 /* particle_ctrl_cellular_GetAccessPointReply_size depends on runtime parameters */
 /* particle_ctrl_cellular_GetIccidReply_size depends on runtime parameters */
+/* particle_ctrl_cellular_ApduRequest_size depends on runtime parameters */
+/* particle_ctrl_cellular_ApduReply_size depends on runtime parameters */
 #define particle_ctrl_cellular_GetAccessPointRequest_size 2
 #define particle_ctrl_cellular_GetActiveSimReply_size 2
 #define particle_ctrl_cellular_GetActiveSimRequest_size 0
