@@ -2156,19 +2156,13 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
         }
     }
 
-    if (openChannel && autoClose) {
-        // For simplicity, don't allow using non-UICC assigned channel numbers together with `autoClose`
-        if (cmdSize != 5 || cmdBuf[3] != '\x00' /* P2 */ || cmdBuf[4] != '\x01' /* Le */) {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
+    if (openChannel && autoClose && apduChannel_ > 0) {
+        LOG(INFO, "Closing existing APDU channel %d", apduChannel_);
+        int r = closeApduChannel(apduChannel_);
+        if (r < 0) {
+            LOG(ERROR, "Error while closing APDU channel: %d", r);
         }
-        if (apduChannel_ > 0) {
-            LOG(INFO, "Closing existing APDU channel %d", apduChannel_);
-            int r = closeApduChannel(apduChannel_);
-            if (r < 0) {
-                LOG(ERROR, "Error while closing APDU channel: %d", r);
-            }
-            apduChannel_ = 0;
-        }
+        apduChannel_ = 0;
     }
 
     auto cmd = parser_.command();
@@ -2204,11 +2198,20 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             char sw[2]; // Status
             size_t n = fromHex(respHex + respHexSize - 4, 4, sw, sizeof(sw));
             if (n == 2 && sw[0] == '\x90' /* SW1 */ && sw[1] == '\x00' /* SW2 */) {
-                if (openChannel && respHexSize == 6) {
-                    char c = 0; // Channel number
-                    n = fromHex(respHex, 2, &c, 1);
-                    if (n == 1) {
-                        int channel = (unsigned char)c;
+                if (openChannel) {
+                    int channel = 0;
+                    if (respHexSize == 6) {
+                        // The channel number was assigned by the UICC
+                        char c = 0;
+                        n = fromHex(respHex, 2, &c, 1);
+                        if (n == 1) {
+                            channel = (unsigned char)c;
+                        }
+                    } else {
+                        // The channel number was provided in the command
+                        channel = cmdBuf[3]; // P2
+                    }
+                    if (channel > 0) {
                         LOG(INFO, "Opened APDU channel %d", channel);
                         if (autoClose) {
                             apduChannel_ = channel;
