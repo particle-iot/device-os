@@ -1449,6 +1449,11 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(setupBands());
     }
 
+    // Make sure all normal (non-extended) APDU channels are closed
+    for (int i = 1; i <= 3; ++i) {
+        closeApduChannel(i);
+    }
+
     if (state != ModemState::MuxerAtChannel) {
         // Send AT+CMUX and initialize multiplexer
         int portspeed;
@@ -2129,6 +2134,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     }
 
     NcpClientLock lock(this);
+    CHECK(checkParser());
 
     int cmdChannel = -1; // Channel number as encoded in the CLA field
     bool openChannel = false; // If true, this command opens a channel
@@ -2152,11 +2158,11 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
 
     if (openChannel && autoClose) {
         // For simplicity, don't allow using non-UICC assigned channel numbers together with `autoClose`
-        if (cmdSize < 5 || cmdBuf[3] != '\x00' /* P2 */ || cmdBuf[4] != '\x01' /* Le */) {
+        if (cmdSize != 5 || cmdBuf[3] != '\x00' /* P2 */ || cmdBuf[4] != '\x01' /* Le */) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }
         if (apduChannel_ > 0) {
-            LOG(INFO, "Closing existing APDU channel");
+            LOG(INFO, "Closing existing APDU channel %d", apduChannel_);
             int r = closeApduChannel(apduChannel_);
             if (r < 0) {
                 LOG(ERROR, "Error while closing APDU channel: %d", r);
@@ -2164,8 +2170,6 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             apduChannel_ = 0;
         }
     }
-
-    CHECK(checkParser());
 
     auto cmd = parser_.command();
     cmd.printf("AT+CSIM=%d,\"", (int)(cmdSize * 2));
@@ -2200,18 +2204,21 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             char sw[2]; // Status
             size_t n = fromHex(respHex + respHexSize - 4, 4, sw, sizeof(sw));
             if (n == 2 && sw[0] == '\x90' /* SW1 */ && sw[1] == '\x00' /* SW2 */) {
-                if (openChannel && autoClose && respHexSize == 6) {
+                if (openChannel && respHexSize == 6) {
                     char c = 0; // Channel number
                     n = fromHex(respHex, 2, &c, 1);
                     if (n == 1) {
-                        // Start the inactivity timer for the newly opened channel
-                        apduChannel_ = (unsigned char)c;
-                        apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
+                        int channel = (unsigned char)c;
+                        LOG(INFO, "Opened APDU channel %d", channel);
+                        if (autoClose) {
+                            apduChannel_ = channel;
+                            apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
+                        }
                     }
                 } else if (closeChannel) {
                     int channel = (unsigned char)cmdBuf[3]; // P2
+                    LOG(INFO, "Closed APDU channel %d", channel);
                     if (channel > 0 && channel == apduChannel_) {
-                        // Stop the timer for the closed channel
                         apduChannelTimer_.stop();
                         apduChannel_ = 0;
                     }
@@ -2219,7 +2226,6 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             }
         }
     } else if (cmdChannel > 0 && cmdChannel == apduChannel_) {
-        // Restart the inactivity timer
         apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
     }
 
@@ -2228,8 +2234,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
 }
 
 int QuectelNcpClient::closeApduChannel(int channel) {
-    CHECK(checkParser());
-
+    // Don't use checkParser() here as this method is also called from initReady()
     auto cmd = parser_.command();
     cmd.print("AT+CSIM=10,\"007080"); // CLA, INS (MANAGE CHANNEL), P1 (close channel)
 
@@ -2250,9 +2255,13 @@ void QuectelNcpClient::apduChannelTimeoutCb(void* arg) {
     if (self->apduChannel_ <= 0) {
         return;
     }
+    int r = self->checkParser();
+    if (r < 0) {
+        return;
+    }
 
-    LOG(INFO, "Closing APDU channel due to timeout");
-    int r = self->closeApduChannel(self->apduChannel_);
+    LOG(INFO, "Closing APDU channel %d due to timeout", self->apduChannel_);
+    r = self->closeApduChannel(self->apduChannel_);
     if (r < 0) {
         LOG(ERROR, "Error while closing APDU channel: %d", r);
     }
