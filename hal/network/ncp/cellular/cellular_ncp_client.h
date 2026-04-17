@@ -29,6 +29,9 @@
 namespace particle {
 
 #if PLATFORM_ID != PLATFORM_GCC
+
+const size_t MAX_APDU_SIZE = 261; // 4 (header) + 1 (Lc) + 255 (data) + 1 (Le)
+
 struct CellularNcpEvent: NcpEvent {
     enum Type {
         AUTH = CUSTOM_EVENT_TYPE_BASE
@@ -177,7 +180,22 @@ public:
     virtual int urcs(bool enable) = 0;
     virtual int startNcpFwUpdate(bool update) = 0;
     virtual int dataModeError(int error) = 0;
-    virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose = false);
+
+    /**
+     * Send a command APDU to the UICC.
+     *
+     * @param cmd Command APDU.
+     * @param cmd_size Size of the command APDU.
+     * @param resp Buffer for storing the response APDU.
+     * @param[in,out] resp_size **in:** Size of the response buffer.
+     *        **out:** Number of bytes written to the response buffer.
+     * @param autoClose If `true`, sending a command to open a new logical channel on the UICC will
+     *        close the existing channel (if any), provided that the existing channel was also opened
+     *        with `autoClose=true`. Additionally, a channel opened with `autoClose=true` will be
+     *        automatically closed after an inactivity timeout of 5 minutes.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
+    virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose = false) = 0;
 };
 
 inline CellularNcpClientConfig::CellularNcpClientConfig() :
@@ -288,6 +306,7 @@ inline CellularQualityUnits CellularSignalQuality::qualityUnits() const {
         }
     }
 }
+
 #endif // PLATFORM_ID != PLATFORM_GCC
 
 } // particle

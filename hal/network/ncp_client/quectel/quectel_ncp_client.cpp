@@ -43,6 +43,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 
 #include <algorithm>
 #include <limits>
+#include <cstdio>
 #include <cstring>
 #include <lwip/memp.h>
 
@@ -149,7 +150,7 @@ const int CGDCONT_ATTEMPTS = 5;
 
 const int COPS_MAX_RETRY_CNT = 3;
 
-const int APDU_CHANNEL_AUTO_CLOSE_TIMEOUT = 5 * 60 * 1000;
+const int APDU_CHANNEL_TIMEOUT = 5 * 60 * 1000;
 
 } // anonymous
 
@@ -2123,10 +2124,33 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
 }
 
 int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize, bool autoClose) {
+    if (cmdSize > MAX_APDU_SIZE) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+
     NcpClientLock lock(this);
 
-    if (autoClose && cmdSize >= 3 && cmdBuf[0] == '\x00' /* CLA */ && cmdBuf[1] == '\x70' /* INS */ &&
-            cmdBuf[2] == '\x00' /* P1 */) {
+    int cmdChannel = -1; // Channel number as encoded in the CLA field
+    bool openChannel = false; // If true, this command opens a channel
+    bool closeChannel = false; // If true, this command closes a channel
+
+    if (cmdSize >= 4) {
+        uint8_t cla = cmdBuf[0];
+        if (!(cla & 0x60)) {
+            cmdChannel = cla & 0x03; // Standard encoding
+        } else if ((cla & 0x60) == 0x40) {
+            cmdChannel = (cla & 0x0f) + 4; // Extended encoding
+        }
+        if (cla == 0 && cmdBuf[1] == '\x70' /* INS */) {
+            if (cmdBuf[2] == '\x00' /* P1 */) {
+                openChannel = true;
+            } else if (cmdBuf[2] == '\x80') {
+                closeChannel = true;
+            }
+        }
+    }
+
+    if (openChannel && autoClose) {
         // For simplicity, don't allow using non-UICC assigned channel numbers together with `autoClose`
         if (cmdSize < 5 || cmdBuf[3] != '\x00' /* P2 */ || cmdBuf[4] != '\x01' /* Le */) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -2139,18 +2163,6 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             }
             apduChannel_ = 0;
         }
-    } else {
-        autoClose = false; // Not an open command
-    }
-
-    int cmdChannel = 0;
-    if (cmdSize >= 1) {
-        unsigned char cla = cmdBuf[0];
-        if (!(cla & 0x60)) {
-            cmdChannel = cla & 0x03; // Legacy encoding
-        } else if ((cla & 0x60) == 0x40) {
-            cmdChannel = (cla & 0x0f) + 4; // Extended encoding
-        }
     }
 
     CHECK(checkParser());
@@ -2158,43 +2170,58 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     auto cmd = parser_.command();
     cmd.printf("AT+CSIM=%d,\"", (int)(cmdSize * 2));
 
-    char hexBuf[128 + 1];
-    size_t offs = 0;
-    while (offs < cmdSize) {
-        size_t n = std::min(cmdSize - offs, sizeof(hexBuf) / 2);
-        toHex(cmdBuf + offs, n, hexBuf, sizeof(hexBuf));
-        cmd.print(hexBuf);
-        offs += n;
-    }
+    char strBuf[MAX_APDU_SIZE * 2 + 50]; // Add some room for AT command framing
+    toHex(cmdBuf, cmdSize, strBuf, sizeof(strBuf));
+    cmd.print(strBuf);
     cmd.print("\"");
 
     auto resp = cmd.send();
-    // XXX: Partial reads cause AtResponse to discard the rest of the line, so read the entire
-    // +CSIM=... response line to a dynamically allocated CString
-    auto respStr = resp.readLine();
+    // Not using AtResponse::scanf() as it may allocate memory dynamically
+    CHECK_PARSER(resp.readLine(strBuf, sizeof(strBuf)));
     CHECK_PARSER_OK(resp.readResult());
 
-    if (!startsWith(respStr, "+CSIM:")) {
+    int respHexSize = 0;
+    int r = std::sscanf(strBuf, "+CSIM: %d", &respHexSize);
+    if (r != 1) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    auto p1 = std::strchr(respStr, '"');
-    auto p2 = std::strrchr(respStr, '"');
-    if (!p1 || !p2 || p1 >= p2) {
+    auto respHex = std::strchr(strBuf, '"');
+    if (!respHex) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    ++p1;
-    respSize = fromHex(p1, p2 - p1, respBuf, respSize);
+    ++respHex;
+    auto s = std::strchr(respHex, '"');
+    if (!s || s - respHex != respHexSize) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    respSize = fromHex(respHex, respHexSize, respBuf, respSize);
 
-    if (autoClose) {
-        char resp[3];
-        size_t n = fromHex(p1, p2 - p1, resp, sizeof(resp));
-        if (n >= 3 && resp[1] == '\x90' /* SW1 */ && resp[2] == '\x00' /* SW2 */) {
-            apduChannel_ = (unsigned char)resp[0];
-            apduChannelTimer_.start(APDU_CHANNEL_AUTO_CLOSE_TIMEOUT);
+    if (openChannel || closeChannel) {
+        if (respHexSize >= 4) {
+            char sw[2]; // Status
+            size_t n = fromHex(respHex + respHexSize - 4, 4, sw, sizeof(sw));
+            if (n == 2 && sw[0] == '\x90' /* SW1 */ && sw[1] == '\x00' /* SW2 */) {
+                if (openChannel && autoClose && respHexSize == 6) {
+                    char c = 0; // Channel number
+                    n = fromHex(respHex, 2, &c, 1);
+                    if (n == 1) {
+                        // Start the inactivity timer for the newly opened channel
+                        apduChannel_ = (unsigned char)c;
+                        apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
+                    }
+                } else if (closeChannel) {
+                    int channel = (unsigned char)cmdBuf[3]; // P2
+                    if (channel > 0 && channel == apduChannel_) {
+                        // Stop the timer for the closed channel
+                        apduChannelTimer_.stop();
+                        apduChannel_ = 0;
+                    }
+                }
+            }
         }
     } else if (cmdChannel > 0 && cmdChannel == apduChannel_) {
-        // Restart the channel inactivity timeout
-        apduChannelTimer_.start(APDU_CHANNEL_AUTO_CLOSE_TIMEOUT);
+        // Restart the inactivity timer
+        apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
     }
     return 0;
 }
