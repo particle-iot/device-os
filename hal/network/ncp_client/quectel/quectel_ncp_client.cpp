@@ -1449,9 +1449,10 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(setupBands());
     }
 
-    // Make sure all normal (non-extended) APDU channels are closed. Interestingly, the first
-    // channel seems to be always open after a power on
-    for (int i = 1; i <= 3; ++i) {
+    // Make sure at least some of the APDU channels are closed and available for application or
+    // system use. Channel 1 appears to be always open at this point as if the modem itself uses
+    // it, so let's leave it as is just in case
+    for (int i = 2; i <= 3; ++i) {
         closeApduChannel(i);
     }
 
