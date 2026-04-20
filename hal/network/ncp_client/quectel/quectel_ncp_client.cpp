@@ -1449,7 +1449,8 @@ int QuectelNcpClient::initReady(ModemState state) {
         CHECK(setupBands());
     }
 
-    // Make sure all normal (non-extended) APDU channels are closed
+    // Make sure all normal (non-extended) APDU channels are closed. Interestingly, the first
+    // channel seems to be always open after a power on
     for (int i = 1; i <= 3; ++i) {
         closeApduChannel(i);
     }
@@ -2209,7 +2210,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
                         }
                     } else {
                         // The channel number was provided in the command
-                        channel = cmdBuf[3]; // P2
+                        channel = (unsigned char)cmdBuf[3]; // P2
                     }
                     if (channel > 0) {
                         LOG(INFO, "Opened APDU channel %d", channel);
