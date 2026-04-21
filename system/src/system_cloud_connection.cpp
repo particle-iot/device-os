@@ -31,6 +31,7 @@
 // FIXME: this should get included from protocol.h
 #include "mbedtls_config.h"
 #endif // HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
+#include "system_env.h"
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -40,8 +41,6 @@ uint16_t cloud_udp_port = PORT_COAPS; // default Particle Cloud UDP port
 
 } /* anonymous */
 
-/* FIXME: */
-extern uint8_t feature_cloud_udp;
 volatile bool cloud_socket_aborted = false;
 
 #if HAL_PLATFORM_CELLULAR
@@ -338,6 +337,55 @@ int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags
     }
 #endif // HAL_PLATFORM_CLOUD_UDP
     return 0;
+}
+
+int system_cloud_get_netif_keepalive(network_interface_t netif) {
+    int keepAlive = 0;
+
+#if HAL_PLATFORM_ENV
+#if PLATFORM_ID != PLATFORM_GCC
+    auto keepAliveEnvVarName = "";
+
+    switch (netif) {
+#if HAL_PLATFORM_ETHERNET
+        case NETWORK_INTERFACE_ETHERNET:
+            keepAliveEnvVarName = "PARTICLE_CLOUD_KEEP_ALIVE_ETHERNET";
+            break;
+#endif
+#if HAL_PLATFORM_CELLULAR
+        case NETWORK_INTERFACE_CELLULAR:
+            keepAliveEnvVarName = "PARTICLE_CLOUD_KEEP_ALIVE_CELLULAR";
+            break;
+#endif
+#if HAL_PLATFORM_WIFI 
+        case NETWORK_INTERFACE_WIFI_STA:
+            keepAliveEnvVarName = "PARTICLE_CLOUD_KEEP_ALIVE_WIFI";
+            break;
+#endif
+        default: // NETWORK_INTERFACE_ALL
+            break;
+    }
+
+    // If netif specific env var, use it
+    if (particle::system::hasEnv(keepAliveEnvVarName)) {
+        particle::system::getEnv(keepAliveEnvVarName, keepAlive);
+    } 
+    // If no netif specific env var, but global env var use that
+    else if (particle::system::hasEnv("PARTICLE_CLOUD_KEEP_ALIVE")) {
+        particle::system::getEnv("PARTICLE_CLOUD_KEEP_ALIVE", keepAlive);
+    }
+#endif // PLATFORM_GCC
+#endif // HAL_PLATFORM_ENV
+
+    // Convert env var seconds -> ms
+    if (keepAlive) {
+        keepAlive *= 1000;
+    } else {
+        // If no env vars, use default keep alives
+        keepAlive = (netif == NETWORK_INTERFACE_CELLULAR ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL : HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+    }
+
+    return keepAlive;
 }
 
 int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
