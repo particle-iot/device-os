@@ -267,6 +267,19 @@ cellular_result_t cellular_process(void* reserved, void* reserved1);
  */
 int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NULL);
 
+/**
+ * Send a command APDU to the UICC.
+ *
+ * @param cmd Command APDU.
+ * @param cmd_size Size of the command APDU.
+ * @param resp Buffer for storing the response APDU.
+ * @param[in,out] resp_size **in:** Size of the response buffer.
+ *        **out:** Number of bytes written to the response buffer.
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+int cellular_send_apdu(const char* cmd, size_t cmd_size, char* resp, size_t* resp_size, void* reserved);
+
 #ifdef __cplusplus
 }
 #endif

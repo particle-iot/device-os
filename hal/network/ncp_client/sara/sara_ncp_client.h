@@ -76,6 +76,7 @@ public:
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
+    virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose) override;
 
 private:
     AtParser parser_;

@@ -30,6 +30,7 @@
 #include "serial_stream.h"
 #include "cellular_reg_status.h"
 #include "spark_wiring_vector.h"
+#include "../../../../system/src/util/system_timer.h" // FIXME
 
 namespace particle {
 
@@ -76,6 +77,7 @@ public:
     virtual int urcs(bool enable) override;
     virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
+    virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose) override;
 
     auto getMuxer() {
         return &muxer_;
@@ -119,6 +121,8 @@ private:
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
     unsigned int fwVersion_ = 0;
+    system::SystemTimer apduChannelTimer_;
+    int apduChannel_ = 0;
     bool configuredPlmn_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
@@ -177,6 +181,9 @@ private:
     int modemSetUartState(bool state) const;
     uint32_t getDefaultSerialConfig() const;
     void exitDataModeWithDtr() const;
+    int closeApduChannel(int channel);
+
+    static void apduChannelTimeoutCb(void* arg);
 };
 
 inline AtParser* QuectelNcpClient::atParser() {

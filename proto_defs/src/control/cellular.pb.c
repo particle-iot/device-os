@@ -39,5 +39,11 @@ PB_BIND(particle_ctrl_cellular_GetIccidRequest, particle_ctrl_cellular_GetIccidR
 PB_BIND(particle_ctrl_cellular_GetIccidReply, particle_ctrl_cellular_GetIccidReply, AUTO)
 
 
+PB_BIND(particle_ctrl_cellular_ApduRequest, particle_ctrl_cellular_ApduRequest, AUTO)
+
+
+PB_BIND(particle_ctrl_cellular_ApduReply, particle_ctrl_cellular_ApduReply, AUTO)
+
+
 
 

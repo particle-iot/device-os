@@ -399,6 +399,10 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* cha
         setResult(req, ctrl::cellular::getIccid(req));
         break;
     }
+    case CTRL_REQUEST_CELLULAR_SEND_APDU: {
+        setResult(req, ctrl::cellular::sendApdu(req));
+        break;
+    }
 #endif // HAL_PLATFORM_NCP && HAL_PLATFORM_CELLULAR
 #if HAL_PLATFORM_ENV
     case CTRL_REQUEST_ENV_GET: {

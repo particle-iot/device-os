@@ -30,6 +30,7 @@ int getAccessPoint(ctrl_request* req);
 int setActiveSim(ctrl_request* req);
 int getActiveSim(ctrl_request* req);
 int getIccid(ctrl_request* req);
+int sendApdu(ctrl_request* req);
 
 } // particle::ctrl::wifi
 
