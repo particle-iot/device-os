@@ -100,6 +100,7 @@ const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_S5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG916Q_GL = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1246,7 +1247,8 @@ int QuectelNcpClient::configurePlmn() {
             ncp_id != PLATFORM_NCP_QUECTEL_BG95_S5 &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_NAX &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_EX &&
-            ncp_id != PLATFORM_NCP_QUECTEL_EG91_E) {
+            ncp_id != PLATFORM_NCP_QUECTEL_EG91_E &&
+            ncp_id != PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         return SYSTEM_ERROR_NONE;
     }
 
@@ -1316,7 +1318,8 @@ bool QuectelNcpClient::isQuecCat1Device() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
-            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA);
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG916Q_GL);
 }
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
@@ -1364,6 +1367,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         }
     } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG916Q_GL;
     }
     return runtimeBaudrate;
 }
@@ -1466,7 +1471,8 @@ int QuectelNcpClient::initReady(ModemState state) {
             ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         CHECK(setupBands());
     }
 
