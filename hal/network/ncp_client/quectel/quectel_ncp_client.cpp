@@ -1336,7 +1336,7 @@ int QuectelNcpClient::changeBaudRate(unsigned int baud) {
     auto resp = parser_.sendCommand("AT+IPR=%u", baud);
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_GL) {
         HAL_Delay_Milliseconds(500); // As per the spec: After the baud rate is changed, it is necessary to wait for 500 ms to send the next command.
     }
     return serial_->setBaudRate(baud);
@@ -1360,7 +1360,8 @@ bool QuectelNcpClient::isQuecCat1Device() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
-            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA);
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_GL);
 }
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
@@ -1406,7 +1407,7 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         if (fwVersion_ >= 8) {
             runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX;
         }
-    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || PLATFORM_NCP_QUECTEL_EG800Q_GL) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
     }
     return runtimeBaudrate;
@@ -1440,7 +1441,7 @@ int QuectelNcpClient::initReady(ModemState state) {
     }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_GL) {
         // Disable URCs for SMS, RI and other, otherwise, the remote modem state in muxer channel will be set to 0
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
     }
