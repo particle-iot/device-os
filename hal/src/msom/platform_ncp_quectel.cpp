@@ -61,7 +61,7 @@ PlatformNCPIdentifier platform_primary_ncp_identifier() {
         r = hal_exflash_read_special(HAL_EXFLASH_SPECIAL_SECTOR_OTP, NCP_ID_OTP_ADDRESS, &ncpId, sizeof(ncpId));
         if (r < 0 || !isValidNcpId(ncpId)) {
             // Check the logical eFuse
-            uint8_t ncpId = 0xff;
+            ncpId = 0xff;
             r = efuse_read_logical(HARDWARE_DATA_OFFSET, &ncpId, sizeof(ncpId));
             if (r < 0 || !isValidNcpId(ncpId)) {
                 return PlatformNCPIdentifier::PLATFORM_NCP_UNKNOWN;
