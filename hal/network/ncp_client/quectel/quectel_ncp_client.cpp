@@ -1407,7 +1407,7 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         if (fwVersion_ >= 8) {
             runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX;
         }
-    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || PLATFORM_NCP_QUECTEL_EG800Q_GL) {
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_GL) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
     }
     return runtimeBaudrate;
