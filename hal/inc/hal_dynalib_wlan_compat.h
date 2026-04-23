@@ -65,7 +65,7 @@ DYNALIB_FN(14, hal_wlan, wlan_set_error_count, void(uint32_t))
 DYNALIB_FN(15, hal_wlan, wlan_fetch_ipconfig, int(WLanConfig*))
 DYNALIB_FN(16, hal_wlan, wlan_setup, void(void))
 
-#if PLATFORM_ID == PLATFORM_MSOM
+#if PLATFORM_ID == PLATFORM_MSOM || PLATFORM_ID == PLATFORM_SULU
 DYNALIB_FN_PLACEHOLDER(17, hal_wlan)
 DYNALIB_FN_PLACEHOLDER(18, hal_wlan)
 DYNALIB_FN_PLACEHOLDER(19, hal_wlan)

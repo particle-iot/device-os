@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Particle Industries, Inc.  All rights reserved.
+ * Copyright (c) 2026 Particle Industries, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,15 +32,7 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 
 bool isValidNcpId(uint8_t id) {
     switch (id) {
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG96:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_E:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_NA:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG91_EX:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG95_M1:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG77:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG95_M6:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG95_M5:
-    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_BG95_S5:
+    case PlatformNCPIdentifier::PLATFORM_NCP_QUECTEL_EG800Q_GL:
         return true;
     default:
         return false;

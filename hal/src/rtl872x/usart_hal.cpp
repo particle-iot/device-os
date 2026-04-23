@@ -546,7 +546,7 @@ public:
     static Usart* getInstance(hal_usart_interface_t serial) {
         static Usart Usarts[] = {
             // NOTE: NCP should be last so that Serial1, Serial2, etc.. are contiguous.
-#if PLATFORM_ID == PLATFORM_MSOM
+#if PLATFORM_ID == PLATFORM_MSOM || PLATFORM_ID == PLATFORM_SULU
             {3, TX,  RX,  CTS, RTS},                  // LP_UART  (Serial1)
             {2, TX1, RX1, PIN_INVALID, PIN_INVALID},  // LOG UART (Serial2)
             {0, TX2, RX2, CTS2, RTS2},                // UART0    (NCP)

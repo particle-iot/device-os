@@ -91,13 +91,11 @@ inline void yield() {
 #endif
 
 #ifndef analogInputToDigitalPin
-#if HAL_PLATFORM_RTL872X
-#define analogInputToDigitalPin(p)  ((p) == 3 ? 0 : \
-                                    ((p) == 4 ? 1 : \
-                                    ((p) == 5 ? 14 : \
-                                    ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1))))
-#else
+#if HAL_PLATFORM_NRF52840
 #define analogInputToDigitalPin(p)  ((((p) < TOTAL_ANALOG_PINS) && ((p) >= 0)) ? (p) + FIRST_ANALOG_PIN : -1)
+#else
+// Analog pins are not contiguous
+#define analogInputToDigitalPin(p) (-1)
 #endif
 #endif
 
