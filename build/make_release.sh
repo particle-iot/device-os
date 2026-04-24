@@ -7,7 +7,7 @@ function display_help ()
 usage: make_release.sh [--debug] [--help]
                        [--output-directory=<binary_output_directory>]
                        [--platform=<all|argon|asom|boron|bsom...
-                       |b5som|tracker|esomx|p2|msom|electron2>]
+                       |b5som|tracker|esomx|p2|msom|electron2|sulu>]
                        [--publish=<semantic_version_string>] [--tests]
 
 Generate the binaries for a versioned release of the Device OS. This utility
@@ -132,7 +132,8 @@ function valid_platform()
     [ "$platform" = "all" ] || [ "$platform" = "argon" ] || [ "$platform" = "asom" ] || \
             [ "$platform" = "boron" ] || [ "$platform" = "bsom" ] || [ "$platform" = "b5som" ] || \
             [ "$platform" = "esomx" ] || [ "$platform" = "tracker" ] || [ "$platform" = "p2" ] || \
-            [ "$platform" = "trackerm" ] || [ "$platform" = "msom" ] || [ "$platform" = "electron2" ]
+            [ "$platform" = "trackerm" ] || [ "$platform" = "msom" ] || [ "$platform" = "electron2" ] || \
+            [ "$platform" = "sulu" ]
 }
 
 if !(valid_platform $PLATFORM); then
@@ -159,6 +160,7 @@ if [ $PLATFORM = "all" ]; then
     release_platform "trackerm"
     release_platform "msom"
     release_platform "electron2"
+    release_platform "sulu"
 else
 	release_platform "$PLATFORM"
 fi

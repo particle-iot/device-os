@@ -53,6 +53,7 @@ class Platform(IntEnum):
     P2 = 32
     MSOM = 35
     ELECTRON2 = 37
+    SULU = 38
 
 class StructSerializable(struct.Struct):
     def __init__(self, fmt):
@@ -238,7 +239,7 @@ def parse_dependency(dep):
         return ModuleDependency(func, version, index)
     return ModuleDependency()
 
-GEN3_PLATFORMS = [Platform.ARGON, Platform.BORON, Platform.ASOM, Platform.BSOM, Platform.B5SOM, Platform.TRACKER, Platform.ESOMX, Platform.ELECTRON2]
+GEN3_PLATFORMS = [Platform.ARGON, Platform.BORON, Platform.ASOM, Platform.BSOM, Platform.B5SOM, Platform.TRACKER, Platform.ESOMX, Platform.ELECTRON2, Platform.SULU]
 GEN3_RADIO_STACK_VERSION_OFFSET = 0x300c
 GEN3_RADIO_STACK_MBR_OFFSET = 0x1000
 GEN3_RADIO_STACK_FLAGS = ModuleFlags.DROP_MODULE_INFO

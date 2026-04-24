@@ -131,7 +131,7 @@ EOF
 )
 
 fields=""
-for p in MSoM Electron2; do
+for p in MSoM Electron2 Sulu; do
     msg="$(platform_msg "$p")"
     field=$(cat <<EOF
 {

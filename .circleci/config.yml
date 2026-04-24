@@ -15,7 +15,7 @@ orbs:
 
 aliases:
   - &tasks ["compile:all clean:all", "compile:user clean:user", "compile:debug clean:debug"]
-  - &platforms ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom", "electron2"]
+  - &platforms ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom", "electron2", "sulu"]
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -480,7 +480,7 @@ workflows:
             - particle-ci-private
           matrix:
             parameters:
-              platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom", "electron2", "unit-test newhal gcc"]
+              platform: ["argon", "boron", "esomx", "bsom", "b5som", "tracker", "p2", "trackerm", "msom", "electron2", "sulu", "unit-test newhal gcc"]
       - combine-binaries:
           requires:
             - build-and-test
