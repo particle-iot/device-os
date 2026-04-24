@@ -1,3 +1,28 @@
+## 6.4.1
+
+### FEATURES
+
+- USB (Serial) tethering support [#2898](https://github.com/particle-iot/device-os/pull/2898) [#2912](https://github.com/particle-iot/device-os/pull/2912)
+- [Gen 4] Serial1 tethering support [#2910](https://github.com/particle-iot/device-os/pull/2910)
+- [Cellular] API for sending APDUs [#2915](https://github.com/particle-iot/device-os/pull/2915)
+
+### ENHANCEMENTS
+
+- [Cellular] BG95S5 cellular env vars support [#2908](https://github.com/particle-iot/device-os/pull/2908)
+- Support detecting/configuring M-HAT in Tinker [#2914](https://github.com/particle-iot/device-os/pull/2914)
+
+### BUGFIXES
+
+- [Gen 4] Allows longer duration sleep with AM1805 (external RTC) [#2907](https://github.com/particle-iot/device-os/pull/2907)
+- [Tracker] Expose deprecated `hal_exrtc_` functions [#2907](https://github.com/particle-iot/device-os/pull/2907)
+- [Gen 4] Add locking around logical eFuse reads [#2909](https://github.com/particle-iot/device-os/pull/2909)
+- [Gen 4] [scripts] fix rtl872x.tcl flash script to be more reliable [#2911](https://github.com/particle-iot/device-os/pull/2911)
+- Filesystem initialization in bootloader should create `/sys` folder [#2917](https://github.com/particle-iot/device-os/pull/2917)
+
+### INTERNAL
+
+- `manufacturing/empty_external_flash` test [#2917](https://github.com/particle-iot/device-os/pull/2917)
+
 ## 6.4.0
 
 ### FEATURES
