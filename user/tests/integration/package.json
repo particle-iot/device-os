@@ -3,10 +3,12 @@
   "private": true,
   "dependencies": {
     "@particle/device-constants": "^4.1.0",
+    "@particle/device-os-flash-util": "^0.15.2",
     "binary-version-reader": "^4.0.2",
     "chai-exclude": "^2.1.0",
     "lodash": "^4.17.23",
     "particle-api-js": "^11.1.4",
+    "particle-usb": "^4.2.0",
     "tempy": "^1.0.1"
   }
 }
