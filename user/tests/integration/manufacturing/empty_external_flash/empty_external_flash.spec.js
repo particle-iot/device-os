@@ -16,6 +16,8 @@ const path = require('path');
 const os = require('os');
 const mkdirp = require('mkdirp');
 
+const { setTimeout: delay } = require('node:timers/promises');
+
 const DEVICE_OS_TEST_RUNNER_KNOWN_GOOD_RELEASE = '6.3.5';
 
 let device = null;
@@ -65,6 +67,23 @@ async function resolveAdapterSerial(deviceId, logger) {
     }
 
     adapterSerial = serial;
+}
+
+async function openWithRetry(deviceId, opts) {
+    let err = null;
+    for (let i = 0; i < 20; i++) {
+        try {
+            const device = await usb.openDeviceById(deviceId, opts);
+            return device;
+        } catch (e) {
+            console.log(e);
+            err = e;
+        }
+        await delay(i * 1000);
+    }
+    if (err) {
+        throw err;
+    }
 }
 
 before(async function() {
@@ -119,7 +138,7 @@ test('01_backup_external_flash_and_erase', async function() {
         await usbDevice.enterDfuMode();
         await usbDevice.close();
 
-        dfuDevice = await usb.openDeviceById(deviceId, { includeDfu: true });
+        dfuDevice = await openWithRetry(deviceId, { includeDfu: true });
 
         // Discover external flash region from DFU memory descriptor
         const extSegments = await getDfuSegments(dfuDevice._dfu, extFlashInfo.altSetting);
@@ -364,7 +383,7 @@ test('98_restore_external_flash', async function() {
             await usbDevice.enterDfuMode();
             await usbDevice.close();
 
-            dfuDevice = await usb.openDeviceById(deviceId, { includeDfu: true });
+            dfuDevice = await openWithRetry(deviceId, { includeDfu: true });
 
             await dfuDevice.writeOverDfu(dumps.extFlash.data, {
                 altSetting: dumps.extFlash.alt,
