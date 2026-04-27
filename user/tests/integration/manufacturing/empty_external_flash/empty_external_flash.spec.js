@@ -100,17 +100,16 @@ after(function() {
     device.removeAllListeners('mailbox');
 });
 
-function getExternalFlashInfo(platformId) {
+function getFlashInfo(platformId, type) {
     for (const [, plat] of Object.entries(platforms)) {
         if (plat.id === platformId && plat.dfu && plat.dfu.storage) {
-            const extFlash = plat.dfu.storage.find(s => s.type === 'externalFlash');
+            const extFlash = plat.dfu.storage.find(s => s.type === type);
             if (extFlash) {
                 return { altSetting: extFlash.alt, platform: plat };
             }
         }
     }
-    // FIXME: device constants should be fixed, for now hardcoding altSettting
-    return { altSetting: 2, platform: plat };
+    return null;
 }
 
 async function getDfuSegments(dfu, altSetting) {
@@ -130,7 +129,8 @@ test('01_backup_external_flash_and_erase', async function() {
         console.log(`Device OS version: ${currentDeviceOsVersion}`);
     }
 
-    const extFlashInfo = getExternalFlashInfo(platformId);
+    const extFlashInfo = getFlashInfo(platformId, 'externalFlash');
+    const intFlashInfo = getFlashInfo(platformId, 'internalFlash');
 
     let dfuDevice = null;
     try {
@@ -141,30 +141,60 @@ test('01_backup_external_flash_and_erase', async function() {
 
         dfuDevice = await openWithRetry(deviceId, { includeDfu: true });
 
-        // Discover external flash region from DFU memory descriptor
-        const extSegments = await getDfuSegments(dfuDevice._dfu, extFlashInfo.altSetting);
-        if (!extSegments || !extSegments.length) {
-            throw new Error('No memory segments found for external flash alt setting');
-        }
-        const extStart = extSegments[0].start;
-        const extSize = extSegments[extSegments.length - 1].end - extStart;
-
-        console.log(`Reading external flash: alt=${extFlashInfo.altSetting}, addr=0x${extStart.toString(16)}, size=${extSize}`);
-        const extFlashData = await dfuDevice.readOverDfu({
-            altSetting: extFlashInfo.altSetting,
-            startAddr: extStart,
-            size: extSize
-        });
-        console.log(`Read ${extFlashData.length} bytes from external flash`);
-    
-        dumps = {
-            extFlash: {
-                data: extFlashData,
-                alt: extFlashInfo.altSetting,
-                start: extStart,
-                size: extSize
+        if (extFlashInfo) {
+            // Discover external flash region from DFU memory descriptor
+            const extSegments = await getDfuSegments(dfuDevice._dfu, extFlashInfo.altSetting);
+            if (!extSegments || !extSegments.length) {
+                throw new Error('No memory segments found for external flash alt setting');
             }
-        };
+            const extStart = extSegments[0].start;
+            const extSize = extSegments[extSegments.length - 1].end - extStart;
+
+            console.log(`Reading external flash: alt=${extFlashInfo.altSetting}, addr=0x${extStart.toString(16)}, size=${extSize}`);
+            const extFlashData = await dfuDevice.readOverDfu({
+                altSetting: extFlashInfo.altSetting,
+                startAddr: extStart,
+                size: extSize
+            });
+            console.log(`Read ${extFlashData.length} bytes from external flash`);
+        
+            dumps = {
+                extFlash: {
+                    data: extFlashData,
+                    alt: extFlashInfo.altSetting,
+                    start: extStart,
+                    size: extSize
+                }
+            };
+        } else {
+            const intSegments = await getDfuSegments(dfuDevice._dfu, intFlashInfo.altSetting);
+            if (!intSegments || !intSegments.length) {
+                throw new Error('No memory segments found for external flash alt setting');
+            }
+            // FIXME: use last 2MB
+            let extStart = intSegments[0].start;
+            let extSize = intSegments[intSegments.length - 1].end - extStart;
+
+            extStart = extStart + (extSize - 2*1024*1024);
+            extSize = 2*1024*1024;
+
+            console.log(`Reading internal flash: alt=${intFlashInfo.altSetting}, addr=0x${extStart.toString(16)}, size=${extSize}`);
+            const intFlashData = await dfuDevice.readOverDfu({
+                altSetting: intFlashInfo.altSetting,
+                startAddr: extStart,
+                size: extSize
+            });
+            console.log(`Read ${intFlashData.length} bytes from internal flash`);
+        
+            dumps = {
+                extFlash: {
+                    data: intFlashData,
+                    alt: intFlashInfo.altSetting,
+                    start: extStart,
+                    size: extSize
+                }
+            };
+        }
 
         await dfuDevice._dfu.setAltSetting(dumps.extFlash.alt);
         await dfuDevice._dfu._erase(dumps.extFlash.start, dumps.extFlash.size);
