@@ -360,6 +360,7 @@ test('03_rollback_release', async function() {
         throw new Error('Device did not come online after flashing current release');
     }
     console.log('Device online with current release, rollback complete');
+    deviceOnline = true;
 });
 
 test('98_restore_external_flash', async function() {
@@ -370,11 +371,6 @@ test('98_restore_external_flash', async function() {
     
     if (!dumps) {
         console.log('No dump available');
-        return;
-    }
-
-    if (deviceOnline) {
-        console.log('Device was online, skipping external flash restore');
         return;
     }
 
