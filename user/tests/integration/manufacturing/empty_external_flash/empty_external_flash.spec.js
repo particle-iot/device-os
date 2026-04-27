@@ -109,7 +109,8 @@ function getExternalFlashInfo(platformId) {
             }
         }
     }
-    return null;
+    // FIXME: device constants should be fixed, for now hardcoding altSettting
+    return { altSetting: 2, platform: plat };
 }
 
 async function getDfuSegments(dfu, altSetting) {
