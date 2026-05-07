@@ -159,6 +159,7 @@ test(SERIAL_02_LoopbackReceivedDataShouldRetainAfterSleepWakeup) {
 }
 
 #if HAL_PLATFORM_USART_9BIT_SUPPORTED
+
 test(SERIAL_03_Loopback9BitNoDataLossAndAvailableIsCorrect) {
     const size_t TEST_BUFFER_SIZE_MIN = 8;
     const size_t TEST_BUFFER_SIZE_MAX = USE_BUFFER_SIZE / 2;
@@ -209,8 +210,8 @@ test(SERIAL_05_Loopback9BitReceivedDataShouldRetainAfterSleepWakeup) {
     }
 }
 
+#endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
+
 test(SERIAL_ZZZ_Cleanup) {
     pinMode(A2, INPUT); // PULL-UP HIGH
 }
-
-#endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
