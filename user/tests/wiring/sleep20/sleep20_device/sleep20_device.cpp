@@ -209,6 +209,7 @@ test(000_System_Sleep_Prepare) {
 
 test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE);
@@ -221,6 +222,7 @@ test(01_System_Sleep_With_Configuration_Object_Hibernate_Mode_Without_Wakeup_2) 
 
 test(02_System_Sleep_Mode_Deep_Without_Wakeup_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepResult result = System.sleep(SLEEP_MODE_DEEP, SLEEP_DISABLE_WKP_PIN);
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -232,6 +234,7 @@ test(02_System_Sleep_Mode_Deep_Without_Wakeup_2) {
 #if !HAL_PLATFORM_RTL872X
 test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE)
@@ -246,6 +249,7 @@ test(03_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_D0_2) {
 // TODO: Move to wiring/sleep as this is a Sleep API 1.0 test
 test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SleepResult result = {};
 
@@ -264,6 +268,7 @@ test(04_System_Sleep_Mode_Deep_Wakeup_By_WKP_Pin_2) {
 
 test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Analog_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE)
@@ -279,6 +284,7 @@ test(05_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Analog_P
 #if HAL_PLATFORM_EXTERNAL_RTC && !HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL
 test(06_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE)
@@ -291,6 +297,7 @@ test(06_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_External
 
 test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s);
 
@@ -303,6 +310,7 @@ test(07_System_Sleep_Mode_Deep_Wakeup_By_External_Rtc) {
 #if HAL_PLATFORM_RTL872X
 test(08_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE)
@@ -316,6 +324,7 @@ test(08_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Wkp_Pin_
 
 test(09_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::HIBERNATE)
@@ -328,6 +337,7 @@ test(09_System_Sleep_With_Configuration_Object_Hibernate_Mode_Wakeup_By_Rtc) {
 
 test(10_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepResult result = System.sleep(SLEEP_MODE_DEEP);
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
@@ -338,6 +348,7 @@ test(10_System_Sleep_Mode_Deep_Wakeup_By_Wkp_Pin_2) {
 
 test(11_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepResult result = System.sleep(SLEEP_MODE_DEEP, 3s, SLEEP_DISABLE_WKP_PIN); // Disable WKP pin.
 
@@ -347,6 +358,7 @@ test(11_System_Sleep_Mode_Deep_Wakeup_By_Rtc) {
 
 test(12_System_Sleep_With_Configuration_Object_Hibernate_Mode_Bypass_Network_Off_Execution_Time_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     Network.on();
     Network.connect(); // to finally power on the modem. The Network.on() won't do that for us on Gen3 as for now.
@@ -403,6 +415,7 @@ test(15_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Without_Wake
 SystemSleepResult result16;
 test(16_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
@@ -420,6 +433,7 @@ test(16_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_D0_2) {
 SystemSleepResult result17;
 test(17_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
@@ -445,6 +459,8 @@ test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble_1) {
     assertTrue(BLE.advertising());
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
+
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
           .ble();
@@ -462,6 +478,7 @@ test(18_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Ble_2) {
 SleepResult result19;
 test(19_System_Sleep_Mode_Stop_Wakeup_By_D0_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     result19 = System.sleep(D0, RISING);
 
@@ -477,6 +494,7 @@ test(19_System_Sleep_Mode_Stop_Wakeup_By_D0_2) {
 SleepResult result20;
 test(20_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     result20 = System.sleep(nullptr, 0, nullptr, 0, 3s);
 
@@ -489,6 +507,7 @@ test(20_System_Sleep_Mode_Stop_Wakeup_By_Rtc) {
 SystemSleepResult result21;
 test(21_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -506,6 +525,7 @@ test(21_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_D0
 SystemSleepResult result22;
 test(22_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Rtc) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -533,6 +553,7 @@ test(23_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Bl
     assertTrue(BLE.advertising());
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
           .ble();
@@ -549,6 +570,7 @@ test(23_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Bl
 SystemSleepResult result24;
 test(24_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
@@ -563,6 +585,7 @@ test(24_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Analog_Pin_2)
 SystemSleepResult result25;
 test(25_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Analog_Pin_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
@@ -577,6 +600,7 @@ test(25_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
 SystemSleepResult result26;
 test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     Serial1.begin(115200);
 
@@ -594,6 +618,7 @@ test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_2) {
 SystemSleepResult result27;
 test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart_1) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     Serial1.begin(115200);
 
@@ -629,6 +654,8 @@ test(28_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Cellular_1) {
     }
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    delay(3s);
+
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
           .network(Cellular);
@@ -662,6 +689,7 @@ test(29_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Ce
     }
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    delay(3s);
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
           .network(Cellular);
@@ -698,6 +726,8 @@ test(30_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_WiFi_1) {
     }
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    delay(3s);
+
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
           .network(WiFi);
@@ -732,6 +762,8 @@ test(31_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Wi
     }
 
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    delay(3s);
+
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
           .network(WiFi);
@@ -780,6 +812,8 @@ test(33_System_Sleep_With_Configuration_Object_Stop_Mode_Execution_Time) {
         sNetworkOffTimestamp = 0;
     }
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
+
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
@@ -817,6 +851,8 @@ test(34_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
         sNetworkOffTimestamp = 0;
     }
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
+
     SystemSleepResult result = System.sleep(config);
     time32_t exit = Time.now();
 
@@ -836,6 +872,7 @@ test(34_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_Execu
 
 test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, CLOUD_CONNECT_TIMEOUT));
@@ -876,6 +913,7 @@ test(35_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_On
 
 test(36_System_Sleep_With_Configuration_Object_Network_Power_State_Consistent_Off) {
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    delay(3s);
 
     {
         // Make sure the modem is on first
