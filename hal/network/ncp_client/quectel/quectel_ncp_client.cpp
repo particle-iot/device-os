@@ -1665,7 +1665,7 @@ int QuectelNcpClient::initReady(ModemState state) {
     }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         // Disable URCs for SMS, RI and other, otherwise, the remote modem state in muxer channel will be set to 0
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
     }
@@ -1719,7 +1719,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
 
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-        if (isQuecCat1Device()) {
+        if (isQuecCat1Device() && ncpId() != PLATFORM_NCP_QUECTEL_EG916Q_GL) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
     }
