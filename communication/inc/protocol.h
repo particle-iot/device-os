@@ -375,6 +375,14 @@ public:
 		pinger.set_interval(interval, source);
 	}
 
+	system_tick_t get_keepalive_interval() {
+		return pinger.get_interval();
+	}
+
+	keepalive_source_t get_keepalive_source() {
+		return pinger.get_keepalive_source();
+	}
+
 	void set_fast_ota(unsigned data)
 	{
 #if !HAL_PLATFORM_OTA_PROTOCOL_V3

@@ -313,6 +313,8 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
 {
     SYSTEM_THREAD_CONTEXT_SYNC(spark_get_connection_property(property, data, size, reserved));
     switch (property) {
+    case SPARK_CLOUD_PING_INTERVAL:
+        return getConnectionProperty(protocol::Connection::PING, data, size);
     case SPARK_CLOUD_MAX_EVENT_DATA_SIZE:
         if (!SPARK_CLOUD_CONNECTED) {
             return SYSTEM_ERROR_INVALID_STATE;

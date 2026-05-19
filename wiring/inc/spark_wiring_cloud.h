@@ -475,6 +475,17 @@ public:
     }
 
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
+
+    inline static std::chrono::seconds getKeepAlive() {
+        size_t keepAliveMs = 0;
+        size_t n = sizeof(keepAliveMs);
+        auto r = spark_get_connection_property(SPARK_CLOUD_PING_INTERVAL, &keepAliveMs, &n, nullptr);
+        if (!r) {
+            return std::chrono::seconds(keepAliveMs / 1000);
+        }
+
+        return std::chrono::seconds{0};
+    }
 #endif
 
     /**

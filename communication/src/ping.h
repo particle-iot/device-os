@@ -41,6 +41,10 @@ public:
 		}
 	}
 
+	system_tick_t get_interval() const { return ping_interval; }
+
+	keepalive_source_t get_keepalive_source() const { return keepalive_source; }
+
 	void reset()
 	{
 		expecting_ping_ack = false;

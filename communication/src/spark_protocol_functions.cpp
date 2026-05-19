@@ -235,6 +235,7 @@ int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned pr
 {
     ASSERT_ON_SYSTEM_THREAD();
     switch (property) {
+    case Connection::PING:
     case Connection::MAX_EVENT_DATA_SIZE:
     case Connection::MAX_VARIABLE_VALUE_SIZE:
     case Connection::MAX_FUNCTION_ARGUMENT_SIZE: {
@@ -244,6 +245,9 @@ int spark_protocol_get_connection_property(ProtocolFacade* protocol, unsigned pr
         }
         const auto d = (size_t*)data;
         switch (property) {
+        case Connection::PING:
+            *d = protocol->get_keepalive_interval();
+            break;
         case Connection::MAX_EVENT_DATA_SIZE:
             *d = protocol->get_max_event_data_size();
             break;
