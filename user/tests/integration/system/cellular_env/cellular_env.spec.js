@@ -100,6 +100,7 @@ test('9_particle_cellular_preferred_plmn_set', async function () {
 
     await setEnvVarsAndFlash({
         PARTICLE_CLOUD_KEEP_ALIVE_CELLULAR: '60',
+        PARTICLE_CLOUD_KEEP_ALIVE: '70'
     });
 });
 

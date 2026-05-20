@@ -357,7 +357,7 @@ int system_cloud_get_netif_keepalive(network_interface_t netif) {
             keepAliveEnvVarName = "PARTICLE_CLOUD_KEEP_ALIVE_CELLULAR";
             break;
 #endif
-#if HAL_PLATFORM_WIFI 
+#if HAL_PLATFORM_WIFI
         case NETWORK_INTERFACE_WIFI_STA:
             keepAliveEnvVarName = "PARTICLE_CLOUD_KEEP_ALIVE_WIFI";
             break;

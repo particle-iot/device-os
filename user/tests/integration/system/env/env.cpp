@@ -279,7 +279,18 @@ test(05_particle_default_cloud_keepalive) {
     Particle.connect();
 
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertEqual(Particle.getKeepAlive().count(), std::chrono::seconds(DEFAULT_KEEPALIVE_SECONDS).count());
+    assertEqual(Particle.getKeepAlive().count(), DEFAULT_KEEPALIVE_SECONDS);
+
+    Particle.keepAlive(120s);
+    Particle.disconnect();
+    waitForNot(Particle.connected, 60000);
+    Network.disconnect();
+    waitForNot(Network.ready, 60000);
+
+    Network.connect();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(Particle.getKeepAlive().count(), 120);
 }
 
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
@@ -356,7 +367,7 @@ test(08_particle_wifi_enable_true) {
     assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
-    assertEqual(Particle.getKeepAlive().count(), std::chrono::seconds(WIFI_KEEPALIVE_SECONDS).count());
+    assertEqual(Particle.getKeepAlive().count(), WIFI_KEEPALIVE_SECONDS);
 
 #if HAL_PLATFORM_BLE
     // BLE is not affected
@@ -539,7 +550,7 @@ test(14_particle_ethernet_enable_true) {
     assertTrue(waitFor(Ethernet.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
-    assertEqual(Particle.getKeepAlive().count(), std::chrono::seconds(ETHERNET_KEEPALIVE_SECONDS).count());
+    assertEqual(Particle.getKeepAlive().count(), ETHERNET_KEEPALIVE_SECONDS);
 }
 
 test(15_particle_ethernet_enable_false) {
