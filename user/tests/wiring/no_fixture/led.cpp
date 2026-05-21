@@ -3,7 +3,7 @@
 #include "unit-test/unit-test.h"
 #include "rgbled.h"
 #include "rgbled_hal.h"
-#include "muon_test_util.h"
+#include "../../integration/application/include/muon_test_util.h" // FIXME
 #include <stdio.h>
 
 #ifdef abs
