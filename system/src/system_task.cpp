@@ -809,6 +809,31 @@ uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void
     return 0;
 }
 
+int system_thread_invoke(void (*fn)(void* arg), void* arg, void* reserved)
+{
+    struct InvokeTask: ISRTaskQueue::Task {
+        void (*userFn)(void* arg);
+        void* userArg;
+    };
+
+    auto task = systemPoolNew<InvokeTask>();
+    if (!task) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    task->userFn = fn;
+    task->userArg = arg;
+    task->func = [](ISRTaskQueue::Task* task) {
+       auto t = static_cast<InvokeTask*>(task);
+       auto fn = t->userFn;
+       auto arg = t->userArg;
+       systemPoolDelete(t);
+       fn(arg);
+    };
+
+    SystemISRTaskQueue.enqueue(task);
+    return 0;
+}
+
 void cancel_connection()
 {
     // Cancel current network connection attempt
