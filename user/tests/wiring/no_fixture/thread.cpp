@@ -2,7 +2,6 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
-#include "active_object.h"
 #include "scope_guard.h"
 #include "unique_lock.h"
 
@@ -625,15 +624,6 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
 
 namespace {
 
-bool isSystemThreadCurrent() {
-    auto ptr = system_internal(1 /* item */, nullptr /* reserved */);
-    if (!ptr) {
-        return false;
-    }
-    auto activeObj = static_cast<ActiveObjectBase*>(ptr);
-    return activeObj->isCurrentThread();
-}
-
 struct InvokeArg {
     bool called;
     bool ok;
@@ -644,19 +634,21 @@ InvokeArg invokeArg = {};
 } // namespace
 
 test(THREAD_10_system_thread_invoke) {
+    assertTrue(application_thread_current(nullptr /* reserved */)); // Sanity check
+
     InvokeArg arg1 = {};
     invokeArg = {};
 
     auto fn1 = [](void* arg) {
         auto arg1 = static_cast<InvokeArg*>(arg);
         arg1->called = true;
-        arg1->ok = isSystemThreadCurrent();
+        arg1->ok = system_thread_current(nullptr /* reserved */);
 
         // Call again, this time from the system thread
         auto fn2 = [](void *arg) {
             auto arg2 = static_cast<InvokeArg*>(arg);
             arg2->called = true;
-            arg2->ok = isSystemThreadCurrent();
+            arg2->ok = system_thread_current(nullptr /* reserved */);
         };
         int r = system_thread_invoke(fn2, &invokeArg, nullptr /* reserved */);
         if (r < 0) {
@@ -666,7 +658,6 @@ test(THREAD_10_system_thread_invoke) {
             arg1->ok = false; // Should have been called asynchronously
         }
     };
-
     int r = system_thread_invoke(fn1, &arg1, nullptr /* reserved */);
     assertEqual(r, 0);
 
