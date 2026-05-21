@@ -149,6 +149,8 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 #define BASE_IDX4 (BASE_IDX3 + 1)
 #endif  // HAL_PLATFORM_ENV
 
+DYNALIB_FN(BASE_IDX4 + 0, system, system_thread_invoke, int(void (*)(void*), void*, void*))
+
 DYNALIB_END(system)
 
 #undef BASE_IDX

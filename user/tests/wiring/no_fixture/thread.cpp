@@ -1,6 +1,7 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+
 #include "scope_guard.h"
 #include "unique_lock.h"
 
@@ -621,4 +622,52 @@ test(CONCURRENT_MUTEX_02_priority_inheritance_three_threads)
 
 #endif // defined(configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE) && configMUTEX_MULTI_STEP_PRIORITY_DISINHERITANCE
 
-#endif
+namespace {
+
+struct InvokeArg {
+    bool called;
+    bool ok;
+};
+
+InvokeArg invokeArg = {};
+
+} // namespace
+
+test(THREAD_10_system_thread_invoke) {
+    assertTrue(application_thread_current(nullptr /* reserved */)); // Sanity check
+
+    InvokeArg arg1 = {};
+    invokeArg = {};
+
+    auto fn1 = [](void* arg) {
+        auto arg1 = static_cast<InvokeArg*>(arg);
+        arg1->called = true;
+        arg1->ok = system_thread_current(nullptr /* reserved */);
+
+        // Call again, this time from the system thread
+        auto fn2 = [](void *arg) {
+            auto arg2 = static_cast<InvokeArg*>(arg);
+            arg2->called = true;
+            arg2->ok = system_thread_current(nullptr /* reserved */);
+        };
+        int r = system_thread_invoke(fn2, &invokeArg, nullptr /* reserved */);
+        if (r < 0) {
+            arg1->ok = false;
+        }
+        if (invokeArg.called) {
+            arg1->ok = false; // Should have been called asynchronously
+        }
+    };
+    int r = system_thread_invoke(fn1, &arg1, nullptr /* reserved */);
+    assertEqual(r, 0);
+
+    assertTrue(waitFor([] {
+        return invokeArg.called;
+    }, 1000));
+    assertTrue(invokeArg.ok);
+
+    assertTrue(arg1.called);
+    assertTrue(arg1.ok);
+}
+
+#endif // PLATFORM_THREADING

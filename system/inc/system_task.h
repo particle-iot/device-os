@@ -94,6 +94,8 @@ uint8_t main_thread_current(void* reserved);
 
 uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved);
 
+int system_thread_invoke(void (*fn)(void* arg), void* arg, void* reserved);
+
 /**
  * Cancels current network connection attempt and aborts cloud connection. This function can be
  * called from an ISR and is used to unblock the system thread in order to perform some other
