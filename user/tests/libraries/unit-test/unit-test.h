@@ -149,7 +149,11 @@ public:
                 : next(nullptr),
                   type_(Type::NONE),
                   waitedOn_(false),
-                  completed_(false) {
+                  completed_(false),
+                  result_(0),
+                  id_(0),
+                  acked_(false),
+                  ackedAt_(0) {
         }
 
         ~MailboxEntry() {
@@ -174,6 +178,12 @@ public:
             return data_;
         }
 
+        // After the device-side ACK handler fires, hold the wait loop for this
+        // many ms past the ACK timestamp before unblocking the test thread.
+        // This gives the host's ACK response cycle time to complete on the
+        // wire before the test continues into System.sleep and tears down USB.
+        static constexpr system_tick_t ACK_DELAY_MS = 100;
+
         bool wait(system_tick_t timeout) {
             waitedOn_ = true;
             SCOPE_GUARD({
@@ -181,7 +191,7 @@ public:
             });
             for (auto start = millis(); millis() - start <= timeout;) {
                 // This processes the application task queue
-                if (completed_) {
+                if (completed_ && (!acked_ || (millis() - ackedAt_) >= ACK_DELAY_MS)) {
                     return true;
                 }
                 Particle.process();
@@ -194,12 +204,30 @@ public:
             return waitedOn_;
         }
 
-        void completed() {
+        void completed(int result) {
+            result_ = result;
             completed_ = true;
         }
 
         bool isCompleted() const {
             return completed_;
+        }
+
+        int result() const {
+            return result_;
+        }
+
+        int id() const {
+            return id_;
+        }
+
+        void setId(int id) {
+            id_ = id;
+        }
+
+        void ackedAt(system_tick_t time) {
+            ackedAt_ = time;
+            acked_ = true;
         }
 
         // For IntrusiveQueue
@@ -210,6 +238,10 @@ public:
         spark::Vector<char> data_;
         bool waitedOn_;
         bool completed_;
+        int result_;
+        int id_;
+        bool acked_;
+        system_tick_t ackedAt_;
     };
 
     int pushMailbox(MailboxEntry entry, system_tick_t wait = 0);
@@ -217,6 +249,7 @@ public:
     int pushMailboxBuffer(const char* data, size_t size, system_tick_t wait = 0);
     MailboxEntry* peekOutboundMailbox();
     int popOutboundMailbox();
+    int ackOutboundMailboxById(int id);
     void flushMailbox();
 
     void expectSystemReset();
@@ -232,6 +265,7 @@ private:
     std::unique_ptr<CloudLogData> cloudLog_;
 
     IntrusiveQueue<MailboxEntry> outMailbox_;
+    int nextMailboxId_ = 0;
 
     Test* firstTest_;
     int state_;

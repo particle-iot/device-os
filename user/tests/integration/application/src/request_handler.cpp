@@ -175,6 +175,8 @@ int RequestHandler::request(Request* req) {
         return getLog(req);
     } else if (cmd == "M") { // Read device->host mailbox
         return readMailbox(req);
+    } else if (cmd == "A") { // Ack mailbox message by id
+        return ackMailbox(req);
     } else if (cmd == "r") { // Reset
         return reset(req);
     } else if (req->isEmpty()) { // Ping request
@@ -288,6 +290,7 @@ int RequestHandler::readMailbox(Request* req) {
 
     CHECK(req->reply([&](JSONWriter& w) {
         w.beginObject();
+        w.name("id").value(m->id());
         w.name("t").value((int)m->type());
         const auto data = m->data();
         if (data.size() > 0) {
@@ -295,18 +298,39 @@ int RequestHandler::readMailbox(Request* req) {
         }
         w.endObject();
     }));
+    // No completion handler on readMailbox: HAL fires TX_COMPLETED when the
+    // reply DATA is on the wire, not when the host's STATUS stage completes.
+    // The runner sends an explicit c:'A' ACK after parsing the reply;
+    // ackMailbox is what completes the entry. Critically, the c:'A' transfer
+    // is also what intersperses an OUT between successive control INs. The
+    // wire pattern that prevents the USB xhci_hcd phantom-EPIPE STALL from
+    // firing on our application-level INs. Without this ACK, test runner
+    // host side reliably produces many app-level stalls per run.
+    req->done(0);
+    return 0;
+}
+
+int RequestHandler::ackMailbox(Request* req) {
+    CHECK_TRUE(req->has("id"), SYSTEM_ERROR_INVALID_ARGUMENT);
+    const int id = req->get("id").toInt();
+    const auto runner = TestRunner::instance();
+    auto m = runner->peekOutboundMailbox();
+    if (!m || m->id() != id) {
+        // Nothing to do: the mailbox is empty, or this ACK is for a message
+        // we've already handled. Safe to ignore, the runner may send the
+        // same ACK more than once if a USB retry kicks in.
+        return 0;
+    }
+    // Record ACK time and complete. The wait() loop will then hold for a brief
+    // delay after the ACK timestamp so the host's ACK response cycle has time
+    // to transmit before the test races into System.sleep. The delay lives in
+    // the test thread (wait loop), not here, so the system thread keeps
+    // servicing other USB requests during the window.
+    m->ackedAt(millis());
     if (m->waitedOn()) {
-        req->done(0, [](int, void* data) -> void {
-            auto m = static_cast<TestRunner::MailboxEntry*>(data);
-            if (m->waitedOn()) {
-                m->completed();
-            } else {
-                const auto runner = TestRunner::instance();
-                runner->popOutboundMailbox();
-            }
-        }, m);
+        m->completed(0);
     } else {
-        CHECK(runner->popOutboundMailbox());
+        runner->popOutboundMailbox();
     }
     return 0;
 }
