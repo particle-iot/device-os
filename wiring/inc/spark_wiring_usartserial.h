@@ -53,6 +53,7 @@ public:
   virtual void flush(void);
   size_t write(uint16_t);
   virtual size_t write(uint8_t);
+  virtual size_t write(const uint8_t* buffer, size_t size) override;
 
   // LIN
   void breakTx(void);
