@@ -101,6 +101,19 @@ size_t USARTSerial::write(uint8_t c)
   return 0;
 }
 
+size_t USARTSerial::write(const uint8_t* buffer, size_t size)
+{
+  if (!buffer || !size) {
+    return 0;
+  }
+  // attempt a write if blocking, or for non-blocking if there is room.
+  if (_blocking || hal_usart_available_data_for_write(_serial) > 0) {
+    ssize_t written = hal_usart_write_buffer(_serial, buffer, size, sizeof(*buffer));
+    return written > 0 ? written : 0;
+  }
+  return 0;
+}
+
 size_t USARTSerial::write(uint16_t c)
 {
   return hal_usart_write_nine_bits(_serial, c);
