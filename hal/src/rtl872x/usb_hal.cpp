@@ -266,6 +266,15 @@ int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t d
     return HAL_USB_USART_Send_Data(serial, data);
 }
 
+int32_t HAL_USB_USART_Send_Data_Buffer(HAL_USB_USART_Serial serial, const uint8_t* data, uint32_t size) {
+    return HAL_USB_USART_Send_Data_Multiple(serial, data, size);
+}
+
+int32_t HAL_USB_USART_Send_Data_Buffer_protected(HAL_USB_USART_Serial serial, const uint8_t* data, uint32_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Send_Data_Buffer(serial, data, size);
+}
+
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {
     if (serial != HAL_USB_USART_SERIAL) {
         return;

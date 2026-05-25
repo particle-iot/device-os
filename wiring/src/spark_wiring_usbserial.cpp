@@ -86,6 +86,17 @@ size_t USBSerial::write(uint8_t byte)
   return 0;
 }
 
+size_t USBSerial::write(const uint8_t* buffer, size_t size)
+{
+  if (!buffer || !size) {
+    return 0;
+  }
+  if (_blocking || HAL_USB_USART_Available_Data_For_Write(_serial) > 0) {
+    return std::max(0, (int)HAL_USB_USART_Send_Data_Buffer(_serial, buffer, size));
+  }
+  return 0;
+}
+
 void USBSerial::flush()
 {
   HAL_USB_USART_Flush_Data(_serial);

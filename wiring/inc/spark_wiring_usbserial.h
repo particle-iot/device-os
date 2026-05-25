@@ -52,6 +52,7 @@ public:
 	int peek();
 
 	virtual size_t write(uint8_t byte);
+	virtual size_t write(const uint8_t* buffer, size_t size) override;
 	virtual int read();
 	virtual int availableForWrite(void);
 	virtual int available();
