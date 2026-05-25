@@ -210,6 +210,7 @@ SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Available_Data, (HAL_USB_USART
 SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Available_Data_For_Write, (HAL_USB_USART_Serial serial));
 SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Receive_Data, (HAL_USB_USART_Serial serial, uint8_t peek));
 SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Send_Data, (HAL_USB_USART_Serial serial, uint8_t data));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Send_Data_Buffer, (HAL_USB_USART_Serial serial, const uint8_t* data, uint32_t size));
 SECURITY_MODE_PROTECTED_FN(void, HAL_USB_USART_Flush_Data, (HAL_USB_USART_Serial serial));
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);

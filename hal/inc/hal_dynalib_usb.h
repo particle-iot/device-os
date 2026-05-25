@@ -107,6 +107,13 @@ DYNALIB_FN(BASE_IDX4 + 1, hal_usb, HAL_USB_HID_Set_State, uint8_t(uint8_t, uint8
 
 #ifdef USB_VENDOR_REQUEST_ENABLE
 DYNALIB_FN(BASE_IDX5 + 0, hal_usb, HAL_USB_Set_Vendor_Request_State_Callback, void(HAL_USB_Vendor_Request_State_Callback, void*))
+# define BASE_IDX6 (BASE_IDX5 + 1)
+#else
+# define BASE_IDX6 BASE_IDX5
+#endif
+
+#ifdef USB_CDC_ENABLE
+DYNALIB_FN_WRAP(BASE_IDX6 + 0, hal_usb, HAL_USB_USART_Send_Data_Buffer, protected, int32_t(HAL_USB_USART_Serial, const uint8_t*, uint32_t))
 #endif
 
 DYNALIB_END(hal_usb)
@@ -117,5 +124,6 @@ DYNALIB_END(hal_usb)
 #undef BASE_IDX3
 #undef BASE_IDX4
 #undef BASE_IDX5
+#undef BASE_IDX6
 
 #endif  /* HAL_DYNALIB_USB_H */
