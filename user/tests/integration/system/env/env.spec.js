@@ -55,7 +55,7 @@ test('06_particle_wifi_enable_init', async function() {
 test('07_particle_wifi_enable_default', async function() {
     await setEnvVarsAndFlash({ 
         PARTICLE_WIFI_ENABLE: 'true',
-        PARTICLE_CLOUD_KEEP_ALIVE_WIFI: '30',
+        PARTICLE_WIFI_CLOUD_KEEP_ALIVE: '30',
         PARTICLE_CLOUD_KEEP_ALIVE: '50'
      });
 });
@@ -86,7 +86,7 @@ test('12_particle_ethernet_enable_init', async function () {
 test('13_particle_ethernet_enable_default', async function () {
     await setEnvVarsAndFlash({ 
         PARTICLE_ETHERNET_ENABLE: 'true',
-        PARTICLE_CLOUD_KEEP_ALIVE_ETHERNET: '40',
+        PARTICLE_ETHERNET_CLOUD_KEEP_ALIVE: '40',
         PARTICLE_CLOUD_KEEP_ALIVE: '50'
     });
 });

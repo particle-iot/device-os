@@ -379,10 +379,6 @@ public:
 		return pinger.get_interval();
 	}
 
-	keepalive_source_t get_keepalive_source() {
-		return pinger.get_keepalive_source();
-	}
-
 	void set_fast_ota(unsigned data)
 	{
 #if !HAL_PLATFORM_OTA_PROTOCOL_V3

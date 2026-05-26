@@ -231,7 +231,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
 
         LOG(INFO, "Cloud socket=%d, connecting to %s#%u using if %d", s, serverHost, serverPort, cloudInterface);
 
-        if (cloudInterface != NETWORK_INTERFACE_ALL) {    
+        if (cloudInterface != NETWORK_INTERFACE_ALL) {
             // Bind to specific netif
             struct ifreq ifr = {};
             if_index_to_name(cloudInterface, ifr.ifr_name);
@@ -285,8 +285,7 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
             memcpy(saddrCache, a->ai_addr, a->ai_addrlen);
         }
 
-        unsigned int keepalive = system_cloud_get_netif_keepalive(cloudInterface);
-        system_cloud_set_inet_family_keepalive(a->ai_family, keepalive, 1);
+        system_cloud_set_keepalive(cloudInterface);
 
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
         if (system_thread_get_state(nullptr) == spark::feature::ENABLED) {

@@ -279,7 +279,7 @@ test(05_particle_default_cloud_keepalive) {
     Particle.connect();
 
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertEqual(Particle.getKeepAlive().count(), DEFAULT_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(), DEFAULT_KEEPALIVE_SECONDS);
 
     Particle.keepAlive(120s);
     Particle.disconnect();
@@ -290,7 +290,7 @@ test(05_particle_default_cloud_keepalive) {
     Network.connect();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertEqual(Particle.getKeepAlive().count(), 120);
+    assertEqual(Particle.getKeepAlive(), 120);
 }
 
 #if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
@@ -346,9 +346,9 @@ test(08_particle_wifi_enable_true) {
     assertTrue(System.hasEnv("PARTICLE_WIFI_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_WIFI_ENABLE"), String("true"));
 
-    assertTrue(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE_WIFI"));
+    assertTrue(System.hasEnv("PARTICLE_WIFI_CLOUD_KEEP_ALIVE"));
     int keepAlive = 0;
-    assertTrue(System.getEnv("PARTICLE_CLOUD_KEEP_ALIVE_WIFI", keepAlive));
+    assertTrue(System.getEnv("PARTICLE_WIFI_CLOUD_KEEP_ALIVE", keepAlive));
     assertEqual(keepAlive, WIFI_KEEPALIVE_SECONDS);
 
     assertEqual((int)TestSuite::instance()->network(), (int)NETWORK_INTERFACE_WIFI_STA);
@@ -367,7 +367,8 @@ test(08_particle_wifi_enable_true) {
     assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
-    assertEqual(Particle.getKeepAlive().count(), WIFI_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(), WIFI_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(WiFi), WIFI_KEEPALIVE_SECONDS);
 
 #if HAL_PLATFORM_BLE
     // BLE is not affected
@@ -529,9 +530,9 @@ test(14_particle_ethernet_enable_true) {
     assertTrue(System.hasEnv("PARTICLE_ETHERNET_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_ETHERNET_ENABLE"), String("true"));
 
-    assertTrue(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE_ETHERNET"));
+    assertTrue(System.hasEnv("PARTICLE_CLOUD_ETHERNET_KEEP_ALIVE"));
     int keepAlive = 0;
-    assertTrue(System.getEnv("PARTICLE_CLOUD_KEEP_ALIVE_ETHERNET", keepAlive));
+    assertTrue(System.getEnv("PARTICLE_CLOUD_ETHERNET_KEEP_ALIVE", keepAlive));
     assertEqual(keepAlive, ETHERNET_KEEPALIVE_SECONDS);
 
     assertEqual((int)TestSuite::instance()->network(), (int)NETWORK_INTERFACE_ETHERNET);
@@ -550,7 +551,8 @@ test(14_particle_ethernet_enable_true) {
     assertTrue(waitFor(Ethernet.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
-    assertEqual(Particle.getKeepAlive().count(), ETHERNET_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(), ETHERNET_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(Ethernet), ETHERNET_KEEPALIVE_SECONDS);
 }
 
 test(15_particle_ethernet_enable_false) {

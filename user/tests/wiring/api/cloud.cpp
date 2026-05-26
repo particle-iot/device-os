@@ -248,6 +248,18 @@ test(api_spark_connection) {
     API_COMPILE(Particle.keepAlive(s));
     API_COMPILE(Particle.keepAlive(1200s));
     API_COMPILE(Particle.keepAlive(20min));
+    API_COMPILE(Particle.getKeepAlive());
+
+    auto netIf = Network;
+#if Wiring_Cellular
+    netIf = Cellular;
+#endif
+#if Wiring_WiFi
+    netIf = WiFi;
+#endif
+    API_COMPILE(Particle.keepAlive(30, netIf));
+    API_COMPILE(Particle.keepAlive(30s, netIf));
+    API_COMPILE(Particle.getKeepAlive(netIf));
 #endif
 
     API_COMPILE(Particle.setDisconnectOptions(CloudDisconnectOptions().graceful(true).timeout(60000)));
