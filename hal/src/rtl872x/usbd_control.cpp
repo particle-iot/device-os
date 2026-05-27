@@ -177,6 +177,10 @@ int ControlInterfaceClassDriver::setup(SetupRequest* req) {
 }
 
 int ControlInterfaceClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
+    // Should only cover EP0
+    if (ep & 0x7f) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     // Data stage completed
     if (state_ == State::TX && stateCallback_) {
         stateCallback_(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED, stateCallbackCtx_);
@@ -188,6 +192,10 @@ int ControlInterfaceClassDriver::dataIn(unsigned ep, particle::usbd::EndpointEve
 }
 
 int ControlInterfaceClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_t len) {
+    // Should only cover EP0
+    if (ep & 0x7f) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
     // Data stage completed
     if (state_ == State::RX && requestCallback_) {
         requestCallback_(&request_, requestCallbackCtx_);
