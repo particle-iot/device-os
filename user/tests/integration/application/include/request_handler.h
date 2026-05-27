@@ -48,6 +48,7 @@ private:
     int getLog(Request* req);
     int reset(Request* req);
     int readMailbox(Request* req);
+    int ackMailbox(Request* req);
 };
 
 } // namespace particle

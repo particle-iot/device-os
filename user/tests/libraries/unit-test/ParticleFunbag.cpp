@@ -453,6 +453,7 @@ int TestRunner::testCmd(String arg) {
 int TestRunner::pushMailbox(MailboxEntry entry, system_tick_t wait) {
     auto m = new MailboxEntry(std::move(entry));
     CHECK_TRUE(m, SYSTEM_ERROR_NO_MEMORY);
+    m->setId(++nextMailboxId_);
     outMailbox_.pushBack(m);
     if (wait) {
         SCOPE_GUARD({
@@ -460,7 +461,10 @@ int TestRunner::pushMailbox(MailboxEntry entry, system_tick_t wait) {
                 popOutboundMailbox();
             }
         });
-        return m->wait(wait) ? 0 : SYSTEM_ERROR_TIMEOUT;
+        if (m->wait(wait)) {
+            return m->result();
+        }
+        return SYSTEM_ERROR_TIMEOUT;
     }
     return 0;
 }
@@ -491,6 +495,22 @@ int TestRunner::popOutboundMailbox() {
         return 0;
     }
     return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int TestRunner::ackOutboundMailboxById(int id) {
+    auto m = outMailbox_.front();
+    if (!m || m->id() != id) {
+        // Nothing to do: the mailbox is empty, or this ACK is for a message
+        // we've already handled. Safe to ignore, the runner may send the
+        // same ACK more than once if a USB retry kicks in.
+        return 0;
+    }
+    if (m->waitedOn()) {
+        m->completed(0);  // unblocks pushMailbox; SCOPE_GUARD pops
+    } else {
+        popOutboundMailbox();
+    }
+    return 0;
 }
 
 void TestRunner::updateLEDStatus() {
