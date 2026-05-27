@@ -491,7 +491,7 @@ public:
         spark_netif_keepalive prop = {};
         prop.size = sizeof(prop);
         prop.network = network;
-        spark_set_connection_property(SPARK_CLOUD_NETIF_PING_INTERVAL, sec * 1000, &prop, nullptr);
+        spark_set_connection_property(SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL, sec * 1000, &prop, nullptr);
     }
 
     inline static void keepAlive(std::chrono::seconds s, network_interface_t network) {
@@ -503,7 +503,7 @@ public:
         prop.size = sizeof(prop);
         prop.network = network;
         size_t n = sizeof(prop);
-        auto r = spark_get_connection_property(SPARK_CLOUD_NETIF_PING_INTERVAL, &prop, &n, nullptr);
+        auto r = spark_get_connection_property(SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL, &prop, &n, nullptr);
         if (r) {
             return r;
         }

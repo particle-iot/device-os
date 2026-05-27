@@ -47,7 +47,7 @@ struct NetIfKeepAlive {
 
 // Indexed by network_interface_t. Only USER overrides are stored here; SYSTEM
 // values are resolved from env vars / HAL defaults in system_cloud_get_netif_keepalive().
-static NetIfKeepAlive netIfKeepAlives[NETWORK_INTERFACE_PPP_SERVER + 1] = {};
+static NetIfKeepAlive netIfKeepAlives[NETWORK_INTERFACE_MAX] = {};
 
 } /* anonymous */
 
@@ -306,7 +306,7 @@ void Multicast_Presence_Announcement(void)
 }
 
 int system_cloud_get_netif_keepalive(network_interface_t netif, unsigned* value, uint32_t* source) {
-    if (!value || !source || netif > NETWORK_INTERFACE_PPP_SERVER) {
+    if (!value || !source || netif >= NETWORK_INTERFACE_MAX) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
 
@@ -374,7 +374,7 @@ int system_cloud_get_netif_keepalive(network_interface_t netif, unsigned* value,
 }
 
 int system_cloud_set_netif_keepalive(network_interface_t netif, unsigned value) {
-    if (netif > NETWORK_INTERFACE_PPP_SERVER) {
+    if (netif >= NETWORK_INTERFACE_MAX) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
 

@@ -303,7 +303,7 @@ int spark_set_connection_property(unsigned property, unsigned value, const void*
         const auto r = spark_protocol_set_connection_property(sp, property, value, d, reserved);
         return spark_protocol_to_system_error(r);
     }
-    case SPARK_CLOUD_NETIF_PING_INTERVAL: {
+    case SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL: {
         const auto d = (const spark_netif_keepalive*)data;
         system_cloud_set_netif_keepalive(d->network, value);
         return 0;
@@ -320,7 +320,7 @@ int spark_get_connection_property(unsigned property, void* data, size_t* size, v
     switch (property) {
     case SPARK_CLOUD_PING_INTERVAL:
         return getConnectionProperty(protocol::Connection::PING, data, size);
-    case SPARK_CLOUD_NETIF_PING_INTERVAL: {
+    case SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL: {
         if (!data || *size < sizeof(spark_netif_keepalive)) {
             return SYSTEM_ERROR_INVALID_ARGUMENT;
         }

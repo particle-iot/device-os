@@ -530,9 +530,9 @@ test(14_particle_ethernet_enable_true) {
     assertTrue(System.hasEnv("PARTICLE_ETHERNET_ENABLE"));
     assertEqual(System.getEnv("PARTICLE_ETHERNET_ENABLE"), String("true"));
 
-    assertTrue(System.hasEnv("PARTICLE_CLOUD_ETHERNET_KEEP_ALIVE"));
+    assertTrue(System.hasEnv("PARTICLE_ETHERNET_CLOUD_KEEP_ALIVE"));
     int keepAlive = 0;
-    assertTrue(System.getEnv("PARTICLE_CLOUD_ETHERNET_KEEP_ALIVE", keepAlive));
+    assertTrue(System.getEnv("PARTICLE_ETHERNET_CLOUD_KEEP_ALIVE", keepAlive));
     assertEqual(keepAlive, ETHERNET_KEEPALIVE_SECONDS);
 
     assertEqual((int)TestSuite::instance()->network(), (int)NETWORK_INTERFACE_ETHERNET);

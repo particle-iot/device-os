@@ -374,11 +374,11 @@ typedef enum spark_connection_property {
     SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE = 4, ///< Maximum size of a variable value (get).
     SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5, ///< Maximum size of a function call argument (get).
     SPARK_CLOUD_GET_NETWORK_INTERFACE = 6, ///< Which interface is being used for the current cloud connection
-    SPARK_CLOUD_NETIF_PING_INTERVAL = 7 ///< Per-interface keepalive override (set/get).
+    SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL = 7 ///< Per-interface keepalive override (set/get).
 } spark_connection_property;
 
 /**
- * Payload for `SPARK_CLOUD_NETIF_PING_INTERVAL`.
+ * Payload for `SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL`.
  *
  * On set, `network` selects the interface and the interval is carried in the `value`
  * argument of `spark_set_connection_property()`; `keepalive` is ignored.
