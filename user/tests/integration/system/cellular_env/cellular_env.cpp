@@ -30,6 +30,10 @@
 
 namespace {
 
+static const int CELLULAR_KEEPALIVE_SECONDS = 60;
+static const int GLOBAL_KEEPALIVE_SECONDS = 70;
+static const int CELLULAR_KEEPALIVE_SECONDS_DEFAULT = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL / 1000;
+
 retained bool g_SkipTests = false;
 
 #if HAL_PLATFORM_CELLULAR
@@ -563,7 +567,31 @@ test(9_particle_cellular_preferred_plmn_set) {
     waitForNot(Cellular.ready, 60000);
 }
 
-test(10_particle_cellular_preferred_plmn_cleanup) {
+test(10_particle_cellular_keepalive) {
+    assertTrue(System.hasEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE"));
+    int keepAlive = 0;
+    assertTrue(System.getEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE", keepAlive));
+    assertEqual(keepAlive, CELLULAR_KEEPALIVE_SECONDS);
+
+    assertTrue(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE"));
+    int globalKeepAlive = 0;
+    assertTrue(System.getEnv("PARTICLE_CLOUD_KEEP_ALIVE", globalKeepAlive));
+    assertEqual(globalKeepAlive, GLOBAL_KEEPALIVE_SECONDS);
+
+    Cellular.on();
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Cellular.connect();
+    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+
+    assertEqual(Particle.getKeepAlive(), CELLULAR_KEEPALIVE_SECONDS);
+    assertEqual(Particle.getKeepAlive(Cellular), CELLULAR_KEEPALIVE_SECONDS);
+    Cellular.disconnect();
+    waitForNot(Cellular.ready, 60000);
+}
+
+test(11_particle_cellular_preferred_plmn_cleanup) {
     if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
@@ -574,7 +602,7 @@ test(10_particle_cellular_preferred_plmn_cleanup) {
     System.reset();
 }
 
-test(11_particle_cellular_env_vars_cleared_verify_defaults) {
+test(12_particle_cellular_env_vars_cleared_verify_defaults) {
     if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
         skip();
         return;
@@ -622,6 +650,10 @@ test(11_particle_cellular_env_vars_cleared_verify_defaults) {
                 (data.response.indexOf("311480") >= 0);
         assertFalse(anyPlmn);
     }
+
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(Particle.getKeepAlive(), CELLULAR_KEEPALIVE_SECONDS_DEFAULT);
 
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);

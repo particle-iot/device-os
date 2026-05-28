@@ -41,6 +41,8 @@ public:
 		}
 	}
 
+	system_tick_t get_interval() const { return ping_interval; }
+
 	void reset()
 	{
 		expecting_ping_ack = false;

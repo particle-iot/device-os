@@ -18,6 +18,7 @@
 #include "system_cloud_connection.h"
 #include "system_cloud_internal.h"
 #include "system_cloud.h"
+#include "system_connection_manager.h"
 #include "system_threading.h"
 #include "core_hal.h"
 #include "service_debug.h"
@@ -31,6 +32,7 @@
 // FIXME: this should get included from protocol.h
 #include "mbedtls_config.h"
 #endif // HAL_PLATFORM_IFAPI && HAL_PLATFORM_BROKEN_MTU
+#include "system_env.h"
 
 #define IPNUM(ip)       ((ip)>>24)&0xff,((ip)>>16)&0xff,((ip)>> 8)&0xff,((ip)>> 0)&0xff
 
@@ -38,19 +40,18 @@ namespace {
 
 uint16_t cloud_udp_port = PORT_COAPS; // default Particle Cloud UDP port
 
+struct NetIfKeepAlive {
+    unsigned keepAlive;
+    particle::protocol::KeepAliveSource::Enum source;
+};
+
+// Indexed by network_interface_t. Only USER overrides are stored here; SYSTEM
+// values are resolved from env vars / HAL defaults in system_cloud_get_netif_keepalive().
+static NetIfKeepAlive netIfKeepAlives[NETWORK_INTERFACE_MAX] = {};
+
 } /* anonymous */
 
-/* FIXME: */
-extern uint8_t feature_cloud_udp;
 volatile bool cloud_socket_aborted = false;
-
-#if HAL_PLATFORM_CELLULAR
-static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL;
-static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL;
-#else
-static volatile int s_ipv4_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
-static volatile int s_ipv6_cloud_keepalive = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
-#endif
 
 using namespace particle;
 using namespace particle::system::cloud;
@@ -304,60 +305,110 @@ void Multicast_Presence_Announcement(void)
 #endif // HAL_PLATFORM_NETWORK_MULTICAST
 }
 
-int system_cloud_set_inet_family_keepalive(int af, unsigned int value, int flags) {
-    switch (af) {
-        case AF_INET: {
-            LOG(TRACE, "Updating cloud keepalive for AF_INET: %lu -> %lu", s_ipv4_cloud_keepalive,
-                    value);
-            s_ipv4_cloud_keepalive = value;
+int system_cloud_get_netif_keepalive(network_interface_t netif, unsigned* value, uint32_t* source) {
+    if (!value || !source || netif >= NETWORK_INTERFACE_MAX) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+
+    int netIfKeepAlive = 0;
+    auto netIfSource = particle::protocol::KeepAliveSource::SYSTEM;
+
+    if (netIfKeepAlives[netif].source == particle::protocol::KeepAliveSource::USER) {
+        netIfKeepAlive = netIfKeepAlives[netif].keepAlive;
+        netIfSource = particle::protocol::KeepAliveSource::USER;
+        LOG(TRACE, "User keep alive override: %u for netif %u", netIfKeepAlive, netif);
+    }
+
+#if HAL_PLATFORM_ENV
+#if PLATFORM_ID != PLATFORM_GCC
+    const char * keepAliveEnvVarName = "";
+
+    switch (netif) {
+#if HAL_PLATFORM_ETHERNET
+        case NETWORK_INTERFACE_ETHERNET:
+            keepAliveEnvVarName = "PARTICLE_ETHERNET_CLOUD_KEEP_ALIVE";
             break;
-        }
-        case AF_INET6: {
-            LOG(TRACE, "Updating cloud keepalive for AF_INET6: %lu -> %lu", s_ipv6_cloud_keepalive,
-                    value);
-            s_ipv6_cloud_keepalive = value;
+#endif
+#if HAL_PLATFORM_CELLULAR
+        case NETWORK_INTERFACE_CELLULAR:
+            keepAliveEnvVarName = "PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE";
             break;
+#endif
+#if HAL_PLATFORM_WIFI
+        case NETWORK_INTERFACE_WIFI_STA:
+            keepAliveEnvVarName = "PARTICLE_WIFI_CLOUD_KEEP_ALIVE";
+            break;
+#endif
+        default: // NETWORK_INTERFACE_ALL
+            LOG(WARN, "Keep alive with no concrete netif specified");
+            break;
+    }
+
+    if (!netIfKeepAlive) {
+        // If netif specific env var, use it
+        if (keepAliveEnvVarName && particle::system::hasEnv(keepAliveEnvVarName)) {
+            particle::system::getEnv(keepAliveEnvVarName, netIfKeepAlive);
+            LOG(TRACE, "Netif env var keep alive: %d for netif %u", netIfKeepAlive, netif);
+        } 
+        // If no netif specific env var, but global env var use that
+        else if (particle::system::hasEnv("PARTICLE_CLOUD_KEEP_ALIVE")) {
+            particle::system::getEnv("PARTICLE_CLOUD_KEEP_ALIVE", netIfKeepAlive);
+            LOG(TRACE, "Global env var keep alive: %d for netif %u", netIfKeepAlive, netif);
         }
-        default: {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
+    }
+    
+#endif // PLATFORM_GCC
+#endif // HAL_PLATFORM_ENV
+
+    // Convert env var seconds -> ms
+    if (netIfKeepAlive) {
+        netIfKeepAlive *= 1000;
+    } else {
+        // If no env vars, use default keep alives
+        netIfKeepAlive = (netif == NETWORK_INTERFACE_CELLULAR ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL : HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+    }
+
+    *source = netIfSource;
+    *value = netIfKeepAlive;
+    return 0;
+}
+
+int system_cloud_set_netif_keepalive(network_interface_t netif, unsigned value) {
+    if (netif >= NETWORK_INTERFACE_MAX) {
+        return SYSTEM_ERROR_OUT_OF_RANGE;
+    }
+
+    netIfKeepAlives[netif].keepAlive = value;
+    netIfKeepAlives[netif].source = particle::protocol::KeepAliveSource::USER;
+
+    // If this is the active connection, change keep alive now
+#if HAL_PLATFORM_IFAPI
+    if (particle::system::ConnectionManager::instance()->getCloudConnectionNetwork() == netif) {
+        return system_cloud_set_keepalive(netif);
+    }
+#else 
+    return system_cloud_set_keepalive(netif);
+#endif
+
+    return 0;
+}
+
+int system_cloud_set_keepalive(network_interface_t netif) {
+    unsigned keepAlive = 0;
+    uint32_t keepAliveSource = 0;
+    auto r = system_cloud_get_netif_keepalive(netif, &keepAlive, &keepAliveSource);
+    if (r) {
+        return r;
     }
 
 #if HAL_PLATFORM_CLOUD_UDP
-    // Check if connected
-    if (spark_cloud_flag_connected() || (flags & 1)) {
-        if (((sockaddr*)&g_system_cloud_session_data.address)->sa_family == af) {
-            // Change it now
-            LOG(TRACE, "Applying new keepalive interval now");
-            particle::protocol::connection_properties_t conn_prop = {};
-            conn_prop.size = sizeof(conn_prop);
-            conn_prop.keepalive_source = particle::protocol::KeepAliveSource::SYSTEM;
-            spark_set_connection_property(particle::protocol::Connection::PING,
-                    value, &conn_prop, nullptr);
-        }
-    }
+    // Change it now
+    LOG(TRACE, "Applying new keepalive interval now: %u", keepAlive);
+    particle::protocol::connection_properties_t conn_prop = {};
+    conn_prop.size = sizeof(conn_prop);
+    conn_prop.keepalive_source = keepAliveSource;
+    spark_set_connection_property(particle::protocol::Connection::PING, keepAlive, &conn_prop, nullptr);
 #endif // HAL_PLATFORM_CLOUD_UDP
     return 0;
 }
 
-int system_cloud_get_inet_family_keepalive(int af, unsigned int* value) {
-    if (!value) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-
-    switch (af) {
-        case AF_INET: {
-            *value = s_ipv4_cloud_keepalive;
-            break;
-        }
-        case AF_INET6: {
-            *value = s_ipv6_cloud_keepalive;
-            break;
-        }
-        default: {
-            return SYSTEM_ERROR_INVALID_ARGUMENT;
-        }
-    }
-
-    return 0;
-}

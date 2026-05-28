@@ -25,6 +25,7 @@
 #include "system_defs.h"
 #include "protocol_defs.h"
 #include "completion_handler.h"
+#include "inet_hal_compat.h"
 
 #include <type_traits>
 #include <string.h>
@@ -372,8 +373,22 @@ typedef enum spark_connection_property {
     SPARK_CLOUD_MAX_EVENT_DATA_SIZE = 3, ///< Maximum size of event data (get).
     SPARK_CLOUD_MAX_VARIABLE_VALUE_SIZE = 4, ///< Maximum size of a variable value (get).
     SPARK_CLOUD_MAX_FUNCTION_ARGUMENT_SIZE = 5, ///< Maximum size of a function call argument (get).
-    SPARK_CLOUD_GET_NETWORK_INTERFACE = 6 ///< Which interface is being used for the current cloud connection
+    SPARK_CLOUD_GET_NETWORK_INTERFACE = 6, ///< Which interface is being used for the current cloud connection
+    SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL = 7 ///< Per-interface keepalive override (set/get).
 } spark_connection_property;
+
+/**
+ * Payload for `SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL`.
+ *
+ * On set, `network` selects the interface and the interval is carried in the `value`
+ * argument of `spark_set_connection_property()`; `keepalive` is ignored.
+ * On get, `network` selects the interface (input) and `keepalive` is filled in (output).
+ */
+typedef struct spark_netif_keepalive {
+    uint16_t size; ///< Size of this structure.
+    network_interface_t network; ///< [in] Interface to set/query.
+    unsigned keepalive; ///< [out] Resolved keepalive interval in milliseconds (get only).
+} spark_netif_keepalive;
 
 int spark_set_connection_property(unsigned property, unsigned value, const void* data, void* reserved);
 int spark_get_connection_property(unsigned property, void* data, size_t* size, void* reserved);

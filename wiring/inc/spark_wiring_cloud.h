@@ -475,6 +475,42 @@ public:
     }
 
     inline static void keepAlive(std::chrono::seconds s) { keepAlive(s.count()); }
+
+    inline static int getKeepAlive() {
+        size_t keepAliveMs = 0;
+        size_t n = sizeof(keepAliveMs);
+        auto r = spark_get_connection_property(SPARK_CLOUD_PING_INTERVAL, &keepAliveMs, &n, nullptr);
+        if (r) {
+            return r;
+        }
+
+        return keepAliveMs / 1000;
+    }
+
+    inline static void keepAlive(unsigned sec, network_interface_t network) {
+        spark_netif_keepalive prop = {};
+        prop.size = sizeof(prop);
+        prop.network = network;
+        spark_set_connection_property(SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL, sec * 1000, &prop, nullptr);
+    }
+
+    inline static void keepAlive(std::chrono::seconds s, network_interface_t network) {
+        keepAlive((unsigned)s.count(), network);
+    }
+
+    inline static int getKeepAlive(network_interface_t network) {
+        spark_netif_keepalive prop = {};
+        prop.size = sizeof(prop);
+        prop.network = network;
+        size_t n = sizeof(prop);
+        auto r = spark_get_connection_property(SPARK_CLOUD_NETWORK_INTERFACE_PING_INTERVAL, &prop, &n, nullptr);
+        if (r) {
+            return r;
+        }
+
+        return prop.keepalive / 1000;
+    }
+
 #endif
 
     /**
