@@ -97,23 +97,25 @@ test('8_particle_cellular_preferred_plmn_default', async function () {
 test('9_particle_cellular_preferred_plmn_set', async function () {
     expect(device.mailBox).to.not.be.empty;
     console.log(device.mailBox[0].d);
+});
 
+test('10_particle_cellular_keepalive_init', async function () {
     await setEnvVarsAndFlash({
         PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE: '60',
         PARTICLE_CLOUD_KEEP_ALIVE: '70'
     });
 });
 
-test('10_particle_cellular_keepalive', async function () {
+test('11_particle_cellular_keepalive', async function () {
 
 });
 
-test('11_particle_cellular_preferred_plmn_cleanup', async function () {
+test('12_particle_cellular_preferred_plmn_cleanup', async function () {
     delete this.test.parent.particle.network;
     this.test.parent.particle.suiteInitialized = false;
 });
 
-test('12_particle_cellular_env_vars_cleared_verify_defaults', async function () {
+test('13_particle_cellular_env_vars_cleared_verify_defaults', async function () {
     expect(device.mailBox).to.not.be.empty;
     console.log(device.mailBox[0].d);
 });
