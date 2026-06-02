@@ -625,6 +625,8 @@ test(13_particle_cellular_env_vars_cleared_verify_defaults) {
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
     assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_PLMN"));
+    assertFalse(System.hasEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE"));
+    assertFalse(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE"));
 
     Cellular.on();
     assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
