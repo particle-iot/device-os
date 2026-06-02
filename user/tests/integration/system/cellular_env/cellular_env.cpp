@@ -601,6 +601,7 @@ test(11_particle_cellular_keepalive) {
 
     assertEqual(Particle.getKeepAlive(), CELLULAR_KEEPALIVE_SECONDS);
     assertEqual(Particle.getKeepAlive(Cellular), CELLULAR_KEEPALIVE_SECONDS);
+    Particle.disconnect();
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);
 }
