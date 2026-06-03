@@ -67,7 +67,8 @@ bool isQuectelRadio(int radioType) {
             radioType == DEV_QUECTEL_EG91_NA || radioType == DEV_QUECTEL_EG91_EX ||
             radioType == DEV_QUECTEL_BG95_M1 || radioType == DEV_QUECTEL_EG91_NAX ||
             radioType == DEV_QUECTEL_BG77 || radioType == DEV_QUECTEL_BG95_MF ||
-            radioType == DEV_QUECTEL_EG800Q_NA || radioType == DEV_QUECTEL_EG800Q_EU);
+            radioType == DEV_QUECTEL_EG800Q_NA || radioType == DEV_QUECTEL_EG800Q_EU ||
+            radioType == DEV_QUECTEL_BG95_S5 || radioType == DEV_QUECTEL_EG916Q_GL);
 }
 #endif
 
