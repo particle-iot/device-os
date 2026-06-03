@@ -586,7 +586,7 @@ test(10_particle_cellular_keepalive_init) {
     assertEqual(Particle.getKeepAlive(), PLATFORM_CELLULAR_KEEPALIVE_SECONDS);
 }
 
-test(11_particle_cellular_keepalive) {
+test(11_particle_cellular_keepalive_set) {
     if (g_SkipTests) {
         skip();
         return;

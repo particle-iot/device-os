@@ -106,7 +106,7 @@ test('10_particle_cellular_keepalive_init', async function () {
     });
 });
 
-test('11_particle_cellular_keepalive', async function () {
+test('11_particle_cellular_keepalive_set', async function () {
 
 });
 
