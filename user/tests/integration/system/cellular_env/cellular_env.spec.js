@@ -110,7 +110,7 @@ test('11_particle_cellular_keepalive', async function () {
 
 });
 
-test('12_particle_cellular_preferred_plmn_cleanup', async function () {
+test('12_particle_cellular_env_var_cleanup', async function () {
     delete this.test.parent.particle.network;
     this.test.parent.particle.suiteInitialized = false;
 });

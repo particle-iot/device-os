@@ -371,6 +371,9 @@ test(08_particle_wifi_enable_true) {
 
     assertEqual(Particle.getKeepAlive(), WIFI_KEEPALIVE_SECONDS);
     assertEqual(Particle.getKeepAlive(WiFi), WIFI_KEEPALIVE_SECONDS);
+#if HAL_PLATFORM_CELLULAR
+    assertEqual(Particle.getKeepAlive(Cellular), DEFAULT_KEEPALIVE_SECONDS);
+#endif
 
 #if HAL_PLATFORM_BLE
     // BLE is not affected
