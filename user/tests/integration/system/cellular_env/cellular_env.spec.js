@@ -110,18 +110,9 @@ test('11_particle_cellular_keepalive_set', async function () {
 
 });
 
-test('12_particle_cellular_env_var_cleanup', async function () {
+test('97_cleanup', async function() {
     delete this.test.parent.particle.network;
     this.test.parent.particle.suiteInitialized = false;
-});
-
-test('13_particle_cellular_env_vars_cleared_verify_defaults', async function () {
-    expect(device.mailBox).to.not.be.empty;
-    console.log(device.mailBox[0].d);
-});
-
-test('97_cleanup', async function() {
-
 });
 
 test('98_cleanup', async function() {
@@ -134,4 +125,9 @@ test('99_cleanup_1', async function() {
 
 test('99_cleanup_2', async function() {
 
+});
+
+test('99_cleanup_3_verify_defaults', async function () {
+    expect(device.mailBox).to.not.be.empty;
+    console.log(device.mailBox[0].d);
 });
