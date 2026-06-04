@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("sys.power");
 #include "debug.h"
 #include "spark_wiring_platform.h"
 #include "pinmap_hal.h"
+#include "system_env.h"
 
 #if (HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043)
 
@@ -70,6 +71,9 @@ constexpr uint16_t PMIC_FAULT_TERM_CHARGE_CURRENT = 128; // mA
 constexpr system_tick_t BATTERY_REPEATED_CHARGED_WINDOW = 5000; // ms
 constexpr uint8_t BATTERY_REPEATED_CHARGED_COUNT = 2;
 constexpr uint16_t AUX_PWR_EN_INPUT_CURRENT_THRESHOLD = 500; // mA
+constexpr uint16_t ENV_OVERRIDE_MAX_CURRENT = 1500; // mA
+constexpr uint16_t ENV_OVERRIDE_MIN_INPUT_CURRENT = 500; // mA, IINLIM step below the 900mA default
+constexpr uint16_t ENV_OVERRIDE_MIN_CHARGE_CURRENT = 512; // mA, BQ24195 ICHG base offset (hardware floor)
 
 constexpr hal_power_config defaultPowerConfig = {
   .flags = 0,
@@ -142,7 +146,7 @@ PowerManager* PowerManager::instance() {
 
 void PowerManager::enableAuxPwr() {
   if (!auxPwrEnabled_ && config_.version >= HAL_POWER_CONFIG_VERSION_1 && config_.aux_pwr_ctrl_pin != PIN_INVALID) {
-    LOG(INFO, "Enable auxiliary power");
+    LOG(INFO, "Enable aux power");
     hal_gpio_mode(config_.aux_pwr_ctrl_pin, OUTPUT);
     hal_gpio_write(config_.aux_pwr_ctrl_pin, config_.aux_pwr_ctrl_pin_level);
     auxPwrEnabled_ = true;
@@ -190,7 +194,7 @@ void PowerManager::init() {
 #endif // HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
 
   if (config_.flags & HAL_POWER_MANAGEMENT_DISABLE) {
-    LOG(WARN, "Disabled by configuration");
+    LOG(WARN, "Disabled by config");
     // NOTE: We should at least apply the config in DCT in case of Safe mode.
     // Do not run DPDM, since the event loop will not be started.
     // User application should still call System.setPowerConfiguration() to set
@@ -925,7 +929,7 @@ void PowerManager::logStat(uint8_t stat, uint8_t fault) {
 bool PowerManager::detect() {
   // Check if runtime detection enabled
   if (!(config_.flags & HAL_POWER_PMIC_DETECTION)) {
-    LOG(INFO, "Runtime PMIC/FuelGauge detection is not enabled");
+    LOG(INFO, "PMIC/FuelGauge detection disabled");
     return false;
   }
 
@@ -972,7 +976,7 @@ void PowerManager::resetBus() {
 }
 
 void PowerManager::deinit() {
-  LOG(WARN, "Disabling system power manager");
+  LOG(WARN, "Disabling power manager");
 #if HAL_PLATFORM_POWER_MANAGEMENT_OPTIONAL
   if (detect_) {
 #else
@@ -1068,6 +1072,22 @@ void PowerManager::loadConfig() {
   config_.size = sizeof(config_);
   int err = getConfig(&config_);
   (void)err;
+
+#if HAL_PLATFORM_ENV
+  // Power env vars override any user firmware or default settings.
+  // Values are bounded to practical limits for each parameter and are mapped to
+  // the supported PMIC register values when applied. If the charge current exceeds
+  // the input current limit, the PMIC's VINDPM loop will throttle charging.
+  int value = 0;
+  if (!system_get_env_int("PARTICLE_POWER_INPUT_CURRENT", &value, nullptr) &&
+      value >= ENV_OVERRIDE_MIN_INPUT_CURRENT && value <= ENV_OVERRIDE_MAX_CURRENT) {
+    config_.vin_max_current = (uint16_t)value;
+  }
+  if (!system_get_env_int("PARTICLE_POWER_CHARGE_CURRENT", &value, nullptr) &&
+      value >= ENV_OVERRIDE_MIN_CHARGE_CURRENT && value <= ENV_OVERRIDE_MAX_CURRENT) {
+    config_.charge_current = (uint16_t)value;
+  }
+#endif // HAL_PLATFORM_ENV
 
   logCurrentConfig();
 }
