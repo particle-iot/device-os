@@ -40,6 +40,7 @@
 #include "exrtc_hal_internal.h"
 #include "system_cache.h"
 #include "delay_hal.h"
+#include "spark_wiring_thread.h"
 
 using namespace particle;
 namespace {
@@ -1081,25 +1082,42 @@ int Am18x5::sleep(const am18x5_sleep_config_t* config) {
         intMask &= ~INTERRUPT_AIE_MASK;
     }
 
+    // Read SLEEP_CONTROL to maintain config but set the SLP bit for immediate sleep when written back out.
+    uint8_t sleepControl = 0x00;
+    CHECK(readRegister(Am18x5Register::SLEEP_CONTROL, &sleepControl));
+    sleepControl |= (1 << SLEEP_CONTROL_SLP_SHIFT);
+
     // Read status to clear the interrupt flags
     uint8_t status = 0x00;
     CHECK(readRegister(Am18x5Register::STATUS, &status));
     // Enable interrupt
     CHECK(writeRegister(Am18x5Register::INT_MASK, intMask));
 
-    // Optionally require the EXTI wake input to be inactive before arming sleep.
-    if ((exrtcConfigFlags_ & HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK) && config->exti_polarity != Am18x5ExtiPolarity::NONE) {
-        uint8_t exin;
-        CHECK(readRegister(Am18x5Register::EXTENSION_RAM_ADDRESS, &exin));
-        bool isExtiHigh = exin & EXTENSION_RAM_EXIN_MASK;
-        if((config->exti_polarity == Am18x5ExtiPolarity::RISING && isExtiHigh) ||
-            (config->exti_polarity == Am18x5ExtiPolarity::FALLING && !isExtiHigh)) {
-            return SYSTEM_ERROR_ABORTED;
+    /*
+     * Critical window between checking EXTI for sleep abort and entering sleep needs to be minimized to handle
+     * possible race condition around EXTI as AM1805 enters sleep. AM1805 appears to handle this case but ONLY
+     * when the EXTI transition occurs within a very narrow window prior.
+     * Acquire lock and disable threading to eliminate unexpected delay from task switch extending the window.
+     */
+    WITH_LOCK(*this)
+    {
+        SINGLE_THREADED_SECTION();
+
+        // Optionally require the EXTI wake input to be inactive before arming sleep.
+        if ((exrtcConfigFlags_ & HAL_EXRTC_CONFIG_SLEEP_EXTI_CHECK) && config->exti_polarity != Am18x5ExtiPolarity::NONE) {
+            uint8_t exin;
+            CHECK(readRegister(Am18x5Register::EXTENSION_RAM_ADDRESS, &exin));
+            bool isExtiHigh = exin & EXTENSION_RAM_EXIN_MASK;
+            if((config->exti_polarity == Am18x5ExtiPolarity::RISING && isExtiHigh) ||
+                (config->exti_polarity == Am18x5ExtiPolarity::FALLING && !isExtiHigh)) {
+                return SYSTEM_ERROR_ABORTED;
+            }
         }
+
+        // Transfer to SLEEP state without any delay
+        CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, sleepControl));
     }
 
-    // Transfer to SLEEP state without any delay
-    CHECK(writeRegister(Am18x5Register::SLEEP_CONTROL, 1, false, true, SLEEP_CONTROL_SLP_MASK, SLEEP_CONTROL_SLP_SHIFT));
     /*
      * In addition, SLP cannot be set if there is an interrupt pending. Software should read the SLP bit after
      * attempting to set it. If SLP is not asserted, the attempt to set SLP was unsuccessful either because a
