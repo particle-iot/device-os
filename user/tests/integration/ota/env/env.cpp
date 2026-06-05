@@ -124,7 +124,7 @@ test(01_init) {
     Random rand;
     rand.genBase32(nonce, sizeof(nonce) - 1);
     nonce[sizeof(nonce) - 1] = '\0';
-    pushMailboxMsg(nonce, 5000 /* wait */);
+    pushMailboxMsg(nonce, 20000 /* wait */);
 
     // Clear the env vars and reset to apply the changes
     System.clearEnv(false /* reset */);

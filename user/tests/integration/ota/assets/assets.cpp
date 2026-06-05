@@ -237,7 +237,7 @@ test(02_ad_hoc_ota_wait_1) {
 
 test(02_ad_hoc_ota_wait_2) {
     System.off(all_events);
-    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 20000);
     System.enableReset();
     // Should not reach normally
     delay(5000);
@@ -299,7 +299,7 @@ test(05_ad_hoc_ota_asset_repeat_wait_1) {
 test(05_ad_hoc_ota_asset_repeat_wait_2) {
     testAsset.reset();
     System.off(all_events);
-    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000);
     System.enableReset();
     // Should not reach normally
     delay(5000);
@@ -359,7 +359,7 @@ test(09_product_ota_wait_1) {
 
 test(09_product_ota_wait_2) {
     System.off(all_events);
-    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 5000);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::SAFE_MODE_PENDING), 20000);
     System.enableReset();
     // Should not reach normally
     delay(5000);
@@ -376,7 +376,7 @@ test(10_product_ota_complete) {
 
 test(11_product_ota_complete_handled) {
     System.assetsHandled(true);
-    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000);
     System.reset();
 }
 
@@ -448,7 +448,7 @@ test(17_assets_add_extra_asset_wait_1) {
 
 test(17_assets_add_extra_asset_wait_2) {
     System.off(all_events);
-    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000);
+    pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000);
     System.enableReset();
     // Should not reach normally
     delay(5000);

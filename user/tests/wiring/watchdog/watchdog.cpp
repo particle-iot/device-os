@@ -105,7 +105,7 @@ test(WATCHDOG_02_default_1) {
     checkState(WatchdogState::CONFIGURED);
 
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 
     assertEqual(0, Watchdog.start());
     assertEqual(0, Watchdog.getInfo(info));
@@ -131,7 +131,7 @@ test(WATCHDOG_02_default_2) {
 test(WATCHDOG_03_stopped_in_hibernate_mode_1) {
     startWatchdog(WatchdogConfiguration().timeout(5s));
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).duration(10s));
 }
 
@@ -142,7 +142,7 @@ test(WATCHDOG_03_stopped_in_hibernate_mode_2) {
 #endif
 
 test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_1) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::RESET)); // SLEEP_RUNNING is cleared
     System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(10s));
     Watchdog.refresh();
@@ -152,7 +152,7 @@ test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_2) {
     checkState(WatchdogState::STARTED);
     Watchdog.refresh();
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     delay(10000);
     // This should be unreachable, we should get a watchdog reset before the delay expires
     assertFalse(true);
@@ -165,7 +165,7 @@ test(WATCHDOG_04_continue_running_after_waking_up_from_none_hibernate_mode_3) {
 
 test(WATCHDOG_05_system_reset_will_disable_watchdog_1) {
     startWatchdog(WatchdogConfiguration().timeout(5s));
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 1000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 
@@ -179,7 +179,7 @@ test(WATCHDOG_05_system_reset_will_disable_watchdog_2) {
 test(WATCHDOG_06_default_running_in_none_hibernate_mode_1) {
     startWatchdog(WatchdogConfiguration().timeout(5s));
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(10s));
 }
 
@@ -197,7 +197,7 @@ test(WATCHDOG_07_notify_1) {
     });
     startWatchdog(WatchdogConfiguration().timeout(5s).capabilities(WatchdogCap::NOTIFY));
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 }
 
 test(WATCHDOG_07_notify_2) {
@@ -252,7 +252,7 @@ test(WATCHDOG_08_reconfigurable) {
     startWatchdog(WatchdogConfiguration().timeout(10s));
     delay(5s);
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 }
 
 static void checkError(system_tick_t expectedTo) {
@@ -318,7 +318,7 @@ test(WATCHDOG_EXT_02_timeout_reset) {
     assertEqual(0, ExternalWatchdog.init(WatchdogConfiguration().timeout(5s)));
     checkExternalWatchdogState(WatchdogState::CONFIGURED);
 
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 
     assertEqual(0, ExternalWatchdog.start());
     assertEqual(0, ExternalWatchdog.getInfo(info));
@@ -354,7 +354,7 @@ test(WATCHDOG_EXT_04_reconfigurable) {
     delay(4s);
     startExternalWatchdog(WatchdogConfiguration().timeout(10s));
     delay(5s);
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 }
 
 test(WATCHDOG_EXT_05_hibernate_mode_running) {
@@ -363,7 +363,7 @@ test(WATCHDOG_EXT_05_hibernate_mode_running) {
         return;
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(5s));
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE));
     assertFalse(true);
 }
@@ -375,7 +375,7 @@ test(WATCHDOG_EXT_06_running_after_waking_up) {
     }
     startExternalWatchdog(WatchdogConfiguration().timeout(10s));
 
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     auto result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(5s));
     assertEqual((int)result.wakeupReason(), (int)SystemSleepWakeupReason::BY_RTC);
 

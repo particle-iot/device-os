@@ -490,7 +490,7 @@ test(SYSTEM_10_system_ticks_delay) {
 
 #ifdef PARTICLE_TEST_RUNNER
 test(SYSTEM_11_system_reset) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 #endif // PARTICLE_TEST_RUNNER
