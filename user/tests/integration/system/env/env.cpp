@@ -655,9 +655,14 @@ bool waitAppliedPmicConfig(uint16_t inputLimit, uint16_t chargeCurrent, system_t
 
 test(18_particle_power_env_init) {
 #if POWER_ENV_TESTS
-    PMIC power(true);
-    power.begin();
-    skipPowerEnv = (power.getVersion() != BQ24195_VERSION);
+    {
+        // Scope the PMIC lock to the presence probe: holding it across
+        // System.setPowerConfiguration() can deadlock with the power manager
+        // thread, which takes the same lock while processing events
+        PMIC power(true);
+        power.begin();
+        skipPowerEnv = (power.getVersion() != BQ24195_VERSION);
+    }
     if (skipPowerEnv) {
         skip();
         return;
@@ -671,6 +676,7 @@ test(18_particle_power_env_init) {
     conf.feature(SystemPowerFeature::PMIC_DETECTION);
 #endif
     assertEqual(System.setPowerConfiguration(conf), 0);
+    System.enableFeature(FEATURE_RESET_INFO); // For the reset reason check in the next test
     System.clearEnv(false /* reset */);
     expectSystemReset();
     System.reset();
@@ -685,6 +691,9 @@ test(19_particle_power_env_default) {
         skip();
         return;
     }
+    // Diagnostic: distinguish a clean reset (RESET_REASON_USER) from a crash
+    // (RESET_REASON_PANIC) in the preceding init test
+    Test::out->printlnf("resetReason: %d", (int)System.resetReason());
     assertFalse(System.hasEnv("PARTICLE_POWER_INPUT_CURRENT"));
     assertFalse(System.hasEnv("PARTICLE_POWER_CHARGE_CURRENT"));
 
