@@ -31,6 +31,7 @@ namespace {
 static const int WIFI_KEEPALIVE_SECONDS = 30;
 static const int ETHERNET_KEEPALIVE_SECONDS = 40;
 static const int DEFAULT_KEEPALIVE_SECONDS = 50;
+static const int PLATFORM_DEFAULT_KEEPALIVE_SECONDS = HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL / 1000;
 
 #if HAL_PLATFORM_ETHERNET
 
@@ -328,6 +329,7 @@ test(07_particle_wifi_enable_default) {
     Particle.connect();
     assertTrue(waitFor(WiFi.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(Particle.getKeepAlive(), PLATFORM_DEFAULT_KEEPALIVE_SECONDS);
 
 #if HAL_PLATFORM_BLE
     // BLE is not affected
@@ -369,6 +371,9 @@ test(08_particle_wifi_enable_true) {
 
     assertEqual(Particle.getKeepAlive(), WIFI_KEEPALIVE_SECONDS);
     assertEqual(Particle.getKeepAlive(WiFi), WIFI_KEEPALIVE_SECONDS);
+#if HAL_PLATFORM_CELLULAR
+    assertEqual(Particle.getKeepAlive(Cellular), DEFAULT_KEEPALIVE_SECONDS);
+#endif
 
 #if HAL_PLATFORM_BLE
     // BLE is not affected

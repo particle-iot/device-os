@@ -31,8 +31,8 @@
 namespace {
 
 static const int CELLULAR_KEEPALIVE_SECONDS = 60;
-static const int GLOBAL_KEEPALIVE_SECONDS = 70;
-static const int CELLULAR_KEEPALIVE_SECONDS_DEFAULT = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL / 1000;
+static const int DEFAULT_KEEPALIVE_SECONDS = 70;
+static const int PLATFORM_CELLULAR_KEEPALIVE_SECONDS = HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL / 1000;
 
 retained bool g_SkipTests = false;
 
@@ -567,7 +567,19 @@ test(9_particle_cellular_preferred_plmn_set) {
     waitForNot(Cellular.ready, 60000);
 }
 
-test(10_particle_cellular_keepalive) {
+test(10_particle_cellular_keepalive_init) {
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
+}
+
+test(11_particle_cellular_keepalive_set) {
+    if (g_SkipTests) {
+        skip();
+        return;
+    }
+
     assertTrue(System.hasEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE"));
     int keepAlive = 0;
     assertTrue(System.getEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE", keepAlive));
@@ -576,89 +588,32 @@ test(10_particle_cellular_keepalive) {
     assertTrue(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE"));
     int globalKeepAlive = 0;
     assertTrue(System.getEnv("PARTICLE_CLOUD_KEEP_ALIVE", globalKeepAlive));
-    assertEqual(globalKeepAlive, GLOBAL_KEEPALIVE_SECONDS);
+    assertEqual(globalKeepAlive, DEFAULT_KEEPALIVE_SECONDS);
 
     Cellular.on();
     assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
     Cellular.connect();
     assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_CELLULAR_CONN_TIMEOUT));
+
+    System.disableUpdates();
+    SCOPE_GUARD({
+        Particle.disconnect();
+        waitForNot(Particle.connected, 1000);
+        System.enableUpdates();
+    });
+
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
     assertEqual(Particle.getKeepAlive(), CELLULAR_KEEPALIVE_SECONDS);
     assertEqual(Particle.getKeepAlive(Cellular), CELLULAR_KEEPALIVE_SECONDS);
+#if HAL_PLATFORM_WIFI
+    assertEqual(Particle.getKeepAlive(WiFi), DEFAULT_KEEPALIVE_SECONDS);
+#endif
+    Particle.disconnect();
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);
 }
-
-test(11_particle_cellular_preferred_plmn_cleanup) {
-    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
-        skip();
-        return;
-    }
-
-    System.clearEnv(false /* reset */);
-    expectSystemReset();
-    System.reset();
-}
-
-test(12_particle_cellular_env_vars_cleared_verify_defaults) {
-    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
-        skip();
-        return;
-    }
-
-    assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
-    assertFalse(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
-    assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_PLMN"));
-
-    Cellular.on();
-    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    Cellular.connect();
-    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-
-    int ncpId = getNcpId();
-
-    CellularBandMask bands;
-    CpolCallbackData data = {};
-    SCOPE_GUARD({
-        if (getModemType() != ModemType::UNSUPPORTED &&
-                ncpId != PLATFORM_NCP_SARA_R410 &&
-                ncpId != PLATFORM_NCP_QUECTEL_BG96) {
-            pushMailboxMsg(String::format("Band mask after env clear: %s\nAT+CPOL response after env clear: %s",
-                    (const char*)bands.toString(), data.response.length() ? data.response.c_str() : "empty"), 5000 /* wait */);
-        } else {
-            pushMailboxMsg(String::format("Band mask after env clear: %s", (const char*)bands.toString()), 5000 /* wait */);
-        }
-    });
-
-    if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
-            (modemType == ModemType::QUECTEL)) {
-
-        bands = readCurrentLteMask();
-        assertFalse(bands.isEmpty());
-        assertEqual((const char*)bands.toString(), (const char*)makeDefaultBandMask(true /* readMode */).toString());
-    }
-
-    if (getModemType() != ModemType::UNSUPPORTED &&
-                ncpId != PLATFORM_NCP_SARA_R410 &&
-                ncpId != PLATFORM_NCP_QUECTEL_BG96) {
-        // UPLMN list: 310410, 310260, 311480 should no longer be set
-        Cellular.command(cbCPOL, &data, 10000, "AT+CPOL?\r\n");
-        bool anyPlmn = (data.response.indexOf("310410") >= 0) ||
-                (data.response.indexOf("310260") >= 0) ||
-                (data.response.indexOf("311480") >= 0);
-        assertFalse(anyPlmn);
-    }
-
-    Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    assertEqual(Particle.getKeepAlive(), CELLULAR_KEEPALIVE_SECONDS_DEFAULT);
-
-    Cellular.disconnect();
-    waitForNot(Cellular.ready, 60000);
-}
-
 #endif // HAL_PLATFORM_CELLULAR
 
 test(97_cleanup) {
@@ -710,3 +665,68 @@ test(99_cleanup_2) {
         System.reset();
     }
 }
+
+#if HAL_PLATFORM_CELLULAR
+test(99_cleanup_3_verify_defaults) {
+    if (g_SkipTests || getModemType() == ModemType::UNSUPPORTED) {
+        skip();
+        return;
+    }
+
+    assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_BANDS"));
+    assertFalse(System.hasEnv("PARTICLE_CELLULAR_FORBIDDEN_BANDS"));
+    assertFalse(System.hasEnv("PARTICLE_CELLULAR_PREFERRED_PLMN"));
+    assertFalse(System.hasEnv("PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE"));
+    assertFalse(System.hasEnv("PARTICLE_CLOUD_KEEP_ALIVE"));
+
+    Cellular.on();
+    assertTrue(waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    Cellular.connect();
+    assertTrue(waitFor(Cellular.ready, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+
+    int ncpId = getNcpId();
+
+    CellularBandMask bands;
+    CpolCallbackData data = {};
+    SCOPE_GUARD({
+        if (getModemType() != ModemType::UNSUPPORTED &&
+                ncpId != PLATFORM_NCP_SARA_R410 &&
+                ncpId != PLATFORM_NCP_QUECTEL_BG96) {
+            pushMailboxMsg(String::format("Band mask after env clear: %s\nAT+CPOL response after env clear: %s",
+                    (const char*)bands.toString(), data.response.length() ? data.response.c_str() : "empty"), 5000 /* wait */);
+        } else {
+            pushMailboxMsg(String::format("Band mask after env clear: %s", (const char*)bands.toString()), 5000 /* wait */);
+        }
+    });
+
+    if ((modemType == ModemType::UBLOX && isUbandmaskSupported()) ||
+            (modemType == ModemType::QUECTEL)) {
+
+        bands = readCurrentLteMask();
+        assertFalse(bands.isEmpty());
+        assertEqual((const char*)bands.toString(), (const char*)makeDefaultBandMask(true /* readMode */).toString());
+    }
+
+    if (getModemType() != ModemType::UNSUPPORTED &&
+                ncpId != PLATFORM_NCP_SARA_R410 &&
+                ncpId != PLATFORM_NCP_QUECTEL_BG96) {
+        // UPLMN list: 310410, 310260, 311480 should no longer be set
+        Cellular.command(cbCPOL, &data, 10000, "AT+CPOL?\r\n");
+        bool anyPlmn = (data.response.indexOf("310410") >= 0) ||
+                (data.response.indexOf("310260") >= 0) ||
+                (data.response.indexOf("311480") >= 0);
+        assertFalse(anyPlmn);
+    }
+
+    System.disableUpdates();
+    SCOPE_GUARD({
+        Particle.disconnect();
+        waitForNot(Particle.connected, 1000);
+        System.enableUpdates();
+    });
+
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual(Particle.getKeepAlive(), PLATFORM_CELLULAR_KEEPALIVE_SECONDS);
+}
+#endif // HAL_PLATFORM_CELLULAR

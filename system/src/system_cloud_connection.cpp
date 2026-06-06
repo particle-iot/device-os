@@ -365,7 +365,11 @@ int system_cloud_get_netif_keepalive(network_interface_t netif, unsigned* value,
         netIfKeepAlive *= 1000;
     } else {
         // If no env vars, use default keep alives
+#if HAL_PLATFORM_CELLULAR
         netIfKeepAlive = (netif == NETWORK_INTERFACE_CELLULAR ? HAL_PLATFORM_CELLULAR_CLOUD_KEEPALIVE_INTERVAL : HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL);
+#else
+        netIfKeepAlive =  HAL_PLATFORM_DEFAULT_CLOUD_KEEPALIVE_INTERVAL;
+#endif
     }
 
     *source = netIfSource;
