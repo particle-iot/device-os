@@ -124,8 +124,8 @@ endif
 CFLAGS += --specs=nano.specs
 
 ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
-CFLAGS += -fmerge-all-constants
-LDFLAGS += -fmerge-all-constants
+CFLAGS += -fmerge-all-constants -flto-partition=one
+LDFLAGS += -fmerge-all-constants -flto-partition=one
 endif
 
 ifneq ($(LINKER_NON_CONT_REGIONS),)
