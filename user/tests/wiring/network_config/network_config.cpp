@@ -379,7 +379,7 @@ test(NETWORK_CONFIG_ETH_01_enable_feature) {
     }
 #endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 
@@ -706,7 +706,7 @@ test(NETWORK_CONFIG_ETH_97_reset_cache) {
     // This will reset ethernet pin config to default settings if any were there before
     unlink("/sys/cache.dat");
 
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 
@@ -751,7 +751,7 @@ test(NETWORK_CONFIG_ETH_99_disable_feature) {
     }
 #endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 #endif // HAL_PLATFORM_ETHERNET

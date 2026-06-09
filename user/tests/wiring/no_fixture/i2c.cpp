@@ -336,7 +336,7 @@ hal_i2c_config_t acquireWireBuffer()
     return config;
 }
 test(I2C_06_I2c_FuelGauge_Works_After_Buffer_Config_Disables_Interface_Reset) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 

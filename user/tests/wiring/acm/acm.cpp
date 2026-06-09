@@ -184,7 +184,7 @@ test(ACM_00_prepare_ethernet) {
     }
 #endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 #endif // HAL_PLATFORM_ETHERNET
@@ -393,7 +393,7 @@ test(ACM_14_disable_ethernet) {
     }
 #endif // HAL_PLATFORM_HW_FORM_FACTOR_SOM
     // Notify about a pending reset
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
 

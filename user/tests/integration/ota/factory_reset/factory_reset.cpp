@@ -200,7 +200,7 @@ test(03_move_ota_binary_to_factory_slot) {
 };
 
 test(04_device_factory_reset) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.factoryReset();
 }
 

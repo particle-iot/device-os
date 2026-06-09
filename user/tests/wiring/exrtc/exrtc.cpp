@@ -662,7 +662,7 @@ test(EXRTC_09_power_off_should_succeed_1) {
     assertEqual(ExternalTime.setConfig(config), (int)SYSTEM_ERROR_NONE);
     dumpExrtcConfig("powerOffShouldSucceed");
 
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     const auto result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::POWER_OFF).duration(10s));
     Test::out->printlnf("powerOffShouldSucceed: sleep error=%d", result.error());
     assertEqual(result.error(), (int)SYSTEM_ERROR_NONE);

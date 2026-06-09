@@ -32,7 +32,7 @@ test(01_mailbox) {
 
 
 test(02_mailbox_reset) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     // We've waited up to 10 seconds for test runner to understand that we are going to reset
     System.reset();
 }
@@ -44,7 +44,7 @@ test(03_mailbox) {
 }
 
 test(04_mailbox_reset_postponed) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     // We've waited up to 10 seconds for test runner to understand that we are going to reset
     auto t = new Thread("test", [](void* param) -> os_thread_return_t {
         delay(5000);

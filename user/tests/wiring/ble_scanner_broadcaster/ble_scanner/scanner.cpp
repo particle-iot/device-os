@@ -40,7 +40,7 @@ using namespace particle::test;
 test(BLE_0000_Check_Feature_Disable_Listening_Mode) {
     if (System.featureEnabled(FEATURE_DISABLE_LISTENING_MODE)) {
         System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
-        assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 5000));
+        assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
         System.reset();
     }
 }

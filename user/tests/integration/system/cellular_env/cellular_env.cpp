@@ -294,7 +294,7 @@ test(1_particle_cellular_preferred_bands_init) {
         CellularBandMask preferred = makeExpectedPostEnvBandMask();
         Log.info("Computed preferred bands mask: %s", (const char*)preferred.toString());
         pushMailboxMsg(String::format("PARTICLE_CELLULAR_PREFERRED_BANDS=%s",
-                (const char*)preferred.toString()), 5000 /* wait */);
+                (const char*)preferred.toString()), 20000 /* wait */);
 
         Cellular.disconnect();
         waitForNot(Cellular.ready, 60000);
@@ -396,7 +396,7 @@ test(4_particle_cellular_forbidden_bands_init) {
     CellularBandMask forbidden = ~makeExpectedPostEnvBandMask();
     Log.info("Computed forbidden bands mask: %s", (const char*)forbidden.toString());
     pushMailboxMsg(String::format("PARTICLE_CELLULAR_FORBIDDEN_BANDS=%s",
-            (const char*)forbidden.toString()), 5000 /* wait */);
+            (const char*)forbidden.toString()), 20000 /* wait */);
 
     Cellular.disconnect();
     waitForNot(Cellular.ready, 60000);

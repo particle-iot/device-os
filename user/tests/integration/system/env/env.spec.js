@@ -108,6 +108,32 @@ test('17_particle_ethernet_enable_cleanup', async function () {
 
 });
 
+test('18_particle_power_env_init', async function() {
+});
+
+test('19_particle_power_env_default', async function() {
+    await setEnvVarsAndFlash({
+        PARTICLE_POWER_INPUT_CURRENT: '1200',
+        PARTICLE_POWER_CHARGE_CURRENT: '1024'
+    });
+});
+
+test('20_particle_power_env_override', async function() {
+    await setEnvVarsAndFlash({
+        PARTICLE_POWER_INPUT_CURRENT: '1200',
+        PARTICLE_POWER_CHARGE_CURRENT: '1408'
+    });
+});
+
+test('21_particle_power_env_charge_above_input_limit', async function() {
+});
+
+test('22_particle_power_env_restore_init', async function() {
+});
+
+test('23_particle_power_env_restore', async function() {
+});
+
 test('97_cleanup', async function() {
     delete this.test.parent.particle.network;
     this.test.parent.particle.suiteInitialized = false;

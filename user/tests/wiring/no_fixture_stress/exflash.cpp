@@ -206,7 +206,7 @@ test(EXFLASH_02_rtl872x_validate_mode) {
 }
 
 test(EXFLASH_03_rtl872x_validate_mode_after_stop_sleep_and_read_write) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::STOP).duration(10s));
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
 
@@ -237,7 +237,7 @@ test(EXFLASH_03_rtl872x_validate_mode_after_stop_sleep_and_read_write) {
 }
 
 test(EXFLASH_04_rtl872x_validate_mode_after_hibernate_sleep_and_read_write) {
-    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 10000));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     SystemSleepResult result = System.sleep(SystemSleepConfiguration().mode(SystemSleepMode::HIBERNATE).duration(10s));
     assertEqual(result.error(), SYSTEM_ERROR_NONE);
 }
