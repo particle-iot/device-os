@@ -615,6 +615,7 @@ test(17_particle_ethernet_enable_cleanup) {
 
 #if HAL_PLATFORM_POWER_MANAGEMENT && HAL_PLATFORM_PMIC_BQ24195 && HAL_PLATFORM_FUELGAUGE_MAX17043
 #define POWER_ENV_TESTS 1
+#include "system_power.h"
 #else
 #define POWER_ENV_TESTS 0
 #endif
@@ -624,8 +625,8 @@ test(17_particle_ethernet_enable_cleanup) {
 namespace {
 
 // Default power configuration values as applied to the PMIC
-const uint16_t DEFAULT_PMIC_INPUT_CURRENT_LIMIT = 900; // mA
-const uint16_t DEFAULT_PMIC_CHARGE_CURRENT = 896; // mA
+const uint16_t DEFAULT_PMIC_INPUT_CURRENT_LIMIT = particle::power::DEFAULT_INPUT_CURRENT_LIMIT;
+const uint16_t DEFAULT_PMIC_CHARGE_CURRENT = particle::power::DEFAULT_CHARGE_CURRENT;
 
 // Env var override values (see env.spec.js)
 const uint16_t POWER_ENV_INPUT_CURRENT_LIMIT = 1200; // mA
