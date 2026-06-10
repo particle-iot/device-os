@@ -78,6 +78,7 @@ typedef struct hal_i2c_transmission_config_t {
 } hal_i2c_transmission_config_t;
 
 typedef enum hal_i2c_state_t {
+    HAL_I2C_STATE_NOT_INITIALIZED,
     HAL_I2C_STATE_DISABLED,
     HAL_I2C_STATE_ENABLED,
     HAL_I2C_STATE_SUSPENDED

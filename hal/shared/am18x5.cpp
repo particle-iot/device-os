@@ -1320,8 +1320,17 @@ int Am18x5::xtOscillatorDigitalCalibration(int adjVal) const {
     return SYSTEM_ERROR_NONE;
 }
 
+int Am18x5::enableInterfaceIfNeeded() const {
+    if (!hal_i2c_is_enabled(config_.i2c_if, nullptr)) {
+        hal_i2c_begin(config_.i2c_if, I2C_MODE_MASTER, 0x00, nullptr);
+        CHECK_TRUE(hal_i2c_is_enabled(config_.i2c_if, nullptr), SYSTEM_ERROR_INTERNAL);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool rw, uint8_t mask, uint8_t shift) const {
     Am18x5Lock lock;
+    CHECK(enableInterfaceIfNeeded());
     uint8_t currValue = 0x00;
     if (rw) {
         CHECK(readRegister(reg, &currValue));
@@ -1340,6 +1349,7 @@ int Am18x5::writeRegister(const Am18x5Register reg, uint8_t val, bool bcd, bool 
 
 int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8_t* buff, size_t len) const {
     Am18x5Lock lock;
+    CHECK(enableInterfaceIfNeeded());
     hal_i2c_begin_transmission(config_.i2c_if, AM18X5_I2C_ADDR, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(start_reg), nullptr);
     for (size_t i = 0; i < len; i++) {
@@ -1351,6 +1361,7 @@ int Am18x5::writeContinuousRegisters(const Am18x5Register start_reg, const uint8
 
 int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd, uint8_t mask, uint8_t shift) const {
     Am18x5Lock lock;
+    CHECK(enableInterfaceIfNeeded());
     hal_i2c_begin_transmission(config_.i2c_if, AM18X5_I2C_ADDR, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(reg), nullptr);
     hal_i2c_end_transmission(config_.i2c_if, false, nullptr);
@@ -1368,6 +1379,7 @@ int Am18x5::readRegister(const Am18x5Register reg, uint8_t* const val, bool bcd,
 
 int Am18x5::readContinuousRegisters(const Am18x5Register start_reg, uint8_t* buff, size_t len) const {
     Am18x5Lock lock;
+    CHECK(enableInterfaceIfNeeded());
     hal_i2c_begin_transmission(config_.i2c_if, AM18X5_I2C_ADDR, nullptr);
     hal_i2c_write(config_.i2c_if, static_cast<uint8_t>(start_reg), nullptr);
     hal_i2c_end_transmission(config_.i2c_if, false, nullptr);
