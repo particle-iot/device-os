@@ -113,15 +113,15 @@ test('18_particle_power_env_init', async function() {
 
 test('19_particle_power_env_default', async function() {
     await setEnvVarsAndFlash({
-        PARTICLE_POWER_INPUT_CURRENT: '1200',
-        PARTICLE_POWER_CHARGE_CURRENT: '1024'
+        PARTICLE_PMIC_INPUT_CURRENT: '1200',
+        PARTICLE_PMIC_CHARGE_CURRENT: '1024'
     });
 });
 
 test('20_particle_power_env_override', async function() {
     await setEnvVarsAndFlash({
-        PARTICLE_POWER_INPUT_CURRENT: '1200',
-        PARTICLE_POWER_CHARGE_CURRENT: '1408'
+        PARTICLE_PMIC_INPUT_CURRENT: '1200',
+        PARTICLE_PMIC_CHARGE_CURRENT: '1408'
     });
 });
 
