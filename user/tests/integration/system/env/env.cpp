@@ -695,8 +695,8 @@ test(19_particle_power_env_default) {
     // Diagnostic: distinguish a clean reset (RESET_REASON_USER) from a crash
     // (RESET_REASON_PANIC) in the preceding init test
     Test::out->printlnf("resetReason: %d", (int)System.resetReason());
-    assertFalse(System.hasEnv("PARTICLE_POWER_INPUT_CURRENT"));
-    assertFalse(System.hasEnv("PARTICLE_POWER_CHARGE_CURRENT"));
+    assertFalse(System.hasEnv("PARTICLE_PMIC_INPUT_CURRENT"));
+    assertFalse(System.hasEnv("PARTICLE_PMIC_CHARGE_CURRENT"));
 
     // The stored configuration reports the defaults
     auto conf = System.getPowerConfiguration();
@@ -717,11 +717,11 @@ test(20_particle_power_env_override) {
         return;
     }
     int value = 0;
-    assertTrue(System.hasEnv("PARTICLE_POWER_INPUT_CURRENT"));
-    assertTrue(System.getEnv("PARTICLE_POWER_INPUT_CURRENT", value));
+    assertTrue(System.hasEnv("PARTICLE_PMIC_INPUT_CURRENT"));
+    assertTrue(System.getEnv("PARTICLE_PMIC_INPUT_CURRENT", value));
     assertEqual(value, (int)POWER_ENV_INPUT_CURRENT_LIMIT);
-    assertTrue(System.hasEnv("PARTICLE_POWER_CHARGE_CURRENT"));
-    assertTrue(System.getEnv("PARTICLE_POWER_CHARGE_CURRENT", value));
+    assertTrue(System.hasEnv("PARTICLE_PMIC_CHARGE_CURRENT"));
+    assertTrue(System.getEnv("PARTICLE_PMIC_CHARGE_CURRENT", value));
     assertEqual(value, (int)POWER_ENV_CHARGE_CURRENT);
 
     // The env var values are applied to the PMIC
@@ -743,9 +743,9 @@ test(21_particle_power_env_charge_above_input_limit) {
         return;
     }
     int value = 0;
-    assertTrue(System.getEnv("PARTICLE_POWER_INPUT_CURRENT", value));
+    assertTrue(System.getEnv("PARTICLE_PMIC_INPUT_CURRENT", value));
     assertEqual(value, (int)POWER_ENV_INPUT_CURRENT_LIMIT);
-    assertTrue(System.getEnv("PARTICLE_POWER_CHARGE_CURRENT", value));
+    assertTrue(System.getEnv("PARTICLE_PMIC_CHARGE_CURRENT", value));
     assertEqual(value, (int)POWER_ENV_EXCESSIVE_CHARGE_CURRENT);
 
     // The charge current is applied as requested even above the input current limit;
@@ -776,8 +776,8 @@ test(23_particle_power_env_restore) {
         skip();
         return;
     }
-    assertFalse(System.hasEnv("PARTICLE_POWER_INPUT_CURRENT"));
-    assertFalse(System.hasEnv("PARTICLE_POWER_CHARGE_CURRENT"));
+    assertFalse(System.hasEnv("PARTICLE_PMIC_INPUT_CURRENT"));
+    assertFalse(System.hasEnv("PARTICLE_PMIC_CHARGE_CURRENT"));
 
     // The defaults are restored
     assertTrue(waitAppliedPmicConfig(DEFAULT_PMIC_INPUT_CURRENT_LIMIT, DEFAULT_PMIC_CHARGE_CURRENT));

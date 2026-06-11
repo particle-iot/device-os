@@ -1124,11 +1124,11 @@ void PowerManager::loadConfig() {
   // the supported PMIC register values when applied. If the charge current exceeds
   // the input current limit, the PMIC's VINDPM loop will throttle charging.
   int value = 0;
-  if (!system_get_env_int("PARTICLE_POWER_INPUT_CURRENT", &value, nullptr) &&
+  if (!system_get_env_int("PARTICLE_PMIC_INPUT_CURRENT", &value, nullptr) &&
       value >= ENV_OVERRIDE_MIN_INPUT_CURRENT && value <= ENV_OVERRIDE_MAX_CURRENT) {
     config_.vin_max_current = (uint16_t)value;
   }
-  if (!system_get_env_int("PARTICLE_POWER_CHARGE_CURRENT", &value, nullptr) &&
+  if (!system_get_env_int("PARTICLE_PMIC_CHARGE_CURRENT", &value, nullptr) &&
       value >= ENV_OVERRIDE_MIN_CHARGE_CURRENT && value <= ENV_OVERRIDE_MAX_CURRENT) {
     config_.charge_current = (uint16_t)value;
   }
