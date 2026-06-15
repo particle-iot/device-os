@@ -529,6 +529,11 @@ int ConnectionTester::generateTestPacket(ConnectionMetrics* metrics) {
 }
 
 int ConnectionTester::pollSockets(struct pollfd* pfds, int socketCount) {
+    if (socketCount <= 0) {
+        // No sockets to poll, skip calling sock_poll()
+        return 0;
+    }
+
     int pollCount = sock_poll(pfds, socketCount, 1 /* ms */);
 
     if (pollCount < 0) {
@@ -688,6 +693,11 @@ int ConnectionTester::prepare(bool fullTest, bool lastTestFailed) {
             r = SYSTEM_ERROR_NONE;
             break;
         }
+    }
+
+    // No networks are Ready
+    if (!r && socketCount == 0) {
+        r = SYSTEM_ERROR_NETWORK;
     }
 
     if (!r) {
