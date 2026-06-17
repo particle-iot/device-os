@@ -120,7 +120,17 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
 
 } // namespace
 
-test(01_erase_factory_module) {
+test(01_ota_self_flash_start) {
+    prepareForFirmwareUpdate();
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+
+test(02_ota_self_flash_finalize) {
+    completeFirmwareUpdate();
+}
+
+test(03_erase_factory_module) {
     // Determine the factory reset module start address from the platform flash modules
     hal_module_t factoryModule = {};
     bool isFactoryModule = getFactoryModule(&factoryModule);
@@ -134,17 +144,17 @@ test(01_erase_factory_module) {
     }
 }
 
-test(02_remove_static_ip) {
+test(04_remove_static_ip) {
     // Easiest way to erase all NETWORK_CONFIG settings, and default to dynamic IP
     unlink("/sys/network.dat");
 }
 
-test(03_enable_listening_mode) {
+test(05_enable_listening_mode) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
 
 #if HAL_PLATFORM_ENV
-test(04_clear_env) {
+test(06_clear_env) {
     System.clearEnv(false /* reset */);
     unlink("/sys/env_app");
     unlink("/sys/env_app.staged");
@@ -155,7 +165,7 @@ test(04_clear_env) {
     System.reset();
 }
 
-test(05_restore_cloud_after_env_clear) {
+test(07_restore_cloud_after_env_clear) {
     prepareForFirmwareUpdate();
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
@@ -163,13 +173,13 @@ test(05_restore_cloud_after_env_clear) {
     // We are supposed to get an empty env
 }
 
-test(06_finalize_env_clear) {
+test(08_finalize_env_clear) {
     completeFirmwareUpdate();
 }
 
 #endif // HAL_PLATFORM_ENV
 
-test(07_disable_external_rtc) {
+test(09_disable_external_rtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
     expectSystemReset();
@@ -177,7 +187,7 @@ test(07_disable_external_rtc) {
 #endif
 }
 
-test(08_verify_external_rtc_default_state) {
+test(10_verify_external_rtc_default_state) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     const auto status = ExternalTime.status();
     assertTrue(status.valid());
@@ -191,7 +201,7 @@ test(08_verify_external_rtc_default_state) {
 #endif
 }
 
-test(09_report_muon_presence) {
+test(11_report_muon_presence) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     assertEqual(0, pushMailboxMsg(particle::test::detectMuonBoard() ? "muon=true" : "muon=false", 5000));
 #else
@@ -199,7 +209,7 @@ test(09_report_muon_presence) {
 #endif
 }
 
-test(10_configure_muon_board_and_exrtc) {
+test(12_configure_muon_board_and_exrtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
@@ -212,7 +222,7 @@ test(10_configure_muon_board_and_exrtc) {
 #endif
 }
 
-test(11_verify_muon_exrtc_configuration) {
+test(13_verify_muon_exrtc_configuration) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
