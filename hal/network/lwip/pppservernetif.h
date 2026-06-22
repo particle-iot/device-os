@@ -61,6 +61,8 @@ public:
 
     void notifyPowerState(if_power_state_t state);
 
+    virtual void notifyInput(struct pbuf* p) override;
+
     int start();
 
 protected:
@@ -104,6 +106,8 @@ private:
     std::unique_ptr<particle::net::nat::Nat64> nat_;
     if_req_ppp_server_serial_settings settings_;
     std::unique_ptr<AtServer> server_;
+    bool flowControl_ = true;
+    volatile bool inFlowControl_ = false;
 
 };
 

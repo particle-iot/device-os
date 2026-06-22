@@ -37,6 +37,20 @@ int BaseNetif::getClientDataId() {
     return clientDataId_;
 }
 
+BaseNetif* BaseNetif::fromNetif(netif* iface) {
+    if (!iface || clientDataId_ == 0) {
+        return nullptr;
+    }
+    BaseNetif* self = static_cast<BaseNetif*>(netif_get_client_data(iface, clientDataId_));
+    if (self && self->interface() == (if_t)iface) {
+        return self;
+    }
+    return nullptr;
+}
+
+void BaseNetif::notifyInput(struct pbuf* p) {
+}
+
 void BaseNetif::registerHandlers() {
     LwipTcpIpCoreLock lk;
     particle::CallOnce(once_, []() {

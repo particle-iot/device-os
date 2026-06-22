@@ -213,6 +213,9 @@ struct netif* lwip_hook_ip4_route_src(const ip4_addr_t* src, const ip4_addr_t* d
 }
 
 int lwip_hook_ip4_input_post_validation(struct pbuf* p, const struct ip_hdr* iphdr, struct netif* inp) {
+    if (auto netif = BaseNetif::fromNetif(inp)) {
+        netif->notifyInput(p);
+    }
     if (g_natInstance) {
         int r = g_natInstance->ip4Input(p, (ip_hdr*)iphdr, inp);
         if (r) {
