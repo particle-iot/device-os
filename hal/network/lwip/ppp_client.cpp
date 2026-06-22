@@ -27,6 +27,7 @@ extern "C" {
 #include <netif/ppp/pppos.h>
 }
 #include <lwip/netifapi.h>
+#include <lwip/pbuf.h>
 #include <netif/ppp/pppapi.h>
 #include <mutex>
 #include "socket_hal.h"
@@ -36,6 +37,7 @@ extern "C" {
 #include <lwip/stats.h>
 #include <algorithm>
 #include "delay_hal.h"
+#include "timer_hal.h"
 #include "platform_ncp.h"
 #include "resolvapi.h"
 #include "unique_lock.h"
@@ -170,6 +172,9 @@ void Client::init() {
     os_queue_create(&queue_, sizeof(QueueEvent), 5, nullptr);
     SPARK_ASSERT(queue_);
 
+    os_queue_create(&txQueue_, sizeof(pbuf*), 32, nullptr);
+    SPARK_ASSERT(txQueue_);
+
     os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH);
     SPARK_ASSERT(thread_);
   }
@@ -191,6 +196,16 @@ void Client::deinit() {
     if (queue_) {
       os_queue_destroy(queue_, nullptr);
       queue_ = nullptr;
+    }
+    if (txQueue_) {
+      pbuf* p = nullptr;
+      while (os_queue_take(txQueue_, &p, 0, nullptr) == 0) {
+        if (p) {
+          pbuf_free(p);
+        }
+      }
+      os_queue_destroy(txQueue_, nullptr);
+      txQueue_ = nullptr;
     }
     if (pcb_) {
       pppapi_free(pcb_);
@@ -303,6 +318,8 @@ int Client::input(const uint8_t* data, size_t size) {
         LOG_DEBUG(TRACE, "RX: %lu", size);
         // LOG_DUMP(TRACE, data, size);
 
+        LwipTcpIpCoreLock lock;
+
         if (platform_primary_ncp_identifier() == PLATFORM_NCP_SARA_R410 && !server_) {
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
           const char NO_CARRIER[] = "\r\nNO CARRIER\r\n";
@@ -315,18 +332,10 @@ int Client::input(const uint8_t* data, size_t size) {
         }
 
 #if !PPP_INPROC_IRQ_SAFE
-        err_t err = pppos_input_tcpip(pcb_, (u8_t*)data, size);
-#else
-        // We can safely pass the data directly to PPPoS without going
-        // through TCPIP thread mailbox and wasting a buffer for each tiny chunk of data
-#ifdef DEBUG_BUILD
-        auto linkDropBefore = lwip_stats.link.drop;
-#endif // DEBUG_BUILD
-
         pppos_input(pcb_, (u8_t*)data, size);
+        err_t err = ERR_OK;
 
         if (server_) {
-          // LOG(INFO, "input %u", size);
           auto pppos = (pppos_pcb*)pcb_->link_ctx_cb;
           if (pppos->in_head != nullptr) {
             const size_t header = 19;
@@ -341,14 +350,6 @@ int Client::input(const uint8_t* data, size_t size) {
           }
         }
 
-#ifdef DEBUG_BUILD
-        auto linkDropAfter = lwip_stats.link.drop;
-        if (linkDropAfter > linkDropBefore) {
-          LOG(WARN, "May have dropped %u bytes/packets (received %u bytes)", linkDropAfter - linkDropBefore, size);
-        }
-#endif // DEBUG_BUILD
-        // FIXME
-        err_t err = ERR_OK;
         int poolAvail = MEMP_STATS_GET(avail, MEMP_PBUF_POOL) - MEMP_STATS_GET(used, MEMP_PBUF_POOL);
         if (poolAvail <= HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD) {
           LOG_DEBUG(WARN, "Almost out of pbufs");
@@ -363,6 +364,12 @@ int Client::input(const uint8_t* data, size_t size) {
     }
   }
   return SYSTEM_ERROR_INVALID_STATE;
+}
+
+void Client::notifyDataActivity() {
+  if (pcb_) {
+    pcb_->lcp_echos_pending = 0;
+  }
 }
 
 void Client::setNotifyCallback(NotifyCallback cb, void* ctx) {
@@ -428,6 +435,56 @@ void Client::loop() {
   while(!exit_) {
     unsigned qWait = 100;
 
+    {
+      OutputCallback cb;
+      void* cbCtx;
+      {
+        std::lock_guard<StaticMutex> lk(mutex_);
+        cb = oCb_;
+        cbCtx = oCbCtx_;
+      }
+
+      if (!cb || state_ == STATE_DISCONNECT || state_ == STATE_DISCONNECTING ||
+          state_ == STATE_DISCONNECTED || state_ == STATE_NONE) {
+        pbuf* p = nullptr;
+        while (os_queue_take(txQueue_, &p, 0, nullptr) == 0) {
+          if (p) {
+            pbuf_free(p);
+          }
+        }
+        txWakePending_.store(false);
+      } else {
+        auto start = HAL_Timer_Get_Milli_Seconds();
+        auto deadline = start + 5;
+        int drained = 0;
+        for (;;) {
+          pbuf* p = nullptr;
+          if (os_queue_peek(txQueue_, &p, 0, nullptr) != 0) {
+            break;
+          }
+          int r = cb((const uint8_t*)p->payload, p->len, cbCtx);
+          if (r == (int)p->len) {
+            os_queue_take(txQueue_, &p, 0, nullptr);
+            pbuf_free(p);
+            drained++;
+          } else {
+            break;
+          }
+          if ((long)(HAL_Timer_Get_Milli_Seconds() - deadline) >= 0) {
+            break;
+          }
+        }
+        txWakePending_.store(false);
+        pbuf* p = nullptr;
+        if (os_queue_peek(txQueue_, &p, 0, nullptr) == 0) {
+          bool expected = false;
+          if (txWakePending_.compare_exchange_strong(expected, true)) {
+            notifyEvent(EVENT_TX_DATA);
+          }
+        }
+      }
+    }
+
     switch (state_) {
       case STATE_CONNECT: {
         transition(STATE_CONNECTING);
@@ -480,9 +537,14 @@ void Client::loop() {
 
     QueueEvent ev = {};
     if (os_queue_take(queue_, &ev, qWait, nullptr) == 0) {
-      LOG(TRACE, "PPP thread event %s data=%d", eventNames_[ev.ev], ev.data);
+      if (ev.ev != EVENT_TX_DATA) {
+        LOG(TRACE, "PPP thread event %s data=%d", eventNames_[ev.ev], ev.data);
+      }
       /* Incoming event */
       switch (ev.ev) {
+        case EVENT_TX_DATA: {
+          break;
+        }
         case EVENT_LOWER_UP: {
           if (!lowerState_) {
             lowerState_ = true;
@@ -574,14 +636,35 @@ uint32_t Client::output(const uint8_t* data, size_t len) {
   LOG_DEBUG(TRACE, "TX: %lu", len);
   // LOG_DUMP(TRACE, data, len);
 
-  if (oCb_) {
-    auto r = oCb_(data, len, oCbCtx_);
-    if (r >= 0) {
-      return r;
-    }
+  if (!oCb_) {
+    return 0;
   }
 
-  return 0;
+  pbuf* p = pbuf_alloc(PBUF_RAW, len, PBUF_RAM);
+  if (!p) {
+    pbuf* peek = nullptr;
+    if (os_queue_peek(txQueue_, &peek, 0, nullptr) != 0) {
+      auto r = oCb_(data, len, oCbCtx_);
+      if (r >= 0) {
+        return r;
+      }
+    }
+    return 0;
+  }
+  memcpy(p->payload, data, len);
+  p->len = len;
+
+  if (os_queue_put(txQueue_, &p, 0, nullptr) != 0) {
+    pbuf_free(p);
+    return 0;
+  }
+
+  bool expected = false;
+  if (txWakePending_.compare_exchange_strong(expected, true)) {
+    notifyEvent(EVENT_TX_DATA);
+  }
+
+  return len;
 }
 
 void Client::notifyPhaseCb(ppp_pcb* pcb, uint8_t phase, void* ctx) {
