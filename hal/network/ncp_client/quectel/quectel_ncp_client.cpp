@@ -2791,6 +2791,15 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         hal_gpio_write(BGRST, 1);
         HAL_Delay_Milliseconds(2900);
         hal_gpio_write(BGRST, 0);
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+        // The reset function requires the PWRKEY and RESET_N pins to work together to complete
+        hal_gpio_write(BGRST, 1);
+        HAL_Delay_Milliseconds(100);
+        hal_gpio_write(BGPWR, 1);
+        HAL_Delay_Milliseconds(200);
+        hal_gpio_write(BGRST, 0);
+        HAL_Delay_Milliseconds(575);
+        hal_gpio_write(BGPWR, 0);
     } else {
         // BG96/EG91 reset, 150ms <= reset pulse <= 460ms
         // NOTE: The BGRST pin is inverted
