@@ -29,6 +29,7 @@
 #include <mutex>
 #include "service_debug.h"
 #include "device_code.h"
+#include "timer_hal.h"
 
 using namespace particle::usbd;
 
@@ -260,7 +261,6 @@ int CdcClassDriver::dataOut(unsigned ep, particle::usbd::EndpointEvent ev, size_
             setOpenState(true);
             rxState_ = false;
             startRx();
-
             xEventGroupSetBits(eventGroup_, HAL_USART_PVT_EVENT_READABLE);
             return 0;
         }
@@ -417,7 +417,7 @@ int CdcClassDriver::startRx() {
     }
 
     rxState_ = true;
-    rxSize = cdc::MAX_DATA_PACKET_SIZE;
+    rxSize = (rxSize / cdc::MAX_DATA_PACKET_SIZE) * cdc::MAX_DATA_PACKET_SIZE;
     auto ptr = rxBuffer_.acquire(rxSize);
     return dev_->transferOut(epOutData_, ptr, rxSize);
 }
@@ -436,13 +436,10 @@ int CdcClassDriver::startTx(bool holdoff) {
         return 0;
     }
 
-    // if (holdoff && consumable < cdc::MAX_DATA_PACKET_SIZE) {
-    //     stopTxTimer();
-    //     return startTxTimer();
-    // }
-
     txState_ = true;
-    consumable = std::min(consumable, cdc::MAX_DATA_PACKET_SIZE);
+    if (consumable > cdc::MAX_DATA_PACKET_SIZE) {
+        consumable = (consumable / cdc::MAX_DATA_PACKET_SIZE) * cdc::MAX_DATA_PACKET_SIZE;
+    }
     auto buf = txBuffer_.consume(consumable);
     dev_->transferIn(epInData_, buf, consumable);
 
