@@ -77,7 +77,7 @@ int __gthread_recursive_mutex_timedlock (__gthread_recursive_mutex_t* mutex, con
 
 // MOD_FUNC_MONO_FIRMWARE = 3
 // MOD_FUNC_SYSTEM_PART = 4
-#if (MODULE_FUNCTION == 3) || (MODULE_FUNCTION == 4)
+#if defined(MODULE_FUNCTION) && ((MODULE_FUNCTION == 3) || (MODULE_FUNCTION == 4))
 // There is a symbol conflict with the SDK, so in system we use non-conflicting symbol names
 // but when importing into the app, we'll use the regular one.
 #define os_queue_peek           os_queue_peek_workaround

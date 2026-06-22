@@ -26,10 +26,23 @@
 
 #include "netdb_hal.h"
 
-#define gethostbyname(name) netdb_gethostbyname(name)
-#define gethostbyname_r(name, ret, buf, buflen, result, h_errnop) netdb_gethostbyname_r(name, ret, buf, buflen, result, h_errnop)
-#define freeaddrinfo(ai) netdb_freeaddrinfo(ai)
-#define getaddrinfo(hostname, servname, hints, res) netdb_getaddrinfo(hostname, servname, hints, res)
-#define getnameinfo(sa, salen, host, hostlen, serv, servlen, flags) netdb_getnameinfo(sa, salen, host, hostlen, serv, servlen, flags)
+static inline struct hostent* gethostbyname(const char* name) {
+    return netdb_gethostbyname(name);
+}
+static inline int gethostbyname_r(const char* name, struct hostent* ret, char* buf,
+        size_t buflen, struct hostent** result, int* h_errnop) {
+    return netdb_gethostbyname_r(name, ret, buf, buflen, result, h_errnop);
+}
+static inline void freeaddrinfo(struct addrinfo* ai) {
+    netdb_freeaddrinfo(ai);
+}
+static inline int getaddrinfo(const char* hostname, const char* servname,
+        const struct addrinfo* hints, struct addrinfo** res) {
+    return netdb_getaddrinfo(hostname, servname, hints, res);
+}
+static inline int getnameinfo(const struct sockaddr* sa, socklen_t salen, char* host,
+        socklen_t hostlen, char* serv, socklen_t servlen, int flags) {
+    return netdb_getnameinfo(sa, salen, host, hostlen, serv, servlen, flags);
+}
 
 #endif /* NETDB_H */

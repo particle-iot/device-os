@@ -34,13 +34,28 @@
 #undef inet_ntop
 #undef inet_pton
 
-#define inet_addr(cp) inet_inet_addr(cp)
-#define inet_aton(cp, pin) inet_inet_aton(cp, pin)
-#define inet_network(cp) inet_inet_network(cp)
-#define inet_ntoa(in) inet_inet_ntoa(in)
-#define inet_ntoa_r(in, buf, size) inet_inet_ntoa_r(in, buf, size)
-#define inet_ntop(af, src, dst, size) inet_inet_ntop(af, src, dst, size)
-#define inet_pton(af, src, dst) inet_inet_pton(af, src, dst)
+static inline in_addr_t inet_addr(const char* cp) {
+    return inet_inet_addr(cp);
+}
+static inline int inet_aton(const char* cp, struct in_addr* pin) {
+    return inet_inet_aton(cp, pin);
+}
+static inline in_addr_t inet_network(const char* cp) {
+    return inet_inet_network(cp);
+}
+static inline char* inet_ntoa(struct in_addr in) {
+    return inet_inet_ntoa(in);
+}
+static inline char* inet_ntoa_r(struct in_addr in, char* buf, socklen_t size) {
+    return inet_inet_ntoa_r(in, buf, size);
+}
+static inline const char* inet_ntop(int af, const void* src, char* dst, socklen_t size) {
+    return inet_inet_ntop(af, src, dst, size);
+}
+static inline int inet_pton(int af, const char* src, void* dst) {
+    return inet_inet_pton(af, src, dst);
+}
+
 #define ntohl(x) inet_ntohl(x)
 #define htonl(x) inet_htonl(x)
 #define ntohs(x) inet_ntohs(x)

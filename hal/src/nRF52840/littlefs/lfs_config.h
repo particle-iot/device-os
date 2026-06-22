@@ -47,7 +47,7 @@
 // #define LFS_NO_ERROR
 // #define LFS_NO_ASSERT
 
-#if MODULE_FUNCTION == MOD_FUNC_BOOTLOADER
+#if defined(MODULE_FUNCTION) && (MODULE_FUNCTION == MOD_FUNC_BOOTLOADER)
 #define LFS_NO_MALLOC
 #else
 #include <stdlib.h>

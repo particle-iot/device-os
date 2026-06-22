@@ -27,6 +27,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 
 #ifdef __cplusplus
@@ -42,6 +43,7 @@ off_t _lseek(int fd, off_t offset, int whence);
 int _unlink(const char* pathname);
 int _link(const char* oldpath, const char* newpath);
 int _rename(const char* oldpath, const char* newpath);
+int _gettimeofday(struct timeval* tv, void* tz);
 #ifdef __cplusplus
 }
 #endif // __cplusplus
@@ -82,10 +84,10 @@ DYNALIB_FN(23, hal_posix_syscall, fchdir, int(int fd))
 DYNALIB_FN(24, hal_posix_syscall, getcwd, char*(char* buf, size_t size))
 DYNALIB_FN(25, hal_posix_syscall, truncate, int(const char*, off_t))
 DYNALIB_FN(26, hal_posix_syscall, ftruncate, int(int, off_t))
-// DYNALIB_FN(27, hal_posix_syscall, _execve, int(const char* filename, char* const argv[], char* const envp[]))
-// DYNALIB_FN(28, hal_posix_syscall, _fork, pid_t(void))
-// DYNALIB_FN(29, hal_posix_syscall, _getpid, pid_t(void))
-// DYNALIB_FN(30, hal_posix_syscall, _gettimeofday, int(struct timeval* tv, void* tz))
+DYNALIB_FN(27, hal_posix_syscall, _gettimeofday, int(struct timeval* tv, void* tz))
+// DYNALIB_FN(28, hal_posix_syscall, _execve, int(const char* filename, char* const argv[], char* const envp[]))
+// DYNALIB_FN(29, hal_posix_syscall, _fork, pid_t(void))
+// DYNALIB_FN(30, hal_posix_syscall, _getpid, pid_t(void))
 // DYNALIB_FN(31, hal_posix_syscall, _kill, int(pid_t pid, int sig))
 // DYNALIB_FN(32, hal_posix_syscall, _sbrk, void*(intptr_t increment))
 // DYNALIB_FN(33, hal_posix_syscall, _times, clock_t(struct tms* buf))

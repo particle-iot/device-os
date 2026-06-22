@@ -91,6 +91,12 @@ char* strerror(int errnum) {
     return (char*)"";
 }
 
+// Prevents newlib's strerror.o (pulled in e.g. through perror()) from
+// colliding with the strerror() stub above.
+char* _strerror_r(struct _reent* ptr, int errnum, int internal, int* errptr) {
+    return (char*)"";
+}
+
 // There is a bug in newlib in how it manages fake stdin/stdout/stderr
 // and we'll leak memory. Stub it out
 int __wrap_puts(const char* s) {

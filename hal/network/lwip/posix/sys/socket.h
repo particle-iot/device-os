@@ -26,24 +26,65 @@
 
 #include "socket_hal.h"
 
-#define accept(s, addr, addrlen) sock_accept(s, addr, addrlen)
-#define bind(s, name, namelen) sock_bind(s, name, namelen)
-#define shutdown(s, how) sock_shutdown(s, how)
-#define getpeername(s, name, namelen) sock_getpeername(s, name, namelen)
-#define getsockname(s, name, namelen) sock_getsockname(s, name, namelen)
-#define getsockopt(s, level, optname, optval, optlen) sock_getsockopt(s, level, optname, optval, optlen)
-#define setsockopt(s, level, optname, optval, optlen) sock_setsockopt(s, level, optname, optval, optlen)
+/*
+ * Inline functions instead of function-like macros where the names commonly
+ * appear as struct members or methods in portable code (a function-like
+ * macro breaks any 'obj->name(...)' call expression).
+ */
+static inline int accept(int s, struct sockaddr* addr, socklen_t* addrlen) {
+    return sock_accept(s, addr, addrlen);
+}
+static inline int connect(int s, const struct sockaddr* name, socklen_t namelen) {
+    return sock_connect(s, name, namelen);
+}
+static inline int listen(int s, int backlog) {
+    return sock_listen(s, backlog);
+}
+static inline ssize_t recv(int s, void* mem, size_t len, int flags) {
+    return sock_recv(s, mem, len, flags);
+}
+static inline ssize_t send(int s, const void* dataptr, size_t size, int flags) {
+    return sock_send(s, dataptr, size, flags);
+}
+
+static inline int bind(int s, const struct sockaddr* name, socklen_t namelen) {
+    return sock_bind(s, name, namelen);
+}
+static inline int shutdown(int s, int how) {
+    return sock_shutdown(s, how);
+}
+static inline int getpeername(int s, struct sockaddr* name, socklen_t* namelen) {
+    return sock_getpeername(s, name, namelen);
+}
+static inline int getsockname(int s, struct sockaddr* name, socklen_t* namelen) {
+    return sock_getsockname(s, name, namelen);
+}
+static inline int getsockopt(int s, int level, int optname, void* optval, socklen_t* optlen) {
+    return sock_getsockopt(s, level, optname, optval, optlen);
+}
+static inline int setsockopt(int s, int level, int optname, const void* optval, socklen_t optlen) {
+    return sock_setsockopt(s, level, optname, optval, optlen);
+}
+static inline ssize_t recvfrom(int s, void* mem, size_t len, int flags, struct sockaddr* from, socklen_t* fromlen) {
+    return sock_recvfrom(s, mem, len, flags, from, fromlen);
+}
+static inline ssize_t sendto(int s, const void* dataptr, size_t size, int flags, const struct sockaddr* to, socklen_t tolen) {
+    return sock_sendto(s, dataptr, size, flags, to, tolen);
+}
+static inline int socket(int domain, int type, int protocol) {
+    return sock_socket(domain, type, protocol);
+}
+static inline int poll(struct pollfd* fds, nfds_t nfds, int timeout) {
+    return sock_poll(fds, nfds, timeout);
+}
+static inline ssize_t recvmsg(int s, struct msghdr* message, int flags) {
+    return sock_recvmsg(s, message, flags);
+}
+static inline ssize_t sendmsg(int s, const struct msghdr* message, int flags) {
+    return sock_sendmsg(s, message, flags);
+}
+
 #define close(s) sock_close(s)
-#define connect(s, name, namelen) sock_connect(s, name, namelen)
-#define listen(s, backlog) sock_listen(backlog)
-#define recv(s, mem, len, flags) sock_recv(s, mem, len, flags)
-#define recvfrom(s, mem, len, flags, from, fromlen) sock_recvfrom(s, mem, len, flags, from, fromlen)
-#define send(s, dataptr, size, flags) sock_send(s, dataptr, size, flags)
-#define sendto(s, dataptr, size, flags, to, tolen) sock_sendto(s, dataptr, size, flags, to, tolen)
-#define socket(domain, type, protocol) sock_socket(domain, type, protocol)
-#define poll(fds, nfds, timeout) sock_poll(fds, nfds, timeout)
 #define select(nfds, readfds, writefds, exceptfds, timeout) sock_select(nfds, readfds, writefds, exceptfds, timeout)
-#define recvmsg(s, message,flags) sock_recvmsg(s, message, flags)
-#define sendmsg(s, message,flags) sock_sendmsg(s, message, flags)
 
 #endif /* SYS_SOCKET_H */
