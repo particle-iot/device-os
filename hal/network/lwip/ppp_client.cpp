@@ -42,6 +42,10 @@ extern "C" {
 #include "resolvapi.h"
 #include "unique_lock.h"
 
+#ifndef HAL_PLATFORM_PPP_TX_QUEUE_SIZE
+#define HAL_PLATFORM_PPP_TX_QUEUE_SIZE (8)
+#endif
+
 LOG_SOURCE_CATEGORY("net.ppp.client");
 
 /* Public Google DNS Servers */
@@ -169,10 +173,10 @@ void Client::init() {
 
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
 
-    os_queue_create(&queue_, sizeof(QueueEvent), 5, nullptr);
+    os_queue_create(&queue_, sizeof(QueueEvent), 16, nullptr);
     SPARK_ASSERT(queue_);
 
-    os_queue_create(&txQueue_, sizeof(pbuf*), 32, nullptr);
+    os_queue_create(&txQueue_, sizeof(pbuf*), HAL_PLATFORM_PPP_TX_QUEUE_SIZE, nullptr);
     SPARK_ASSERT(txQueue_);
 
     os_thread_create(&thread_, "ppp", OS_THREAD_PRIORITY_NETWORK, &Client::loopCb, this, OS_THREAD_STACK_SIZE_DEFAULT_HIGH);
@@ -306,7 +310,8 @@ bool Client::notifyEvent(uint64_t ev, int data) {
   QueueEvent event = {};
   event.ev = ev;
   event.data = data;
-  return os_queue_put(queue_, &event, CONCURRENT_WAIT_FOREVER, nullptr) == 0;
+  auto timeout = (ev == EVENT_TX_DATA) ? 0 : CONCURRENT_WAIT_FOREVER;
+  return os_queue_put(queue_, &event, timeout, nullptr) == 0;
 }
 
 int Client::input(const uint8_t* data, size_t size) {
@@ -462,14 +467,10 @@ void Client::loop() {
           if (os_queue_peek(txQueue_, &p, 0, nullptr) != 0) {
             break;
           }
-          int r = cb((const uint8_t*)p->payload, p->len, cbCtx);
-          if (r == (int)p->len) {
-            os_queue_take(txQueue_, &p, 0, nullptr);
-            pbuf_free(p);
-            drained++;
-          } else {
-            break;
-          }
+          cb((const uint8_t*)p->payload, p->len, cbCtx);
+          os_queue_take(txQueue_, &p, 0, nullptr);
+          pbuf_free(p);
+          drained++;
           if ((long)(HAL_Timer_Get_Milli_Seconds() - deadline) >= 0) {
             break;
           }
@@ -477,10 +478,7 @@ void Client::loop() {
         txWakePending_.store(false);
         pbuf* p = nullptr;
         if (os_queue_peek(txQueue_, &p, 0, nullptr) == 0) {
-          bool expected = false;
-          if (txWakePending_.compare_exchange_strong(expected, true)) {
-            notifyEvent(EVENT_TX_DATA);
-          }
+          qWait = 1;
         }
       }
     }
@@ -643,7 +641,7 @@ uint32_t Client::output(const uint8_t* data, size_t len) {
   pbuf* p = pbuf_alloc(PBUF_RAW, len, PBUF_RAM);
   if (!p) {
     pbuf* peek = nullptr;
-    if (os_queue_peek(txQueue_, &peek, 0, nullptr) != 0) {
+    if (!server_ && os_queue_peek(txQueue_, &peek, 0, nullptr) != 0) {
       auto r = oCb_(data, len, oCbCtx_);
       if (r >= 0) {
         return r;
