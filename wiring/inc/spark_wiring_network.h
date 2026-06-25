@@ -49,7 +49,7 @@ extern NetworkClass Network;
             }); \
             if_addr* ifAddr = nullptr; \
             for (if_addrs* i = ifAddrList; i; i = i->next) { \
-                if (i->if_addr->addr->sa_family == AF_INET) { \
+                if (i->if_addr && i->if_addr->addr && i->if_addr->addr->sa_family == AF_INET) { \
                     ifAddr = i->if_addr; \
                     break; \
                 } \
