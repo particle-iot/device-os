@@ -224,6 +224,7 @@ public:
         UART_StructInit(&uartInitStruct);
         uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
         UART_Init(uartInstance, &uartInitStruct);
+        ierShadow_ = uartInstance->DLH_INTCR;
 
         RCC_PeriphClockSource_UART(uartInstance, UART_RX_CLK_XTAL_40M);
         UART_SetBaud(uartInstance, conf.baudRate);
@@ -350,6 +351,11 @@ public:
 
     ssize_t flush() {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
+        if (useInterrupt() && !transmitting_ && curTxCount_ > 0) {
+            auto uartInstance = uartTable_[index_].UARTx;
+            transmitting_ = true;
+            uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+        }
         while (true) {
             while (transmitting_ || busy_) {
                 // FIXME: busy loop
@@ -471,7 +477,7 @@ public:
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             if (data() <= 0) {
                 RxLock lk(this);
-                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
+                uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), ENABLE);
                 UART_RXDMACmd(uartInstance, DISABLE);
                 if (!receiving_) {
                     startReceiver();
@@ -485,7 +491,7 @@ public:
             if (space() <= 0) {
                 TxLock lk(this);
                 xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+                uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
                 // Temporarily disable TX DMA, otherwise, the TX FIFO won't be empty until all data is transferred by DMA.
                 UART_TXDMACmd(uartInstance, DISABLE);
                 if (!transmitting_) {
@@ -508,14 +514,14 @@ public:
         auto uartInstance = uartTable_[index_].UARTx;
         if (event & HAL_USART_PVT_EVENT_READABLE) {
             RxLock lk(this);
-            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+            uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
             UART_RXDMACmd(uartInstance, ENABLE);
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
         }
 
         if (event & HAL_USART_PVT_EVENT_WRITABLE) {
             TxLock lk(this);
-            UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+            uartIntConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
             UART_TXDMACmd(uartInstance, ENABLE);
             xEventGroupClearBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
         }
@@ -579,14 +585,17 @@ public:
                 break;
             }
             case RUART_TX_FIFO_EMPTY: {
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
                 if (uart->useInterrupt()) {
                     if (uart->transmitting_) {
+                        uart->curTxCount_ = 0;
                         uart->transmitting_ = false;
-                        uart->txBuffer_.consumeCommit(uart->curTxCount_);
                         uart->startTransmission();
                     }
+                    if (!uart->transmitting_) {
+                        uart->uartIntConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+                    }
                 } else {
+                    uart->uartIntConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
                     UART_TXDMACmd(uartInstance, ENABLE);
                     if (!uart->transmitting_) {
                         uart->busy_ = false; // All bytes sent if no new DMA transfers are in progress
@@ -599,7 +608,7 @@ public:
             }
             case RUART_RECEIVER_DATA_AVAILABLE:
             case RUART_TIME_OUT_INDICATION: {
-                UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+                uart->uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
                 if (uart->receiving_) {
                     if (uart->useInterrupt()) {
                         uart->receiving_ = false;
@@ -664,8 +673,8 @@ private:
             InterruptUnRegister(uartTable_[index_].IrqNum);
         }
         // In case events group is involved when using DMA mode.
-        UART_INTConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
-        UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+        uartIntConfig(uartInstance, RUART_IER_ETBEI, DISABLE);
+        uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
         UART_ClearTxFifo(uartInstance);
         UART_ClearRxFifo(uartInstance);
         UART_DeInit(uartInstance);
@@ -713,6 +722,7 @@ private:
         }
         return false;
     }
+
 
     bool validateConfig(unsigned int config) {
         CHECK_TRUE((config & SERIAL_DATA_BITS) == SERIAL_DATA_BITS_7 ||
@@ -824,46 +834,51 @@ private:
     }
 
     void startTransmission() {
-        size_t consumable;
         auto uartInstance = uartTable_[index_].UARTx;
-        if (!transmitting_ && (consumable = txBuffer_.consumable())) {
+        if (transmitting_) {
+            return;
+        }
+        if (!useInterrupt()) {
+            if (txDmaInitStruct_.GDMA_ChNum == 0xFF) {
+                return;
+            }
+            size_t consumable = txBuffer_.consumable();
+            if (consumable == 0) {
+                return;
+            }
             transmitting_ = true;
-            if (!useInterrupt()) {
-                if (txDmaInitStruct_.GDMA_ChNum == 0xFF) {
-                    transmitting_ = false;
-                    return;
-                }
-                consumable = std::min(MAX_DMA_BLOCK_SIZE, consumable);
-                auto ptr = txBuffer_.consume(consumable);
+            consumable = std::min(MAX_DMA_BLOCK_SIZE, consumable);
+            auto ptr = txBuffer_.consume(consumable);
 
-                DCache_CleanInvalidate((uint32_t)ptr, consumable);
+            DCache_CleanInvalidate((uint32_t)ptr, consumable);
 
-                if (((consumable & 0x03) == 0) && (((uint32_t)(ptr) & 0x03) == 0)) {
-                    // 4-bytes aligned, move 4 bytes each transfer
-                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;
-                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthFourBytes;
-                    txDmaInitStruct_.GDMA_BlockSize = consumable >> 2;
-                } else {
-                    // Move 1 byte each transfer
-                    txDmaInitStruct_.GDMA_SrcMsize   = MsizeFour;
-                    txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
-                    txDmaInitStruct_.GDMA_BlockSize = consumable;
-                }
-                txDmaInitStruct_.GDMA_SrcAddr = (uint32_t)(ptr);
-                curTxCount_ = consumable;
-                GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
-                GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
-                busy_ = true;
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+            if (((consumable & 0x03) == 0) && (((uint32_t)(ptr) & 0x03) == 0)) {
+                // 4-bytes aligned, move 4 bytes each transfer
+                txDmaInitStruct_.GDMA_SrcMsize   = MsizeOne;
+                txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthFourBytes;
+                txDmaInitStruct_.GDMA_BlockSize = consumable >> 2;
             } else {
-                // LOG UART doesn't support DMA transmission
-                consumable = std::min(MAX_UART_FIFO_SIZE, consumable);
-                auto ptr = txBuffer_.consume(consumable);
-                for (size_t i = 0; i < consumable; i++, ptr++) {
-                    UART_CharPut(uartInstance, *ptr);
-                }
-                curTxCount_ = consumable;
-                UART_INTConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+                // Move 1 byte each transfer
+                txDmaInitStruct_.GDMA_SrcMsize   = MsizeFour;
+                txDmaInitStruct_.GDMA_SrcDataWidth = TrWidthOneByte;
+                txDmaInitStruct_.GDMA_BlockSize = consumable;
+            }
+            txDmaInitStruct_.GDMA_SrcAddr = (uint32_t)(ptr);
+            curTxCount_ = consumable;
+            GDMA_Init(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, &txDmaInitStruct_);
+            GDMA_Cmd(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum, ENABLE);
+            busy_ = true;
+            uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+        } else {
+            while (curTxCount_ < MAX_UART_FIFO_SIZE && !txBuffer_.empty()) {
+                uint8_t c;
+                txBuffer_.get(&c, 1);
+                UART_CharPut(uartInstance, c);
+                curTxCount_++;
+            }
+            if (curTxCount_ >= MAX_UART_FIFO_SIZE && !txBuffer_.empty()) {
+                transmitting_ = true;
+                uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
             }
         }
     }
@@ -890,7 +905,7 @@ private:
             }
             rxSize = std::min(MAX_DMA_BLOCK_SIZE, rxSize);
             // Disable Rx interrupt
-            UART_INTConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
+            uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
             auto ptr = rxBuffer_.acquire(rxSize);
 
             UART_RXDMAConfig(uartInstance, 4);
@@ -912,7 +927,7 @@ private:
             uint8_t temp[MAX_UART_FIFO_SIZE];
             uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
             rxBuffer_.put(temp, inFifo);
-            UART_INTConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
+            uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
         }
     }
 
@@ -956,8 +971,17 @@ private:
         return 0;
     }
 
+    void uartIntConfig(UART_TypeDef* u, uint32_t mask, uint32_t newState) {
+        int st = HAL_disable_irq();
+        uint32_t v = (newState == ENABLE) ? (ierShadow_ | mask) : (ierShadow_ & ~mask);
+        if (v != ierShadow_) {
+            ierShadow_ = v;
+            u->DLH_INTCR = v;
+        }
+        HAL_enable_irq(st);
+    }
+
     void rxLock(bool lock) {
-        auto instance = uartTable_[index_].UARTx;
         if (!useInterrupt()) {
             if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
@@ -967,14 +991,17 @@ private:
                 }
             }
         } else {
-            UART_INTConfig(instance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, lock ? DISABLE : ENABLE);
+            if (lock) {
+                NVIC_DisableIRQ(uartTable_[index_].IrqNum);
+            } else {
+                NVIC_EnableIRQ(uartTable_[index_].IrqNum);
+            }
         }
         __ISB();
         __DSB();
     }
 
     void txLock(bool lock) {
-        auto instance = uartTable_[index_].UARTx;
         if (!useInterrupt()) {
             if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
                 if (lock) {
@@ -984,7 +1011,11 @@ private:
                 }
             }
         } else {
-            UART_INTConfig(instance, RUART_IER_ETBEI, lock ? DISABLE : ENABLE);
+            if (lock) {
+                NVIC_DisableIRQ(uartTable_[index_].IrqNum);
+            } else {
+                NVIC_EnableIRQ(uartTable_[index_].IrqNum);
+            }
         }
     }
 
@@ -1003,6 +1034,7 @@ private:
     particle::services::RingBuffer<uint8_t> txBuffer_;
     particle::services::RingBuffer<uint8_t> rxBuffer_;
     volatile size_t curTxCount_;
+    volatile uint32_t ierShadow_ = 0;
 
     volatile hal_usart_state_t state_;
     volatile bool transmitting_;
