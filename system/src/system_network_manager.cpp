@@ -96,7 +96,27 @@ int for_each_iface(F&& f) {
     return 0;
 }
 
-void forceCloudPingOrTest() {
+static bool isCloudConnectionInterface(if_t iface) {
+    if (!iface) {
+        return true;
+    }
+    uint8_t index = 0;
+    if (if_get_index(iface, &index) != 0) {
+        return false;
+    }
+    static const auto supported = ConnectionTester::getSupportedInterfaces();
+    for (const auto& s : supported) {
+        if (s.first == index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void forceCloudPingOrTest(if_t iface) {
+    if (!isCloudConnectionInterface(iface)) {
+        return;
+    }
     ConnectionManager::instance()->scheduleCloudConnectionNetworkCheck();
 }
 
@@ -607,7 +627,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
 
         if (getInterfaceIp4State(iface) == ProtocolState::CONFIGURED || getInterfaceIp6State(iface) == ProtocolState::CONFIGURED) {
-            forceCloudPingOrTest();
+            forceCloudPingOrTest(iface);
         }
     } else {
         auto state = getInterfaceRuntimeState(iface);
@@ -626,7 +646,7 @@ void NetworkManager::handleIfLink(if_t iface, const struct if_event* ev) {
         }
 
         if (state && (state->ip4State == ProtocolState::CONFIGURED || state->ip6State == ProtocolState::CONFIGURED)) {
-            forceCloudPingOrTest();
+            forceCloudPingOrTest(iface);
         }
     }
 }
@@ -641,7 +661,7 @@ void NetworkManager::handleIfAddr(if_t iface, const struct if_event* ev) {
     if (state_ == State::IP_CONFIGURED || state_ == State::IFACE_LINK_UP) {
         refreshIpState();
     }
-    forceCloudPingOrTest();
+    forceCloudPingOrTest(iface);
 }
 
 void NetworkManager::handleIfLinkLayerAddr(if_t iface, const struct if_event* ev) {
