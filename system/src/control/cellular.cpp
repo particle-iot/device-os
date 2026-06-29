@@ -138,7 +138,7 @@ int sendApdu(ctrl_request* req) {
     CHECK(client->on());
 
     struct Context {
-        char apdu[MAX_APDU_SIZE];
+        char apdu[APDU_BUFFER_SIZE];
         size_t apduSize;
         int error;
     };
@@ -149,7 +149,7 @@ int sendApdu(ctrl_request* req) {
     pbReq.data.funcs.decode = [](pb_istream_t* stream, const pb_field_iter_t* /* field */, void** arg) {
         auto ctx = (Context*)*arg;
         ctx->apduSize = stream->bytes_left;
-        if (ctx->apduSize > MAX_APDU_SIZE) {
+        if (ctx->apduSize > MAX_APDU_COMMAND_SIZE) {
             ctx->error = SYSTEM_ERROR_TOO_LARGE;
             return false;
         }

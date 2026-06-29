@@ -30,7 +30,14 @@ namespace particle {
 
 #if PLATFORM_ID != PLATFORM_GCC
 
-const size_t MAX_APDU_SIZE = 261; // 4 (header) + 1 (Lc) + 255 (data) + 1 (Le)
+const size_t MAX_APDU_COMMAND_SIZE = 261; // 4 (header) + 1 (Lc) + 255 (data) + 1 (Le)
+const size_t MAX_APDU_RESPONSE_SIZE = 258; // 256 (data) + 2 (status)
+
+// XXX: Set to a higher value than MAX_APDU_COMMAND_SIZE or MAX_APDU_RESPONSE_SIZE to work around
+// EG916Q incorrectly returning too large responses
+const size_t APDU_BUFFER_SIZE = 400;
+
+static_assert(APDU_BUFFER_SIZE >= MAX_APDU_COMMAND_SIZE && APDU_BUFFER_SIZE >= MAX_APDU_RESPONSE_SIZE);
 
 struct CellularNcpEvent: NcpEvent {
     enum Type {
