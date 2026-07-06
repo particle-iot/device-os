@@ -252,7 +252,7 @@ void sys_unlock_tcpip_core(void);
  * MEMP_NUM_TCP_SEG: the number of simultaneously queued TCP segments.
  * (requires the LWIP_TCP option)
  */
-#define MEMP_NUM_TCP_SEG                16
+#define MEMP_NUM_TCP_SEG                48
 
 /**
  * MEMP_NUM_ALTCP_PCB: the number of simultaneously active altcp layer pcbs.
@@ -783,7 +783,7 @@ void sys_unlock_tcpip_core(void);
  * with scaling applied. Maximum window value in the TCP header
  * will be TCP_WND >> TCP_RCV_SCALE
  */
-#define TCP_WND                         (4 * TCP_MSS)
+#define TCP_WND                         (16 * TCP_MSS)
 
 /**
  * TCP_MAXRTX: Maximum number of retransmissions of data segments.
@@ -842,7 +842,7 @@ void sys_unlock_tcpip_core(void);
  * TCP_SND_BUF: TCP sender buffer space (bytes).
  * To achieve good performance, this should be at least 2 * TCP_MSS.
  */
-#define TCP_SND_BUF                     (2 * TCP_MSS)
+#define TCP_SND_BUF                     (8 * TCP_MSS)
 
 /**
  * TCP_SND_QUEUELEN: TCP sender buffer space (pbufs). This must be at least
@@ -1378,7 +1378,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * LWIP_SO_LINGER==1: Enable SO_LINGER processing.
  */
-#define LWIP_SO_LINGER                  0
+#define LWIP_SO_LINGER                  1
 
 /**
  * If LWIP_SO_RCVBUF is used, this is the default value for recv_bufsize.
