@@ -2180,7 +2180,7 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
 }
 
 int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize, bool autoClose) {
-    if (cmdSize > MAX_APDU_SIZE) {
+    if (cmdSize > MAX_APDU_COMMAND_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
@@ -2219,7 +2219,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
     auto cmd = parser_.command();
     cmd.printf("AT+CSIM=%d,\"", (int)(cmdSize * 2));
 
-    char strBuf[MAX_APDU_SIZE * 2 + 50]; // Add some room for AT command framing
+    char strBuf[APDU_BUFFER_SIZE * 2 + 20]; // Add some room for AT command framing
     toHex(cmdBuf, cmdSize, strBuf, sizeof(strBuf));
     cmd.print(strBuf);
     cmd.print("\"");
