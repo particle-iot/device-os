@@ -268,8 +268,7 @@ public:
             PAD_PullCtrl(hal_pin_to_rtl_pin(ctsPin_), GPIO_PuPd_DOWN);
             Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
             Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
-            uartInstance->MCR |= BIT(5);
-            uartInstance->MCR |= BIT(1);    // RTS low
+            uartInstance->MCR |= RUART_MCL_FLOW_ENABLE;
         } else {
             uartInstance->MCR &= ~ BIT(5);
         }
@@ -343,9 +342,8 @@ public:
         {
             TxLock lk(this);
             r = CHECK(txBuffer_.put(buffer, writeSize));
+            startTransmission();
         }
-
-        startTransmission();
         return r;
     }
 
@@ -470,6 +468,19 @@ public:
     int enableEvent(HAL_USART_Pvt_Events event) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         if (useInterrupt()) {
+            if (event & HAL_USART_PVT_EVENT_READABLE) {
+                if (data() > 0) {
+                    xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_READABLE);
+                } else {
+                    RxLock lk(this);
+                    if (!receiving_) {
+                        startReceiver();
+                    }
+                }
+            }
+            if ((event & HAL_USART_PVT_EVENT_WRITABLE) && space() > 0) {
+                xEventGroupSetBits(evGroup_, HAL_USART_PVT_EVENT_WRITABLE);
+            }
             return 0;
         }
 
@@ -580,10 +591,6 @@ public:
                 UART_ModemStatusGet(uartInstance);
                 break;
             }
-            case RUART_RECEIVE_LINE_STATUS: {
-                UART_LineStatusGet(uartInstance);
-                break;
-            }
             case RUART_TX_FIFO_EMPTY: {
                 if (uart->useInterrupt()) {
                     if (uart->transmitting_) {
@@ -606,19 +613,25 @@ public:
                 }
                 break;
             }
+            case RUART_RECEIVE_LINE_STATUS:
+                UART_LineStatusGet(uartInstance);
+                /* fallthrough */
             case RUART_RECEIVER_DATA_AVAILABLE:
             case RUART_TIME_OUT_INDICATION: {
                 uart->uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
                 if (uart->receiving_) {
                     if (uart->useInterrupt()) {
                         uart->receiving_ = false;
-                        uint8_t temp[MAX_UART_FIFO_SIZE];
-                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                        const ssize_t canWrite = uart->rxBuffer_.space();
-                        if (canWrite > 0) {
-                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                        const bool rtsFlow = (uart->config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
+                        if (uart->rxBuffer_.space() > 0 || !rtsFlow) {
+                            uint8_t temp[MAX_UART_FIFO_SIZE];
+                            uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                            const ssize_t canWrite = uart->rxBuffer_.space();
+                            if (canWrite > 0) {
+                                uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                            }
+                            uart->startReceiver();
                         }
-                        uart->startReceiver();
                     } else {
                         UART_RXDMACmd(uartInstance, ENABLE);
                     }
@@ -846,9 +859,12 @@ private:
             if (consumable == 0) {
                 return;
             }
-            transmitting_ = true;
             consumable = std::min(MAX_DMA_BLOCK_SIZE, consumable);
             auto ptr = txBuffer_.consume(consumable);
+            if (!ptr) {
+                return;
+            }
+            transmitting_ = true;
 
             DCache_CleanInvalidate((uint32_t)ptr, consumable);
 
@@ -925,8 +941,18 @@ private:
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
-            uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-            rxBuffer_.put(temp, inFifo);
+            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+                // With flow control drain only what fits and leave the rest in FIFO
+                const ssize_t space = rxBuffer_.space();
+                if (space > 0) {
+                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, std::min((size_t)space, MAX_UART_FIFO_SIZE), 1);
+                    rxBuffer_.put(temp, inFifo);
+                }
+            } else {
+                // drain the FIFO and keep whatever fits if no flow control
+                uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                rxBuffer_.put(temp, inFifo);
+            }
             uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
         }
     }
