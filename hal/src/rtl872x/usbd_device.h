@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "hal_platform.h"
+#include "system_error.h"
 
 namespace particle { namespace usbd {
 
@@ -170,6 +171,14 @@ public:
     virtual EndpointStatus getEndpointStatus(unsigned ep) = 0;
     virtual int setEndpointStatus(unsigned ep, EndpointStatus status) = 0;
 
+    virtual int endpointTransferComplete(unsigned ep) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    virtual int endpointTransferRemaining(unsigned ep) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
     virtual int transferIn(unsigned ep, const uint8_t* ptr, size_t size) = 0;
     virtual int transferOut(unsigned ep, uint8_t* ptr, size_t size) = 0;
 
@@ -227,6 +236,8 @@ public:
     int clearStallEndpoint(unsigned ep);
     EndpointStatus getEndpointStatus(unsigned ep);
     int setEndpointStatus(unsigned ep, EndpointStatus status);
+    int endpointTransferComplete(unsigned ep);
+    int endpointTransferRemaining(unsigned ep);
 
     int transferIn(unsigned ep, const uint8_t* ptr, size_t size);
     int transferOut(unsigned ep, uint8_t* ptr, size_t size);

@@ -25,6 +25,7 @@
 #include "check.h"
 #include "scope_guard.h"
 #include "endian_util.h"
+#include "timer_hal.h"
 #include <algorithm>
 #include <mutex>
 #include "service_debug.h"
@@ -444,6 +445,7 @@ int CdcClassDriver::startTx(bool holdoff) {
     dev_->transferIn(epInData_, buf, consumable);
 
 #if !HAL_PLATFORM_USB_SOF
+    lastTxRemaining_ = dev_->endpointTransferRemaining(epInData_);
     stopTxTimeoutTimer();
     startTxTimeoutTimer();
 #endif // !HAL_PLATFORM_USB_SOF
@@ -462,6 +464,18 @@ void CdcClassDriver::txTimeoutTimerCallback(os_timer_t timer) {
 
 void CdcClassDriver::txTimeoutTimerExpired() {
     std::lock_guard<Device> lk(*dev_);
+    // Is this a real stall or just slow host? If data is being drained (remaining bytes
+    // are going lower) - we are ok, otherwise perform our standard workaround of considering
+    // the host not reading from us anymore.
+    if (txState_) {
+        int remaining = dev_->endpointTransferRemaining(epInData_);
+        if (dev_->endpointTransferComplete(epInData_) > 0 ||
+                (remaining >= 0 && remaining < lastTxRemaining_)) {
+            lastTxRemaining_ = remaining;
+            startTxTimeoutTimer();
+            return;
+        }
+    }
     if (txState_ && open_) {
         setOpenState(false);
     }

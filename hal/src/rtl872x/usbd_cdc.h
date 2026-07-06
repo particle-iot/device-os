@@ -154,6 +154,7 @@ private:
 #if !HAL_PLATFORM_USB_SOF
     os_timer_t txTimeoutTimer_ = nullptr;
     os_timer_t txTimer_ = nullptr;
+    int lastTxRemaining_ = -1;
 #endif // !HAL_PLATFORM_USB_SOF
     bool useDummyIntEp_ = false;
 
