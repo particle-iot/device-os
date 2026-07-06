@@ -114,6 +114,12 @@ const size_t DEFAULT_MAX_TRANSLATION_ENTRIES = DEFAULT_POOL_SIZE / NAT64_ENTRY_S
 
 const size_t DEFAULT_SESSION_CLEANUP_TIMEOUT = 1000;
 
+// Maximum TCP MSS we advertise to peers (clamped in forwarded SYNs).
+// This is normally reduced as is by the cellular network routers
+// But just in case reduce even more. @avtolstoy has seen MSS of even below 1300
+// in some rare cases, but most of the time below 1400.
+const uint16_t NAT_TCP_MSS_CLAMP = 1360;
+
 static_assert(MEMP_NUM_SYS_TIMEOUT > LWIP_NUM_SYS_TIMEOUT_INTERNAL, "An extra timeout should be allocated for NAT64 service. Increase MEMP_NUM_SYS_TIMEOUT");
 
 } /* anonymous */
@@ -391,55 +397,63 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
         tcp_hdr* tcphdr = (tcp_hdr*)q->payload;
         tcphdr->src = lwip_htons(srcAddr.port());
         tcphdr->dest = lwip_htons(dstAddr.port());
-        tcphdr->chksum = 0x0000;
-#if CHECKSUM_GEN_TCP
-        tcphdr->chksum = inet_chksum_pseudo(q, IP_PROTO_TCP, q->tot_len, ip_2_ip4(&srcAddr.address()), ip_2_ip4(&dstAddr.address()));
-#endif /* CHECKSUM_GEN_TCP */
         if (TCPH_FLAGS(tcphdr) & (TCP_RST | TCP_FIN)) {
             // 4 minutes
             LOG_DEBUG(INFO, "TCP RST or FIN received, timeout in 4 minutes");
             session->setLifetime(4 * 60 * 1000);
-        } else if ((TCPH_FLAGS(tcphdr) & (TCP_SYN | TCP_ACK | TCP_RST)) == (TCP_SYN) || (TCPH_FLAGS(tcphdr) & (TCP_SYN | TCP_ACK | TCP_RST)) == (TCP_SYN | TCP_RST)) {
+        } else if (TCPH_FLAGS(tcphdr) & TCP_SYN) {
             size_t hdrlen_bytes = TCPH_HDRLEN_BYTES(tcphdr);
             size_t optlen = (u16_t)(hdrlen_bytes - TCP_HLEN);
-            char opts[20] = {};
-            pbuf_copy_partial(q, opts, optlen, TCP_HLEN);
-            for (char* o = opts; o - opts < (int)optlen;) {
-                bool ex = false;
-                switch (*o) {
-                    case 0: {
-                        ex = true;
-                        break;
-                    }
-                    case 1: {
-                        o++;
-                        continue;
-                    }
-                    case 2: {
-                        // TCP MSS
-                        auto outif = ip4_route_src(ip_2_ip4(&srcAddr.address()), ip_2_ip4(&dstAddr.address()));
-                        if (outif) {
-                            uint16_t newMss = lwip_htons(outif->mtu - 40);
-                            // uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
-                            *(uint16_t*)(o + 2) = newMss;
-                            // if (oldMss != newMss) {
-                            //     LOG(WARN, "Adjusted MSS from %u to %u", (unsigned)oldMss, outif->mtu - 40);
-                            // }
+            if (optlen > 0 && optlen <= 40) {
+                char opts[40] = {};
+                pbuf_copy_partial(q, opts, optlen, TCP_HLEN);
+                bool mssClamped = false;
+                for (char* o = opts; o - opts < (int)optlen;) {
+                    bool ex = false;
+                    switch (*o) {
+                        case 0: { // End of option list
+                            ex = true;
+                            break;
                         }
-                        o += 4;
-                        break;
+                        case 1: { // NOP
+                            o++;
+                            continue;
+                        }
+                        case 2: { // MSS (kind=2, len=4)
+                            uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
+                            if (oldMss > NAT_TCP_MSS_CLAMP) {
+                                *(uint16_t*)(o + 2) = lwip_htons(NAT_TCP_MSS_CLAMP);
+                                mssClamped = true;
+                                LOG_DEBUG(TRACE, "Clamped TCP MSS %u -> %u", (unsigned)oldMss,
+                                    (unsigned)NAT_TCP_MSS_CLAMP);
+                            }
+                            o += 4;
+                            break;
+                        }
+                        default: {
+                            size_t len = o[1];
+                            if (len == 0) { // malformed - avoid an infinite loop
+                                ex = true;
+                                break;
+                            }
+                            o += len;
+                            break;
+                        }
                     }
-                    default: {
-                        size_t len = o[1];
-                        o += len;
+                    if (ex) {
                         break;
                     }
                 }
-                if (ex) {
-                    break;
+                // The loop edited a local copy - write it back into the packet.
+                if (mssClamped) {
+                    pbuf_take_at(q, opts, optlen, TCP_HLEN);
                 }
             }
         }
+        tcphdr->chksum = 0x0000;
+#if CHECKSUM_GEN_TCP
+        tcphdr->chksum = inet_chksum_pseudo(q, IP_PROTO_TCP, q->tot_len, ip_2_ip4(&srcAddr.address()), ip_2_ip4(&dstAddr.address()));
+#endif /* CHECKSUM_GEN_TCP */
     }
     ip_hdr* ip4hdr = (ip_hdr*)ipheader;
     uint8_t hl = IPH_TTL(ip4hdr) - 1;
