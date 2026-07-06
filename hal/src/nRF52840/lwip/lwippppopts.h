@@ -443,6 +443,8 @@
  */
 #define MAXSECRETLEN                    256
 
+#define PPP_LCP_ADAPTIVE                1
+
 /* ------------------------------------------------------------------------- */
 
 #endif /* PPP_SUPPORT */

@@ -100,11 +100,7 @@
 /**
  * PPP_DEBUG: Enable debugging for PPP.
  */
-#ifdef DEBUG_BUILD
 #define PPP_DEBUG                       LWIP_DBG_ON
-#else
-#define PPP_DEBUG                       LWIP_DBG_OFF
-#endif // DEBUG_BUILD
 
 /**
  * PPP_INPROC_IRQ_SAFE==1 call pppos_input() using tcpip_callback().
@@ -118,11 +114,7 @@
  *
  * Mandatory for debugging, it displays exchanged packet content in debug trace.
  */
-#ifndef DEBUG_BUILD
-#define PRINTPKT_SUPPORT                0
-#else
 #define PRINTPKT_SUPPORT                1
-#endif // DEBUG_BUILD
 
 /**
  * PPP_IPV4_SUPPORT==1: Enable PPP IPv4 support
@@ -445,6 +437,8 @@
  * MAXSECRETLEN: max length of password or secret
  */
 #define MAXSECRETLEN                    256
+
+#define PPP_LCP_ADAPTIVE                1
 
 /* ------------------------------------------------------------------------- */
 
