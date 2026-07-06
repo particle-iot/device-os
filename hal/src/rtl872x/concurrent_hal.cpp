@@ -43,10 +43,6 @@
 #include "static_recursive_mutex.h"
 #include "service_debug.h"
 
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-# include "wwd_rtos_interface.h"
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
-
 // For OpenOCD FreeRTOS support
 extern const int  __attribute__((used)) uxTopUsedPriority = configMAX_PRIORITIES - 1;
 
@@ -184,19 +180,44 @@ bool os_thread_current_within_stack()
  */
 os_result_t os_thread_join(os_thread_t thread)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    while (xTaskIsTaskFinished(thread) != pdTRUE)
+    // FIXME: this is just a workaround and not a proper solution
+    // It avoids dereferencing potentially already freed task handle
+    auto handle = static_cast<TaskHandle_t>(thread);
+    for (;;)
     {
-        HAL_Delay_Milliseconds(10);
+        struct FindCtx {
+            TaskHandle_t handle;
+            bool found;
+            eTaskState state;
+            char name[16];
+        };
+        FindCtx ctx = {};
+        ctx.handle = handle;
+        auto findCb = [](TaskStatus_t* const status, void* opaque) -> BaseType_t {
+            auto* c = static_cast<FindCtx*>(opaque);
+            if (status->xHandle == c->handle)
+            {
+                c->found = true;
+                c->state = status->eCurrentState;
+                strcpy(c->name, status->pcTaskName);
+                return 1;
+            }
+            return 0;
+        };
+        TaskStatus_t status = {};
+        uxTaskGetSystemStateParticle(&status, 1, nullptr, findCb, (void*)&ctx);
+        if (ctx.found)
+        {
+            auto idlePrio = uxTaskPriorityGet(xTaskGetIdleTaskHandle());
+            LOG(ERROR, "os_thread_join %08x state=%d idlePrio=%u name=%s", handle, ctx.state, (unsigned)idlePrio, ctx.name);
+            HAL_Delay_Milliseconds(10);
+        }
+        else
+        {
+            break;
+        }
     }
     return 0;
-#else
-    while (eTaskGetState(static_cast<TaskHandle_t>(thread)) != eDeleted)
-    {
-        HAL_Delay_Milliseconds(10);
-    }
-    return 0;
-#endif
 }
 
 /**
@@ -217,11 +238,6 @@ os_result_t os_thread_exit(os_thread_t thread)
  */
 os_result_t os_thread_cleanup(os_thread_t thread)
 {
-#if PLATFORM_ID == 6 || PLATFORM_ID == 8
-    if (!thread || os_thread_is_current(thread))
-        return 1;
-    host_rtos_delete_terminated_thread((host_thread_type_t*)&thread);
-#endif // PLATFORM_ID == 6 || PLATFORM_ID == 8
     return 0;
 }
 
