@@ -20,6 +20,8 @@
 #include "iperf.h"
 #include "iperf_api.h"
 
+#include <sys/socket.h>
+
 /*
  * iperf.h cannot be included from C++ (C11 atomics in struct iperf_test),
  * this helper gives the C++ wrapper access to the test 'done' flag.
@@ -27,5 +29,15 @@
 void iperf_particle_interrupt(struct iperf_test* test) {
     if (test) {
         test->done = 1;
+    }
+}
+
+/*
+ * Force IPv4 for the control connection. Some platforms
+ * do not have IPv6 enabled due to flash size constraints
+ */
+void iperf_particle_force_ipv4(struct iperf_test* test) {
+    if (test) {
+        test->settings->domain = AF_INET;
     }
 }

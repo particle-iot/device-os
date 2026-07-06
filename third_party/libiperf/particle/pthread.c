@@ -21,17 +21,21 @@
 #include <stdlib.h>
 
 #include "concurrent_hal.h"
+#include "service_debug.h"
+#include "iperf_config.h"
 
 typedef struct pthread_cb {
     os_thread_t handle;
     void* (*start_routine)(void*);
     void* arg;
     void* retval;
+    os_semaphore_t done;
 } pthread_cb_t;
 
 static os_thread_return_t pthread_entry(void* param) {
     pthread_cb_t* cb = (pthread_cb_t*)param;
     cb->retval = cb->start_routine(cb->arg);
+    os_semaphore_give(cb->done, false);
     os_thread_exit(NULL);
 }
 
@@ -44,8 +48,13 @@ int pthread_create(pthread_t* thread, const pthread_attr_t* attr,
     }
     cb->start_routine = start_routine;
     cb->arg = arg;
+    if (os_semaphore_create(&cb->done, 1, 0) != 0) {
+        free(cb);
+        return EAGAIN;
+    }
     if (os_thread_create(&cb->handle, "pthread", OS_THREAD_PRIORITY_DEFAULT + 1, pthread_entry,
-            cb, OS_THREAD_STACK_SIZE_DEFAULT_NETWORK) != 0) {
+            cb, IPERF_WORKER_THREAD_STACK_SIZE) != 0) {
+        os_semaphore_destroy(cb->done);
         free(cb);
         return EAGAIN;
     }
@@ -58,10 +67,9 @@ int pthread_join(pthread_t thread, void** retval) {
     if (!cb) {
         return ESRCH;
     }
-    if (os_thread_join(cb->handle) != 0) {
-        return EINVAL;
-    }
-    os_thread_cleanup(cb->handle);
+    os_semaphore_take(cb->done, 60000, false);
+    os_thread_join(cb->handle);
+    os_semaphore_destroy(cb->done);
     if (retval) {
         *retval = cb->retval;
     }
