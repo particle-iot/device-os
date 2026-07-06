@@ -45,15 +45,27 @@ process.on('SIGTERM', () => cleanupAllContainers());
 process.on('exit', () => cleanupAllContainers());
 
 function cleanupAllContainers() {
+    // Only remove containers created by THIS process. The container name
+    // ends with the PID (see the Tether constructor), so filtering by the
+    // PID-specific suffix avoids killing containers belonging to other
+    // concurrent test processes on the same host (parallel runs of
+    // tethering_usb + tethering_serial1, or b5som + msom simultaneously).
     try {
         const { execSync } = require('child_process');
+        const suffix = `-${process.pid}`;
         const out = execSync(
             `docker ps -a --filter "name=${CONTAINER_NAME_PREFIX}" -q`,
             { stdio: 'pipe' }
         ).toString().trim();
         if (!out) return;
         out.split('\n').filter(Boolean).forEach((id) => {
-            try { execSync(`docker rm -f ${id}`, { stdio: 'pipe' }); } catch (_) { /* best-effort */ }
+            // Inspect the name; only kill if it ends with this PID's suffix.
+            try {
+                const name = execSync(`docker inspect --format '{{.Name}}' ${id}`, { stdio: 'pipe' }).toString().trim().replace(/^\//, '');
+                if (name.endsWith(suffix)) {
+                    execSync(`docker rm -f ${id}`, { stdio: 'pipe' });
+                }
+            } catch (_) { /* best-effort */ }
         });
     } catch (_) { /* best-effort */ }
 }
