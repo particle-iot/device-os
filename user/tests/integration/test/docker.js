@@ -102,9 +102,83 @@ async function runContainer({ image, name, args = [], cmd = [], stream = false, 
     return spawnDocker(runArgs, { stream, timeoutMs });
 }
 
+/**
+ * Start a detached container (docker run -d). The container's entrypoint runs
+ * immediately; the JS fixture then drives commands via execContainer().
+ *
+ * Cleans up any lingering container with the same name before starting.
+ *
+ * @param {object} opts
+ * @param {string} opts.image Image ref to run.
+ * @param {string} opts.name Container name.
+ * @param {string[]} [opts.args=[]] Flags between `--name` and the image.
+ * @returns {Promise<string>} Container ID (trimmed stdout of `docker run -d`).
+ */
+async function startContainer({ image, name, args = [] }) {
+    await removeContainer(name);
+    const runArgs = ['run', '-d', '--name', name, ...args, image];
+    const result = await spawnDocker(runArgs);
+    if (result.code !== 0) {
+        throw new Error(`docker run -d failed (exit ${result.code}) for ${name}:\n${result.output}`);
+    }
+    return result.output.trim();
+}
+
+/**
+ * Exec a command inside a running container.
+ *
+ * `cmd` accepts either a plain string (passed to `bash -c` inside the
+ * container - convenient for one-liners and shell pipelines) or an array of
+ * arguments (passed directly to `docker exec`, no shell interpretation).
+ *
+ * @param {object} opts
+ * @param {string} opts.name Container name.
+ * @param {string|string[]} opts.cmd Command to run (string -> bash -c, array -> direct).
+ * @param {boolean} [opts.stream=false] Mirror container output live.
+ * @param {number} [opts.timeoutMs=0] SIGTERM the docker exec after this many ms.
+ * @returns {Promise<{ code: number|null, output: string, killed: boolean }>}
+ */
+async function execContainer({ name, cmd, stream = false, timeoutMs = 0 }) {
+    let execArgs;
+    if (typeof cmd === 'string') {
+        execArgs = ['exec', name, 'bash', '-c', cmd];
+    } else {
+        execArgs = ['exec', name, ...cmd];
+    }
+    const result = await spawnDocker(execArgs, { stream, timeoutMs });
+    return { code: result.code, output: result.output, killed: result.killed };
+}
+
+/**
+ * Stop and remove a container. Graceful SIGTERM with a 5s grace period,
+ * then SIGKILL, then force-remove. Safe to call on a non-existent container.
+ *
+ * @param {string} name Container name.
+ */
+async function stopContainer(name) {
+    await spawnDocker(['stop', '-t', '5', name]);
+    await removeContainer(name);
+}
+
+/**
+ * Fetch logs from a container (stdout+stderr). Useful for diagnostics before
+ * stopping a failed container.
+ *
+ * @param {string} name Container name.
+ * @returns {Promise<string>} Container log output.
+ */
+async function containerLogs(name) {
+    const result = await spawnDocker(['logs', name]);
+    return result.output;
+}
+
 module.exports = {
     spawnDocker,
     ensureImage,
     removeContainer,
-    runContainer
+    runContainer,
+    startContainer,
+    execContainer,
+    stopContainer,
+    containerLogs
 };
