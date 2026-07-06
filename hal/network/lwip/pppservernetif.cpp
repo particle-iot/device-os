@@ -412,7 +412,7 @@ int PppServerNetif::start() {
         client->setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
             // LOG(INFO, "output %u", size);
             auto c = (Stream*)ctx;
-            int r = c->writeAll((const char*)data, size, 1000);
+            int r = c->writeAll((const char*)data, size, 100);
             if (!r) {
                 return size;
             }
@@ -431,10 +431,6 @@ int PppServerNetif::start() {
 
 if_t PppServerNetif::interface() {
     return (if_t)client_.getIf();
-}
-
-void PppServerNetif::notifyInput(struct pbuf* p) {
-    client_.notifyDataActivity();
 }
 
 void PppServerNetif::loop(void* arg) {
