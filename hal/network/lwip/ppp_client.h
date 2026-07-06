@@ -99,7 +99,6 @@ public:
 
   bool notifyEvent(uint64_t ev, int data = ERROR_NONE);
   int input(const uint8_t* data, size_t size);
-  void notifyDataActivity();
 
   typedef int (*OutputCallback)(const uint8_t* data, size_t size, void* ctx);
   typedef int (*EnterDataModeCallback)(void* ctx);

@@ -65,7 +65,7 @@ constexpr const char* Client::stateNames_[];
 const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT = 5;
 const auto NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_R510 = 240; // 4 minutes (4.25 minutes max)
 const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT = 10;
-const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT_SERVER = 2;
+const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT_SERVER = 8;
 const auto NCP_CLIENT_LCP_ECHO_MAX_FAILS_R510 = 1;
 
 namespace {
@@ -170,6 +170,9 @@ void Client::init() {
       pcb_->settings.lcp_echo_interval = NCP_CLIENT_LCP_ECHO_INTERVAL_SECONDS_DEFAULT;
       pcb_->settings.lcp_echo_fails = NCP_CLIENT_LCP_ECHO_MAX_FAILS_DEFAULT_SERVER;
     }
+
+    // Always enable adaptive echo
+    pcb_->settings.lcp_echo_adaptive = 1;
 
     pppapi_set_notify_phase_callback(pcb_, &Client::notifyPhaseCb);
 
@@ -369,12 +372,6 @@ int Client::input(const uint8_t* data, size_t size) {
     }
   }
   return SYSTEM_ERROR_INVALID_STATE;
-}
-
-void Client::notifyDataActivity() {
-  if (pcb_) {
-    pcb_->lcp_echos_pending = 0;
-  }
 }
 
 void Client::setNotifyCallback(NotifyCallback cb, void* ctx) {
@@ -647,14 +644,16 @@ uint32_t Client::output(const uint8_t* data, size_t len) {
         return r;
       }
     }
-    return 0;
+    // Drop the frame but report it as written: a full TX queue is packet loss,
+    // not a link error, and PPP/upper layers handle loss.
+    return len;
   }
   memcpy(p->payload, data, len);
   p->len = len;
 
   if (os_queue_put(txQueue_, &p, 0, nullptr) != 0) {
     pbuf_free(p);
-    return 0;
+    return len;
   }
 
   bool expected = false;
@@ -693,8 +692,15 @@ void Client::notifyStatus(int err) {
       notifyEvent(EVENT_UP);
       break;
     }
+    case PPPERR_PEERDEAD: {
+      LOG(WARN, "PPP link failed: LCP echo timeout (peer dead)");
+      notifyEvent(EVENT_ERROR, err);
+      notifyEvent(EVENT_DOWN);
+      break;
+    }
     default: {
       /* Error connecting */
+      LOG(WARN, "PPP link failed: error %d", err);
       notifyEvent(EVENT_ERROR, err);
       notifyEvent(EVENT_DOWN);
       break;
