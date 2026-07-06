@@ -48,9 +48,6 @@ BaseNetif* BaseNetif::fromNetif(netif* iface) {
     return nullptr;
 }
 
-void BaseNetif::notifyInput(struct pbuf* p) {
-}
-
 void BaseNetif::registerHandlers() {
     LwipTcpIpCoreLock lk;
     particle::CallOnce(once_, []() {

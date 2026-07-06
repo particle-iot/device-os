@@ -61,8 +61,6 @@ public:
 
     void notifyPowerState(if_power_state_t state);
 
-    virtual void notifyInput(struct pbuf* p) override;
-
     int start();
 
 protected:
