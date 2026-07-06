@@ -78,10 +78,16 @@ class TxLock {
 public:
     TxLock(NRF_UARTE_Type* uarte)
             : uarte_(uarte) {
+        taskENTER_CRITICAL();
         nrf_uarte_int_disable(uarte, NRF_UARTE_INT_ENDTX_MASK);
+        __DSB();
+        __ISB();
     }
     ~TxLock() {
         nrf_uarte_int_enable(uarte_, NRF_UARTE_INT_ENDTX_MASK);
+        taskEXIT_CRITICAL();
+        __DSB();
+        __ISB();
     }
 
 private:
@@ -375,9 +381,8 @@ public:
         {
             TxLock lk(uarte_);
             r = CHECK(txBuffer_.put(buffer, writeSize));
+            startTransmission();
         }
-        // Start transmission
-        startTransmission();
         return r;
     }
 
@@ -573,11 +578,14 @@ private:
     void startTransmission() {
         size_t consumable;
         if (!transmitting_ && (consumable = txBuffer_.consumable())) {
-            transmitting_ = true;
             auto ptr = txBuffer_.consume(consumable);
 #ifdef DEBUG_BUILD
             SPARK_ASSERT(ptr);
 #endif // DEBUG_BUILD
+            if (!ptr) {
+                return;
+            }
+            transmitting_ = true;
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXDRDY);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_ENDTX);
             nrf_uarte_event_clear(uarte_, NRF_UARTE_EVENT_TXSTOPPED);
