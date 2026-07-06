@@ -110,29 +110,40 @@ void HAL_USB_USART_Init(HAL_USB_USART_Serial serial, const HAL_USB_USART_Config*
     if (serial != HAL_USB_USART_SERIAL) {
         return;
     }
-    if (getCdcClassDriver().isEnabled()) {
-        return;
+    const bool haveConfig = (config != nullptr &&
+            config->rx_buffer != nullptr && config->rx_buffer_size != 0 &&
+            config->tx_buffer != nullptr && config->tx_buffer_size != 0);
+
+    const bool reconfigure = getCdcClassDriver().isEnabled();
+    if (reconfigure) {
+        if (!haveConfig) {
+            return;
+        }
+        HAL_USB_Detach();
+        getCdcClassDriver().enable(false);
     }
-    // FIXME: figure out what's going on here
-    if (!config ||
-            (config->rx_buffer == nullptr ||
-             config->rx_buffer_size == 0 ||
-             config->tx_buffer == nullptr ||
-             config->tx_buffer_size == 0)) {
-        uint8_t* txBuffer = (uint8_t*)malloc(USB_TX_BUFFER_SIZE);
-        uint8_t* rxBuffer = (uint8_t*)malloc(USB_RX_BUFFER_SIZE);
-        if (txBuffer && rxBuffer) {
-            getCdcClassDriver().initBuffers(rxBuffer, USB_RX_BUFFER_SIZE, txBuffer, USB_TX_BUFFER_SIZE);
-        } else {
-            if (txBuffer) {
-                free(txBuffer);
-            }
-            if (rxBuffer) {
-                free(rxBuffer);
-            }
+
+    if (!haveConfig) {
+        // Reused across calls to avoid leaking on repeated default init (matches Gen 3).
+        static uint8_t* sTxBuffer = nullptr;
+        static uint8_t* sRxBuffer = nullptr;
+        if (!sTxBuffer) {
+            sTxBuffer = (uint8_t*)malloc(USB_TX_BUFFER_SIZE);
+        }
+        if (!sRxBuffer) {
+            sRxBuffer = (uint8_t*)malloc(USB_RX_BUFFER_SIZE);
+        }
+        if (sTxBuffer && sRxBuffer) {
+            getCdcClassDriver().initBuffers(sRxBuffer, USB_RX_BUFFER_SIZE, sTxBuffer, USB_TX_BUFFER_SIZE);
         }
     } else {
         getCdcClassDriver().initBuffers(config->rx_buffer, config->rx_buffer_size, config->tx_buffer, config->tx_buffer_size);
+    }
+
+    if (reconfigure) {
+        getCdcClassDriver().enable(true);
+        HAL_USB_Init();
+        HAL_USB_Attach();
     }
 }
 
