@@ -21,6 +21,15 @@
 #include <functional>
 
 #include "concurrent_hal.h"
+#include "inet_hal_compat.h"
+#include "system_defs.h"
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_NRF52840
+#define IPERF_SERVER_THREAD_STACK_SIZE (4 * 1024)
+#else
+#define IPERF_SERVER_THREAD_STACK_SIZE (8 * 1024)
+#endif
 
 struct iperf_test;
 
@@ -85,6 +94,59 @@ private:
     volatile bool running_ = false;
     volatile bool stop_ = false;
     uint16_t port_ = DEFAULT_PORT;
+};
+
+
+class IperfClient {
+public:
+    IperfClient();
+    ~IperfClient();
+
+    IperfClient(const IperfClient&) = delete;
+    IperfClient& operator=(const IperfClient&) = delete;
+
+    /**
+     * Runs one iperf3 client test against the given server. Blocks until the
+     * test completes or an error occurs.
+     *
+     * @param host Server hostname or IP.
+     * @param port Server port (default 5201).
+     * @return 0 on success, negative on error.
+     */
+    int run(const char* host, uint16_t port = IperfServer::DEFAULT_PORT);
+
+    IperfClient& udp(bool enabled = true);
+    IperfClient& reverse(bool enabled = true);
+    IperfClient& bitrate(int64_t bps);
+    IperfClient& time(int seconds);
+    IperfClient& jsonOutput(bool enabled);
+
+    /**
+     * Sets the network interface to use for determining the MTU for blksize
+     * calculation. If NETWORK_INTERFACE_ALL (default), the lowest MTU among
+     * all UP interfaces is used.
+     */
+    IperfClient& network(network_interface_t iface);
+
+    /**
+     * Sets the callback receiving the JSON results document after the test.
+     * The document is only valid for the duration of the call.
+     */
+    IperfClient& onResults(std::function<void(const char* json)> callback);
+
+    IperfClient& quiet(bool enabled = true);
+
+private:
+    int runImpl(const char* host, uint16_t port);
+
+    std::function<void(const char*)> resultsCallback_;
+    bool udp_ = false;
+    bool reverse_ = false;
+    int64_t bitrate_ = 0;
+    int time_ = 10;
+    bool jsonOutput_ = false;
+    bool quiet_ = false;
+    network_interface_t network_ = NETWORK_INTERFACE_ALL;
 };
 
 } // namespace particle
