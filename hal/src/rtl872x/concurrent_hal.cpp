@@ -189,7 +189,6 @@ os_result_t os_thread_join(os_thread_t thread)
             TaskHandle_t handle;
             bool found;
             eTaskState state;
-            char name[16];
         };
         FindCtx ctx = {};
         ctx.handle = handle;
@@ -199,7 +198,6 @@ os_result_t os_thread_join(os_thread_t thread)
             {
                 c->found = true;
                 c->state = status->eCurrentState;
-                strcpy(c->name, status->pcTaskName);
                 return 1;
             }
             return 0;
@@ -208,8 +206,6 @@ os_result_t os_thread_join(os_thread_t thread)
         uxTaskGetSystemStateParticle(&status, 1, nullptr, findCb, (void*)&ctx);
         if (ctx.found)
         {
-            auto idlePrio = uxTaskPriorityGet(xTaskGetIdleTaskHandle());
-            LOG(ERROR, "os_thread_join %08x state=%d idlePrio=%u name=%s", handle, ctx.state, (unsigned)idlePrio, ctx.name);
             HAL_Delay_Milliseconds(10);
         }
         else

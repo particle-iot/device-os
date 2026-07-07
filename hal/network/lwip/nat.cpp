@@ -420,6 +420,10 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
                             continue;
                         }
                         case 2: { // MSS (kind=2, len=4)
+                            if (o - opts + 4 > (int)optlen) {
+                                ex = true;
+                                break;
+                            }
                             uint16_t oldMss = lwip_ntohs(*(uint16_t*)(o + 2));
                             if (oldMss > NAT_TCP_MSS_CLAMP) {
                                 *(uint16_t*)(o + 2) = lwip_htons(NAT_TCP_MSS_CLAMP);
@@ -431,6 +435,10 @@ int Nat64::natInput(const ip_addr_t* src, const ip_addr_t* dst, L4Protocol proto
                             break;
                         }
                         default: {
+                            if (o - opts + 2 > (int)optlen) {
+                                ex = true;
+                                break;
+                            }
                             size_t len = o[1];
                             if (len == 0) { // malformed - avoid an infinite loop
                                 ex = true;

@@ -69,55 +69,39 @@ public:
     public:
         AtomicBlock(Usart* instance)
                 : uart_(instance) {
-            enabled_ = NVIC_GetEnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
-            NVIC_DisableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
+            uart_->lockIrq(uart_->uartIrq(), uart_->irqLockCounter_);
         }
         ~AtomicBlock() {
-            if (enabled_) {
-                NVIC_EnableIRQ(uart_->uartTable_[uart_->index_].IrqNum);
-            }
+            uart_->unlockIrq(uart_->uartIrq(), uart_->irqLockCounter_);
         }
     private:
         Usart* uart_;
-        bool enabled_;
     };
 
     class RxLock {
     public:
         RxLock(Usart* instance)
-                : uart_(instance),
-                  locked_(0) {
-            uart_->rxLock(true);
-            locked_++;
+                : uart_(instance) {
+            uart_->rxLock();
         }
         ~RxLock() {
-            locked_--;
-            if (locked_ == 0) {
-                uart_->rxLock(false);
-            }
+            uart_->rxUnlock();
         }
     private:
         Usart* uart_;
-        uint32_t locked_;
     };
 
     class TxLock {
     public:
         TxLock(Usart* instance)
-                : uart_(instance),
-                  locked_(0) {
-            uart_->txLock(true);
-            locked_++;
+                : uart_(instance) {
+            uart_->txLock();
         }
         ~TxLock() {
-            locked_--;
-            if (locked_ == 0) {
-                uart_->txLock(false);
-            }
+            uart_->txUnlock();
         }
     private:
         Usart* uart_;
-        uint32_t locked_;
     };
 
     bool isEnabled() const {
@@ -1007,41 +991,61 @@ private:
         HAL_enable_irq(st);
     }
 
-    void rxLock(bool lock) {
-        if (!useInterrupt()) {
-            if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
-                if (lock) {
-                    NVIC_DisableIRQ(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum));
-                } else {
-                    NVIC_EnableIRQ(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum));
-                }
-            }
-        } else {
-            if (lock) {
-                NVIC_DisableIRQ(uartTable_[index_].IrqNum);
-            } else {
-                NVIC_EnableIRQ(uartTable_[index_].IrqNum);
-            }
-        }
-        __ISB();
-        __DSB();
+    IRQn_Type uartIrq() const {
+        return uartTable_[index_].IrqNum;
     }
 
-    void txLock(bool lock) {
+    void lockIrq(IRQn_Type irq, volatile uint32_t& counter) {
+        particle::AtomicSection atomic;
+        if (counter++ == 0) {
+            NVIC_DisableIRQ(irq);
+        }
+    }
+
+    void unlockIrq(IRQn_Type irq, volatile uint32_t& counter) {
+        particle::AtomicSection atomic;
+        if (counter > 0 && --counter == 0) {
+            NVIC_EnableIRQ(irq);
+        }
+    }
+
+    void rxLock() {
         if (!useInterrupt()) {
-            if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
-                if (lock) {
-                    NVIC_DisableIRQ(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum));
-                } else {
-                    NVIC_EnableIRQ(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum));
-                }
+            if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                lockIrq(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum), irqLockCounter_);
             }
         } else {
-            if (lock) {
-                NVIC_DisableIRQ(uartTable_[index_].IrqNum);
-            } else {
-                NVIC_EnableIRQ(uartTable_[index_].IrqNum);
+            lockIrq(uartIrq(), irqLockCounter_);
+        }
+    }
+
+    void rxUnlock() {
+        if (!useInterrupt()) {
+            if (rxDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                unlockIrq(GDMA_GetIrqNum(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum), irqLockCounter_);
             }
+        } else {
+            unlockIrq(uartIrq(), irqLockCounter_);
+        }
+    }
+
+    void txLock() {
+        if (!useInterrupt()) {
+            if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                lockIrq(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum), txDmaIrqLockCounter_);
+            }
+        } else {
+            lockIrq(uartIrq(), irqLockCounter_);
+        }
+    }
+
+    void txUnlock() {
+        if (!useInterrupt()) {
+            if (txDmaInitStruct_.GDMA_ChNum != 0xFF) {
+                unlockIrq(GDMA_GetIrqNum(txDmaInitStruct_.GDMA_Index, txDmaInitStruct_.GDMA_ChNum), txDmaIrqLockCounter_);
+            }
+        } else {
+            unlockIrq(uartIrq(), irqLockCounter_);
         }
     }
 
@@ -1061,6 +1065,9 @@ private:
     particle::services::RingBuffer<uint8_t> rxBuffer_;
     volatile size_t curTxCount_;
     volatile uint32_t ierShadow_ = 0;
+
+    volatile uint32_t irqLockCounter_ = 0;
+    volatile uint32_t txDmaIrqLockCounter_ = 0;
 
     volatile hal_usart_state_t state_;
     volatile bool transmitting_;

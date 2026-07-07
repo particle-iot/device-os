@@ -200,6 +200,10 @@ void Client::deinit() {
       os_thread_cleanup(thread_);
       thread_ = nullptr;
     }
+    if (pcb_) {
+      pppapi_free(pcb_);
+      pcb_ = nullptr;
+    }
     if (queue_) {
       os_queue_destroy(queue_, nullptr);
       queue_ = nullptr;
@@ -213,10 +217,6 @@ void Client::deinit() {
       }
       os_queue_destroy(txQueue_, nullptr);
       txQueue_ = nullptr;
-    }
-    if (pcb_) {
-      pppapi_free(pcb_);
-      pcb_ = nullptr;
     }
     inited_ = false;
   }
