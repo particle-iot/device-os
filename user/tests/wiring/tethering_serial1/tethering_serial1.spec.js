@@ -2,7 +2,7 @@
 /* eslint no-undef: 'off' */
 
 const { Tether, loadRigConfig, rigEntryForDevice, adapterSerial } =
-    require('../../integration/test/tethering');
+    require('../../test/tethering');
 
 suite('Tethering Serial1');
 platform('b5som', 'msom');
