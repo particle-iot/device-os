@@ -1,5 +1,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
+#include "system_error.h"
 #include "socket_hal.h"
 
 struct UsartRingBuffer {
@@ -278,4 +279,51 @@ uint8_t hal_usart_break_detected(hal_usart_interface_t serial)
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 {
     return 0;
+}
+
+int hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    const uint8_t* p = (const uint8_t*)buffer;
+    for (size_t i = 0; i < size; i++) {
+        hal_usart_write(serial, p[i]);
+    }
+    return size;
+}
+
+int hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    uint8_t* p = (uint8_t*)buffer;
+    size_t n = 0;
+    while (n < size) {
+        int32_t c = hal_usart_read(serial);
+        if (c < 0) {
+            break;
+        }
+        p[n++] = (uint8_t)c;
+    }
+    return n;
+}
+
+int hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    uint8_t* p = (uint8_t*)buffer;
+    size_t n = 0;
+    while (n < size) {
+        int32_t c = hal_usart_peek(serial);
+        if (c < 0) {
+            break;
+        }
+        p[n++] = (uint8_t)c;
+    }
+    return n;
+}
+
+int hal_usart_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

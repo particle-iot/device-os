@@ -231,13 +231,6 @@ int32_t HAL_USB_USART_Receive_Data_protected(HAL_USB_USART_Serial serial, uint8_
     return HAL_USB_USART_Receive_Data(serial, peek);
 }
 
-static int32_t HAL_USB_USART_Receive_Data_Multiple(HAL_USB_USART_Serial serial, uint8_t* data, size_t size) {
-    if (serial != HAL_USB_USART_SERIAL) {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
-    }
-    return getCdcClassDriver().read(data, size);
-}
-
 static int32_t HAL_USB_USART_Send_Data_Multiple(HAL_USB_USART_Serial serial, const uint8_t* data, size_t size) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -385,7 +378,7 @@ int32_t HAL_USB_USART_Peek_Buffer(HAL_USB_USART_Serial serial, void* data, size_
     return getCdcClassDriver().peek((uint8_t*)data, size);
 }
 
-int32_t HAL_USB_USART_Wait_Event(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
+int HAL_USB_USART_Wait_Event(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
     if (serial != HAL_USB_USART_SERIAL) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
