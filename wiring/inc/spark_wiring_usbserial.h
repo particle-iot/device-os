@@ -52,10 +52,13 @@ public:
 	int peek();
 
 	virtual size_t write(uint8_t byte);
+	virtual size_t write(const uint8_t *buffer, size_t size);
 	virtual int read();
 	virtual int availableForWrite(void);
 	virtual int available();
 	virtual void flush();
+	virtual size_t readBytes(char *buffer, size_t length);
+	virtual int peek(char *buffer, size_t size);
 
 	virtual void blockOnOverrun(bool);
 

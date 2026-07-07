@@ -18,7 +18,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 #include "usb_hal.h"
+#include "usb_hal_private.h"
 #include "usb_hal_cdc.h"
 #include "usb_settings.h"
 #include <mutex>
@@ -130,6 +132,66 @@ int32_t HAL_USB_USART_Send_Data(HAL_USB_USART_Serial serial, uint8_t data) {
 int32_t HAL_USB_USART_Send_Data_protected(HAL_USB_USART_Serial serial, uint8_t data) {
     CHECK_SECURITY_MODE_PROTECTED();
     return HAL_USB_USART_Send_Data(serial, data);
+}
+
+int32_t HAL_USB_USART_Send_Buffer(HAL_USB_USART_Serial serial, const void* data, size_t size) {
+    if (serial != HAL_USB_USART_SERIAL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return hal_usb_cdc_pvt_send_data((const char*)data, size);
+}
+
+int32_t HAL_USB_USART_Receive_Buffer(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    if (serial != HAL_USB_USART_SERIAL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    return hal_usb_cdc_pvt_recv_data((char*)data, size);
+}
+
+int32_t HAL_USB_USART_Peek_Buffer(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    if (serial != HAL_USB_USART_SERIAL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    if (size == 0) {
+        return 0;
+    }
+    int32_t available = usb_uart_available_rx_data();
+    if (available <= 0) {
+        return 0;
+    }
+    size_t toPeek = std::min((size_t)available, size);
+    for (size_t i = 0; i < toPeek; i++) {
+        ((uint8_t*)data)[i] = usb_uart_peek_rx_data(i);
+    }
+    return toPeek;
+}
+
+int HAL_USB_USART_Wait_Event(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
+    if (serial != HAL_USB_USART_SERIAL) {
+        return SYSTEM_ERROR_INVALID_ARGUMENT;
+    }
+    (void)reserved;
+    return hal_usb_cdc_pvt_wait_event(events, timeout);
+}
+
+int32_t HAL_USB_USART_Send_Buffer_protected(HAL_USB_USART_Serial serial, const void* data, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Send_Buffer(serial, data, size);
+}
+
+int32_t HAL_USB_USART_Receive_Buffer_protected(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Receive_Buffer(serial, data, size);
+}
+
+int32_t HAL_USB_USART_Peek_Buffer_protected(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Peek_Buffer(serial, data, size);
+}
+
+int HAL_USB_USART_Wait_Event_protected(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
+    CHECK_SECURITY_MODE_PROTECTED();
+    return HAL_USB_USART_Wait_Event(serial, events, timeout, reserved);
 }
 
 void HAL_USB_USART_Flush_Data(HAL_USB_USART_Serial serial) {

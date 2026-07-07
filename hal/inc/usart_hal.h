@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include "platforms.h"
 #include "hal_platform.h"
+#include "system_tick_hal.h"
 
 /* Includes ------------------------------------------------------------------*/
 // #include "pinmap_hal.h"
@@ -163,11 +164,18 @@ void hal_usart_send_break(hal_usart_interface_t serial, void* reserved);
 uint8_t hal_usart_break_detected(hal_usart_interface_t serial);
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved);
 
-ssize_t hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize);
-ssize_t hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
-ssize_t hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
+int hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize);
+int hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
+int hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize);
 
 int hal_usart_get_features(hal_usart_interface_t serial, uint32_t* features, void* reserved);
+
+typedef enum hal_usart_event_t {
+    HAL_USART_EVENT_READABLE = 0x01,
+    HAL_USART_EVENT_WRITABLE = 0x02,
+} hal_usart_event_t;
+
+int hal_usart_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout, void* reserved);
 
 #ifdef __cplusplus
 }

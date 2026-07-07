@@ -30,6 +30,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 /* Exported types ------------------------------------------------------------*/
 
 /* Exported constants --------------------------------------------------------*/
@@ -37,6 +38,7 @@
 /* Exported macros ------------------------------------------------------------*/
 
 #include "usb_config_hal.h"
+#include "system_tick_hal.h"
 
 #ifdef USE_STDPERIPH_DRIVER
 // this is one way to determine if the platform module is being used or not
@@ -214,6 +216,17 @@ SECURITY_MODE_PROTECTED_FN(void, HAL_USB_USART_Flush_Data, (HAL_USB_USART_Serial
 bool HAL_USB_USART_Is_Enabled(HAL_USB_USART_Serial serial);
 bool HAL_USB_USART_Is_Connected(HAL_USB_USART_Serial serial);
 int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate), void* reserved);
+
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Send_Buffer, (HAL_USB_USART_Serial serial, const void* data, size_t size));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Receive_Buffer, (HAL_USB_USART_Serial serial, void* data, size_t size));
+SECURITY_MODE_PROTECTED_FN(int32_t, HAL_USB_USART_Peek_Buffer, (HAL_USB_USART_Serial serial, void* data, size_t size));
+
+typedef enum HAL_USB_USART_Event {
+    HAL_USB_USART_EVENT_READABLE = 0x01,
+    HAL_USB_USART_EVENT_WRITABLE = 0x02,
+} HAL_USB_USART_Event;
+
+SECURITY_MODE_PROTECTED_FN(int, HAL_USB_USART_Wait_Event, (HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved));
 #endif
 
 #ifdef USB_HID_ENABLE

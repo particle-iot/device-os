@@ -81,6 +81,10 @@ DYNALIB_FN(BASE_IDX2 + 3, hal_usart, hal_usart_break_detected, uint8_t(hal_usart
 DYNALIB_FN(BASE_IDX2 + 4, hal_usart, hal_usart_sleep, int(hal_usart_interface_t serial, bool, void*))
 DYNALIB_FN(BASE_IDX2 + 5, hal_usart, hal_usart_init_ex, int(hal_usart_interface_t, const hal_usart_buffer_config_t*, void*))
 DYNALIB_FN(BASE_IDX2 + 6, hal_usart, hal_usart_get_features, int(hal_usart_interface_t, uint32_t*, void*))
+DYNALIB_FN(BASE_IDX2 + 7, hal_usart, hal_usart_write_buffer, int(hal_usart_interface_t, const void*, size_t, size_t))
+DYNALIB_FN(BASE_IDX2 + 8, hal_usart, hal_usart_read_buffer, int(hal_usart_interface_t, void*, size_t, size_t))
+DYNALIB_FN(BASE_IDX2 + 9, hal_usart, hal_usart_peek_buffer, int(hal_usart_interface_t, void*, size_t, size_t))
+DYNALIB_FN(BASE_IDX2 + 10, hal_usart, hal_usart_wait_event, int(hal_usart_interface_t, uint32_t, system_tick_t, void*))
 
 DYNALIB_END(hal_usart)
 
