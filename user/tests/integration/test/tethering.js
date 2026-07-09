@@ -180,6 +180,7 @@ class Tether {
         await docker.ensureImage(this.imageRef);
         await docker.startContainer({ image: this.imageRef, name: this.name, args: this.containerArgs });
         await this.ensurePppDevice();
+        await this.ensureDevTtyNodes();
         await poll(
             async () => {
                 const r = await this.tryExec('mmcli -L >/dev/null 2>&1 && nmcli general status >/dev/null 2>&1');
@@ -187,6 +188,12 @@ class Tether {
             },
             30000, 2000, 'MM/NM D-Bus readiness'
         );
+    }
+
+    async ensureDevTtyNodes() {
+        await this.exec('mount -t devtmpfs devtmpfs /dev 2>/dev/null || true');
+        await this.exec('udevadm trigger --action=add --subsystem-match=tty 2>/dev/null || true');
+        await this.exec('udevadm settle --timeout=5 2>/dev/null || true');
     }
 
     /** Resolve /dev/ttyACM* by USB serial. */
