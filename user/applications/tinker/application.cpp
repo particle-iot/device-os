@@ -84,7 +84,9 @@ const PinMapping g_pinmap[] = {
 #  else
 #  error Unsupported HAL_PLATFORM_RTL872X platform
 #  endif
-#else // HAL_PLATFORM_RTL872X
+#elif PLATFORM_ID == PLATFORM_GCC
+// Ok
+#else
 # error Unsupported platform
 #endif // HAL_PLATFORM_NRF52840
 };
