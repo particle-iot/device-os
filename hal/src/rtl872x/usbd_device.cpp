@@ -184,6 +184,16 @@ int Device::flushEndpoint(unsigned ep) {
     return driver_->flushEndpoint(ep);
 }
 
+int Device::endpointTransferComplete(unsigned ep) {
+    CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
+    return driver_->endpointTransferComplete(ep);
+}
+
+int Device::endpointTransferRemaining(unsigned ep) {
+    CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
+    return driver_->endpointTransferRemaining(ep);
+}
+
 int Device::stallEndpoint(unsigned ep) {
     CHECK_TRUE(driver_, SYSTEM_ERROR_INVALID_STATE);
     return driver_->stallEndpoint(ep);

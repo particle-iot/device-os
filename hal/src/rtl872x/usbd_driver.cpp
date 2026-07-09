@@ -349,6 +349,20 @@ int RtlUsbDriver::setEndpointStatus(unsigned ep, EndpointStatus status) {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
+int RtlUsbDriver::endpointTransferComplete(unsigned ep) {
+    if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
+        return (USB_INEP(ep & 0x7f)->DIEPINT & USB_OTG_DIEPINT_XFRC) ? 1 : 0;
+    }
+    return (USB_OUTEP(ep & 0x7f)->DOEPINT & USB_OTG_DOEPINT_XFRC) ? 1 : 0;
+}
+
+int RtlUsbDriver::endpointTransferRemaining(unsigned ep) {
+    if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
+        return USB_INEP(ep & 0x7f)->DIEPTSIZ & USB_OTG_DIEPTSIZ_XFRSIZ;
+    }
+    return USB_OUTEP(ep & 0x7f)->DOEPTSIZ & USB_OTG_DOEPTSIZ_XFRSIZ;
+}
+
 int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
     SPARK_ASSERT(rtlDev_);
     auto self = instance();

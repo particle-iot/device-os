@@ -26,6 +26,7 @@
 #include "timer_hal.h"
 #include "service_debug.h"
 #include "system_error.h"
+#include <algorithm>
 #if HAL_PLATFORM_NRF52840
 #include "usb_hal_cdc.h"
 #endif
@@ -116,8 +117,18 @@ int SerialUSBStream::write(const char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    
-    return hal_usb_cdc_pvt_send_data(data, size);
+
+    int32_t available = HAL_USB_USART_Available_Data_For_Write(serial_);
+    if (available <= 0) {
+        return 0;
+    }
+
+    size_t writeSize = std::min((size_t)available, size);
+    auto r = hal_usb_cdc_pvt_send_data(data, writeSize);
+    if (r < 0) {
+        return r;
+    }
+    return r;
 }
 
 int SerialUSBStream::flush() {

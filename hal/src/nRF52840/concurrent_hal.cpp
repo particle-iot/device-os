@@ -178,9 +178,38 @@ bool os_thread_current_within_stack()
  */
 os_result_t os_thread_join(os_thread_t thread)
 {
-    while (eTaskGetState(static_cast<TaskHandle_t>(thread)) != eDeleted)
+    // FIXME: this is just a workaround and not a proper solution
+    // It avoids dereferencing potentially already freed task handle
+    auto handle = static_cast<TaskHandle_t>(thread);
+    for (;;)
     {
-        HAL_Delay_Milliseconds(10);
+        struct FindCtx {
+            TaskHandle_t handle;
+            bool found;
+            eTaskState state;
+        };
+        FindCtx ctx = {};
+        ctx.handle = handle;
+        auto findCb = [](TaskStatus_t* const status, void* opaque) -> BaseType_t {
+            auto* c = static_cast<FindCtx*>(opaque);
+            if (status->xHandle == c->handle)
+            {
+                c->found = true;
+                c->state = status->eCurrentState;
+                return 1;
+            }
+            return 0;
+        };
+        TaskStatus_t status = {};
+        uxTaskGetSystemStateParticle(&status, 1, nullptr, findCb, (void*)&ctx);
+        if (ctx.found)
+        {
+            HAL_Delay_Milliseconds(10);
+        }
+        else
+        {
+            break;
+        }
     }
     return 0;
 }

@@ -69,9 +69,12 @@ namespace {
 
 enum PppServerNetifEvent {
     PPP_SERVER_NETIF_EVENT_EXIT = 0x01 << __builtin_ffs(HAL_USART_PVT_EVENT_MAX),
+    PPP_SERVER_NETIF_EVENT_RESUME = 0x02 << __builtin_ffs(HAL_USART_PVT_EVENT_MAX),
 };
 
 constexpr auto DEFAULT_SERIAL_BUFFER_SIZE = 4096;
+
+constexpr size_t PPP_SERVER_RX_BYTES_PER_ITERATION = PBUF_POOL_BUFSIZE * 2;
 
 constexpr auto SIM_FILE_ID_ICCID = 12258;
 
@@ -171,6 +174,11 @@ int PppServerNetif::start() {
     if (settings_.serial != IF_REQ_INVALID_SERIAL_INTERFACE) {
         auto serial = std::make_unique<SerialStream>((hal_usart_interface_t)settings_.serial, (uint32_t)settings_.baud, (uint32_t)settings_.config, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial);
+        if (serial->config() & SERIAL_FLOW_CONTROL_RTS_CTS) {
+            flowControl_ = true;
+        } else {
+            flowControl_ = false;
+        }
         serial_ = std::move(serial);
     } 
 #if HAL_PLATFORM_PPP_SERVER_USB
@@ -178,6 +186,7 @@ int PppServerNetif::start() {
         auto serial = std::make_unique<SerialUSBStream>((HAL_USB_USART_Serial)settings_.usbserial, (uint32_t)settings_.baud, DEFAULT_SERIAL_BUFFER_SIZE, DEFAULT_SERIAL_BUFFER_SIZE);
         SPARK_ASSERT(serial)
         serial_ = std::move(serial);
+        flowControl_ = true;
     }
 #endif
     else {
@@ -330,9 +339,11 @@ int PppServerNetif::start() {
             CHECK_TRUE(request->scanf("%d,%d", &v[0], &v[1]) == 2, SYSTEM_ERROR_INVALID_ARGUMENT);
             if (v[0] == 2 || v[1] == 2) {
                 auto c = stream->config() | SERIAL_FLOW_CONTROL_RTS_CTS;
+                self->flowControl_ = true;
                 return stream->setConfig(c);
             } else if (v[0] == 0 || v[1] == 0) {
                 auto c = stream->config() & (~SERIAL_FLOW_CONTROL_RTS_CTS);
+                self->flowControl_ = false;
                 return stream->setConfig(c);
             }
         } 
@@ -401,7 +412,7 @@ int PppServerNetif::start() {
         client->setOutputCallback([](const uint8_t* data, size_t size, void* ctx) -> int {
             // LOG(INFO, "output %u", size);
             auto c = (Stream*)ctx;
-            int r = c->writeAll((const char*)data, size, 1000);
+            int r = c->writeAll((const char*)data, size, 100);
             if (!r) {
                 return size;
             }
@@ -424,7 +435,14 @@ if_t PppServerNetif::interface() {
 
 void PppServerNetif::loop(void* arg) {
     PppServerNetif* self = static_cast<PppServerNetif*>(arg);
+
+    uint32_t waitEvents = SerialStream::READABLE | PPP_SERVER_NETIF_EVENT_EXIT | PPP_SERVER_NETIF_EVENT_RESUME;
+    constexpr system_tick_t DEFAULT_TIMEOUT = 1000;
+    constexpr system_tick_t DEFAULT_FLOW_CONTROL_TIMEOUT = 100;
+    system_tick_t fcTimeout = DEFAULT_FLOW_CONTROL_TIMEOUT;
+
     while(!self->exit_) {
+
         auto ev = self->serial_->waitEvent(PPP_SERVER_NETIF_EVENT_EXIT, 0);
         if (ev & PPP_SERVER_NETIF_EVENT_EXIT) {
             break;
@@ -432,19 +450,40 @@ void PppServerNetif::loop(void* arg) {
         if (!self->server_->suspended()) {
             self->server_->process();
         } else {
-            auto ev = self->serial_->waitEvent(SerialStream::READABLE | PPP_SERVER_NETIF_EVENT_EXIT, 1000);
+            auto ev = self->serial_->waitEvent(waitEvents, self->inFlowControl_ ? fcTimeout : DEFAULT_TIMEOUT);
             if (ev & PPP_SERVER_NETIF_EVENT_EXIT) {
                 break;
             }
 
+            if ((ev & PPP_SERVER_NETIF_EVENT_RESUME) || self->inFlowControl_) {
+                fcTimeout = (ev & PPP_SERVER_NETIF_EVENT_RESUME) ? DEFAULT_FLOW_CONTROL_TIMEOUT : DEFAULT_TIMEOUT;
+                self->inFlowControl_ = false;
+                waitEvents |= SerialStream::READABLE;
+                ev |= SerialStream::READABLE;
+            }
+
             if (ev & SerialStream::READABLE) {
                 char tmp[256] = {};
+                size_t processed = 0;
                 while (self->serial_->availForRead() > 0) {
                     int sz = self->serial_->read(tmp, sizeof(tmp));
-                    // LOG(INFO, "input %d", sz);
+                    if (sz <= 0) {
+                        break;
+                    }
                     auto r = self->client_.input((const uint8_t*)tmp, sz);
-                    (void)r;
-                    // LOG(INFO, "input result = %d", r);
+                    if (r == SYSTEM_ERROR_NO_MEMORY && self->flowControl_) {
+                        self->inFlowControl_ = true;
+                        fcTimeout = DEFAULT_FLOW_CONTROL_TIMEOUT;
+                        waitEvents &= ~(SerialStream::READABLE);
+                        break;
+                    }
+                    processed += sz;
+                    if (processed >= PPP_SERVER_RX_BYTES_PER_ITERATION) {
+                        break;
+                    }
+                }
+                if (processed > 0) {
+                    HAL_Delay_Milliseconds(1);
                 }
             }
         }
@@ -564,7 +603,12 @@ void PppServerNetif::pppEventHandler(uint64_t ev, int data) {
 }
 
 void PppServerNetif::mempEventHandler(memp_t type, unsigned available, unsigned size, void* ctx) {
-    //
+    PppServerNetif* self = static_cast<PppServerNetif*>(ctx);
+    if (available > HAL_PLATFORM_PACKET_BUFFER_FLOW_CONTROL_THRESHOLD && self->inFlowControl_) {
+        if (self->thread_ && self->serial_) {
+            xEventGroupSetBits(self->serial_->eventGroup(), PPP_SERVER_NETIF_EVENT_RESUME);
+        }
+    }
 }
 
 int PppServerNetif::request(if_req_driver_specific* req, size_t size) {

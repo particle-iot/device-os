@@ -1381,7 +1381,7 @@ void sys_unlock_tcpip_core(void);
 /**
  * LWIP_SO_LINGER==1: Enable SO_LINGER processing.
  */
-#define LWIP_SO_LINGER                  0
+#define LWIP_SO_LINGER                  1
 
 /**
  * If LWIP_SO_RCVBUF is used, this is the default value for recv_bufsize.

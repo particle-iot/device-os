@@ -112,7 +112,7 @@
  *
  * Please read the "PPPoS input path" chapter in the PPP documentation about this option.
  */
-#define PPP_INPROC_IRQ_SAFE             1
+#define PPP_INPROC_IRQ_SAFE             0
 
 /**
  * PRINTPKT_SUPPORT==1: Enable PPP print packet support
@@ -442,6 +442,8 @@
  * MAXSECRETLEN: max length of password or secret
  */
 #define MAXSECRETLEN                    256
+
+#define PPP_LCP_ADAPTIVE                1
 
 /* ------------------------------------------------------------------------- */
 

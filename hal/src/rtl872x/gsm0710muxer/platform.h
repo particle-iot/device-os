@@ -56,6 +56,8 @@ const auto taskPriority = OS_THREAD_PRIORITY_NETWORK;
 
 #define GSM0710_RELAX_WHEN_CHANNEL_IN_FLOW_CONTROL (15)
 
+#define GSM0710_COOP_YIELD_MS (4)
+
 template <typename T>
 using unique_lock = ::particle::UniqueLock<T>;
 

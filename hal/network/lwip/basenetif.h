@@ -34,6 +34,7 @@ public:
     virtual if_t interface();
 
     static int getClientDataId();
+    static BaseNetif* fromNetif(netif* iface);
 
     virtual int powerUp() = 0;
     virtual int powerDown() = 0;

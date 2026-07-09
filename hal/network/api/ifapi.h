@@ -123,7 +123,7 @@ struct if_addrs {
 };
 
 struct if_list {
-    if_list* next;
+    struct if_list* next;
     if_t iface;
     void* data;
 };

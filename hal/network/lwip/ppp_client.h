@@ -64,7 +64,8 @@ public:
     EVENT_ADM_DOWN    = 0x06,
     EVENT_ERROR       = 0x07,
     EVENT_CONNECTING  = 0x08,
-    EVENT_MAX         = 0x09
+    EVENT_TX_DATA     = 0x09,
+    EVENT_MAX         = 0x0a
   };
 
   enum Error {
@@ -124,7 +125,9 @@ private:
     "DOWN",
     "ADM_UP",
     "ADM_DOWN",
-    "ERROR"
+    "ERROR",
+    "CONNECTING",
+    "TX_DATA"
   };
 
   static constexpr const char* stateNames_[] = {
@@ -187,6 +190,8 @@ private:
   os_thread_t thread_ = nullptr;
   StaticMutex mutex_;
   os_queue_t queue_ = nullptr;
+  os_queue_t txQueue_ = nullptr;
+  std::atomic_bool txWakePending_ = {};
 
   NotifyCallback cb_ = nullptr;
   void* cbCtx_ = nullptr;

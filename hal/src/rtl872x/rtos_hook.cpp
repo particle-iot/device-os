@@ -20,14 +20,7 @@
 #include "service_debug.h"
 #include "hal_event.h"
 #include "concurrent_hal.h"
-#include <atomic>
 #include "rng_hal.h"
-
-namespace {
-
-std::atomic_bool sRestoreIdleThreadPriority(false);
-
-} // anonymous
 
 extern "C" {
 
@@ -103,8 +96,6 @@ void vApplicationTaskDeleteHook(void* pvTaskToDelete, volatile BaseType_t* pxPen
 
     // NOTE: this hook is executed within a critical section
 
-    sRestoreIdleThreadPriority = true;
-
     // Temporarily raise IDLE thread priority to (configMAX_PRIORITIES - 1) (maximum)
     // to give it some processing time to clean up the deleted task resources.
     vTaskPrioritySet(xTaskGetIdleTaskHandle(), configMAX_PRIORITIES - 1);
@@ -114,10 +105,15 @@ void vApplicationTaskDeleteHook(void* pvTaskToDelete, volatile BaseType_t* pxPen
 }
 
 void vApplicationIdleHook(void) {
-    if (sRestoreIdleThreadPriority.exchange(false)) {
+    if (uxTaskPriorityGet(nullptr) == tskIDLE_PRIORITY) {
+        return;
+    }
+    taskENTER_CRITICAL();
+    if (uxTaskGetNumberOfTasksWaitingTermination() == 0) {
         // Restore IDLE thread priority back to the default one
         vTaskPrioritySet(nullptr, tskIDLE_PRIORITY);
     }
+    taskEXIT_CRITICAL();
 }
 
 #if defined(configENABLE_HEAP_PROTECTOR) && configENABLE_HEAP_PROTECTOR == 1

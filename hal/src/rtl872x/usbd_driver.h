@@ -60,6 +60,8 @@ public:
     virtual int clearStallEndpoint(unsigned ep) override;
     virtual EndpointStatus getEndpointStatus(unsigned ep) override;
     virtual int setEndpointStatus(unsigned ep, EndpointStatus status) override;
+    virtual int endpointTransferComplete(unsigned ep) override;
+    virtual int endpointTransferRemaining(unsigned ep) override;
 
     virtual int transferIn(unsigned ep, const uint8_t* ptr, size_t size) override;
     virtual int transferOut(unsigned ep, uint8_t* ptr, size_t size) override;

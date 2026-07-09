@@ -53,3 +53,7 @@
 [submodule "proto_defs/shared"]
 	path = proto_defs/shared
 	url = https://github.com/particle-iot/device-os-protobuf.git
+[submodule "third_party/libiperf/libiperf"]
+	path = third_party/libiperf/libiperf
+	url = https://github.com/particle-iot/iperf.git
+	branch = particle
