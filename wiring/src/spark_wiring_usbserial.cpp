@@ -120,7 +120,7 @@ size_t USBSerial::write(const uint8_t *buffer, size_t size)
     if (!_blocking) {
       break;
     }
-    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_WRITABLE, 0, nullptr) < 0) {
+    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_WRITABLE, 100, nullptr) < 0) {
       break;
     }
   }
@@ -145,7 +145,7 @@ size_t USBSerial::readBytes(char *buffer, size_t length)
     if (_timeout == 0) {
       break;
     }
-    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_READABLE, _timeout, nullptr) < 0) {
+    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_READABLE, _timeout, nullptr) <= 0) {
       break;
     }
   }

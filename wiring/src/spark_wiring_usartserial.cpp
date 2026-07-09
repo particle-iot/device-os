@@ -125,7 +125,7 @@ size_t USARTSerial::write(const uint8_t *buffer, size_t size)
     if (!_blocking) {
       break;
     }
-    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_WRITABLE, 0, nullptr) < 0) {
+    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_WRITABLE, 100, nullptr) < 0) {
       break;
     }
   }
@@ -150,7 +150,7 @@ size_t USARTSerial::readBytes(char *buffer, size_t length)
     if (_timeout == 0) {
       break;
     }
-    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_READABLE, _timeout, nullptr) < 0) {
+    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_READABLE, _timeout, nullptr) <= 0) {
       break;
     }
   }

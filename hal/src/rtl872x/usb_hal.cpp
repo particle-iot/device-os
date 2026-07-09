@@ -350,8 +350,17 @@ int32_t HAL_USB_USART_Send_Buffer(HAL_USB_USART_Serial serial, const void* data,
     if (size == 0) {
         return 0;
     }
+    if ((__get_PRIMASK() & 1) || (__get_BASEPRI() != 0)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (!HAL_USB_USART_Is_Connected(serial)) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
     int32_t available = HAL_USB_USART_Available_Data_For_Write(serial);
-    if (available <= 0 || !HAL_USB_USART_Is_Connected(serial)) {
+    if (available < 0) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    if (available == 0) {
         return 0;
     }
     size_t writeSize = std::min((size_t)available, size);

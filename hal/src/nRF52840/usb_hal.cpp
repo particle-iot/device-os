@@ -155,15 +155,7 @@ int32_t HAL_USB_USART_Peek_Buffer(HAL_USB_USART_Serial serial, void* data, size_
     if (size == 0) {
         return 0;
     }
-    int32_t available = usb_uart_available_rx_data();
-    if (available <= 0) {
-        return 0;
-    }
-    size_t toPeek = std::min((size_t)available, size);
-    for (size_t i = 0; i < toPeek; i++) {
-        ((uint8_t*)data)[i] = usb_uart_peek_rx_data(i);
-    }
-    return toPeek;
+    return usb_uart_peek_rx_buffer((uint8_t*)data, size);
 }
 
 int HAL_USB_USART_Wait_Event(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
