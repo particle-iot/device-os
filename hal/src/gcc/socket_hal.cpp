@@ -296,6 +296,14 @@ sock_result_t socket_receive(sock_handle_t sd, void* buffer, socklen_t len, syst
     return result;
 }
 
+sock_result_t socket_native_fd(sock_handle_t sd)
+{
+    auto& handle = tcp_from(sd);
+    if (!is_valid(handle))
+        return -1;
+    return handle.native_handle();
+}
+
 sock_result_t socket_send(sock_handle_t sd, const void* buffer, socklen_t len)
 {
     auto& socket = tcp_from(sd);
