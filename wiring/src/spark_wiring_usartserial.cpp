@@ -27,6 +27,7 @@
 #include "spark_wiring_usartserial.h"
 #include "spark_wiring_constants.h"
 #include "module_info.h"
+#include "system_error.h"
 #include <algorithm>
 
 // Constructors ////////////////////////////////////////////////////////////////
@@ -104,6 +105,64 @@ size_t USARTSerial::write(uint8_t c)
 size_t USARTSerial::write(uint16_t c)
 {
   return hal_usart_write_nine_bits(_serial, c);
+}
+
+size_t USARTSerial::write(const uint8_t *buffer, size_t size)
+{
+  if (size == 0) {
+    return 0;
+  }
+  size_t written = 0;
+  while (written < size) {
+    auto r = hal_usart_write_buffer(_serial, buffer + written, size - written, sizeof(char));
+    if (r > 0) {
+      written += r;
+      continue;
+    }
+    if (r < 0 && r != SYSTEM_ERROR_NO_MEMORY) {
+      break;
+    }
+    if (!_blocking) {
+      break;
+    }
+    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_WRITABLE, 100, nullptr) < 0) {
+      break;
+    }
+  }
+  return written;
+}
+
+size_t USARTSerial::readBytes(char *buffer, size_t length)
+{
+  if (length == 0) {
+    return 0;
+  }
+  size_t total = 0;
+  while (total < length) {
+    auto r = hal_usart_read_buffer(_serial, buffer + total, length - total, sizeof(char));
+    if (r > 0) {
+      total += r;
+      continue;
+    }
+    if (r < 0 && r != SYSTEM_ERROR_NO_MEMORY) {
+      break;
+    }
+    if (_timeout == 0) {
+      break;
+    }
+    if (hal_usart_wait_event(_serial, HAL_USART_EVENT_READABLE, _timeout, nullptr) <= 0) {
+      break;
+    }
+  }
+  return total;
+}
+
+int USARTSerial::peek(char *buffer, size_t size)
+{
+  if (size == 0) {
+    return 0;
+  }
+  return hal_usart_peek_buffer(_serial, buffer, size, sizeof(char));
 }
 
 USARTSerial::operator bool() {

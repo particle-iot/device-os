@@ -83,7 +83,7 @@ int SerialUSBStream::read(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    
+
     return hal_usb_cdc_pvt_recv_data(data, size);
 }
 
@@ -93,17 +93,8 @@ int SerialUSBStream::peek(char* data, size_t size) {
     }
     if (size == 0) {
         return 0;
-    } else if (size > 1) {
-        // Only support peeking first byte
-        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
-
-    auto r = HAL_USB_USART_Receive_Data(serial_, 1);
-    if (r >= 0) {
-        *data = r;
-    }
-
-    return r;
+    return HAL_USB_USART_Peek_Buffer(serial_, data, size);
 }
 
 int SerialUSBStream::skip(size_t size) {

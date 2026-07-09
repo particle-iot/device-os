@@ -679,6 +679,24 @@ uint8_t usb_uart_peek_rx_data(uint8_t index) {
     return data;
 }
 
+int usb_uart_peek_rx_buffer(uint8_t* buffer, size_t size) {
+    if (usb_cdc_copy_from_rx_buffer()) {
+        m_usb_instance.rx_data_size = 0;
+        m_usb_instance.rx_done = false;
+    }
+
+    size_t available = FIFO_LENGTH(&m_usb_instance.rx_fifo);
+    if (size > available) {
+        size = available;
+    }
+    for (size_t i = 0; i < size; i++) {
+        if (app_fifo_peek(&m_usb_instance.rx_fifo, (uint16_t)i, &buffer[i])) {
+            return i;
+        }
+    }
+    return size;
+}
+
 void usb_uart_flush_rx_data(void) {
     app_fifo_flush(&m_usb_instance.rx_fifo);
 }

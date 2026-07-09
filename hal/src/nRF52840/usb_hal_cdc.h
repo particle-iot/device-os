@@ -2,6 +2,7 @@
 #define  _USB_HAL_CDC_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include "usb_hal.h"
 
 #ifdef __cplusplus
@@ -23,6 +24,7 @@ void usb_hal_detach(void);
 int usb_uart_available_rx_data(void);
 uint8_t usb_uart_get_rx_data(void);
 uint8_t usb_uart_peek_rx_data(uint8_t index);
+int usb_uart_peek_rx_buffer(uint8_t* buffer, size_t size);
 void usb_uart_flush_rx_data(void);
 void usb_uart_flush_tx_data(void);
 int usb_uart_available_tx_data(void);

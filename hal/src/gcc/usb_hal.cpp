@@ -25,6 +25,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_hal.h"
+#include "system_error.h"
 #include <stdint.h>
 #include <iostream>
 #include <stdio.h>
@@ -209,6 +210,65 @@ void USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRate))
 int32_t USB_USART_Flush_Output(unsigned timeout, void* reserved)
 {
     return 0;
+}
+
+int32_t HAL_USB_USART_Send_Buffer(HAL_USB_USART_Serial serial, const void* data, size_t size) {
+    const uint8_t* p = (const uint8_t*)data;
+    for (size_t i = 0; i < size; i++) {
+        HAL_USB_USART_Send_Data(serial, p[i]);
+    }
+    return size;
+}
+
+int32_t HAL_USB_USART_Receive_Buffer(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    uint8_t* p = (uint8_t*)data;
+    size_t n = 0;
+    while (n < size) {
+        int32_t c = HAL_USB_USART_Receive_Data(serial, false);
+        if (c < 0) {
+            break;
+        }
+        p[n++] = (uint8_t)c;
+    }
+    return n;
+}
+
+int32_t HAL_USB_USART_Peek_Buffer(HAL_USB_USART_Serial serial, void* data, size_t size) {
+    if (size == 0) {
+        return 0;
+    }
+    int32_t c = HAL_USB_USART_Receive_Data(serial, true);
+    if (c < 0) {
+        return 0;
+    }
+    *(uint8_t*)data = (uint8_t)c;
+    return 1;
+}
+
+int HAL_USB_USART_Wait_Event(HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved) {
+    if (!events) {
+        return 0;
+    }
+    uint32_t res = 0;
+    if (events & HAL_USB_USART_EVENT_WRITABLE) {
+        res |= HAL_USB_USART_EVENT_WRITABLE;
+    }
+    if (events & HAL_USB_USART_EVENT_READABLE) {
+        if (last >= 0) {
+            res |= HAL_USB_USART_EVENT_READABLE;
+        } else {
+            struct pollfd stdin_poll = {
+                .fd = STDIN_FILENO,
+                .events = POLLIN | POLLRDBAND | POLLRDNORM | POLLPRI,
+                .revents = 0
+            };
+            int pollTimeout = timeout > (system_tick_t)INT32_MAX ? -1 : (int)timeout;
+            if (poll(&stdin_poll, 1, res ? 0 : pollTimeout) > 0) {
+                res |= HAL_USB_USART_EVENT_READABLE;
+            }
+        }
+    }
+    return res;
 }
 
 #ifdef USB_VENDOR_REQUEST_ENABLE

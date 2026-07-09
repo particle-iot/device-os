@@ -1,6 +1,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usart_hal.h"
+#include "system_error.h"
 #include "socket_hal.h"
+#include <sys/poll.h>
+#include <stdint.h>
+
+sock_result_t socket_native_fd(sock_handle_t sd);
 
 struct UsartRingBuffer {
     uint8_t* buffer;
@@ -17,6 +22,8 @@ struct Usart {
     virtual int32_t availableForWrite()=0;
     virtual int32_t read()=0;
     virtual int32_t peek()=0;
+    virtual int32_t peekAt(uint16_t offset)=0;
+    virtual sock_handle_t socketHandle()=0;
     virtual uint32_t write(uint8_t byte)=0;
     virtual void flush()=0;
 
@@ -106,6 +113,16 @@ class SocketUsartBase : public Usart
         virtual int32_t peek() override {
             fillFromSocketIfNeeded();
             return read_char(true);
+        }
+        virtual int32_t peekAt(uint16_t offset) override {
+            fillFromSocketIfNeeded();
+            if (((rx.size + rx.head - rx.tail) % rx.size) <= offset) {
+                return -1;
+            }
+            return rx.buffer[(rx.tail + offset) % rx.size];
+        }
+        virtual sock_handle_t socketHandle() override {
+            return socket;
         }
         virtual uint32_t write(uint8_t byte) override {
             if (!initSocket())
@@ -278,4 +295,84 @@ uint8_t hal_usart_break_detected(hal_usart_interface_t serial)
 int hal_usart_sleep(hal_usart_interface_t serial, bool sleep, void* reserved)
 {
     return 0;
+}
+
+int hal_usart_write_buffer(hal_usart_interface_t serial, const void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    const uint8_t* p = (const uint8_t*)buffer;
+    for (size_t i = 0; i < size; i++) {
+        hal_usart_write(serial, p[i]);
+    }
+    return size;
+}
+
+int hal_usart_read_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    uint8_t* p = (uint8_t*)buffer;
+    size_t n = 0;
+    while (n < size) {
+        int32_t c = hal_usart_read(serial);
+        if (c < 0) {
+            break;
+        }
+        p[n++] = (uint8_t)c;
+    }
+    return n;
+}
+
+int hal_usart_peek_buffer(hal_usart_interface_t serial, void* buffer, size_t size, size_t elementSize) {
+    if (elementSize != sizeof(uint8_t)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    uint8_t* p = (uint8_t*)buffer;
+    size_t n = 0;
+    while (n < size && n <= UINT16_MAX) {
+        int32_t c = usartMap(serial).peekAt((uint16_t)n);
+        if (c < 0) {
+            break;
+        }
+        p[n++] = (uint8_t)c;
+    }
+    return n;
+}
+
+int hal_usart_wait_event(hal_usart_interface_t serial, uint32_t events, system_tick_t timeout, void* reserved) {
+    if (!events) {
+        return 0;
+    }
+    uint32_t res = 0;
+    if ((events & HAL_USART_EVENT_READABLE) && hal_usart_available(serial) > 0) {
+        res |= HAL_USART_EVENT_READABLE;
+    }
+    if ((events & HAL_USART_EVENT_WRITABLE) && hal_usart_available_data_for_write(serial) > 0) {
+        res |= HAL_USART_EVENT_WRITABLE;
+    }
+    if (res || timeout == 0 || !(events & HAL_USART_EVENT_READABLE)) {
+        return res;
+    }
+    int fd = socket_native_fd(usartMap(serial).socketHandle());
+    if (fd >= 0) {
+        struct pollfd rd = {
+            .fd = fd,
+            .events = POLLIN | POLLRDBAND | POLLRDNORM | POLLPRI,
+            .revents = 0
+        };
+        int pollTimeout = timeout > (system_tick_t)INT32_MAX ? -1 : (int)timeout;
+        if (poll(&rd, 1, pollTimeout) > 0 && hal_usart_available(serial) > 0) {
+            res |= HAL_USART_EVENT_READABLE;
+        }
+    } else {
+        for (system_tick_t waited = 0; waited < timeout; waited++) {
+            usleep(1000);
+            if (hal_usart_available(serial) > 0) {
+                res |= HAL_USART_EVENT_READABLE;
+                break;
+            }
+        }
+    }
+    return res;
 }

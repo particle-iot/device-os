@@ -53,6 +53,9 @@ public:
   virtual void flush(void);
   size_t write(uint16_t);
   virtual size_t write(uint8_t);
+  virtual size_t write(const uint8_t *buffer, size_t size);
+  virtual size_t readBytes(char *buffer, size_t length);
+  virtual int peek(char *buffer, size_t size);
 
   // LIN
   void breakTx(void);

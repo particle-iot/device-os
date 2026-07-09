@@ -26,6 +26,7 @@
 
 #include "spark_wiring_usbserial.h"
 #include "platform_headers.h"
+#include "system_error.h"
 
 //
 // Constructor
@@ -99,6 +100,64 @@ void USBSerial::blockOnOverrun(bool block)
 int USBSerial::peek()
 {
 	return std::max(-1, (int)HAL_USB_USART_Receive_Data(_serial, true));
+}
+
+size_t USBSerial::write(const uint8_t *buffer, size_t size)
+{
+  if (size == 0) {
+    return 0;
+  }
+  size_t written = 0;
+  while (written < size) {
+    auto r = HAL_USB_USART_Send_Buffer(_serial, buffer + written, size - written);
+    if (r > 0) {
+      written += r;
+      continue;
+    }
+    if (r < 0 && r != SYSTEM_ERROR_NO_MEMORY) {
+      break;
+    }
+    if (!_blocking) {
+      break;
+    }
+    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_WRITABLE, 100, nullptr) < 0) {
+      break;
+    }
+  }
+  return written;
+}
+
+size_t USBSerial::readBytes(char *buffer, size_t length)
+{
+  if (length == 0) {
+    return 0;
+  }
+  size_t total = 0;
+  while (total < length) {
+    auto r = HAL_USB_USART_Receive_Buffer(_serial, buffer + total, length - total);
+    if (r > 0) {
+      total += r;
+      continue;
+    }
+    if (r < 0 && r != SYSTEM_ERROR_NO_MEMORY) {
+      break;
+    }
+    if (_timeout == 0) {
+      break;
+    }
+    if (HAL_USB_USART_Wait_Event(_serial, HAL_USB_USART_EVENT_READABLE, _timeout, nullptr) <= 0) {
+      break;
+    }
+  }
+  return total;
+}
+
+int USBSerial::peek(char *buffer, size_t size)
+{
+  if (size == 0) {
+    return 0;
+  }
+  return HAL_USB_USART_Peek_Buffer(_serial, buffer, size);
 }
 
 USBSerial::operator bool() {

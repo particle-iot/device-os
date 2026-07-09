@@ -103,6 +103,41 @@ void runLoopback(size_t buffer_size_min, size_t buffer_size_max, bool sleep, boo
     assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
 }
 
+void runLoopbackMultiByte(size_t buffer_size_min, size_t buffer_size_max) {
+    particle::Random rand;
+
+    size_t bufferSize = random(buffer_size_min, buffer_size_max);
+    char txBuf[bufferSize] = {};
+    rand.genBase32(txBuf, bufferSize);
+
+    Serial1.write((const uint8_t*)txBuf, bufferSize);
+    Serial1.flush();
+
+    char rxBuf[bufferSize] = {};
+    Serial1.setTimeout(1000);
+    size_t read = Serial1.readBytes(rxBuf, bufferSize);
+    assertEqual(read, bufferSize);
+    assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
+
+    char peekBuf[bufferSize] = {};
+    // Refill for peek test
+    Serial1.write((const uint8_t*)txBuf, bufferSize);
+    Serial1.flush();
+    // Wait for data to arrive
+    while (Serial1.available() < (int)bufferSize) {
+        delay(1);
+    }
+    int peeked = Serial1.peek(peekBuf, bufferSize);
+    assertEqual(peeked, (int)bufferSize);
+    assertTrue(!strncmp(txBuf, peekBuf, bufferSize));
+    // peek must not consume
+    assertEqual(Serial1.available(), (int)bufferSize);
+    // drain
+    size_t drained = Serial1.readBytes(rxBuf, bufferSize);
+    assertEqual(drained, bufferSize);
+    assertTrue(!strncmp(txBuf, rxBuf, bufferSize));
+}
+
 test(SERIAL_000_Prepare) {
     pinMode(A2, OUTPUT); // ACTIVE LOW
     digitalWrite(A2, LOW);
@@ -119,6 +154,20 @@ test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+    }
+}
+
+test(SERIAL_00b_LoopbackMultiByteNoDataLoss) {
+    const size_t TEST_BUFFER_SIZE_MIN = 8;
+    const size_t TEST_BUFFER_SIZE_MAX = USE_BUFFER_SIZE / 2;
+    const unsigned ITERATIONS = 1000;
+    const unsigned BAUD_RATE = 115200;
+
+    Serial1.end();
+    Serial1.begin(BAUD_RATE);
+
+    for (unsigned i = 0; i < ITERATIONS; ++i) {
+        runLoopbackMultiByte(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
     }
 }
 
