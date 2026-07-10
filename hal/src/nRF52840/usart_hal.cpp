@@ -365,10 +365,18 @@ public:
 
     ssize_t peek(uint8_t* buffer, size_t size) {
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
-        const ssize_t maxRead = CHECK(data());
+        size_t consumable = 0;
+        const ssize_t maxRead = CHECK(data(&consumable));
         const size_t peekSize = std::min((size_t)maxRead, size);
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(uarte_);
+        if (consumable > 0) {
+            CHECK(data(&consumable));
+            if (consumable > 0) {
+                rxBuffer_.acquireCommit(consumable);
+                rxConsumed_ += consumable;
+            }
+        }
         return rxBuffer_.peek(buffer, peekSize);
     }
 

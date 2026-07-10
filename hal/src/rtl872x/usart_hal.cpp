@@ -292,7 +292,7 @@ public:
         CHECK_TRUE(isEnabled(), SYSTEM_ERROR_INVALID_STATE);
         flush();
         // Update current available received data
-        dataInFlight(true /* commit */);
+        dataInFlight(true /* commit */, false /* cancel */, true /* flushFifo */);
         CHECK(disable(false));
         transmitting_ = false;
         busy_ = false;
@@ -352,7 +352,7 @@ public:
         return 0;
     }
 
-    size_t dataInFlight(bool commit = false, bool cancel = false) {
+    size_t dataInFlight(bool commit = false, bool cancel = false, bool flushFifo = false) {
         // Must be called under RX lock!
         if (receiving_ && !useInterrupt()) {
             auto uartInstance = uartTable_[index_].UARTx;
@@ -366,14 +366,22 @@ public:
                 // This method is called from DMA RX ISR
                 toConsume = transferredToDmaFromUart - alreadyCommitted;
                 flushDmaRxFiFo(transferredToDmaFromUart);
+            } else if (!commit) {
+                // Just counting: report everything the DMA has pulled out of the UART RX FIFO,
+                // including bytes still residing in the GDMA FIFO and not yet transferred
+                // into the buffer
+                toConsume = transferredToDmaFromUart - alreadyCommitted;
             } else {
                 toConsume = dmaAvailableInBuffer - alreadyCommitted;
-                // Try not suspending DMA unless necessary
-                if (toConsume <= 0) {
-                    toConsume = transferredToDmaFromUart - dmaAvailableInBuffer;
-                    if (toConsume > 0 && commit) {
+                // Try not suspending DMA unless necessary: force the bytes still residing
+                // in the GDMA FIFO out into the buffer only when the caller requires all of
+                // them (flushFifo, e.g. peek() or suspend() which disables the DMA channel
+                // afterwards, losing these bytes) or when there is nothing to commit otherwise
+                if (toConsume <= 0 || (flushFifo && (size_t)toConsume < transferredToDmaFromUart - alreadyCommitted)) {
+                    if (transferredToDmaFromUart > dmaAvailableInBuffer) {
                         flushDmaRxFiFo(transferredToDmaFromUart);
                     }
+                    toConsume = transferredToDmaFromUart - alreadyCommitted;
                 }
             }
             if (commit && toConsume > 0) {
@@ -424,7 +432,7 @@ public:
         CHECK_TRUE(peekSize > 0, SYSTEM_ERROR_NO_MEMORY);
         RxLock lk(this);
         if (peekSize > rxBuffer_.data()) {
-            dataInFlight(true /* commit */);
+            dataInFlight(true /* commit */, false /* cancel */, true /* flushFifo */);
             // Adjust peek size, as dataInFlight() might have committed a bit less
             // as not to stop the DMA transfer unnecessarily if there is already
             // data transferred into the buffer.
@@ -578,6 +586,7 @@ public:
             case RUART_TX_FIFO_EMPTY: {
                 if (uart->useInterrupt()) {
                     if (uart->transmitting_) {
+                        uart->txBuffer_.consumeCommit(uart->curTxCount_);
                         uart->curTxCount_ = 0;
                         uart->transmitting_ = false;
                         uart->startTransmission();
@@ -870,16 +879,18 @@ private:
             busy_ = true;
             uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
         } else {
-            while (curTxCount_ < MAX_UART_FIFO_SIZE && !txBuffer_.empty()) {
-                uint8_t c;
-                txBuffer_.get(&c, 1);
-                UART_CharPut(uartInstance, c);
-                curTxCount_++;
+            size_t consumable = txBuffer_.consumable();
+            if (consumable == 0) {
+                return;
             }
-            if (curTxCount_ >= MAX_UART_FIFO_SIZE && !txBuffer_.empty()) {
-                transmitting_ = true;
-                uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
+            transmitting_ = true;
+            consumable = std::min((size_t)MAX_UART_FIFO_SIZE, consumable);
+            auto ptr = txBuffer_.consume(consumable);
+            for (size_t i = 0; i < consumable; i++) {
+                UART_CharPut(uartInstance, ptr[i]);
             }
+            curTxCount_ = consumable;
+            uartIntConfig(uartInstance, RUART_IER_ETBEI, ENABLE);
         }
     }
 
@@ -908,7 +919,11 @@ private:
             uartIntConfig(uartInstance, (RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI), DISABLE);
             auto ptr = rxBuffer_.acquire(rxSize);
 
-            UART_RXDMAConfig(uartInstance, 4);
+            // Request a DMA transfer for every received byte (GDMA_SrcMsize is MsizeOne anyway).
+            // With a larger burst threshold the tail bytes of a transmission stay in the UART RX FIFO
+            // until the RX idle timeout fires, and there is no FIFO level register to account
+            // for them in data()/available()
+            UART_RXDMAConfig(uartInstance, 1);
             UART_RXDMACmd(uartInstance, ENABLE);
 
             // Configure GDMA as the flow controller

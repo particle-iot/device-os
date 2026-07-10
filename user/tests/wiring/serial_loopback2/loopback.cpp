@@ -154,6 +154,9 @@ test(SERIAL_00_LoopbackNoDataLossAndAvailableIsCorrect) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -168,6 +171,9 @@ test(SERIAL_00b_LoopbackMultiByteNoDataLoss) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopbackMultiByte(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -190,6 +196,9 @@ test(SERIAL_01_LoopbackSleepWakeupShouldSucceed) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -204,6 +213,9 @@ test(SERIAL_02_LoopbackReceivedDataShouldRetainAfterSleepWakeup) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, true);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -220,6 +232,9 @@ test(SERIAL_03_Loopback9BitNoDataLossAndAvailableIsCorrect) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -242,6 +257,9 @@ test(SERIAL_04_Loopback9BitSleepWakeupShouldSucceed) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, false);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
@@ -256,6 +274,9 @@ test(SERIAL_05_Loopback9BitReceivedDataShouldRetainAfterSleepWakeup) {
 
     for (unsigned i = 0; i < ITERATIONS; ++i) {
         runLoopback(TEST_BUFFER_SIZE_MIN, TEST_BUFFER_SIZE_MAX, true);
+        if (this->state == DONE_FAIL) {
+            break;
+        }
     }
 }
 
