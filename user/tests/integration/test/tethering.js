@@ -137,6 +137,13 @@ class Tether {
             '-e', `ADAPTER_USB_SERIAL=${this.adapterSerial}`,
             '-e', `TEST_URL=${this.url}`,
             '-v', '/dev/bus/usb:/dev/bus/usb',
+            // Mask boot-time udev coldplug: it replays add events for every HOST
+            // device (privileged container, shared sysfs) and kills the host session
+            '-v', '/dev/null:/etc/systemd/system/systemd-udev-trigger.service:ro',
+            // Mask gettys: they vhangup() the host VT through the shared /dev, killing the host session
+            '-v', '/dev/null:/etc/systemd/system/getty@.service:ro',
+            '-v', '/dev/null:/etc/systemd/system/console-getty.service:ro',
+            '-v', '/dev/null:/etc/systemd/system/serial-getty@.service:ro',
             '--tmpfs', '/run', '--tmpfs', '/run/lock'
         ];
     }
@@ -192,6 +199,8 @@ class Tether {
 
     async ensureDevTtyNodes() {
         await this.exec('mount -t devtmpfs devtmpfs /dev 2>/dev/null || true');
+        // devtmpfs shadows the container devpts, remount it so pty allocation (docker exec -it) works
+        await this.exec('[ -e /dev/pts/ptmx ] || mount -t devpts -o mode=620,ptmxmode=666 devpts /dev/pts 2>/dev/null || true');
         await this.exec('udevadm trigger --action=add --subsystem-match=tty 2>/dev/null || true');
         await this.exec('udevadm settle --timeout=5 2>/dev/null || true');
     }
