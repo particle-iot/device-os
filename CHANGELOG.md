@@ -1,3 +1,63 @@
+## 6.5.0
+
+### FEATURES
+
+- Multi-byte `read()`/`peek()`/`write()` APIs for hardware UARTs and USB Serial [#2935](https://github.com/particle-iot/device-os/pull/2935)
+- Per-interface cloud keepalive environment variables (`PARTICLE_CLOUD_KEEP_ALIVE`, `PARTICLE_CELLULAR_CLOUD_KEEP_ALIVE`, `PARTICLE_WIFI_CLOUD_KEEP_ALIVE`, `PARTICLE_ETHERNET_CLOUD_KEEP_ALIVE`) and `Particle.getKeepAlive()` [#2916](https://github.com/particle-iot/device-os/pull/2916)
+- Power manager `PARTICLE_POWER_INPUT_CURRENT` and `PARTICLE_POWER_CHARGE_CURRENT` environment variables [#2928](https://github.com/particle-iot/device-os/pull/2928) [#2929](https://github.com/particle-iot/device-os/pull/2929)
+
+### ENHANCEMENTS
+
+- Tethering and cellular (PPP) throughput and reliability improvements (adaptive LCP echo, dedicated PPP TX queue) [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [network] `SO_LINGER` support for faster TCP pcb/pbuf cleanup [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] network: improved TCP performance (larger windows/buffers) [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [M SoM] M635: Enable 2G fallback support [#2933](https://github.com/particle-iot/device-os/pull/2933)
+
+### BUGFIXES
+
+- [Gen 4] Allow USB CDC (`Serial`) buffers to be resized with `acquireSerialBuffer()` after first initialization [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] usart: fix event handling in interrupt mode UARTs causing reads/writes through `waitEvent()` (e.g. PPP tethering) to only progress on poll timeouts [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] usart: fix RTS/CTS hardware flow control being silently disabled due to slow clock domain register access [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] usart: fix FIFO overflow behavior under RTS flow control [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] usart: fix DMA-mode USART (NCP or Serial2 on P2/Photon2) `available()`/`peek()` not accounting for data still residing in the GDMA FIFO [e316605](https://github.com/particle-iot/device-os/commit/e31660588)
+- [Gen 4] usart: fix received data loss when entering sleep with DMA-mode (`Serial2`) UART [e316605](https://github.com/particle-iot/device-os/commit/e31660588)
+- [Gen 4] usart: fix TX buffer handling in interrupt mode [e316605](https://github.com/particle-iot/device-os/commit/e31660588)
+- [Gen 3] usart: fix interrupt/normal context race condition causing TX transmissions to never start [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 3] usart: fix multi-byte `peek()` not seeing all the data reported by `available()` [e316605](https://github.com/particle-iot/device-os/commit/e31660588)
+- [network] tethering: fix TCP MSS clamping in NAT [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [Gen 4] [Cellular] muxer: prevent USB starvation and busy looping under heavy cellular traffic [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [network] lwip: fix `tcp_pcb` double-free in `tcp_input_delayed_close()` [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [system] Apply cloud keepalive based on the active network interface when the cloud connection moves between interfaces (ACM) [#2916](https://github.com/particle-iot/device-os/pull/2916)
+- [Gen 4] usb: fix control interface class driver consuming `dataIn`/`dataOut` events for unrelated endpoints [#2922](https://github.com/particle-iot/device-os/pull/2922)
+- [Gen 4] usb: distinguish between the host halting reads from USB `Serial` and a slow host [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- tethering: Fix blocking behavior on writes when tethering over USB [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [hal] fix `os_thread_join()` accessing a stale/freed task TCB [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [hal] fix idle hook priority bump when there are threads pending cleanup, keeping terminated thread resources from being freed [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [wiring] network: fix null pointer dereference for interfaces without a hardware address [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [system] Force cloud connection checks on interface state changes only for interfaces that can carry the cloud connection [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- Improve I2C driver reliability: `Wire.end()` in user application no longer breaks PMIC/FuelGauge access in system power manager [#2913](https://github.com/particle-iot/device-os/pull/2913)
+- Fix race condition on entering `POWER_OFF` sleep mode with AM18x5 (external RTC) [#2927](https://github.com/particle-iot/device-os/pull/2927)
+- Fix default cloud keepalive values [#2926](https://github.com/particle-iot/device-os/pull/2926)
+- [system] Do not run background network connection test if no networks are ready, avoiding LwIP errors when polling with no connected sockets [#2930](https://github.com/particle-iot/device-os/pull/2930)
+- [Cellular] Workaround for EG916Q returning too large APDU responses [#2934](https://github.com/particle-iot/device-os/pull/2934)
+
+### INTERNAL
+
+- [system] API for scheduling calls in the system thread [#2921](https://github.com/particle-iot/device-os/pull/2921)
+- iperf3 (`libiperf`) port and tethering throughput HIL test suites (UDP/TCP, bidirectional, USB and Serial1, device-direct cellular paths) [#2932](https://github.com/particle-iot/device-os/pull/2932) [#2920](https://github.com/particle-iot/device-os/pull/2920)
+- [hal] Coalesce serial stream implementations into a shared one [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [GCC] Multi-byte serial read/write/peek support and poll()-based serial wait events, fix tinker builds [#2935](https://github.com/particle-iot/device-os/pull/2935)
+- [third_party] `lwip`: `SO_LINGER` fixes (abort on close with zero linger timeout, do not abort sockets in LISTEN state), per-pcb RX frame counter for adaptive LCP echo, map `ERR_IF` to `EIO`, `tcp_pcb` double-free fix [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [third_party] `freertos`: expose `uxTaskGetNumberOfTasksWaitingTermination()` [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [third_party] `gsm0710muxer`: add `GSM0710_COOP_YIELD_MS` and `GSM0710_MAX_TIMEOUT_ITERATIONS` to avoid busy looping and time-share CPU [#2932](https://github.com/particle-iot/device-os/pull/2932)
+- [third_party] `coremark`: fix builds on the GCC platform [#2935](https://github.com/particle-iot/device-os/pull/2935)
+- [build] [Gen 3] Reclaim >3KB of flash on LTO-enabled platforms with `-flto-partition=one` [#2928](https://github.com/particle-iot/device-os/pull/2928)
+- [test] Flash a dummy OTA at the start of the test runner suite to reset device service `maxSameBinaryAttempts` counter, which was blocking OTA updates on repeated test runs [#2931](https://github.com/particle-iot/device-os/pull/2931)
+- [test] Work around spurious USB control transfer stalls (kernel `xhci_hcd` bug) during pre-sleep mailbox handshake with an explicit mailbox ACK mechanism, propagate mailbox result codes to tests [#2923](https://github.com/particle-iot/device-os/pull/2923)
+- [test] `wiring/sleep20`: make sure pending reset mailbox messages are received by the test runner before the device goes into sleep [#2919](https://github.com/particle-iot/device-os/pull/2919)
+- [test] `wiring/serial_loopback2`: always tri-state the loopback buffer in cleanup [#2918](https://github.com/particle-iot/device-os/pull/2918)
+- [test] `wiring/serial_loopback`/`serial_loopback2`: parameterize for `Serial1`/`Serial2`/`Serial3` use, cover multi-byte read/write/peek and `available()` consistency [538a25c](https://github.com/particle-iot/device-os/commit/538a25c6d)
+
 ## 6.4.1
 
 ### FEATURES
