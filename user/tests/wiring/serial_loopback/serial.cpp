@@ -25,12 +25,15 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "atomic_section.h"
+
+#define USE_SERIAL Serial1
 
 #ifndef USE_BUFFER_SIZE
 #warning "Using default 64 byte buffer"
 #define USE_BUFFER_SIZE SERIAL_BUFFER_SIZE
 #else
-hal_usart_buffer_config_t acquireSerial1Buffer()
+hal_usart_buffer_config_t acquire ## USE_SERIAL ## Buffer()
 {
 #if !HAL_PLATFORM_USART_9BIT_SUPPORTED
     const size_t bufferSize = USE_BUFFER_SIZE;
@@ -48,14 +51,6 @@ hal_usart_buffer_config_t acquireSerial1Buffer()
     return config;
 }
 #endif // USE_BUFFER_SIZE
-
-#if HAL_PLATFORM_NRF52840
-#define Serial1_IRQn UARTE0_UART0_IRQn
-#elif HAL_PLATFORM_RTL872X
-#define Serial1_IRQn UART_LOG_IRQ
-#else
-#define Serial1_IRQn USART1_IRQn
-#endif
 
 /* WIRING
  *                       74xx125
@@ -125,18 +120,18 @@ void printlnMasked(Stream& serial, char* str, uint16_t mask)
 }
 
 void commonTestRoutine(uint32_t baudrate, uint32_t mode, uint16_t mask) {
-    //The following code will test all the important USART Serial1 routines
+    //The following code will test all the important USART USE_SERIAL routines
     char test[] = "hello";
     uint16_t message16[10];
     char message[10];
     int len = 0;
     // when
-    Serial1.begin(baudrate, mode);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
-    printlnMasked(Serial1, test, mask); // Set 9-th bit
-    len = serialReadLine16NoEcho(&Serial1, message16, 9, 1000);//1 sec timeout
-    Serial1.end();
+    USE_SERIAL.begin(baudrate, mode);
+    assertEqual(USE_SERIAL.isEnabled(), true);
+    consume(USE_SERIAL);
+    printlnMasked(USE_SERIAL, test, mask); // Set 9-th bit
+    len = serialReadLine16NoEcho(&USE_SERIAL, message16, 9, 1000);//1 sec timeout
+    USE_SERIAL.end();
     // then
     // Check that MSB is 0 in each uint16_t and copy into char buffer
     for (int i = 0; i < len; i++) {
@@ -154,9 +149,9 @@ test(SERIAL1_000_Prepare) {
 }
 
 test(SERIAL1_IncorrectConfigurationPassed) {
-    Serial1.end();
-    Serial1.begin(9600, SERIAL_DATA_BITS_9 | SERIAL_PARITY_ODD | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_2);
-    assertEqual(Serial1.isEnabled(), false);
+    USE_SERIAL.end();
+    USE_SERIAL.begin(9600, SERIAL_DATA_BITS_9 | SERIAL_PARITY_ODD | SERIAL_PARITY_EVEN | SERIAL_STOP_BITS_2);
+    assertEqual(USE_SERIAL.isEnabled(), false);
 }
 
 test(SERIAL1_ReadWriteSucceedsInLoopbackWithTxRxShorted) {
@@ -276,7 +271,7 @@ test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
         skip();
         return;
     }
-    //The following code will test all the important USART Serial1 routines
+    //The following code will test all the important USART USE_SERIAL routines
     char test[] = "helloworld1234";
     uint16_t test2 = ((uint16_t)'p' << 7) | (uint16_t)'a'; // "pa"
     uint16_t message16[32];
@@ -284,16 +279,16 @@ test(SERIAL1_ReadWriteParity9N1SucceedsInLoopbackWithTxRxShorted) {
     uint16_t message2 = 0x0000;
     int len = 0;
     // when
-    Serial1.begin(9600, SERIAL_9N1);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
+    USE_SERIAL.begin(9600, SERIAL_9N1);
+    assertEqual(USE_SERIAL.isEnabled(), true);
+    consume(USE_SERIAL);
     for (int i = 0; i < strlen(test); i++) {
         uint16_t c = test[i] | (((test2 >> i) & 0x0001) << 8);
-        Serial1.write(c);
+        USE_SERIAL.write(c);
     }
-    Serial1.println();
-    len = serialReadLine16NoEcho(&Serial1, message16, 31, 1000);//1 sec timeout
-    Serial1.end();
+    USE_SERIAL.println();
+    len = serialReadLine16NoEcho(&USE_SERIAL, message16, 31, 1000);//1 sec timeout
+    USE_SERIAL.end();
     // then
     // Copy into char buffer, construct uint16_t from 9th bits
     for (int i = 0; i < len; i++) {
@@ -317,7 +312,7 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
         skip();
         return;
     }
-    //The following code will test all the important USART Serial1 routines
+    //The following code will test all the important USART USE_SERIAL routines
     char test[] = "helloworld1234";
     uint16_t test2 = ((uint16_t)'p' << 7) | (uint16_t)'a'; // "pa"
     uint16_t message16[32];
@@ -325,16 +320,16 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
     uint16_t message2 = 0x0000;
     int len = 0;
     // when
-    Serial1.begin(9600, SERIAL_9N2);
-    assertEqual(Serial1.isEnabled(), true);
-    consume(Serial1);
+    USE_SERIAL.begin(9600, SERIAL_9N2);
+    assertEqual(USE_SERIAL.isEnabled(), true);
+    consume(USE_SERIAL);
     for (int i = 0; i < strlen(test); i++) {
         uint16_t c = test[i] | (((test2 >> i) & 0x0001) << 8);
-        Serial1.write(c);
+        USE_SERIAL.write(c);
     }
-    Serial1.println();
-    len = serialReadLine16NoEcho(&Serial1, message16, 31, 1000);//1 sec timeout
-    Serial1.end();
+    USE_SERIAL.println();
+    len = serialReadLine16NoEcho(&USE_SERIAL, message16, 31, 1000);//1 sec timeout
+    USE_SERIAL.end();
     // then
     // Copy into char buffer, construct uint16_t from 9th bits
     for (int i = 0; i < len; i++) {
@@ -353,106 +348,103 @@ test(SERIAL1_ReadWriteParity9N2SucceedsInLoopbackWithTxRxShorted) {
 
 
 test(SERIAL1_AvailableForWriteWorksCorrectly) {
-    Serial1.begin(9600);
-    assertEqual(Serial1.isEnabled(), true);
+    USE_SERIAL.begin(9600);
+    assertEqual(USE_SERIAL.isEnabled(), true);
 #if !HAL_PLATFORM_USART_9BIT_SUPPORTED
     const size_t bufferSize = USE_BUFFER_SIZE;
 #else
     const size_t bufferSize = USE_BUFFER_SIZE * sizeof(uint16_t);
 #endif // 
     // Initially there should be bufferSize available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
-    // Disable Serial1 IRQ to prevent it from sending data
-    NVIC_DisableIRQ(Serial1_IRQn);
+    // Use AtomicSection to prevent the ISR from committing consumed TX data
+    // and draining the FIFO while we check availableForWrite()
     // Write (bufferSize / 2) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2; i++) {
-        Serial1.write('a');
-    }
-    // There should be (bufferSize / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
+    {
+        particle::AtomicSection atomic;
+        for (int i = 0; i < bufferSize / 2; i++) {
+            USE_SERIAL.write('a');
+        }
+        // There should be (bufferSize / 2) bytes available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), bufferSize / 2);
 
-    // Write (bufferSize / 2 - 1) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2 - 1; i++) {
-        Serial1.write('b');
+        // Write (bufferSize / 2 - 1) bytes into TX buffer
+        for (int i = 0; i < bufferSize / 2 - 1; i++) {
+            USE_SERIAL.write('b');
+        }
+        // There should only be 1 byte available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), 1);
     }
-    // There should only be 1 byte available in TX buffer
-    assertEqual(Serial1.availableForWrite(), 1);
-    // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(Serial1_IRQn);
-    Serial1.flush();
+    USE_SERIAL.flush();
 
     // There should be bufferSize available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
     // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
     // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
-    // Disable Serial1 IRQ again to prevent it from sending data
-    NVIC_DisableIRQ(Serial1_IRQn);
-    // Write (bufferSize / 2 + 1) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2 + 1; i++) {
-        Serial1.write('c');
+    {
+        particle::AtomicSection atomic;
+        // Write (bufferSize / 2 + 1) bytes into TX buffer
+        for (int i = 0; i < bufferSize / 2 + 1; i++) {
+            USE_SERIAL.write('c');
+        }
+        // There should be (bufferSize / 2 - 1) bytes available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), bufferSize / 2 - 1);
     }
-    // There should be (bufferSize / 2 - 1) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize / 2 - 1);
-    // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(Serial1_IRQn);
-    Serial1.flush();
+    USE_SERIAL.flush();
 
     // There should be bufferSize available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
-    Serial1.end();
+    USE_SERIAL.end();
 }
 
 #if HAL_PLATFORM_USART_9BIT_SUPPORTED
 test(SERIAL1_AvailableForWriteIn9BitModeWorksCorrectly) {
-    Serial1.begin(9600, SERIAL_DATA_BITS_9);
-    assertEqual(Serial1.isEnabled(), true);
+    USE_SERIAL.begin(9600, SERIAL_DATA_BITS_9);
+    assertEqual(USE_SERIAL.isEnabled(), true);
     const size_t bufferSize = USE_BUFFER_SIZE;
     // Initially there should be bufferSize available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
-    // Disable Serial1 IRQ to prevent it from sending data
-    NVIC_DisableIRQ(Serial1_IRQn);
-    // Write (bufferSize / 2) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2; i++) {
-        Serial1.write('a');
-    }
-    // There should be (bufferSize / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
+    // Use AtomicSection to prevent the ISR from committing consumed TX data
+    {
+        particle::AtomicSection atomic;
+        // Write (bufferSize / 2) bytes into TX buffer
+        for (int i = 0; i < bufferSize / 2; i++) {
+            USE_SERIAL.write('a');
+        }
+        // There should be (bufferSize / 2) bytes available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), bufferSize / 2);
 
-    // Write (bufferSize / 2 - 1) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2 - 1; i++) {
-        Serial1.write('b');
+        // Write (bufferSize / 2 - 1) bytes into TX buffer
+        for (int i = 0; i < bufferSize / 2 - 1; i++) {
+            USE_SERIAL.write('b');
+        }
+        // There should only be 1 byte available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), 1);
     }
-    // There should only be 1 byte available in TX buffer
-    assertEqual(Serial1.availableForWrite(), 1);
-    // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(Serial1_IRQn);
-    Serial1.flush();
+    USE_SERIAL.flush();
 
     // There should be bufferSize available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
-    // At this point tx_buffer->head = (bufferSize - 1), tx_buffer->tail = (bufferSize - 1)
-    // Now test that availableForWrite() returns correct results for cases where tx_buffer->head < tx_buffer->tail
-    // Disable Serial1 IRQ again to prevent it from sending data
-    NVIC_DisableIRQ(Serial1_IRQn);
-    // Write (bufferSize / 2 + 1) bytes into TX buffer
-    for (int i = 0; i < bufferSize / 2 + 1; i++) {
-        Serial1.write('c');
+    {
+        particle::AtomicSection atomic;
+        // Write (bufferSize / 2 + 1) bytes into TX buffer
+        for (int i = 0; i < bufferSize / 2 + 1; i++) {
+            USE_SERIAL.write('c');
+        }
+        // There should be (bufferSize / 2) bytes available in TX buffer
+        assertEqual(USE_SERIAL.availableForWrite(), bufferSize / 2);
     }
-    // There should be (bufferSize / 2) bytes available in TX buffer
-    assertEqual(Serial1.availableForWrite(), bufferSize / 2);
-    // Enable Serial1 IRQ again to send out the data from TX buffer
-    NVIC_EnableIRQ(Serial1_IRQn);
-    Serial1.flush();
+    USE_SERIAL.flush();
 
     // There should be bufferSize available in TX buffer again
-    assertEqual(Serial1.availableForWrite(), bufferSize);
+    assertEqual(USE_SERIAL.availableForWrite(), bufferSize);
 
-    Serial1.end();
+    USE_SERIAL.end();
 }
 #endif // HAL_PLATFORM_USART_9BIT_SUPPORTED
 
@@ -465,7 +457,7 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
         return;
     }
     // Test for LIN mode
-    // 1. The test will configure Serial1 in LIN Master mode (with 11 bit break detection
+    // 1. The test will configure USE_SERIAL in LIN Master mode (with 11 bit break detection
     // enabled as in Slave mode)
     // 2. Send and detect 2 consecutive breaks
     // 3. Send/recv message
@@ -477,52 +469,52 @@ test(SERIAL1_LINMasterReadWriteBreakSucceedsInLoopbackWithTxRxShorted) {
     char message[10];
     memset(message, 0, sizeof(message));
     // when
-    if (Serial1.isEnabled())
-        Serial1.end();
-    Serial1.begin(9600, mode);
-    assertEqual(Serial1.isEnabled(), true);
+    if (USE_SERIAL.isEnabled())
+        USE_SERIAL.end();
+    USE_SERIAL.begin(9600, mode);
+    assertEqual(USE_SERIAL.isEnabled(), true);
     // then
 
     // Send 2 consecutive breaks
-    assertFalse(Serial1.breakRx());
-    Serial1.breakTx();
+    assertFalse(USE_SERIAL.breakRx());
+    USE_SERIAL.breakTx();
     delay(1);
-    assertTrue(Serial1.breakRx());
+    assertTrue(USE_SERIAL.breakRx());
 
-    assertFalse(Serial1.breakRx());
-    Serial1.breakTx();
+    assertFalse(USE_SERIAL.breakRx());
+    USE_SERIAL.breakTx();
     delay(1);
-    assertTrue(Serial1.breakRx());
+    assertTrue(USE_SERIAL.breakRx());
 
     // Send message
-    consume(Serial1);
-    Serial1.println(test);
-    Serial1.flush();
-    serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
-    Serial1.println(message);
+    consume(USE_SERIAL);
+    USE_SERIAL.println(test);
+    USE_SERIAL.flush();
+    serialReadLine(&USE_SERIAL, message, 9, 1000);//1 sec timeout
+    USE_SERIAL.println(message);
     assertTrue(strncmp(test, message, 5)==0);
 
     // Send break
-    assertFalse(Serial1.breakRx());
-    Serial1.breakTx();
+    assertFalse(USE_SERIAL.breakRx());
+    USE_SERIAL.breakTx();
     delay(1);
-    assertTrue(Serial1.breakRx());
+    assertTrue(USE_SERIAL.breakRx());
 
     // Send message
-    consume(Serial1);
-    Serial1.println(test);
-    Serial1.flush();
-    serialReadLine(&Serial1, message, 9, 1000);//1 sec timeout
-    Serial1.println(message);
+    consume(USE_SERIAL);
+    USE_SERIAL.println(test);
+    USE_SERIAL.flush();
+    serialReadLine(&USE_SERIAL, message, 9, 1000);//1 sec timeout
+    USE_SERIAL.println(message);
     assertTrue(strncmp(test, message, 5)==0);
 
     // Send break
-    assertFalse(Serial1.breakRx());
-    Serial1.breakTx();
+    assertFalse(USE_SERIAL.breakRx());
+    USE_SERIAL.breakTx();
     delay(1);
-    assertTrue(Serial1.breakRx());
+    assertTrue(USE_SERIAL.breakRx());
 
-    Serial1.end();
+    USE_SERIAL.end();
 }
 
 test(SERIAL1_ZZZ_Cleanup) {
