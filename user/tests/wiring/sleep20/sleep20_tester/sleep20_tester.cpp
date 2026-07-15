@@ -394,9 +394,14 @@ test(25_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
 }
 
 test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_1) {
-    delay(5000);
     Serial1.begin(115200);
+    pinMode(D0, INPUT_PULLDOWN);
+    while (digitalRead(D0) != HIGH) {
+        delay(10);
+    }
+    delay(10000);
     Serial1.write('t');
+    Serial1.flush();
     Serial1.end();
 }
 test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_2) {
@@ -404,9 +409,14 @@ test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_2) {
 
 SystemSleepResult result27;
 test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart_1) {
-    delay(5000);
     Serial1.begin(115200);
+    pinMode(D0, INPUT_PULLDOWN);
+    while (digitalRead(D0) != HIGH) {
+        delay(10);
+    }
+    delay(10000);
     Serial1.write('t');
+    Serial1.flush();
     Serial1.end();
 }
 test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart_2) {

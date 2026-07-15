@@ -577,36 +577,58 @@ test(25_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_An
 
 SystemSleepResult result26;
 test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_1) {
+    Serial1.begin(115200);
+
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 
-    Serial1.begin(115200);
+    while (Serial1.available()) {
+        Serial1.read();
+    }
+
+    pinMode(D0, OUTPUT);
+    digitalWrite(D0, HIGH);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::STOP)
-          .usart(Serial1);
+          .usart(Serial1)
+          .duration(30s);
     result26 = System.sleep(config);
+
+    digitalWrite(D0, LOW);
 }
 test(26_System_Sleep_With_Configuration_Object_Stop_Mode_Wakeup_By_Usart_2) {
     assertEqual(result26.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result26.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
     Serial1.end();
+    pinMode(D0, INPUT);
 }
 
 SystemSleepResult result27;
 test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart_1) {
+    Serial1.begin(115200);
+
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
 
-    Serial1.begin(115200);
+    while (Serial1.available()) {
+        Serial1.read();
+    }
+
+    pinMode(D0, OUTPUT);
+    digitalWrite(D0, HIGH);
 
     SystemSleepConfiguration config;
     config.mode(SystemSleepMode::ULTRA_LOW_POWER)
-          .usart(Serial1);
+          .usart(Serial1)
+          .duration(30s);
     result27 = System.sleep(config);
+
+    digitalWrite(D0, LOW);
 }
 test(27_System_Sleep_With_Configuration_Object_Ultra_Low_Power_Mode_Wakeup_By_Usart_2) {
     assertEqual(result27.error(), SYSTEM_ERROR_NONE);
     assertEqual((int)result27.wakeupReason(), (int)SystemSleepWakeupReason::BY_USART);
     Serial1.end();
+    pinMode(D0, INPUT);
 }
 
 #if HAL_PLATFORM_CELLULAR
