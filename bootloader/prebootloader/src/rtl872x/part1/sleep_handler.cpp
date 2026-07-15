@@ -358,15 +358,20 @@ void sleepProcess(void) {
                 configureSleepWakeupSource(config);
 
 #if PLATFORM_ID != PLATFORM_TRACKERM
-                // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
-                // pull-up resister on this I/O, which will turn on the user LED when enter the stop/ulp mode.
                 bool swdEnabled = false;
                 if (HAL_READ32(SYSTEM_CTRL_BASE_LP, REG_SWD_PMUX_EN) & BIT_LSYS_SWD_PMUX_EN) {
                     // Disable SWD
                     Pinmux_Swdoff();
                     // Configure it as input pulldown
                     GPIOA_BASE->PORT[0].DDR &= (~(1 << 27));
+#if PLATFORM_ID == PLATFORM_P2
+                    // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
+                    // pull-up resister on this I/O, which will turn on the user LED when enter the stop/ulp mode.
                     PAD_PullCtrl(27, GPIO_PuPd_DOWN);
+#else // PLATFORM_MSOM
+                    // For MSoM, there is an external pull-up resistor
+                    PAD_PullCtrl(27, GPIO_PuPd_UP);
+#endif
                     swdEnabled = true;
                 }
 #endif
