@@ -206,7 +206,7 @@ public:
         }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
-        uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
+        uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_14BYTES;
         UART_Init(uartInstance, &uartInitStruct);
         ierShadow_ = uartInstance->DLH_INTCR;
 
@@ -615,16 +615,13 @@ public:
                 if (uart->receiving_) {
                     if (uart->useInterrupt()) {
                         uart->receiving_ = false;
-                        const bool rtsFlow = (uart->config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
-                        if (uart->rxBuffer_.space() > 0 || !rtsFlow) {
-                            uint8_t temp[MAX_UART_FIFO_SIZE];
-                            uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                            const ssize_t canWrite = uart->rxBuffer_.space();
-                            if (canWrite > 0) {
-                                uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
-                            }
-                            uart->startReceiver();
+                        uint8_t temp[MAX_UART_FIFO_SIZE];
+                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                        const ssize_t canWrite = uart->rxBuffer_.space();
+                        if (canWrite > 0) {
+                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
                         }
+                        uart->startReceiver();
                     } else {
                         UART_RXDMACmd(uartInstance, ENABLE);
                     }
@@ -941,16 +938,17 @@ private:
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
             if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-                // With flow control drain only what fits and leave the rest in FIFO
                 const ssize_t space = rxBuffer_.space();
                 if (space > 0) {
                     uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, std::min((size_t)space, MAX_UART_FIFO_SIZE), 1);
                     rxBuffer_.put(temp, inFifo);
                 }
             } else {
-                // drain the FIFO and keep whatever fits if no flow control
                 uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                rxBuffer_.put(temp, inFifo);
+                const ssize_t canWrite = rxBuffer_.space();
+                if (canWrite > 0) {
+                    rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                }
             }
             uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
         }
