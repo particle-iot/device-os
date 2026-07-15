@@ -578,7 +578,10 @@ static uint32_t configUsartWakeupSource(const hal_wakeup_source_base_t* wakeupSo
             // nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
             if (!nrf_uarte_int_enable_check(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK)) {
                 // We're safe to clear the event if application didn't enable the RXDRDY interrupt
-                nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
+                // and the event is not already set (data may have arrived during sleep teardown)
+                if (!nrf_uarte_event_check(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY)) {
+                    nrf_uarte_event_clear(NRF_UARTE0, NRF_UARTE_EVENT_RXDRDY);
+                }
                 nrf_uarte_int_enable(NRF_UARTE0, NRF_UARTE_INT_RXDRDY_MASK);
             }
             NVIC_EnableIRQ(UARTE0_UART0_IRQn);
@@ -1039,7 +1042,6 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     configGpioWakeupSource(config->wakeup_sources);
     configRtcWakeupSource(config->wakeup_sources);
     configLpcompWakeupSource(config->wakeup_sources);
-    uint32_t intFlags = configUsartWakeupSource(config->wakeup_sources);
     bool networkRxdRdy = configNetworkWakeupSource(config->wakeup_sources);
 
     // Masks all interrupts lower than softdevice. This allows us to be woken ONLY by softdevice
@@ -1050,6 +1052,8 @@ static int enterStopBasedSleep(const hal_sleep_config_t* config, hal_wakeup_sour
     if (!bleWakeupSource) {
         hst = HAL_disable_irq();
     }
+
+    uint32_t intFlags = configUsartWakeupSource(config->wakeup_sources);
 
     __DSB();
     __ISB();
