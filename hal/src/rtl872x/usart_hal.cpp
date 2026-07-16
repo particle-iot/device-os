@@ -619,16 +619,13 @@ public:
                 if (uart->receiving_) {
                     if (uart->useInterrupt()) {
                         uart->receiving_ = false;
-                        const bool rtsFlow = (uart->config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
-                        const ssize_t space = uart->rxBuffer_.space();
-                        if (space > 0 || !rtsFlow) {
-                            uint8_t temp[MAX_UART_FIFO_SIZE];
-                            uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                            if (inFifo > 0 && space > 0) {
-                                uart->rxBuffer_.put(temp, std::min((uint32_t)space, inFifo));
-                            }
-                            uart->startReceiver();
+                        uint8_t temp[MAX_UART_FIFO_SIZE];
+                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
+                        const ssize_t canWrite = uart->rxBuffer_.space();
+                        if (canWrite > 0) {
+                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
                         }
+                        uart->startReceiver();
                     } else {
                         UART_RXDMACmd(uartInstance, ENABLE);
                     }
@@ -944,12 +941,17 @@ private:
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
-            const bool rtsFlow = (config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
-            const ssize_t space = rxBuffer_.space();
-            if (space > 0 || !rtsFlow) {
+            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+                const ssize_t space = rxBuffer_.space();
+                if (space > 0) {
+                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, std::min((size_t)space, MAX_UART_FIFO_SIZE), 1);
+                    rxBuffer_.put(temp, inFifo);
+                }
+            } else {
                 uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                if (inFifo > 0 && space > 0) {
-                    rxBuffer_.put(temp, std::min((uint32_t)space, inFifo));
+                const ssize_t canWrite = rxBuffer_.space();
+                if (canWrite > 0) {
+                    rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
                 }
             }
             uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
