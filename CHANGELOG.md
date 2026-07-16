@@ -1,3 +1,7 @@
+## 6.5.98
+
+- Forward OTA update, no bootloader
+
 ## 6.5.0
 
 ### FEATURES
