@@ -206,7 +206,7 @@ public:
         }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
-        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+        if (conf.config & SERIAL_FLOW_CONTROL_RTS) {
             uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_14BYTES;
         } else {
             uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
