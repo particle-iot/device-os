@@ -24,7 +24,7 @@ const RAT = {
 
 const THRESHOLDS = {
     [RAT.LTE]: 100000,
-    [RAT.LTE_CAT_M1]: 50000,
+    [RAT.LTE_CAT_M1]: 30000,
     [RAT.LTE_CAT_NB1]: 20000,
     [RAT.UMTS]: 50000,
     [RAT.EDGE]: 20000,
