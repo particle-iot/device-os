@@ -235,7 +235,8 @@ extern "C" {
 #define SYSTEM_VERSION_v641         SYSTEM_VERSION_DEFAULT(6, 4, 1)
 #define SYSTEM_VERSION_v650         SYSTEM_VERSION_DEFAULT(6, 5, 0)
 #define SYSTEM_VERSION_v6598         SYSTEM_VERSION_DEFAULT(6, 5, 98)
-#define SYSTEM_VERSION SYSTEM_VERSION_v6598
+#define SYSTEM_VERSION_v6599         SYSTEM_VERSION_DEFAULT(6, 5, 99)
+#define SYSTEM_VERSION SYSTEM_VERSION_v6599
 
 /**
  * Previously we would set the least significant byte to 0 for the final release, but to make

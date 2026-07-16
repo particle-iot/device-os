@@ -1,3 +1,7 @@
+## 6.5.99
+
+- Forward OTA update, with bootloader
+
 ## 6.5.98
 
 - Forward OTA update, no bootloader
