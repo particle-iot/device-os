@@ -206,7 +206,11 @@ public:
         }
         UART_InitTypeDef uartInitStruct = {};
         UART_StructInit(&uartInitStruct);
-        uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_14BYTES;
+        if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
+            uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_14BYTES;
+        } else {
+            uartInitStruct.RxFifoTrigLevel = UART_RX_FIFOTRIG_LEVEL_1BYTES;
+        }
         UART_Init(uartInstance, &uartInitStruct);
         ierShadow_ = uartInstance->DLH_INTCR;
 
@@ -615,13 +619,17 @@ public:
                 if (uart->receiving_) {
                     if (uart->useInterrupt()) {
                         uart->receiving_ = false;
-                        uint8_t temp[MAX_UART_FIFO_SIZE];
-                        uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                        const ssize_t canWrite = uart->rxBuffer_.space();
-                        if (canWrite > 0) {
-                            uart->rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
+                        const bool rtsFlow = (uart->config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
+                        const ssize_t space = uart->rxBuffer_.space();
+                        if (space > 0 || !rtsFlow) {
+                            uint8_t temp[MAX_UART_FIFO_SIZE];
+                            uint32_t toRead = std::min((uint32_t)std::max(space, (ssize_t)1), (uint32_t)MAX_UART_FIFO_SIZE);
+                            uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, toRead, 1);
+                            if (inFifo > 0) {
+                                uart->rxBuffer_.put(temp, inFifo);
+                            }
+                            uart->startReceiver();
                         }
-                        uart->startReceiver();
                     } else {
                         UART_RXDMACmd(uartInstance, ENABLE);
                     }
@@ -937,17 +945,12 @@ private:
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
-            if (config_.config & SERIAL_FLOW_CONTROL_RTS) {
-                const ssize_t space = rxBuffer_.space();
-                if (space > 0) {
-                    uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, std::min((size_t)space, MAX_UART_FIFO_SIZE), 1);
+            const ssize_t space = rxBuffer_.space();
+            if (space > 0) {
+                uint32_t toRead = std::min((uint32_t)space, (uint32_t)MAX_UART_FIFO_SIZE);
+                uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, toRead, 1);
+                if (inFifo > 0) {
                     rxBuffer_.put(temp, inFifo);
-                }
-            } else {
-                uint32_t inFifo = UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
-                const ssize_t canWrite = rxBuffer_.space();
-                if (canWrite > 0) {
-                    rxBuffer_.put(temp, std::min((uint32_t)canWrite, inFifo));
                 }
             }
             uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
