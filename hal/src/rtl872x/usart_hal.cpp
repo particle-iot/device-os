@@ -945,6 +945,7 @@ private:
             GDMA_Cmd(rxDmaInitStruct_.GDMA_Index, rxDmaInitStruct_.GDMA_ChNum, ENABLE);
         } else {
             uint8_t temp[MAX_UART_FIFO_SIZE];
+            const bool rtsFlow = (config_.config & SERIAL_FLOW_CONTROL_RTS) != 0;
             const ssize_t space = rxBuffer_.space();
             if (space > 0) {
                 uint32_t toRead = std::min((uint32_t)space, (uint32_t)MAX_UART_FIFO_SIZE);
@@ -952,6 +953,8 @@ private:
                 if (inFifo > 0) {
                     rxBuffer_.put(temp, inFifo);
                 }
+            } else if (!rtsFlow) {
+                UART_ReceiveDataTO(uartInstance, temp, MAX_UART_FIFO_SIZE, 1);
             }
             uartIntConfig(uartInstance, RUART_IER_ERBI | RUART_IER_ELSI | RUART_IER_ETOI, ENABLE);
         }
