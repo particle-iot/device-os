@@ -51,8 +51,8 @@ hal_pin_t cachePins[CACHE_PIN_COUNT] = {D7, S4, S5, S6, BTN, ANTSW};
 constexpr int CACHE_PIN_COUNT = 10;
 hal_pin_t cachePins[CACHE_PIN_COUNT] = {D20, D21, D26, BGPWR, BGRST, BGDTR, BGVINT, GNSS_ANT_PWR, UNUSED_PIN1, UNUSED_PIN2};
 #elif PLATFORM_ID == PLATFORM_SULU
-constexpr int CACHE_PIN_COUNT = 5;
-hal_pin_t cachePins[CACHE_PIN_COUNT] = {LOW_BAT_UC, BGPWR, BGRST, BGDTR, BGVINT};
+constexpr int CACHE_PIN_COUNT = 6;
+hal_pin_t cachePins[CACHE_PIN_COUNT] = {D5, D6, D7, SWD_DAT, BGPWR, BGVINT};
 #endif
 constexpr uint32_t CACHE_PIN_STATE_UNKNOWN = 0x3;
 constexpr uint32_t CACHE_PIN_STATE_MASK = 0x3;
