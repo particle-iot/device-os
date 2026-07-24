@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define TOTAL_PINS          45
+#define TOTAL_PINS          39
 #define TOTAL_ANALOG_PINS   6
 #define FIRST_ANALOG_PIN    14
 
@@ -42,8 +42,6 @@
 #define D17                 17
 #define D18                 18
 #define D19                 19
-#define D20                 20
-#define D21                 21
 
 // Analog pins
 #define A0                  D19
@@ -54,15 +52,15 @@
 #define A5                  D14
 
 // SPI
-#define SS                  D8
+#define SS                  D4
 #define SCK                 D13
 #define MISO                D11
 #define MOSI                D12
-
-#define SS1                 D3
-#define SCK1                D2
-#define MISO1               D10
-#define MOSI1               D9
+// SPI1
+#define SS1                 D5
+#define SCK1                D14
+#define MISO1               D15
+#define MOSI1               D16
 
 // I2C
 #define SDA                 D0
@@ -74,30 +72,32 @@
 #define CTS                 D3
 #define RTS                 D2
 // UART (Serial2)
-#define TX1                 D20
-#define RX1                 D21
+#define TX1                 37
+#define RX1                 38
 // UART (NCP)
-#define TX2                 26
-#define RX2                 27
-#define CTS2                29
-#define RTS2                28
+#define TX2                 24
+#define RX2                 25
+#define CTS2                27
+#define RTS2                26
 
 #define WKP                 D8
 
 // RGB and Button
-#define RGBR                22
-#define RGBG                23
-#define RGBB                24
-#define BTN                 25
+#define RGBR                20
+#define RGBG                21
+#define RGBB                22
+#define BTN                 23
 
 // Cellular
-#define BGPWR               30
-#define BGRST               31
-#define BGVINT              32
-#define BGDTR               33
+#define BGPWR               28
+#define BGRST               29
+#define BGVINT              30
+#define BGDTR               31
 
-#define LOW_BAT_UC          34
+#define LOW_BAT_UC          32
+#define PMIC_SCL            36
+#define PMIC_SDA            35
 
 // Set it to PIN_INVALID if not present
-#define SWD_DAT             36
-#define SWD_CLK             35
+#define SWD_DAT             34
+#define SWD_CLK             33
