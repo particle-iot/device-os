@@ -32,7 +32,6 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/timing.h"
 #include "mbedtls/debug.h"
 
 namespace particle
@@ -90,7 +89,6 @@ private:
 	mbedtls_ssl_config conf;
 	mbedtls_x509_crt clicert;
 	mbedtls_pk_context pkey;
-	mbedtls_timing_delay_context timer;
 	Callbacks callbacks;
 	uint8_t* server_public;
 	uint16_t server_public_len;
@@ -103,6 +101,25 @@ private:
 	const uint8_t* device_id;
 	bool move_session;
 	bool debug_enabled;
+
+	enum class EstablishState : uint8_t {
+		NONE,
+		HANDSHAKING
+	};
+	EstablishState establish_state;
+
+	uint8_t handshake_random[64];
+
+	enum class WaitCondition : uint8_t {
+		NONE,
+		WANT_READ,
+		WANT_WRITE
+	};
+	WaitCondition last_wait;
+
+	system_tick_t timer_start;
+	uint32_t timer_int_ms;
+	uint32_t timer_fin_ms;
 
     void init();
     void dispose();
@@ -128,7 +145,6 @@ private:
 			conf(),
 			clicert(),
 			pkey(),
-			timer(),
 			callbacks(),
 			server_public(nullptr),
 			server_public_len(0),
@@ -136,7 +152,12 @@ private:
 			coap_state(nullptr),
 			device_id(nullptr),
 			move_session(false),
-			debug_enabled(false) {
+			debug_enabled(false),
+			establish_state(EstablishState::NONE),
+			last_wait(WaitCondition::NONE),
+			timer_start(0),
+			timer_int_ms(0),
+			timer_fin_ms(0) {
 	}
 
 	ProtocolError init(const uint8_t* core_private, size_t core_private_len,
@@ -176,7 +197,18 @@ private:
 	virtual AppStateDescriptor cached_app_state_descriptor() const override;
 
 	virtual void reset() override {
+		establish_state = EstablishState::NONE;
+		last_wait = WaitCondition::NONE;
+		timer_start = 0;
+		timer_int_ms = 0;
+		timer_fin_ms = 0;
 	}
+
+	virtual bool is_establish_in_progress() const override {
+		return establish_state == EstablishState::HANDSHAKING;
+	}
+
+	system_tick_t next_handshake_delay() const;
 
 	void set_debug_enabled(bool enabled = true) override {
 		debug_enabled = enabled;
