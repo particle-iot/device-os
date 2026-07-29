@@ -88,9 +88,33 @@ void spark_protocol_init(ProtocolFacade* protocol, const char *id,
     protocol->init(id, keys, callbacks, descriptor);
 }
 
-int spark_protocol_handshake(ProtocolFacade* protocol, void*) {
+int spark_protocol_handshake(ProtocolFacade* protocol, void* reserved) {
     ASSERT_ON_SYSTEM_THREAD();
-    return protocol->begin();
+    if (!reserved) {
+        // Legacy blocking path
+        return protocol->begin();
+    }
+    // Non-blocking path: map the param struct to begin(flags, &delay)
+    auto* param = static_cast<spark_protocol_handshake_param*>(reserved);
+    if (param->size < sizeof(spark_protocol_handshake_param)) {
+        return particle::protocol::INVALID_STATE;
+    }
+    // Reject unknown flag bits
+    if (param->flags & ~(SPARK_PROTOCOL_HANDSHAKE_FLAG_NON_BLOCKING | SPARK_PROTOCOL_HANDSHAKE_FLAG_CONTINUE)) {
+        return particle::protocol::INVALID_STATE;
+    }
+
+    unsigned begin_flags = 0;
+    if (param->flags & SPARK_PROTOCOL_HANDSHAKE_FLAG_NON_BLOCKING) {
+        begin_flags |= Protocol::HandshakeFlag::HANDSHAKE_FLAG_NON_BLOCKING;
+    }
+    if (param->flags & SPARK_PROTOCOL_HANDSHAKE_FLAG_CONTINUE) {
+        begin_flags |= Protocol::HandshakeFlag::HANDSHAKE_FLAG_CONTINUE;
+    }
+    system_tick_t delay = 0;
+    const int ret = protocol->begin(begin_flags, &delay);
+    param->next_event_delay_ms = (uint32_t)delay;
+    return ret;
 }
 
 bool spark_protocol_event_loop(ProtocolFacade* protocol, void*) {
