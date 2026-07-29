@@ -129,6 +129,21 @@ public:
 		return NO_ERROR;
 	}
 
+	// DTLS handshake hooks for re-entrant begin()
+	ProtocolError poll_hello_delivered() override {
+		return channel.poll_confirmed();
+	}
+
+	system_tick_t next_handshake_event_delay() const override {
+		if (handshake_stage == HandshakeStage::ESTABLISH) {
+			return channel.next_handshake_delay();
+		}
+		if (handshake_stage == HandshakeStage::HELLO_WAIT) {
+			return channel.client_next_timeout(millis());
+		}
+		return 0;
+	}
+
 
 	/**
 	 * Ensures that all outstanding sent coap messages have been acknowledged.

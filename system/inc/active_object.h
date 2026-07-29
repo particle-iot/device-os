@@ -31,6 +31,7 @@
 
 #include "concurrent_hal.h"
 #include "hal_platform.h"
+#include "service_debug.h"
 
 /**
  * Configuratino data for an active object.
@@ -409,7 +410,6 @@ public:
  */
 class ActiveObjectThreadQueue : public ActiveObjectQueue
 {
-
 public:
 
     ActiveObjectThreadQueue(const ActiveObjectConfiguration& config) : ActiveObjectQueue(config) {}
@@ -418,7 +418,15 @@ public:
 #if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
     virtual bool take(Item& result) override
     {
-        auto r = os_thread_wait(configuration.take_wait, nullptr);
+        // Consume the one-shot wake hint: can shorten one sleep, never extend
+        system_tick_t wait = configuration.take_wait;
+        if (next_wake_timeout != 0) {
+            if (next_wake_timeout < wait) {
+                wait = next_wake_timeout;
+            }
+            next_wake_timeout = 0;
+        }
+        auto r = os_thread_wait(wait, nullptr);
         if (!os_queue_take(queue, &result, 0, nullptr)) {
             return true;
         }
@@ -440,6 +448,14 @@ public:
             os_thread_notify(_thread, nullptr);
         }
     }
+
+    void nextWakeTimeout(system_tick_t ms)
+    {
+        SPARK_ASSERT(isCurrentThread());
+        if (next_wake_timeout == 0 || ms < next_wake_timeout) {
+            next_wake_timeout = ms;
+        }
+    }
 #endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 
     void start()
@@ -447,7 +463,10 @@ public:
         createQueue();
         start_thread();
     }
-
+private:
+#if HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+    system_tick_t next_wake_timeout = 0;
+#endif // HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
 };
 
 

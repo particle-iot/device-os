@@ -1256,13 +1256,43 @@ int Send_Firmware_Update_Flags()
 
 int Spark_Handshake(bool presence_announce)
 {
-    cloud_socket_aborted = false; // Clear cancellation flag for socket operations
-    LOG(INFO,"Starting handshake: presense_announce=%d", presence_announce);
-    bool session_resumed = false;
-    // TODO: Perform the DTLS handshake and receive a response for the Hello message asynchronously
-    SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 1;
-    int err = spark_protocol_handshake(sp);
+    const bool continuing = SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS;
+    if (!continuing) {
+        // First entry - initial setup (runs once per attempt)
+        cloud_socket_aborted = false; // Clear cancellation flag for socket operations
+        LOG(INFO, "Starting handshake: presense_announce=%d", presence_announce);
+        SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 1;
+    }
+
+#if PLATFORM_THREADING
+    const bool nonblocking = continuing || SystemThread.isStarted();
+#else
+    const bool nonblocking = false;
+#endif
+
+    int err;
+    if (nonblocking) {
+        spark_protocol_handshake_param param = {};
+        param.size = sizeof(param);
+        param.flags = SPARK_PROTOCOL_HANDSHAKE_FLAG_NON_BLOCKING |
+                (continuing ? SPARK_PROTOCOL_HANDSHAKE_FLAG_CONTINUE : 0);
+        err = spark_protocol_handshake(sp, &param);
+        if (err == protocol::IN_PROGRESS) {
+#if PLATFORM_THREADING && HAL_PLATFORM_SOCKET_IOCTL_NOTIFY
+            if (param.next_event_delay_ms > 0) {
+                SystemThread.nextWakeTimeout(param.next_event_delay_ms);
+            }
+#endif
+            return SYSTEM_ERROR_BUSY;
+        }
+    } else {
+        // Legacy blocking path
+        err = spark_protocol_handshake(sp);
+    }
+
+    // Handshake complete (success or error)
     SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 0;
+    bool session_resumed = false;
 
 #if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
     // XXX: Adding a delay only for platforms Boron and BSoM, because older cell versions of
