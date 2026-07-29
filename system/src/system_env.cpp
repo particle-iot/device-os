@@ -29,6 +29,7 @@
 
 #include <pb_decode.h>
 
+#include "system_threading.h"
 #include "stream.h"
 #include "file_util.h"
 #include "nanopb_misc.h"
@@ -738,12 +739,14 @@ int system_clear_env(void* reserved) {
     return Env::instance().clear();
 }
 
-
-void system_init_env() {
+int system_init_env() {
+    SYSTEM_THREAD_CONTEXT_SYNC(system_init_env());
     int r = Env::instance().init();
     if (r < 0) {
         LOG(ERROR, "Env::init error %d", r);
+        return r;
     }
+    return 0;
 }
 
 #endif // HAL_PLATFORM_ENV

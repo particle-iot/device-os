@@ -381,7 +381,7 @@ int system_list_env(system_list_env_fn fn, void* arg, char* buf, size_t buf_size
  */
 int system_clear_env(void* reserved);
 
-void system_init_env();
+int system_init_env();
 
 #ifdef __cplusplus
 } // extern "C"
