@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define LOG_CHECKED_ERRORS 1
+
 #include "system_env.h"
 
 #if HAL_PLATFORM_ENV
@@ -317,6 +319,7 @@ Env::~Env() {
 }
 
 int Env::init() {
+    LOG(INFO, "Env::init");
     fs::FsLock lock;
     CHECK(fs::mount());
 
@@ -324,11 +327,15 @@ int Env::init() {
     bool hasStaged = false;
     int r = loadEnv(env, hasStaged, true /* tryStaged */);
     if (r < 0) {
+        LOG(ERROR, "loadEnv error %d hasStaged=%d", r, (int)hasStaged);
         if (hasStaged) {
             // Ignore the staged files as a fallback
             env = EnvData();
             hasStaged = false;
             r = loadEnv(env, hasStaged, false /* tryStaged */);
+            if (r < 0) {
+                LOG(ERROR, "loadEnv error %d", r);
+            }
         }
         if (r < 0) {
             LOG(ERROR, "Error while loading env vars: %d", r);
@@ -338,11 +345,13 @@ int Env::init() {
 
     // Clean up empty files
     if (env.appFile.isOpen() && env.appFile.size() == 0) {
+        LOG(INFO, "Removing empty app env file");
         env.appFile.close();
         fs::remove(APP_FILE_CURRENT);
         fs::remove(APP_FILE_STAGED);
     }
     if (env.snapshotFile.isOpen() && env.snapshotFile.size() == 0) {
+        LOG(INFO, "Removing empty snapshot env file");
         env.snapshotFile.close();
         fs::remove(SNAPSHOT_FILE_CURRENT);
         fs::remove(SNAPSHOT_FILE_STAGED);
@@ -350,6 +359,7 @@ int Env::init() {
 
     // Close the files if they only contain metadata but not variables
     if (!env.size) {
+        LOG(INFO, "No env variables found");
         env.appFile.close();
         env.snapshotFile.close();
     }
@@ -437,9 +447,11 @@ int Env::get(const char* name, std::unique_ptr<InputStream>& stream) {
 }
 
 int Env::clear() {
+    LOG(WARN, "Env::clear");
     if (!env_.size) {
         return 0;
     }
+    LOG(WARN, "Clearing env");
     fs::FsLock lock;
     // Create empty staged files for app and snapshot env vars
     CHECK(createEmptyFile(APP_FILE_STAGED));
@@ -448,6 +460,7 @@ int Env::clear() {
 }
 
 int Env::updateAsset(const Asset& asset, InputStream& data) {
+    LOG(INFO, "Env::updateAsset type=%d", (int)asset.type());
     fs::FsLock lock;
 
     const char* path = stagedPathForAssetType(asset.type());
@@ -459,6 +472,7 @@ int Env::updateAsset(const Asset& asset, InputStream& data) {
 }
 
 int Env::removeAsset(const Asset& asset) {
+    LOG(WARN, "Env::removeAsset type=%d", (int)asset.type());
     fs::FsLock lock;
 
     const char* path = stagedPathForAssetType(asset.type());
@@ -490,6 +504,8 @@ int Env::updateBootloaderVars() {
 }
 
 int Env::loadEnv(EnvData& env, bool& hasStaged, bool tryStaged) {
+    LOG(INFO, "Env::loadEnv tryStaged=%d", (int)tryStaged);
+
     // Load the variables bundled with the app
     CHECK(loadEnvForSource(env, hasStaged, tryStaged, VarSource::APP));
 
@@ -499,10 +515,12 @@ int Env::loadEnv(EnvData& env, bool& hasStaged, bool tryStaged) {
 }
 
 int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSource src) {
+    LOG(INFO, "Env::loadEnvForSource tryStaged=%d src=%d", (int)tryStaged, (int)src);
     if (tryStaged) {
         auto path = stagedPathForSource(src);
         int r = loadEnvFile(env, path, src);
         if (r >= 0) {
+            LOG(INFO, "Staged env loaded successfully");
             hasStaged = true;
             // Rename the staged file
             auto& file = env.fileForSource(src);
@@ -513,7 +531,7 @@ int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSour
             CHECK(file.open(newPath, LFS_O_RDONLY));
             return 0;
         } else if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-            LOG(ERROR, "Error while loading %s: %d", path, r);
+            LOG(ERROR, "Error while loading staged file %s: %d", path, r);
             hasStaged = true;
             // Remove the staged file
             int r2 = fs::remove(path);
@@ -521,6 +539,8 @@ int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSour
                 LOG(ERROR, "Error while removing %s: %d", path, r2);
             }
             return r;
+        } else { // r == SYSTEM_ERROR_FILESYSTEM_NOENT
+            LOG(INFO, "Staged env not found");
         }
     }
 
@@ -530,10 +550,16 @@ int Env::loadEnvForSource(EnvData& env, bool& hasStaged, bool tryStaged, VarSour
         LOG(ERROR, "Error while loading %s: %d", path, r);
         return r;
     }
+    if (r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
+        LOG(INFO, "Current env loaded successfully");
+    } else {
+        LOG(INFO, "Current env not found");
+    }
     return 0;
 }
 
 int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
+    LOG(INFO, "Env::loadEnvFile path=%s src=%d", path, (int)src);
     auto& file = env.fileForSource(src);
     CHECK(file.open(path, LFS_O_RDONLY));
 
@@ -546,6 +572,7 @@ int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
 
     size_t size = CHECK(file.size());
     if (size > MAX_ENV_FILE_SIZE) {
+        LOG(ERROR, "Env file is too large");
         return SYSTEM_ERROR_TOO_LARGE;
     }
     // As a special case, allow an app/snapshot file to be empty so that flashing it would clean up
@@ -559,6 +586,7 @@ int Env::loadEnvFile(EnvData& env, const char* path, VarSource src) {
 }
 
 int Env::parseEnv(EnvData& env, VarSource src) {
+    LOG(INFO, "Env::parseEnv src=%d", (int)src);
     pb_istream_t stream = {};
     auto& file = env.fileForSource(src);
     CHECK(pb_istream_from_file(&stream, file.handle(), CHECK(file.size()), nullptr /* reserved */));
@@ -708,6 +736,14 @@ int system_list_env(system_list_env_fn fn, void* arg, char* buf, size_t bufSize,
 
 int system_clear_env(void* reserved) {
     return Env::instance().clear();
+}
+
+
+void system_init_env() {
+    int r = Env::instance().init();
+    if (r < 0) {
+        LOG(ERROR, "Env::init error %d", r);
+    }
 }
 
 #endif // HAL_PLATFORM_ENV

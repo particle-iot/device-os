@@ -808,7 +808,7 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
-#if HAL_PLATFORM_ENV
+#if 0 // HAL_PLATFORM_ENV
     // Initialize the env vars as early as possible
     int r = system::Env::instance().init();
     if (r == SYSTEM_ENV_NEED_RESET) {
