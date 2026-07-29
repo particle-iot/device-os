@@ -75,6 +75,8 @@ system_error_t toSystemError(ProtocolError error) {
         return SYSTEM_ERROR_END_OF_STREAM;
     case COAP_ERROR:
         return SYSTEM_ERROR_COAP;
+    case IN_PROGRESS:
+        return SYSTEM_ERROR_BUSY;
     default:
         return SYSTEM_ERROR_PROTOCOL; // Generic protocol error
     }

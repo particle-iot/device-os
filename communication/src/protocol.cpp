@@ -474,75 +474,147 @@ AppStateDescriptor Protocol::app_state_descriptor(uint32_t stateFlags)
 
 /**
  * Establish a secure connection and send and process the hello message.
+ * Legacy blocking entry point.
  */
 int Protocol::begin()
 {
+	return begin(0, nullptr);
+}
+
+/**
+ * Re-entrant handshake stage machine.
+ */
+int Protocol::begin(unsigned flags, system_tick_t* next_event_delay)
+{
 	LOG_CATEGORY("comm.protocol.handshake");
-	LOG(INFO,"Establish secure connection");
+	const bool non_blocking = (flags & HANDSHAKE_FLAG_NON_BLOCKING);
+	const bool continuing = (flags & HANDSHAKE_FLAG_CONTINUE);
 
-	reset();
-	last_ack_handlers_update = callbacks.millis();
-
-	bool debug_enabled = LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY);
-	channel.set_debug_enabled(debug_enabled);
-
-	ProtocolError error = channel.establish();
-	const bool session_resumed = (error == SESSION_RESUMED);
-	if (error && !session_resumed) {
-		LOG(ERROR, "Handshake failed: %d", error);
-		return error;
+	// Validate control input
+	if (next_event_delay) {
+		*next_event_delay = 0;
+	}
+	if (continuing && !non_blocking) {
+		return INVALID_STATE;
+	}
+	if (continuing && handshake_stage == HandshakeStage::INIT) {
+		return INVALID_STATE;
+	}
+	// Unknown flag bits
+	if (flags & ~(HANDSHAKE_FLAG_NON_BLOCKING | HANDSHAKE_FLAG_CONTINUE)) {
+		return INVALID_STATE;
 	}
 
-	if (session_resumed) {
-		// for now, unconditionally move the session on resumption
-		channel.command(MessageChannel::MOVE_SESSION, nullptr);
-		uint32_t stateFlags = 0xffffffffu; // Check all flags, not just recognized ones
-		if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-			// The system controls when to send application Describe and subscriptions
-			stateFlags &= ~(AppStateDescriptor::APP_DESCRIBE_CRC | AppStateDescriptor::SUBSCRIPTIONS_CRC);
-		}
-		const auto currentState = app_state_descriptor(stateFlags);
-		const auto cachedState = channel.cached_app_state_descriptor();
-		if (currentState.equalsTo(cachedState, stateFlags)) {
-			LOG(INFO, "Skipping HELLO message");
-			error = ping(true);
-			if (error != ProtocolError::NO_ERROR) {
-				return error;
+	// A non-CONTINUE call is always a fresh attempt
+	if (!continuing) {
+		LOG(INFO, "Establish secure connection");
+		reset();
+		last_ack_handlers_update = callbacks.millis();
+		bool debug_enabled = LOG_ENABLED_C(TRACE, COAP_LOG_CATEGORY);
+		channel.set_debug_enabled(debug_enabled);
+		handshake_stage = HandshakeStage::ESTABLISH;
+	}
+
+	if (handshake_stage == HandshakeStage::ESTABLISH) {
+		ProtocolError error = channel.establish();
+		if (error == IN_PROGRESS) {
+			if (non_blocking) {
+				if (next_event_delay) {
+					*next_event_delay = next_handshake_event_delay();
+				}
+				return IN_PROGRESS;
 			}
-			return ProtocolError::SESSION_RESUMED; // Not an error
-		} else {
-			// TODO: For now, make sure application Describe and subscriptions will be sent if the
-			// system state has changed
-			channel.command(Channel::SAVE_SESSION);
-			descriptor.app_state_selector_info(SparkAppStateSelector::ALL, SparkAppStateUpdate::RESET, 0, nullptr);
-			channel.command(Channel::LOAD_SESSION);
+			// Blocking mode: spin in place (legacy behavior)
+			while (error == IN_PROGRESS) {
+				error = channel.establish();
+			}
 		}
-	}
-
-	LOG(INFO, "Sending HELLO message");
-	error = hello(descriptor.was_ota_upgrade_successful());
-	if (error) {
-		LOG(ERROR,"Could not send HELLO message: %d", error);
-		return error;
-	}
-
-	if (protocol_flags & ProtocolFlag::REQUIRE_HELLO_RESPONSE) {
-		LOG(INFO, "Receiving HELLO response");
-		error = hello_response();
-		if (error) {
+		const bool session_resumed = (error == SESSION_RESUMED);
+		if (error && !session_resumed) {
+			LOG(ERROR, "Handshake failed: %d", error);
+			handshake_stage = HandshakeStage::INIT;
 			return error;
 		}
+
+		if (session_resumed) {
+			// for now, unconditionally move the session on resumption
+			channel.command(MessageChannel::MOVE_SESSION, nullptr);
+			uint32_t stateFlags = 0xffffffffu;
+			if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
+				stateFlags &= ~(AppStateDescriptor::APP_DESCRIBE_CRC | AppStateDescriptor::SUBSCRIPTIONS_CRC);
+			}
+			const auto currentState = app_state_descriptor(stateFlags);
+			const auto cachedState = channel.cached_app_state_descriptor();
+			if (currentState.equalsTo(cachedState, stateFlags)) {
+				LOG(INFO, "Skipping HELLO message");
+				error = ping(true);
+				if (error != ProtocolError::NO_ERROR) {
+					handshake_stage = HandshakeStage::INIT;
+					return error;
+				}
+				// Session resumed with matching state - complete
+				handshake_stage = HandshakeStage::INIT;
+				return ProtocolError::SESSION_RESUMED;
+			} else {
+				channel.command(Channel::SAVE_SESSION);
+				descriptor.app_state_selector_info(SparkAppStateSelector::ALL, SparkAppStateUpdate::RESET, 0, nullptr);
+				channel.command(Channel::LOAD_SESSION);
+			}
+		}
+
+		// Send HELLO
+		LOG(INFO, "Sending HELLO message");
+		error = hello(descriptor.was_ota_upgrade_successful());
+		if (error) {
+			LOG(ERROR, "Could not send HELLO message: %d", error);
+			handshake_stage = HandshakeStage::INIT;
+			return error;
+		}
+
+		if (protocol_flags & ProtocolFlag::REQUIRE_HELLO_RESPONSE) {
+			// LightSSL/TCP path: blocking hello_response()
+			LOG(INFO, "Receiving HELLO response");
+			error = hello_response();
+			if (error) {
+				handshake_stage = HandshakeStage::INIT;
+				return error;
+			}
+			// hello_response() completed - go straight to finalize
+			handshake_stage = HandshakeStage::INIT;
+		} else {
+			// DTLS path: poll for HELLO ACK
+			handshake_stage = HandshakeStage::HELLO_WAIT;
+		}
+	}
+
+	if (handshake_stage == HandshakeStage::HELLO_WAIT) {
+		ProtocolError error = poll_hello_delivered();
+		if (error == IN_PROGRESS) {
+			if (non_blocking) {
+				if (next_event_delay) {
+					*next_event_delay = next_handshake_event_delay();
+				}
+				return IN_PROGRESS;
+			}
+			// Blocking mode: spin in place (legacy behavior)
+			while (error == IN_PROGRESS) {
+				error = poll_hello_delivered();
+			}
+		}
+		if (error) {
+			LOG(ERROR, "HELLO confirmation failed: %d", error);
+			handshake_stage = HandshakeStage::INIT;
+			return error;
+		}
+		handshake_stage = HandshakeStage::INIT;
 	}
 
 	LOG(INFO, "Handshake completed");
 	channel.notify_established();
 
-	// An ACK or a response for the Hello message has already been received at this point, so we can
-	// update the cached session parameters
 	if (descriptor.app_state_selector_info) {
 		LOG(TRACE, "Updating cached session parameters");
 		channel.command(Channel::SAVE_SESSION);
-		// TODO: Update the underlying SessionPersist structure directly
 		descriptor.app_state_selector_info(SparkAppStateSelector::PROTOCOL_FLAGS, SparkAppStateUpdate::PERSIST, protocol_flags, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::SYSTEM_MODULE_VERSION, SparkAppStateUpdate::PERSIST, system_version, nullptr);
 		descriptor.app_state_selector_info(SparkAppStateSelector::MAX_MESSAGE_SIZE, SparkAppStateUpdate::PERSIST, PROTOCOL_BUFFER_SIZE, nullptr);
@@ -552,9 +624,9 @@ int Protocol::begin()
 	}
 
 	if (protocol_flags & ProtocolFlag::DEVICE_INITIATED_DESCRIBE) {
-		// Send system Describe
-		error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
+		ProtocolError error = post_description(DescriptionType::DESCRIBE_SYSTEM, true /* force */);
 		if (error) {
+			handshake_stage = HandshakeStage::INIT;
 			return error;
 		}
 	}
@@ -576,6 +648,7 @@ void Protocol::reset() {
 	channel.reset();
 	subscription_msg_ids.clear();
 	v2::CoapChannel::instance()->close();
+	handshake_stage = HandshakeStage::INIT;
 }
 
 /**
