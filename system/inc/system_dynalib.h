@@ -40,6 +40,7 @@
 #include "system_power.h"
 #include "system_ble_prov.h"
 #include "system_env.h"
+#include "system_config.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -150,6 +151,8 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 #endif  // HAL_PLATFORM_ENV
 
 DYNALIB_FN(BASE_IDX4 + 0, system, system_thread_invoke, int(void (*)(void*), void*, void*))
+DYNALIB_FN(BASE_IDX4 + 1, system, system_enable_boot_log, void(bool, const system_boot_log_config*, void*))
+DYNALIB_FN(BASE_IDX4 + 2, system, system_flush_boot_log, void(int, void*))
 
 DYNALIB_END(system)
 
