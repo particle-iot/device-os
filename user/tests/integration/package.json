@@ -10,6 +10,7 @@
     "lodash": "^4.17.23",
     "particle-api-js": "^11.1.4",
     "particle-usb": "^4.2.0",
+    "serialport": "10.4.0",
     "tempy": "^1.0.1"
   }
 }
