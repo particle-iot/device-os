@@ -788,7 +788,11 @@ int hal_usb_cdc_pvt_send_data(const char* data, size_t size) {
     }
 
     uint32_t bytesToWrite = size;
-    SPARK_ASSERT(app_fifo_write(&m_usb_instance.tx_fifo, data, &bytesToWrite) == NRF_SUCCESS);
+    uint32_t result = app_fifo_write(&m_usb_instance.tx_fifo, data, &bytesToWrite);
+    if (result == NRF_ERROR_NO_MEM) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    SPARK_ASSERT(result == NRF_SUCCESS);
 
     // NOTE: its possible to only write part of the data. WRITABLE will need to be signaled to complete transmission
     return bytesToWrite;
