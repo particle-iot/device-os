@@ -69,10 +69,10 @@
 #include "system_power.h"
 #include "spark_wiring_wifi.h"
 #include "server_config.h"
-#include "system_config.h"
 #include "system_network_manager.h"
 #include "ledger/ledger_manager.h"
 #include "ledger/ledger.h"
+#include "boot_log.h"
 
 #include "ota_module.h"
 #include "user_hal.h"
@@ -491,6 +491,7 @@ void app_loop(bool threaded)
                 DECLARE_SYS_HEALTH(ENTERED_Setup);
                 if (system_mode() != SAFE_MODE) {
                     setup();
+                    system::stopWritingBootLog();
                 }
                 SPARK_WIRING_APPLICATION = 1;
                 // In the automatic mode, application DESCRIBE and subscriptions are sent when
@@ -809,7 +810,7 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
-    system_init_boot_log();
+    system::initBootLog();
 
 #if HAL_PLATFORM_ENV
     // Initialize the env vars as early as possible

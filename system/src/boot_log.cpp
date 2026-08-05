@@ -1,7 +1,7 @@
-#include "system_config.h"
-#include "stream.h"
+#include "boot_log.h"
 #include "filesystem.h"
 #include "file_util.h"
+#include "stream.h"
 #include "platform_headers.h" // For retained_system
 #include "str_compat.h"
 #include "logging.h"
@@ -13,11 +13,9 @@
 #include <cstring>
 #include <cstdarg>
 
+namespace particle::system {
+
 namespace {
-
-using namespace particle;
-
-namespace detail {
 
 class RotatingLogReader: public InputStream {
 public:
@@ -145,8 +143,6 @@ private:
     bool writeSecond_;
 };
 
-} // namespace detail
-
 class RotatingLog {
 public:
     RotatingLog(size_t maxSize, const char* fileName1, const char* fileName2) :
@@ -273,7 +269,7 @@ public:
     int openForRead(std::unique_ptr<InputStream>& stream) {
         fs::FsLock lock;
 
-        std::unique_ptr<detail::RotatingLogReader> reader(new(std::nothrow) detail::RotatingLogReader(maxSize_, fileName1_,
+        std::unique_ptr<RotatingLogReader> reader(new(std::nothrow) RotatingLogReader(maxSize_, fileName1_,
                 fileName2_, hasSecond_, writeSecond_));
         if (!reader) {
             return SYSTEM_ERROR_NO_MEMORY;
@@ -338,6 +334,34 @@ int bootLogEnabledCallback(int level, const char* category, void* reserved) {
 
 } // namespace
 
+int initBootLog() {
+    fs::FsLock lock;
+
+    if (!bootLogConfig.enabled) {
+        return 0;
+    }
+
+    CHECK(fs::mount());
+
+    std::unique_ptr<RotatingLog> log(new(std::nothrow) RotatingLog(bootLogConfig.maxSize, BOOT_LOG_FILE1, BOOT_LOG_FILE2));
+    if (!log) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(log->init());
+    bootLog = std::move(log);
+
+    log_set_callbacks(bootLogMessageCallback, bootLogWriteCallback, bootLogEnabledCallback, nullptr /* reserved */);
+    return 0;
+}
+
+void stopWritingBootLog() {
+}
+
+} // namespace particle::system
+
+using namespace particle;
+using namespace particle::system;
+
 void system_enable_boot_log(bool enabled, const system_boot_log_config* config, void* reserved) {
     fs::FsLock lock;
 
@@ -361,7 +385,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
     }
 }
 
-void system_flush_boot_log(int level, void* reserved) {
+void system_flush_boot_log(int level, const char* category, void* reserved) {
     fs::FsLock lock;
 
     if (!bootLog) {
@@ -383,29 +407,9 @@ void system_flush_boot_log(int level, void* reserved) {
             if (r < 0) {
                 return;
             }
-            log_write(level, nullptr /* category */, buf, n, nullptr /* reserved */);
+            log_write(level, category, buf, n, nullptr /* reserved */);
         }
     }
 
     bootLog->clear();
-}
-
-int system_init_boot_log() {
-    fs::FsLock lock;
-
-    if (!bootLogConfig.enabled) {
-        return 0;
-    }
-
-    CHECK(fs::mount());
-
-    std::unique_ptr<RotatingLog> log(new(std::nothrow) RotatingLog(bootLogConfig.maxSize, BOOT_LOG_FILE1, BOOT_LOG_FILE2));
-    if (!log) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    CHECK(log->init());
-    bootLog = std::move(log);
-
-    log_set_callbacks(bootLogMessageCallback, bootLogWriteCallback, bootLogEnabledCallback, nullptr /* reserved */);
-    return 0;
 }

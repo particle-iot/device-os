@@ -15,10 +15,7 @@ extern "C" {
 #endif
 
 void system_enable_boot_log(bool enabled, const system_boot_log_config* config, void* reserved);
-void system_flush_boot_log(int level, void* reserved);
-
-// Internal API
-int system_init_boot_log();
+void system_flush_boot_log(int level, const char* category, void* reserved);
 
 #ifdef __cplusplus
 } // extern "C"
