@@ -499,11 +499,23 @@ class SteppableCoapChannel : public test::CoapMessageChannel {
 	bool establishInProgress = false;
 public:
 	unsigned establishCallCount = 0;
+	unsigned moveSessionCallCount = 0;
+	unsigned sendCallCount = 0;
 	void setEstablishResult(ProtocolError e) { establishResult_ = e; }
 	void setEstablishInProgress(bool v) { establishInProgress = v; }
 	ProtocolError establish() override {
 		establishCallCount++;
 		return establishResult_;
+	}
+	ProtocolError command(Command cmd, void* arg) override {
+		if (cmd == MOVE_SESSION) {
+			moveSessionCallCount++;
+		}
+		return test::CoapMessageChannel::command(cmd, arg);
+	}
+	ProtocolError send(Message& msg) override {
+		sendCallCount++;
+		return test::CoapMessageChannel::send(msg);
 	}
 	bool is_establish_in_progress() const override {
 		return establishInProgress;
@@ -612,6 +624,32 @@ SCENARIO("begin() zeroes next_event_delay on terminal result",
 			THEN("next_event_delay is zeroed on terminal result")
 			{
 				REQUIRE(delay == 0);
+			}
+		}
+	}
+}
+
+SCENARIO("begin() preserves the session-resumption fast path",
+         "[nonblocking_handshake]")
+{
+	GIVEN("a Protocol whose channel restores a matching session")
+	{
+		SteppableCoapChannel channel;
+		channel.setEstablishResult(SESSION_RESUMED);
+		test::ProtocolStub p(&channel);
+
+		WHEN("a non-blocking handshake is started")
+		{
+			system_tick_t delay = 999;
+			const int ret = p.begin(Protocol::HANDSHAKE_FLAG_NON_BLOCKING, &delay);
+
+			THEN("the session is moved and the resume ping is sent in the same call")
+			{
+				REQUIRE(ret == SESSION_RESUMED);
+				REQUIRE(delay == 0);
+				REQUIRE(channel.establishCallCount == 1);
+				REQUIRE(channel.moveSessionCallCount == 1);
+				REQUIRE(channel.sendCallCount == 1);
 			}
 		}
 	}

@@ -112,8 +112,10 @@ private:
 
 	enum class WaitCondition : uint8_t {
 		NONE,
+		CONTINUE,
 		WANT_READ,
-		WANT_WRITE
+		WANT_WRITE,
+		CRYPTO_IN_PROGRESS
 	};
 	WaitCondition last_wait;
 
@@ -197,6 +199,8 @@ private:
 	virtual AppStateDescriptor cached_app_state_descriptor() const override;
 
 	virtual void reset() override {
+		mbedtls_ssl_free(&ssl_context);
+		mbedtls_ssl_init(&ssl_context);
 		establish_state = EstablishState::NONE;
 		last_wait = WaitCondition::NONE;
 		timer_start = 0;
