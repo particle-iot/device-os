@@ -288,14 +288,9 @@ int initBootLog() {
     // Use the filesystem lock for serializing access to the boot log
     fs::FsLock lock;
 
-    if (g_bootLogConfig.magic != BOOT_LOG_CONFIG_MAGIC) {
-        g_bootLogConfig = BootLogConfig();
-        g_bootLogConfig.magic = BOOT_LOG_CONFIG_MAGIC;
-    }
-    if (!g_bootLogConfig.enabled) {
+    if (g_bootLogConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_bootLogConfig.enabled) {
         return 0;
     }
-
     CHECK(fs::mount());
 
     std::unique_ptr<BootLog> log(new(std::nothrow) BootLog(g_bootLogConfig.maxSize));
@@ -405,6 +400,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
     }
 
     BootLogConfig newConfig = {};
+    newConfig.magic = BOOT_LOG_CONFIG_MAGIC;
     newConfig.enabled = enabled;
 
     if (enabled) {
@@ -419,6 +415,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
             newConfig.level = LOG_LEVEL_ALL;
         }
     }
+
     g_bootLogConfig = newConfig;
 }
 
