@@ -250,18 +250,6 @@ public:
         return n;
     }
 
-    int clear() {
-        fs::FsLock lock;
-
-        file_.close();
-        rmrf(BOOT_LOG_FILE1);
-        rmrf(BOOT_LOG_FILE2);
-
-        hasSecond_ = false;
-        writeSecond_ = false;
-        return 0;
-    }
-
     int openForRead(std::unique_ptr<InputStream>& stream) {
         fs::FsLock lock;
 
@@ -296,36 +284,25 @@ retained_system BootLogConfig g_bootLogConfig = {};
 std::unique_ptr<BootLog> g_bootLog;
 std::atomic<bool> g_bootLogEnabled;
 
-int flushBootLog(int level, const char* category) {
-    if (!isBootLogEnabled()) {
+int printBootLog(int level, const char* category) {
+    if (!g_bootLog) { // Sanity check
         return 0;
     }
+    std::unique_ptr<InputStream> in;
+    CHECK(g_bootLog->openForRead(in));
 
-    fs::FsLock lock;
-
-    stopWritingBootLog();
-
-    if (level < LOG_LEVEL_NONE) {
-        if (!category) {
-            category = "app";
+    char buf[256];
+    for (;;) {
+        size_t bytesAvail = CHECK(in->availForRead());
+        if (!bytesAvail) {
+            break;
         }
-        std::unique_ptr<InputStream> in;
-        CHECK(g_bootLog->openForRead(in));
-    
-        char buf[256];
-        for (;;) {
-            size_t bytesAvail = CHECK(in->availForRead());
-            if (!bytesAvail) {
-                break;
-            }
-            size_t n = std::min(bytesAvail, sizeof(buf));
-            CHECK(in->read(buf, n));
-            log_write(level, category, buf, n, nullptr /* reserved */);
-        }
-        in.reset();
+        size_t n = std::min(bytesAvail, sizeof(buf));
+        CHECK(in->read(buf, n));
+        log_write(level, category, buf, n, nullptr /* reserved */);
     }
 
-    g_bootLog->clear();
+    in.reset();
     return 0;
 }
 
@@ -370,40 +347,42 @@ void bootLogMessage(const char* msg, int level, const char* category, const LogA
     if (!isBootLogEnabled()) {
         return;
     }
-
     fs::FsLock lock;
 
     if (!isBootLogEnabledForLevel(level, category)) {
         return;
     }
 
+    auto log = g_bootLog.get();
+    if (!log) { // Sanity check
+        return;
+    }
+
     if (attrs && attrs->has_time) {
-        g_bootLog->printf("%010u ", (unsigned)attrs->time);
+        log->printf("%010u ", (unsigned)attrs->time);
     }
     if (category) {
-        g_bootLog->write("[");
-        g_bootLog->write(category);
-        g_bootLog->write("] ");
+        log->write("[");
+        log->write(category);
+        log->write("] ");
     }
-    g_bootLog->write(log_level_name(level, nullptr /* reserved */));
-    g_bootLog->write(": ");
+    log->write(log_level_name(level, nullptr /* reserved */));
+    log->write(": ");
     if (msg) {
-        g_bootLog->write(msg);
+        log->write(msg);
     }
-    g_bootLog->write("\r\n");
+    log->write("\r\n");
 }
 
 void writeBootLog(const char* data, size_t size, int level, const char* category) {
     if (!isBootLogEnabled()) {
         return;
     }
-
     fs::FsLock lock;
 
     if (!isBootLogEnabledForLevel(level, category)) {
         return;
     }
-
     g_bootLog->write(data, size);
 }
 
@@ -412,6 +391,7 @@ bool isBootLogEnabled(int level, const char* category) {
         return false;
     }
     fs::FsLock lock;
+
     if (!isBootLogEnabledForLevel(level, category)) {
         return false;
     }
@@ -430,9 +410,7 @@ using namespace particle::system;
 void system_enable_boot_log(bool enabled, const system_boot_log_config* config, void* reserved) {
     fs::FsLock lock;
 
-    if (!enabled) {
-        stopWritingBootLog();
-    }
+    stopWritingBootLog();
 
     g_bootLogConfig = BootLogConfig();
     g_bootLogConfig.enabled = enabled;
@@ -451,5 +429,18 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
 }
 
 void system_flush_boot_log(int level, const char* category, void* reserved) {
-    flushBootLog(level, category);
+    fs::FsLock lock;
+
+    stopWritingBootLog();
+
+    if (level < LOG_LEVEL_NONE) {
+        if (!category) {
+            category = "app";
+        }
+        printBootLog(level, category);
+    }
+
+    g_bootLog.reset();
+    rmrf(BOOT_LOG_FILE1);
+    rmrf(BOOT_LOG_FILE2);
 }
