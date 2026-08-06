@@ -404,7 +404,7 @@ void handle_cloud_connection(bool force_events)
                 err = cloud_handshake();
             }
 
-            if (err == SYSTEM_ERROR_BUSY) {
+            if (err == SYSTEM_ERROR_BUSY && SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS) {
                 // Handshake in progress, re-enter next loop iteration.
             } else if (err) {
                 if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
