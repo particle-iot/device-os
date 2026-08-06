@@ -58,10 +58,10 @@ public:
 
                 size_t prevFileSize = CHECK(file.size());
                 size_t prevFileAvail = std::min(maxSize - lastFileSize, prevFileSize);
-                CHECK(file.seek(prevFileAvail, LFS_SEEK_END));
+                CHECK(file.seek(prevFileSize - prevFileAvail));
                 bytesAvail = prevFileAvail + lastFileSize;
             } else if (lastFileSize > maxSize) {
-                CHECK(file.seek(maxSize, LFS_SEEK_END));
+                CHECK(file.seek(lastFileSize - maxSize));
                 bytesAvail = maxSize;
             } else {
                 bytesAvail = lastFileSize;
@@ -264,6 +264,9 @@ public:
 
     int openForRead(std::unique_ptr<InputStream>& stream) {
         fs::FsLock lock;
+
+        // Flush the data
+        CHECK(file_.close());
 
         std::unique_ptr<BootLogReader> reader(new(std::nothrow) BootLogReader());
         if (!reader) {
