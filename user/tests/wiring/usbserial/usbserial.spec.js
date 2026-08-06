@@ -20,7 +20,8 @@ const OPEN_PORT_AFTER_TESTS = new Set([
     'USBSERIAL_05_ClosedPortWritesFailWithoutBlocking',
     'USBSERIAL_07_EndBeginWhilePortIsClosed'
 ]);
-const RX_STRESS_ITERATIONS = 64;
+const RX_STRESS_CHUNK_SIZE = 64;
+const RX_STRESS_ITERATIONS = 256;
 const PAUSED_INPUT_TESTS = new Set([
     NONBLOCKING_STRESS_TEST,
     NONBLOCKING_CHARACTER_STRESS_TEST
@@ -32,9 +33,9 @@ let rxBufferSize = 0;
 let rxWriteError = null;
 let rxStressWrite = null;
 
-function rxData(iteration) {
+function rxData(iteration, size = rxBufferSize) {
     const chars = Buffer.from('0123456789ABCDEF');
-    const data = Buffer.alloc(rxBufferSize);
+    const data = Buffer.alloc(size);
     for (let i = 0; i < data.length; ++i) {
         data[i] = chars[(i + iteration) % chars.length];
     }
@@ -188,7 +189,7 @@ test('USBSERIAL_18_DeviceReceiveStressSetup', async function() {
     rxWriteError = null;
     const chunks = [];
     for (let i = 0; i < RX_STRESS_ITERATIONS; ++i) {
-        chunks.push(rxData(i));
+        chunks.push(rxData(i, RX_STRESS_CHUNK_SIZE));
     }
     const stream = Buffer.concat(chunks);
     // Do not await drain here: the device consumes this stream in test 19,

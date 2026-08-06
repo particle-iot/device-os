@@ -8,7 +8,8 @@ static constexpr unsigned TX_NONBLOCKING_STRESS_ATTEMPTS = 2048;
 static constexpr unsigned TX_BLOCKING_STRESS_ITERATIONS = 256;
 static constexpr unsigned TX_CHAR_NONBLOCKING_STRESS_ATTEMPTS = 4096;
 static constexpr unsigned TX_CHAR_BLOCKING_STRESS_ITERATIONS = 64 * 1024;
-static constexpr unsigned RX_STRESS_ITERATIONS = 64;
+static constexpr size_t RX_STRESS_CHUNK_SIZE = 64;
+static constexpr unsigned RX_STRESS_ITERATIONS = 256;
 static uint8_t bulkWriteBuffer[TX_STRESS_CHUNK_SIZE] = {};
 static constexpr size_t RX_TEST_DATA_SIZE = USB_RX_BUFFER_SIZE - 1;
 
@@ -334,15 +335,15 @@ test(USBSERIAL_18_DeviceReceiveStressSetup) {
 test(USBSERIAL_19_DeviceReceiveStress) {
     assertTrue(Serial.isConnected());
 
-    uint8_t data[RX_TEST_DATA_SIZE] = {};
+    uint8_t data[RX_STRESS_CHUNK_SIZE] = {};
     for (unsigned iteration = 0; iteration < RX_STRESS_ITERATIONS; ++iteration) {
         assertTrue(waitFor([] {
-            return Serial.available() >= (int)RX_TEST_DATA_SIZE;
+            return Serial.available() >= (int)RX_STRESS_CHUNK_SIZE;
         }, 10000));
 
         if ((iteration % 2) == 0) {
             // Exercise the legacy single-byte receive and peek paths.
-            for (size_t i = 0; i < RX_TEST_DATA_SIZE; ++i) {
+            for (size_t i = 0; i < RX_STRESS_CHUNK_SIZE; ++i) {
                 const int expected = "0123456789ABCDEF"[(i + iteration) % 16];
                 assertEqual(Serial.peek(), expected);
                 assertEqual(Serial.read(), expected);
