@@ -16,12 +16,39 @@
  */
 
 #include "application.h"
+#include "scope_guard.h"
 #include "test.h"
 
 namespace {
 
-const unsigned MAX_SYNC_RTT_DURING_HANDSHAKE = 2000; // ms
+const unsigned MAX_SYNC_RTT_DURING_HANDSHAKE = 500;
 const unsigned SYNC_PROBE_INTERVAL = 50; // ms
+const int GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID = 3;
+
+struct HandshakeState {
+    volatile int type = -1;
+
+    bool operator()() const {
+        return type != -1;
+    }
+
+    void reset() {
+        type = -1;
+    }
+};
+
+HandshakeState handshakeState;
+
+void cloudStatusHandler(system_event_t event, int param, void*) {
+    if (event == cloud_status && (param == cloud_status_handshake ||
+            param == cloud_status_session_resume) && handshakeState.type == -1) {
+        handshakeState.type = param;
+    }
+}
+
+sock_handle_t cloudSocket() {
+    return (sock_handle_t)system_internal(GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID, nullptr);
+}
 
 unsigned measureSyncRtt() {
     auto t1 = millis();
@@ -38,13 +65,19 @@ bool measuredDuringHandshake = false;
 
 } // namespace
 
-test(01_handshake_nonblocking_sync_rtt_during_full_handshake) {
+test(01_full_handshake_nonblocking_sync_rtt) {
     if (system_thread_get_state(nullptr) != spark::feature::ENABLED) {
         skip();
         return;
     }
     maxSyncRtt = 0;
     measuredDuringHandshake = false;
+    handshakeState.reset();
+
+    System.on(cloud_status, cloudStatusHandler);
+    SCOPE_GUARD({
+        System.off(cloud_status, cloudStatusHandler);
+    });
 
     Particle.disconnect();
     assertTrue(waitFor(Particle.disconnected, 30000));
@@ -53,21 +86,25 @@ test(01_handshake_nonblocking_sync_rtt_during_full_handshake) {
 
     Particle.connect();
     auto connectStart = millis();
-    while (!Particle.connected() && millis() - connectStart < HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME) {
-        auto rtt = measureSyncRtt();
-        if (rtt > 0) {
-            measuredDuringHandshake = true;
-            if (rtt > maxSyncRtt) {
-                maxSyncRtt = rtt;
+    while (!handshakeState() && millis() - connectStart < HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME) {
+        if (socket_handle_valid(cloudSocket())) {
+            auto rtt = measureSyncRtt();
+            if (rtt > 0) {
+                measuredDuringHandshake = true;
+                if (rtt > maxSyncRtt) {
+                    maxSyncRtt = rtt;
+                }
             }
         }
         Particle.process();
         delay(SYNC_PROBE_INTERVAL);
     }
-    assertTrue(Particle.connected());
+    assertTrue(handshakeState());
+    assertEqual((int)cloud_status_handshake, (int)handshakeState.type);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
-test(02_handshake_nonblocking_sync_rtt_within_bounds) {
+test(02_full_handshake_sync_rtt_within_bounds) {
     if (system_thread_get_state(nullptr) != spark::feature::ENABLED) {
         skip();
         return;
@@ -77,33 +114,31 @@ test(02_handshake_nonblocking_sync_rtt_within_bounds) {
     assertLess(maxSyncRtt, MAX_SYNC_RTT_DURING_HANDSHAKE);
 }
 
-test(03_handshake_nonblocking_session_resume_not_blocked) {
+test(03_handshake_session_resumes_after_socket_failure) {
     if (system_thread_get_state(nullptr) != spark::feature::ENABLED) {
         skip();
         return;
     }
-    Particle.disconnect();
-    assertTrue(waitFor(Particle.disconnected, 30000));
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 
-    maxSyncRtt = 0;
-    measuredDuringHandshake = false;
+    handshakeState.reset();
+    System.on(cloud_status, cloudStatusHandler);
+    SCOPE_GUARD({
+        System.off(cloud_status, cloudStatusHandler);
+    });
 
-    Particle.connect();
-    auto connectStart = millis();
-    while (!Particle.connected() && millis() - connectStart < HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME) {
-        auto rtt = measureSyncRtt();
-        if (rtt > 0) {
-            measuredDuringHandshake = true;
-            if (rtt > maxSyncRtt) {
-                maxSyncRtt = rtt;
-            }
-        }
-        Particle.process();
-        delay(SYNC_PROBE_INTERVAL);
-    }
-    assertTrue(Particle.connected());
-    assertTrue(measuredDuringHandshake);
-    assertLess(maxSyncRtt, MAX_SYNC_RTT_DURING_HANDSHAKE);
+    const auto sock = cloudSocket();
+    assertTrue(socket_handle_valid(sock));
+#if HAL_USE_SOCKET_HAL_POSIX
+    assertEqual(0, sock_close(sock));
+#else
+    assertEqual(0, socket_close(sock));
+#endif
+    (void)Particle.publish("test", "test");
+
+    assertTrue(waitFor(handshakeState, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual((int)cloud_status_session_resume, (int)handshakeState.type);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
 test(04_handshake_nonblocking_disconnect_during_handshake) {

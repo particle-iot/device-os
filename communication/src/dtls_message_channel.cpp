@@ -66,6 +66,12 @@ const system_tick_t HANDSHAKE_SEND_RETRY_MS = 50;
 // Floor for an armed-but-expired timer - ensures prompt re-entry
 const system_tick_t HANDSHAKE_DELAY_EXPIRED_FLOOR_MS = 1;
 
+const system_tick_t HANDSHAKE_PROCESSING_SLICE_MS = 20;
+
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+const unsigned HANDSHAKE_ECP_MAX_OPS = 256;
+#endif
+
 } // namespace
 
 uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t len), const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
@@ -374,6 +380,10 @@ system_tick_t DTLSMessageChannel::next_handshake_delay() const
 	if (establish_state != EstablishState::HANDSHAKING) {
 		return 0; // no handshake in progress
 	}
+	if (last_wait == WaitCondition::CONTINUE ||
+			last_wait == WaitCondition::CRYPTO_IN_PROGRESS) {
+		return HANDSHAKE_DELAY_EXPIRED_FLOOR_MS;
+	}
 	// On WANT_WRITE, use the send-retry delay (but don't overshoot an
 	// imminent retransmit deadline)
 	if (last_wait == WaitCondition::WANT_WRITE) {
@@ -496,22 +506,30 @@ ProtocolError DTLSMessageChannel::establish()
 	last_wait = WaitCondition::NONE;
 }
 
-// Stepping loop: advance through as many non-IO steps as possible
-while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
-{
-	ret = mbedtls_ssl_handshake_step(&ssl_context);
+	const system_tick_t sliceStart = callbacks.millis();
+	while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER) {
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+		mbedtls_ecp_set_max_ops(HANDSHAKE_ECP_MAX_OPS);
+#endif
+		ret = mbedtls_ssl_handshake_step(&ssl_context);
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+		mbedtls_ecp_set_max_ops(0);
+#endif
 
-	if (ret != 0) {
-		break;
-	}
+		if (ret != 0) {
+			break;
+		}
 
-	// we've already received the ServerHello, thus
-	// we have the random values for client and server
-	if (ssl_context.state == MBEDTLS_SSL_SERVER_KEY_EXCHANGE)
-	{
-		memcpy(handshake_random, ssl_context.handshake->randbytes, 64);
+		if (ssl_context.state == MBEDTLS_SSL_SERVER_KEY_EXCHANGE) {
+			memcpy(handshake_random, ssl_context.handshake->randbytes, 64);
+		}
+
+		if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER &&
+				callbacks.millis() - sliceStart >= HANDSHAKE_PROCESSING_SLICE_MS) {
+			last_wait = WaitCondition::CONTINUE;
+			return IN_PROGRESS;
+		}
 	}
-}
 
 	// Yield to the caller when waiting for I/O
 	if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
@@ -522,6 +540,12 @@ while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
 		last_wait = WaitCondition::WANT_WRITE;
 		return IN_PROGRESS;
 	}
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+	if (ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+		last_wait = WaitCondition::CRYPTO_IN_PROGRESS;
+		return IN_PROGRESS;
+	}
+#endif
 
 	// Terminal: handshake complete or fatal error
 	establish_state = EstablishState::NONE;
