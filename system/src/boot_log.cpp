@@ -3,15 +3,14 @@
 #include "file_util.h"
 #include "stream.h"
 #include "platform_headers.h" // For retained_system
+#include "str_util.h"
 #include "str_compat.h"
 #include "logging.h"
 #include "check.h"
 
 #include <algorithm>
-#include <mutex>
 #include <memory>
 #include <cstring>
-#include <cstdarg>
 
 namespace particle::system {
 
@@ -222,6 +221,11 @@ public:
         return size;
     }
 
+    int write(const char* str) {
+        size_t n = CHECK(write(str, std::strlen(str)));
+        return n;
+    }
+
     int printf(const char* fmt, ...) __attribute__((format(printf, 2, 3))) {
         char buf[32];
         va_list args;
@@ -287,45 +291,21 @@ struct BootLogConfig {
 
 retained_system BootLogConfig g_bootLogConfig = {};
 std::unique_ptr<BootLog> g_bootLog;
-
-void bootLogMessageCallback(const char* msg, int level, const char* category, const LogAttributes* attr, void* reserved) {
-    fs::FsLock lock;
-
-    if (!g_bootLog) {
-        return;
-    }
-    g_bootLog->write(msg, std::strlen(msg));
-    g_bootLog->write("\r\n", 2);
-}
-
-void bootLogWriteCallback(const char* data, size_t size, int level, const char* category, void* reserved) {
-    fs::FsLock lock;
-
-    if (!g_bootLog) {
-        return;
-    }
-    g_bootLog->write(data, size);
-}
-
-int bootLogEnabledCallback(int level, const char* category, void* reserved) {
-    fs::FsLock lock;
-
-    if (!g_bootLog) {
-        return 0;
-    }
-    return 1;
-}
+std::atomic<bool> g_bootLogEnabled;
 
 int flushBootLog(int level, const char* category) {
-    fs::FsLock lock;
-
-    if (!g_bootLog) {
+    if (!isBootLogEnabled()) {
         return 0;
     }
+
+    fs::FsLock lock;
 
     stopWritingBootLog();
 
     if (level < LOG_LEVEL_NONE) {
+        if (!category) {
+            category = "app";
+        }
         std::unique_ptr<InputStream> in;
         CHECK(g_bootLog->openForRead(in));
     
@@ -346,9 +326,20 @@ int flushBootLog(int level, const char* category) {
     return 0;
 }
 
+bool isBootLogEnabledForLevel(int level, const char* category) {
+    if (level < g_bootLogConfig.level) {
+        return false;
+    }
+    if (category && !startsWith(category, g_bootLogConfig.category)) {
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int initBootLog() {
+    // Use the filesystem lock for serializing access to the boot log
     fs::FsLock lock;
 
     if (!g_bootLogConfig.enabled) {
@@ -364,11 +355,68 @@ int initBootLog() {
     CHECK(log->init());
     g_bootLog = std::move(log);
 
-    log_set_callbacks(bootLogMessageCallback, bootLogWriteCallback, bootLogEnabledCallback, nullptr /* reserved */);
+    g_bootLogEnabled.store(true, std::memory_order_release);
     return 0;
 }
 
 void stopWritingBootLog() {
+    g_bootLogEnabled.store(false, std::memory_order_release);
+}
+
+void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
+    if (!isBootLogEnabled()) {
+        return;
+    }
+
+    fs::FsLock lock;
+
+    if (!isBootLogEnabledForLevel(level, category)) {
+        return;
+    }
+
+    if (attrs && attrs->has_time) {
+        g_bootLog->printf("%010u ", (unsigned)attrs->time);
+    }
+    if (category) {
+        g_bootLog->write("[");
+        g_bootLog->write(category);
+        g_bootLog->write("] ");
+    }
+    g_bootLog->write(log_level_name(level, nullptr /* reserved */));
+    g_bootLog->write(": ");
+    if (msg) {
+        g_bootLog->write(msg);
+    }
+    g_bootLog->write("\r\n");
+}
+
+void writeBootLog(const char* data, size_t size, int level, const char* category) {
+    if (!isBootLogEnabled()) {
+        return;
+    }
+
+    fs::FsLock lock;
+
+    if (!isBootLogEnabledForLevel(level, category)) {
+        return;
+    }
+
+    g_bootLog->write(data, size);
+}
+
+bool isBootLogEnabled(int level, const char* category) {
+    if (!isBootLogEnabled()) {
+        return false;
+    }
+    fs::FsLock lock;
+    if (!isBootLogEnabledForLevel(level, category)) {
+        return false;
+    }
+    return true;
+}
+
+bool isBootLogEnabled() {
+    return g_bootLogEnabled.load(std::memory_order_acquire);
 }
 
 } // namespace particle::system
@@ -380,7 +428,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
     fs::FsLock lock;
 
     if (!enabled) {
-        g_bootLog.reset();
+        stopWritingBootLog();
     }
 
     g_bootLogConfig = BootLogConfig();
