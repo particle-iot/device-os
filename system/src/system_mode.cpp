@@ -21,6 +21,7 @@
 #include "system_task.h"
 #include "system_cloud_internal.h"
 #include "system_threading.h"
+#include "boot_log.h"
 
 #include "core_hal.h"
 
@@ -29,6 +30,7 @@
 namespace {
 
 using namespace particle;
+using namespace particle::system;
 
 System_Mode_TypeDef current_mode = DEFAULT;
 
@@ -38,6 +40,8 @@ int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned
     if (!hal_interrupt_is_isr()) {
         LOG(INFO, "Resetting device, reason: %d", (int)reason);
     }
+    stopWritingBootLog();
+
     if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {
         // Disconnect from the cloud gracefully
         cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
