@@ -454,14 +454,18 @@ int QuectelNcpClient::disconnect() {
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return SYSTEM_ERROR_NONE;
     }
+
+    // Tear the connection state down unconditionally, on every exit path
+    SCOPE_GUARD({
+        resetRegistrationState();
+        connectionState(NcpConnectionState::DISCONNECTED);
+    });
+
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
     (void)r;
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    resetRegistrationState();
-
-    connectionState(NcpConnectionState::DISCONNECTED);
     return SYSTEM_ERROR_NONE;
 }
 
