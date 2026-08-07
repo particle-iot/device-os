@@ -21,7 +21,7 @@ namespace {
 const auto BOOT_LOG_FILE1 = "/sys/bootlog.1";
 const auto BOOT_LOG_FILE2 = "/sys/bootlog.2";
 
-const size_t DEFAULT_BOOT_LOG_SIZE = 100000;
+const size_t DEFAULT_BOOT_LOG_SIZE = 50000;
 
 class BootLogReader: public InputStream {
 public:
@@ -135,14 +135,32 @@ public:
     }
 
     int init() {
+        bool rotated = false;
+        bool remove = false;
+
         lfs_info info = {};
         int r = fs::stat(BOOT_LOG_FILE2, &info);
-        if (r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) {
-            return r;
+        if (r >= 0 && info.type == LFS_TYPE_REG) {
+            rotated = true;
+        } else if ((r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) || (r >= 0 && info.type != LFS_TYPE_REG)) {
+            remove = true;
         }
-        if (r >= 0) {
-            rotated_ = true;
+
+        if (!remove) {
+            int r = fs::stat(BOOT_LOG_FILE1, &info);
+            if ((r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) || (r == SYSTEM_ERROR_FILESYSTEM_NOENT && rotated) ||
+                    (r >= 0 && info.type != LFS_TYPE_REG)) {
+                remove = true;
+            }
         }
+
+        if (remove) {
+            CHECK(rmrf(BOOT_LOG_FILE2));
+            CHECK(rmrf(BOOT_LOG_FILE1));
+            rotated = false;
+        }
+
+        rotated_ = rotated;
         return 0;
     }
 
@@ -272,7 +290,14 @@ int printBootLog(int level, const char* category) {
     return 0;
 }
 
+inline bool isBootLogEnabled() {
+    return g_bootLogEnabled.load(std::memory_order_relaxed);
+}
+
 bool isBootLogEnabledForLevel(int level, const char* category) {
+    if (!isBootLogEnabled()) {
+        return false;
+    }
     if (level < g_bootLogConfig.level) {
         return false;
     }
@@ -300,29 +325,35 @@ int initBootLog() {
     CHECK(log->init());
     g_bootLog = std::move(log);
 
-    g_bootLogEnabled.store(true, std::memory_order_release);
+    g_bootLogEnabled.store(true, std::memory_order_relaxed);
     return 0;
 }
 
+// Can be called from an ISR in system_reset()
 void stopWritingBootLog() {
-    bool wasEnabled = g_bootLogEnabled.exchange(false, std::memory_order_acq_rel);
+    bool wasEnabled = g_bootLogEnabled.exchange(false, std::memory_order_relaxed);
     if (!wasEnabled || hal_interrupt_is_isr()) {
         return;
     }
+
     fs::FsLock lock;
 
     if (g_bootLog) {
-        // Flush the data
-        g_bootLog->close();
+        g_bootLog->close(); // Flush the data
     }
 }
 
+// Called by the logging service
 void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
-    if (hal_interrupt_is_isr() || !isBootLogEnabled()) {
+    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
         return;
     }
+
     fs::FsLock lock;
 
+    // It's important to check the `g_bootLogEnabled` flag again (via `isBootLogEnabledForLevel()`)
+    // after the filesystem lock has been acquired to avoid a race between the logging functions and
+    // `stopWritingBootLog()`.
     if (g_bootLogWriting || !isBootLogEnabledForLevel(level, category)) {
         return;
     }
@@ -352,10 +383,12 @@ void bootLogMessage(const char* msg, int level, const char* category, const LogA
     log->write("\r\n");
 }
 
+// Called by the logging service
 void writeBootLog(const char* data, size_t size, int level, const char* category) {
-    if (hal_interrupt_is_isr() || !isBootLogEnabled()) {
+    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
         return;
     }
+
     fs::FsLock lock;
 
     if (g_bootLogWriting || !isBootLogEnabledForLevel(level, category)) {
@@ -371,20 +404,18 @@ void writeBootLog(const char* data, size_t size, int level, const char* category
     }
 }
 
+// Called by the logging service
 bool isBootLogEnabled(int level, const char* category) {
-    if (hal_interrupt_is_isr() || !isBootLogEnabled()) {
+    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
         return false;
     }
+
     fs::FsLock lock;
 
     if (!isBootLogEnabledForLevel(level, category)) {
         return false;
     }
     return true;
-}
-
-bool isBootLogEnabled() {
-    return g_bootLogEnabled.load(std::memory_order_acquire);
 }
 
 } // namespace particle::system
@@ -425,13 +456,10 @@ void system_flush_boot_log(int level, const char* category, void* reserved) {
     stopWritingBootLog();
 
     if (level < LOG_LEVEL_NONE) {
-        if (!category) {
-            category = "app";
-        }
-        printBootLog(level, category);
+        printBootLog(level, category ? category : "app");
     }
 
     g_bootLog.reset();
-    rmrf(BOOT_LOG_FILE1);
     rmrf(BOOT_LOG_FILE2);
+    rmrf(BOOT_LOG_FILE1);
 }
