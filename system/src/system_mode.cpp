@@ -25,8 +25,6 @@
 
 #include "core_hal.h"
 
-#include "logging.h"
-
 namespace {
 
 using namespace particle;
@@ -37,10 +35,7 @@ System_Mode_TypeDef current_mode = DEFAULT;
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
 
 int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned value, unsigned flags) {
-    if (!hal_interrupt_is_isr()) {
-        LOG(INFO, "Resetting device, reason: %d", (int)reason);
-    }
-    stopWritingBootLog();
+    stopWritingBootLog(); // Flush the boot log
 
     if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {
         // Disconnect from the cloud gracefully
