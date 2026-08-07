@@ -491,7 +491,9 @@ void app_loop(bool threaded)
                 DECLARE_SYS_HEALTH(ENTERED_Setup);
                 if (system_mode() != SAFE_MODE) {
                     setup();
+#if HAL_PLATFORM_BOOT_LOG
                     system::stopWritingBootLog();
+#endif
                 }
                 SPARK_WIRING_APPLICATION = 1;
                 // In the automatic mode, application DESCRIBE and subscriptions are sent when
@@ -810,7 +812,9 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+#if HAL_PLATFORM_BOOT_LOG
     system::initBootLog();
+#endif
 
 #if HAL_PLATFORM_ENV
     // Initialize the env vars as early as possible

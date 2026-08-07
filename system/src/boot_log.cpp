@@ -1,4 +1,7 @@
 #include "boot_log.h"
+
+#if HAL_PLATFORM_BOOT_LOG
+
 #include "interrupts_hal.h"
 #include "filesystem.h"
 #include "file_util.h"
@@ -463,3 +466,5 @@ void system_flush_boot_log(int level, const char* category, void* reserved) {
     rmrf(BOOT_LOG_FILE2);
     rmrf(BOOT_LOG_FILE1);
 }
+
+#endif // HAL_PLATFORM_BOOT_LOG

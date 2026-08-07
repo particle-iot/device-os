@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdio>
 #include "timer_hal.h"
+#include "hal_platform.h"
 #include "service_debug.h"
 #include "static_assert.h"
 
@@ -66,11 +67,23 @@ STATIC_ASSERT_FIELD_ORDER(LogAttributes, details, end);
 
 namespace {
 
-using namespace particle::system;
-
 volatile log_message_callback_type log_msg_callback = 0;
 volatile log_write_callback_type log_write_callback = 0;
 volatile log_enabled_callback_type log_enabled_callback = 0;
+
+#if HAL_PLATFORM_BOOT_LOG
+using namespace particle::system;
+#else
+inline void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
+}
+
+inline void writeBootLog(const char* data, size_t size, int level, const char* category) {
+}
+
+inline bool isBootLogEnabled(int level, const char* category) {
+    return false;
+}
+#endif // !HAL_PLATFORM_BOOT_LOG
 
 } // namespace
 

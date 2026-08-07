@@ -69,3 +69,4 @@
 
 #define HAL_PLATFORM_LEDGER (0)
 #define HAL_PLATFORM_ENV (0)
+#define HAL_PLATFORM_BOOT_LOG (0)

@@ -151,8 +151,14 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 #endif  // HAL_PLATFORM_ENV
 
 DYNALIB_FN(BASE_IDX4 + 0, system, system_thread_invoke, int(void (*)(void*), void*, void*))
+
+#if HAL_PLATFORM_BOOT_LOG
 DYNALIB_FN(BASE_IDX4 + 1, system, system_enable_boot_log, void(bool, const system_boot_log_config*, void*))
 DYNALIB_FN(BASE_IDX4 + 2, system, system_flush_boot_log, void(int, const char*, void*))
+#define BASE_IDX5 (BASE_IDX4 + 3)
+#else
+#define BASE_IDX5 (BASE_IDX4 + 1)
+#endif // HAL_PLATFORM_BOOT_LOG
 
 DYNALIB_END(system)
 
@@ -161,5 +167,6 @@ DYNALIB_END(system)
 #undef BASE_IDX2
 #undef BASE_IDX3
 #undef BASE_IDX4
+#undef BASE_IDX5
 
 #endif	/* SYSTEM_DYNALIB_H */

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_BOOT_LOG
+
 #include "logging.h"
 #include "system_config.h"
 
@@ -17,3 +21,5 @@ void writeBootLog(const char* data, size_t size, int level, const char* category
 bool isBootLogEnabled(int level, const char* category);
 
 } // namespace particle::system
+
+#endif // HAL_PLATFORM_BOOT_LOG

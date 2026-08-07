@@ -3,6 +3,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "hal_platform.h"
+
+#if HAL_PLATFORM_BOOT_LOG
+
 /**
  * Boot log configuration.
  */
@@ -28,9 +32,13 @@ typedef struct {
     int level;
 } system_boot_log_config;
 
+#endif // HAL_PLATFORM_BOOT_LOG
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#if HAL_PLATFORM_BOOT_LOG
 
 /**
  * Enable or disable the boot log.
@@ -54,6 +62,8 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void system_flush_boot_log(int level, const char* category, void* reserved);
+
+#endif // HAL_PLATFORM_BOOT_LOG
 
 #ifdef __cplusplus
 } // extern "C"
