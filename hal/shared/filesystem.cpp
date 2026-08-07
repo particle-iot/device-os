@@ -499,8 +499,10 @@ int File::close() {
     if (!d_) {
         return 0;
     }
-    CHECK_FS(lfs_file_close(&d_->fs->instance, &d_->file));
+    // lfs_file_close() marks the file as closed even if an error occurs while syncing it
+    int r = lfs_file_close(&d_->fs->instance, &d_->file);
     d_.reset();
+    CHECK_FS(r);
     return 0;
 }
 
