@@ -34,6 +34,12 @@
 
 namespace particle {
 
+// AT probe: 3s timeout every 35s, declared on the 4th consecutive failure, so ~105s.
+// Just above the 90s default command timeout, in case a command uses a shorter one.
+const auto AT_PROBE_INTERVAL = 35000;
+const auto AT_PROBE_TIMEOUT = 3000;
+const auto AT_PROBE_MAX_INTERVALS = 3u;
+
 class SerialStream;
 
 class QuectelNcpClient: public CellularNcpClient {
@@ -124,6 +130,8 @@ private:
     system::SystemTimer apduChannelTimer_;
     int apduChannel_ = 0;
     bool configuredPlmn_ = false;
+    system_tick_t atProbeTime_ = 0;
+    unsigned atProbeFailStreak_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -163,6 +171,9 @@ private:
     int checkRunningImsi();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
+    bool checkAtWhileConnected();
+    void recoverModem();
+
     /** Is this a Quectel Cat-M1 device ? */
     bool isQuecCatM1Device();
     /** Is this a Quectel Cat-1 device ? */
