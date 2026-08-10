@@ -14,7 +14,7 @@ namespace particle::system {
 // Called by the system
 int initBootLog();
 int flushBootLog();
-void stopWritingBootLog();
+void closeBootLog();
 
 // Called by the logging service
 void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs);

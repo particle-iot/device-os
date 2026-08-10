@@ -422,7 +422,7 @@ int flushBootLog() {
 }
 
 // Can be called from an ISR in system_reset()
-void stopWritingBootLog() {
+void closeBootLog() {
     bool wasEnabled = g_bootLogEnabled.exchange(false, std::memory_order_relaxed);
     if (!wasEnabled || hal_interrupt_is_isr()) {
         return;
@@ -505,7 +505,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
     fs::FsLock lock;
 
     if (!enabled) {
-        stopWritingBootLog();
+        closeBootLog();
     }
 
     BootLogConfig newConfig = {};
@@ -531,7 +531,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
 void system_flush_boot_log(int level, const char* category, void* reserved) {
     fs::FsLock lock;
 
-    stopWritingBootLog();
+    closeBootLog();
 
     if (level < LOG_LEVEL_NONE) {
         printBootLog(level, category ? category : "app");

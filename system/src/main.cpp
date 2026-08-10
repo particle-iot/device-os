@@ -492,7 +492,7 @@ void app_loop(bool threaded)
                 if (system_mode() != SAFE_MODE) {
                     setup();
 #if HAL_PLATFORM_BOOT_LOG
-                    system::stopWritingBootLog();
+                    system::closeBootLog();
 #endif
                 }
                 SPARK_WIRING_APPLICATION = 1;
