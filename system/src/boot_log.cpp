@@ -252,15 +252,16 @@ const auto BOOT_LOG_CONFIG_MAGIC = 0xe62a3e5eu;
 
 retained_system BootLogConfig g_retainedConfig = {};
 
+// Indicates whether the boot log is enabled. This variable is initialized statically so that the
+// logging functions can be called before the boot log is initialized
+std::atomic<bool> g_bootLogEnabled;
+
 class BootLog {
 public:
     int init() {
         // Use the filesystem lock for serializing access to the log file
         fs::FsLock lock;
 
-        if (g_retainedConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_retainedConfig.enabled) {
-            return 0;
-        }
         CHECK(fs::mount());
 
         std::unique_ptr<char[]> buf(new(std::nothrow) char[HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE]);
@@ -277,8 +278,6 @@ public:
         bufferData_ = std::move(buf);
         log_ = std::move(log);
         config_ = g_retainedConfig;
-
-        enabled_.store(true, std::memory_order_relaxed);
         return 0;
     }
 
@@ -318,9 +317,6 @@ public:
 
     // Must be called from the system or application thread
     int flush() {
-        if (!isEnabled()) {
-            return 0;
-        }
         fs::FsLock lock;
 
         CHECK(flushBufferedData());
@@ -329,8 +325,7 @@ public:
 
     // Can be called from an ISR in system_reset()
     void close() {
-        bool wasEnabled = enabled_.exchange(false, std::memory_order_relaxed);
-        if (!wasEnabled || hal_interrupt_is_isr()) {
+        if (hal_interrupt_is_isr()) {
             return;
         }
 
@@ -370,6 +365,7 @@ public:
         return 0;
     }
 
+    // Releases the log file and the buffered data. Note that the instance itself is never destroyed
     void destroy() {
         fs::FsLock lock;
 
@@ -379,13 +375,6 @@ public:
             droppedBytes_ = 0;
         }
         bufferData_.reset();
-
-        rmrf(BOOT_LOG_FILE2);
-        rmrf(BOOT_LOG_FILE1);
-    }
-
-    bool isEnabled() const {
-        return enabled_.load(std::memory_order_relaxed);
     }
 
     bool isEnabledForLevel(int level, const char* category) const {
@@ -394,9 +383,6 @@ public:
             return false;
         }
 #endif
-        if (!isEnabled()) {
-            return false;
-        }
         if (level < config_.level) {
             return false;
         }
@@ -492,38 +478,67 @@ private:
     // Copy of the retained configuration. The logging functions run without the filesystem lock, so
     // they can't access the retained memory which is updated under that lock
     BootLogConfig config_ = {};
-    std::atomic<bool> enabled_ = false;
     size_t droppedBytes_ = 0;
 };
 
-// Note: All the members of this class are initialized statically so that the logging functions can
-// safely access the instance before its constructor is called
-BootLog g_bootLog;
+// Note: The instance is assigned in initBootLog() and never reset. Resetting it would make it
+// possible for a logging function to dereference a dangling pointer after it has checked the
+// `g_bootLogEnabled` flag
+std::unique_ptr<BootLog> g_bootLog;
 
 } // namespace
 
 int initBootLog() {
-    return g_bootLog.init();
+    fs::FsLock lock;
+
+    if (g_retainedConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_retainedConfig.enabled) {
+        return 0;
+    }
+    std::unique_ptr<BootLog> log(new(std::nothrow) BootLog());
+    if (!log) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK(log->init());
+
+    g_bootLog = std::move(log);
+    // Publish the instance to the logging functions
+    g_bootLogEnabled.store(true, std::memory_order_release);
+    return 0;
 }
 
 int flushBootLog() {
-    return g_bootLog.flush();
+    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+        return 0;
+    }
+    return g_bootLog->flush();
 }
 
 void closeBootLog() {
-    g_bootLog.close();
+    if (!g_bootLogEnabled.exchange(false, std::memory_order_acq_rel)) {
+        return;
+    }
+    g_bootLog->close();
 }
 
 void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
-    g_bootLog.message(msg, level, category, attrs);
+    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+        return;
+    }
+    g_bootLog->message(msg, level, category, attrs);
 }
 
 void writeBootLog(const char* data, size_t size, int level, const char* category) {
-    g_bootLog.write(data, size, level, category);
+    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+        return;
+    }
+    g_bootLog->write(data, size, level, category);
 }
 
 bool isBootLogEnabled(int level, const char* category) {
-    return g_bootLog.isEnabledForLevel(level, category);
+    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+        return false;
+    }
+    return g_bootLog->isEnabledForLevel(level, category);
 }
 
 } // namespace particle::system
@@ -563,11 +578,17 @@ void system_flush_boot_log(int level, const char* category, void* reserved) {
 
     closeBootLog();
 
-    if (level < LOG_LEVEL_NONE) {
-        g_bootLog.print(level, category ? category : "app");
+    if (g_bootLog) {
+        if (level < LOG_LEVEL_NONE) {
+            g_bootLog->print(level, category ? category : "app");
+        }
+        g_bootLog->destroy();
     }
 
-    g_bootLog.destroy();
+    // Note: the log files are removed even if the boot log is disabled, as they may have been
+    // created before it was disabled
+    rmrf(BOOT_LOG_FILE2);
+    rmrf(BOOT_LOG_FILE1);
 }
 
 #endif // HAL_PLATFORM_BOOT_LOG
