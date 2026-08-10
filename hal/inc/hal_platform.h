@@ -679,4 +679,14 @@
 #define HAL_PLATFORM_BOOT_LOG (1)
 #endif // HAL_PLATFORM_BOOT_LOG
 
+// Size of the buffer where the boot log data is stored until it's flushed to the filesystem
+#ifndef HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE
+#define HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE (2048)
+#endif // HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE
+
+// Whether the messages logged in an ISR are stored in the boot log
+#ifndef HAL_PLATFORM_BOOT_LOG_ISR
+#define HAL_PLATFORM_BOOT_LOG_ISR (0)
+#endif // HAL_PLATFORM_BOOT_LOG_ISR
+
 #endif /* HAL_PLATFORM_H */

@@ -33,6 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
+#include "boot_log.h"
 #include "v2/coap_channel.h"
 #include "spark_macros.h"
 #include "string.h"
@@ -526,6 +527,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
         manage_cloud_connection(force_events);
 
         system::FirmwareUpdate::instance()->process();
+
+#if HAL_PLATFORM_BOOT_LOG
+        system::flushBootLog();
+#endif
 
         if (system_mode() != SAFE_MODE) {
             manage_listening_mode_flag();

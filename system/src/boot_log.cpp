@@ -2,20 +2,23 @@
 
 #if HAL_PLATFORM_BOOT_LOG
 
+#include "system_threading.h"
 #include "interrupts_hal.h"
 #include "filesystem.h"
 #include "file_util.h"
 #include "stream.h"
+#include "ringbuffer.h"
+#include "atomic_section.h"
 #include "platform_headers.h" // For retained_system
 #include "str_util.h"
 #include "str_compat.h"
 #include "logging.h"
-#include "scope_guard.h"
 #include "check.h"
 
 #include <algorithm>
 #include <memory>
 #include <cstring>
+#include <cstdio>
 
 namespace particle::system {
 
@@ -208,30 +211,6 @@ public:
         return n;
     }
 
-    int printf(const char* fmt, ...) __attribute__((format(printf, 2, 3))) {
-        char buf[32];
-        va_list args;
-        va_start(args, fmt);
-        int n = vsnprintf(buf, sizeof(buf), fmt, args);
-        va_end(args);
-        if (n < 0) {
-            return SYSTEM_ERROR_IO;
-        }
-        if ((size_t)n < sizeof(buf)) {
-            write(buf, n);
-        } else {
-            char buf[n + 1]; // Use a larger buffer
-            va_start(args, fmt);
-            n = vsnprintf(buf, sizeof(buf), fmt, args);
-            va_end(args);
-            if (n < 0) {
-                return SYSTEM_ERROR_IO;
-            }
-            write(buf, n);
-        }
-        return n;
-    }
-
     int openForRead(std::unique_ptr<InputStream>& stream) {
         CHECK(file_.close()); // Flush the data
 
@@ -242,6 +221,11 @@ public:
         CHECK(reader->init(maxSize_, rotated_));
 
         stream = std::move(reader);
+        return 0;
+    }
+
+    int sync() {
+        CHECK(file_.sync());
         return 0;
     }
 
@@ -266,10 +250,24 @@ struct BootLogConfig {
 
 const auto BOOT_LOG_CONFIG_MAGIC = 0xe62a3e5eu;
 
-retained_system BootLogConfig g_bootLogConfig = {};
+// A piece of log data to be appended to the buffer
+struct Chunk {
+    const char* data;
+    size_t size;
+};
+
+retained_system BootLogConfig g_retainedConfig = {};
+
+// Copy of the retained configuration. The logging functions run without the filesystem lock, so
+// they can't access the retained memory which is updated under that lock
+BootLogConfig g_config = {};
+
 std::unique_ptr<BootLog> g_bootLog;
 std::atomic<bool> g_bootLogEnabled;
-bool g_bootLogWriting = false;
+
+services::RingBuffer<char> g_buffer;
+std::unique_ptr<char[]> g_bufferData;
+size_t g_droppedBytes = 0;
 
 int printBootLog(int level, const char* category) {
     if (!g_bootLog) { // Sanity check
@@ -301,34 +299,125 @@ bool isBootLogEnabledForLevel(int level, const char* category) {
     if (!isBootLogEnabled()) {
         return false;
     }
-    if (level < g_bootLogConfig.level) {
+    if (level < g_config.level) {
         return false;
     }
-    if (category && !startsWith(category, g_bootLogConfig.category)) {
+    if (category && !startsWith(category, g_config.category)) {
         return false;
     }
     return true;
 }
 
+void appendToBootLog(const Chunk* chunks, size_t count) {
+    size_t size = 0;
+    for (size_t i = 0; i < count; ++i) {
+        size += chunks[i].size;
+    }
+    ATOMIC_BLOCK() {
+        // The message is stored either in its entirety or not at all
+        if (g_buffer.space() < (ssize_t)size) {
+            g_droppedBytes += size;
+            return;
+        }
+        for (size_t i = 0; i < count; ++i) {
+            g_buffer.put(chunks[i].data, chunks[i].size);
+        }
+    }
+}
+
+// Note: The caller must acquire the filesystem lock before calling this function
+int flushBufferedData() {
+    auto log = g_bootLog.get();
+    if (!log) { // Sanity check
+        return 0;
+    }
+    size_t bytesAvail = 0;
+    ATOMIC_BLOCK() {
+        ssize_t n = g_buffer.data();
+        if (n > 0) {
+            bytesAvail = n;
+        }
+    }
+    bool written = false;
+    while (bytesAvail > 0) {
+        size_t size = 0;
+        const char* data = nullptr;
+        ATOMIC_BLOCK() {
+            size = std::min(g_buffer.consumable(), bytesAvail);
+            if (size > 0) {
+                data = g_buffer.consume(size);
+            }
+        }
+        if (!data) {
+            break;
+        }
+        // The data is written to the file with the interrupts enabled. The consumed region is not
+        // released until it's committed below, so it can't be overwritten by the logging functions
+        int r = log->write(data, size);
+        ATOMIC_BLOCK() {
+            g_buffer.consumeCommit(size);
+        }
+        CHECK(r);
+        bytesAvail -= size;
+        written = true;
+    }
+    size_t dropped = 0;
+    ATOMIC_BLOCK() {
+        dropped = g_droppedBytes;
+        g_droppedBytes = 0;
+    }
+    if (dropped > 0) {
+        char buf[64];
+        int n = snprintf(buf, sizeof(buf), "[bootlog] %u bytes dropped\r\n", (unsigned)dropped);
+        if (n > 0) {
+            CHECK(log->write(buf, std::min((size_t)n, sizeof(buf) - 1)));
+            written = true;
+        }
+    }
+    if (written) {
+        CHECK(log->sync());
+    }
+    return 0;
+}
+
 } // namespace
 
 int initBootLog() {
-    // Use the filesystem lock for serializing access to the boot log
+    // Use the filesystem lock for serializing access to the log file
     fs::FsLock lock;
 
-    if (g_bootLogConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_bootLogConfig.enabled) {
+    if (g_retainedConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_retainedConfig.enabled) {
         return 0;
     }
     CHECK(fs::mount());
 
-    std::unique_ptr<BootLog> log(new(std::nothrow) BootLog(g_bootLogConfig.maxSize));
+    std::unique_ptr<char[]> buf(new(std::nothrow) char[HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE]);
+    if (!buf) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    std::unique_ptr<BootLog> log(new(std::nothrow) BootLog(g_retainedConfig.maxSize));
     if (!log) {
         return SYSTEM_ERROR_NO_MEMORY;
     }
     CHECK(log->init());
+
+    g_buffer.init(buf.get(), HAL_PLATFORM_BOOT_LOG_BUFFER_SIZE);
+    g_bufferData = std::move(buf);
     g_bootLog = std::move(log);
+    g_config = g_retainedConfig;
 
     g_bootLogEnabled.store(true, std::memory_order_relaxed);
+    return 0;
+}
+
+// Must be called from the system or application thread
+int flushBootLog() {
+    if (!isBootLogEnabled()) {
+        return 0;
+    }
+    fs::FsLock lock;
+
+    CHECK(flushBufferedData());
     return 0;
 }
 
@@ -341,6 +430,11 @@ void stopWritingBootLog() {
 
     fs::FsLock lock;
 
+    // Note: the ISR check above can't be omitted. os_thread_is_current() compares the current task
+    // handle, which in an ISR is the handle of the interrupted task
+    if (SYSTEM_THREAD_CURRENT() || APPLICATION_THREAD_CURRENT()) {
+        flushBufferedData();
+    }
     if (g_bootLog) {
         g_bootLog->close(); // Flush the data
     }
@@ -348,77 +442,58 @@ void stopWritingBootLog() {
 
 // Called by the logging service
 void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
-    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
+#if !HAL_PLATFORM_BOOT_LOG_ISR
+    if (hal_interrupt_is_isr()) {
         return;
     }
-
-    fs::FsLock lock;
-
-    // It's important to check the `g_bootLogEnabled` flag again (via `isBootLogEnabledForLevel()`)
-    // after the filesystem lock has been acquired to avoid a race between the logging functions and
-    // `stopWritingBootLog()`.
-    if (g_bootLogWriting || !isBootLogEnabledForLevel(level, category)) {
+#endif
+    if (!isBootLogEnabledForLevel(level, category)) {
         return;
     }
-    g_bootLogWriting = true;
-    SCOPE_GUARD({
-        g_bootLogWriting = false;
-    });
-
-    auto log = g_bootLog.get();
-    if (!log) { // Sanity check
-        return;
-    }
-
+    char timeBuf[12] = {};
+    size_t timeSize = 0;
     if (attrs && attrs->has_time) {
-        log->printf("%010u ", (unsigned)attrs->time);
+        int n = snprintf(timeBuf, sizeof(timeBuf), "%010u ", (unsigned)attrs->time);
+        if (n > 0) {
+            timeSize = std::min((size_t)n, sizeof(timeBuf) - 1);
+        }
     }
-    if (category) {
-        log->write("[");
-        log->write(category);
-        log->write("] ");
-    }
-    log->write(log_level_name(level, nullptr /* reserved */));
-    log->write(": ");
-    if (msg) {
-        log->write(msg);
-    }
-    log->write("\r\n");
+    auto levelName = log_level_name(level, nullptr /* reserved */);
+    const Chunk chunks[] = {
+        { timeBuf, timeSize },
+        { "[", category ? 1u : 0u },
+        { category, category ? std::strlen(category) : 0u },
+        { "] ", category ? 2u : 0u },
+        { levelName, std::strlen(levelName) },
+        { ": ", 2 },
+        { msg, msg ? std::strlen(msg) : 0u },
+        { "\r\n", 2 }
+    };
+    appendToBootLog(chunks, sizeof(chunks) / sizeof(chunks[0]));
 }
 
 // Called by the logging service
 void writeBootLog(const char* data, size_t size, int level, const char* category) {
-    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
+#if !HAL_PLATFORM_BOOT_LOG_ISR
+    if (hal_interrupt_is_isr()) {
         return;
     }
-
-    fs::FsLock lock;
-
-    if (g_bootLogWriting || !isBootLogEnabledForLevel(level, category)) {
+#endif
+    if (!isBootLogEnabledForLevel(level, category)) {
         return;
     }
-    g_bootLogWriting = true;
-    SCOPE_GUARD({
-        g_bootLogWriting = false;
-    });
-
-    if (g_bootLog) {
-        g_bootLog->write(data, size);
-    }
+    const Chunk chunk = { data, size };
+    appendToBootLog(&chunk, 1);
 }
 
 // Called by the logging service
 bool isBootLogEnabled(int level, const char* category) {
-    if (!isBootLogEnabled() || hal_interrupt_is_isr()) {
+#if !HAL_PLATFORM_BOOT_LOG_ISR
+    if (hal_interrupt_is_isr()) {
         return false;
     }
-
-    fs::FsLock lock;
-
-    if (!isBootLogEnabledForLevel(level, category)) {
-        return false;
-    }
-    return true;
+#endif
+    return isBootLogEnabledForLevel(level, category);
 }
 
 } // namespace particle::system
@@ -450,7 +525,7 @@ void system_enable_boot_log(bool enabled, const system_boot_log_config* config, 
         }
     }
 
-    g_bootLogConfig = newConfig;
+    g_retainedConfig = newConfig;
 }
 
 void system_flush_boot_log(int level, const char* category, void* reserved) {
@@ -463,6 +538,12 @@ void system_flush_boot_log(int level, const char* category, void* reserved) {
     }
 
     g_bootLog.reset();
+    ATOMIC_BLOCK() {
+        g_buffer.init(nullptr, 0);
+        g_droppedBytes = 0;
+    }
+    g_bufferData.reset();
+
     rmrf(BOOT_LOG_FILE2);
     rmrf(BOOT_LOG_FILE1);
 }

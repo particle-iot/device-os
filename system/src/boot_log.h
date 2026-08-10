@@ -13,6 +13,7 @@ namespace particle::system {
 
 // Called by the system
 int initBootLog();
+int flushBootLog();
 void stopWritingBootLog();
 
 // Called by the logging service
