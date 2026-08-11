@@ -5,9 +5,6 @@
 #if HAL_PLATFORM_BOOT_LOG
 
 #include "logging.h"
-#include "system_config.h"
-
-#include <cstdarg>
 
 namespace particle::system {
 

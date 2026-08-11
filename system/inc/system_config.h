@@ -16,18 +16,23 @@ typedef struct {
      */
     size_t size;
     /**
+     * Logging category.
+     *
      * If not `NULL`, only the messages logged for a category starting with this string will be stored
-     * in the boot log.
+     * in the log.
      */
     const char* category;
     /**
-     * Maximum size of the boot log in bytes.
+     * Maximum size of the log in bytes.
      *
-     * Up to twice this amount of storage may be used internally. If 0, a default size is used.
+     * Up to twice this amount of filesystem storage may be used internally. If 0, a default size
+     * is used.
      */
     size_t max_size;
     /**
      * Minimum logging level as defined by the `LogLevel` enum.
+     *
+     * If 0, all messages will be logged.
      */
     int level;
 } system_boot_log_config;
