@@ -557,41 +557,57 @@ bool isBootLogEnabled(int level, const char* category) {
 using namespace particle;
 using namespace particle::system;
 
-void system_enable_boot_log(bool enabled, const system_boot_log_config* config, void* reserved) {
+void system_enable_boot_log(const system_boot_log_config* config) {
     fs::FsLock lock;
-
-    if (!enabled) {
-        closeBootLog();
-    }
 
     BootLogConfig newConfig = {};
     newConfig.magic = BOOT_LOG_CONFIG_MAGIC;
-    newConfig.enabled = enabled;
+    newConfig.enabled = true;
 
-    if (enabled) {
-        if (config) {
-            if (config->category) {
-                strlcpy(newConfig.category, config->category, sizeof(newConfig.category));
-            }
-            newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_BOOT_LOG_SIZE;
-            newConfig.level = config->level;
-        } else {
-            newConfig.maxSize = DEFAULT_BOOT_LOG_SIZE;
-            newConfig.level = LOG_LEVEL_ALL;
+    if (config) {
+        if (config->category) {
+            strlcpy(newConfig.category, config->category, sizeof(newConfig.category));
         }
+        newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_BOOT_LOG_SIZE;
+        newConfig.level = config->level;
+    } else {
+        newConfig.maxSize = DEFAULT_BOOT_LOG_SIZE;
+        newConfig.level = LOG_LEVEL_ALL;
     }
 
     g_bootLogConfig = newConfig;
 }
 
-void system_flush_boot_log(int level, const char* category, void* reserved) {
+void system_disable_boot_log(void* reserved) {
+    fs::FsLock lock;
+
+    closeBootLog();
+
+    BootLogConfig newConfig = {};
+    newConfig.magic = BOOT_LOG_CONFIG_MAGIC;
+    newConfig.enabled = false;
+
+    g_bootLogConfig = newConfig;
+}
+
+void system_flush_boot_log(const system_boot_log_flush_options* opts) {
     fs::FsLock lock;
 
     closeBootLog();
 
     if (g_bootLog) {
+        int level = LOG_LEVEL_INFO;
+        auto category = "system.boot";
+        if (opts) {
+            if (opts->level > 0) {
+                level = opts->level;
+            }
+            if (opts->category) {
+                category = opts->category;
+            }
+        }
         if (level < LOG_LEVEL_NONE) {
-            g_bootLog->printLog(level, category ? category : "system.boot");
+            g_bootLog->printLog(level, category);
         }
         g_bootLog->destroy();
     }
