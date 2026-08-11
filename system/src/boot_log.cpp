@@ -540,7 +540,7 @@ void writeBootLog(const char* data, size_t size, int level, const char* category
     g_bootLog->write(data, size, level, category);
 }
 
-bool isBootLogEnabled(int level, const char* category) {
+bool isBootLogEnabledForLevel(int level, const char* category) {
     if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
         return false;
     }
@@ -550,6 +550,10 @@ bool isBootLogEnabled(int level, const char* category) {
     }
 #endif
     return g_bootLog->isEnabledForLevel(level, category);
+}
+
+bool isBootLogEnabled() {
+    return g_bootLogEnabled.load(std::memory_order_relaxed);
 }
 
 } // namespace particle::system

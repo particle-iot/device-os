@@ -16,7 +16,8 @@ void closeBootLog();
 // Called by the logging service
 void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs);
 void writeBootLog(const char* data, size_t size, int level, const char* category);
-bool isBootLogEnabled(int level, const char* category);
+bool isBootLogEnabledForLevel(int level, const char* category);
+bool isBootLogEnabled();
 
 } // namespace particle::system
 

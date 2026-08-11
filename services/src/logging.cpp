@@ -80,7 +80,11 @@ inline void bootLogMessage(const char* msg, int level, const char* category, con
 inline void writeBootLog(const char* data, size_t size, int level, const char* category) {
 }
 
-inline bool isBootLogEnabled(int level, const char* category) {
+inline bool isBootLogEnabledForLevel(int level, const char* category) {
+    return false;
+}
+
+inline bool isBootLogEnabled() {
     return false;
 }
 #endif // !HAL_PLATFORM_BOOT_LOG
@@ -95,7 +99,7 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 }
 
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
-    if (!log_msg_callback && !isBootLogEnabled(level, category)) {
+    if (!log_msg_callback && !isBootLogEnabled()) {
         return;
     }
     // Set default attributes
@@ -131,7 +135,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
 }
 
 void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
-    if (!log_write_callback && !isBootLogEnabled(level, category)) {
+    if (!log_write_callback && !isBootLogEnabled()) {
         return;
     }
     char buf[LOG_MAX_STRING_LENGTH];
@@ -154,7 +158,7 @@ void log_printf(int level, const char *category, void *reserved, const char *fmt
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
-    if (!size || (!log_write_callback && !isBootLogEnabled(level, category))) {
+    if (!size || (!log_write_callback && !isBootLogEnabled())) {
         return;
     }
     static const char hex[] = "0123456789abcdef";
@@ -182,7 +186,7 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
 }
 
 int log_enabled(int level, const char *category, void *reserved) {
-    if (isBootLogEnabled(level, category)) {
+    if (isBootLogEnabledForLevel(level, category)) {
         return 1;
     }
     if (log_enabled_callback) {
