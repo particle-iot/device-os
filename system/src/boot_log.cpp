@@ -260,7 +260,7 @@ public:
     BootLog() :
             bufMem_(),
             bytesDropped_(0),
-            category_(nullptr),
+            category_(),
             minLevel_(0) {
     }
 
@@ -282,7 +282,7 @@ public:
         buf_.init(bufMem.get(), BOOT_LOG_BUFFER_SIZE);
         bufMem_ = std::move(bufMem);
         log_ = std::move(log);
-        category_ = conf.category;
+        strlcpy(category_, conf.category, sizeof(category_));
         minLevel_ = conf.level;
         return 0;
     }
@@ -348,8 +348,9 @@ public:
         if (!log_) {
             return 0;
         }
-        CHECK(flush());
+        int r = flush();
         CHECK(log_->close());
+        CHECK(r);
         return 0;
     }
 
@@ -400,7 +401,7 @@ private:
     size_t bytesDropped_;
     // Read-only copy of the current configuration. The logging functions run without a lock, so they
     // can't access the global configuration object directly
-    const char* category_;
+    char category_[sizeof(BootLogConfig::category)];
     int minLevel_;
 
     void append(const Chunk* chunks, size_t count) {
