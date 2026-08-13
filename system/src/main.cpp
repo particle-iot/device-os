@@ -811,6 +811,8 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+    main_thread_current(nullptr /* reserved */);
+
 #if HAL_PLATFORM_BOOT_LOG
     system::initBootLog();
 #endif
@@ -849,7 +851,6 @@ void app_setup_and_loop(void)
     system_part2_post_init();
 
     HAL_Core_Init();
-    main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
