@@ -800,12 +800,6 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
 }
 #endif /* HAL_PLATFORM_LWIP */
 
-inline void flushBootLog() {
-#if HAL_PLATFORM_BOOT_LOG
-    system::flushBootLog();
-#endif
-}
-
 } // namespace
 
 /*******************************************************************************
@@ -844,9 +838,6 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_ASSETS
 
-    // Keep flushing the boot log while the event loop is not running
-    flushBootLog();
-
     // Reset all persistent settings to factory defaults if necessary
     // This should be called before system_part2_post_init() so that the
     // configurations set in STARTUP() is not reset by factory reset
@@ -861,8 +852,6 @@ void app_setup_and_loop(void)
     main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
-
-    flushBootLog();
 
     LED_SIGNAL_START(NETWORK_OFF, BACKGROUND);
 
@@ -892,8 +881,6 @@ void app_setup_and_loop(void)
             LOG(TRACE, "Last reset reason: %d (data: 0x%02x)", reason, (unsigned)data); // TODO: Use LOG_ATTR()
         }
     }
-
-    flushBootLog();
 
     PanicData panic = {};
     panic.size = sizeof(panic);
@@ -944,7 +931,9 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_LEDGER
 
-    flushBootLog();
+#if HAL_PLATFORM_BOOT_LOG
+    system::flushBootLog();
+#endif
 
 #if PLATFORM_THREADING
     if (threaded)

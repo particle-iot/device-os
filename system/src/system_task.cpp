@@ -528,10 +528,6 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 
         system::FirmwareUpdate::instance()->process();
 
-#if HAL_PLATFORM_BOOT_LOG
-        system::flushBootLog();
-#endif
-
         if (system_mode() != SAFE_MODE) {
             manage_listening_mode_flag();
         }
@@ -552,6 +548,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     }
 #endif
     system_shutdown_if_needed();
+
+#if HAL_PLATFORM_BOOT_LOG
+    system::flushBootLog();
+#endif
 }
 
 namespace {

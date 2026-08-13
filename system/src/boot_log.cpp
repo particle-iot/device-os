@@ -2,6 +2,7 @@
 
 #if HAL_PLATFORM_BOOT_LOG
 
+#include "system_task.h"
 #include "system_threading.h"
 #include "system_config.h"
 #include "interrupts_hal.h"
@@ -409,15 +410,22 @@ private:
         for (size_t i = 0; i < count; ++i) {
             size += chunks[i].size;
         }
-        ATOMIC_BLOCK() {
-            // The message is stored either in its entirety or not at all
-            if (buf_.space() < (ssize_t)size) {
-                bytesDropped_ += size;
-                return;
+        bool flush = canFlush();
+        for (;;) {
+            ATOMIC_BLOCK() {
+                // The message is stored either in its entirety or not at all
+                if ((ssize_t)size <= buf_.space()) {
+                    for (size_t i = 0; i < count; ++i) {
+                        buf_.put(chunks[i].data, chunks[i].size);
+                    }
+                    return;
+                } else if (!flush) {
+                    bytesDropped_ += size;
+                    return;
+                }
             }
-            for (size_t i = 0; i < count; ++i) {
-                buf_.put(chunks[i].data, chunks[i].size);
-            }
+            flushBuffer();
+            flush = false;
         }
     }
 
@@ -465,6 +473,16 @@ private:
             CHECK(log_->sync());
         }
         return 0;
+    }
+
+    static bool canFlush() {
+        if (hal_interrupt_is_isr()) {
+            return false;
+        }
+        if (SYSTEM_THREAD_CURRENT()) {
+            return true;
+        }
+        return !SystemThread.isStarted() && main_thread_current(nullptr /* reserved */);
     }
 };
 
