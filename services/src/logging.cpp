@@ -24,7 +24,7 @@
 #include "service_debug.h"
 #include "static_assert.h"
 
-#include "../../system/src/boot_log.h" // FIXME
+#include "../../system/src/log_file.h" // FIXME
 
 #define STATIC_ASSERT_FIELD_SIZE(struct, field, size) \
         STATIC_ASSERT(field_size_changed_##struct##_##field, sizeof(struct::field) == size);
@@ -71,23 +71,23 @@ volatile log_message_callback_type log_msg_callback = 0;
 volatile log_write_callback_type log_write_callback = 0;
 volatile log_enabled_callback_type log_enabled_callback = 0;
 
-#if HAL_PLATFORM_BOOT_LOG
+#if HAL_PLATFORM_LOG_FILE
 using namespace particle::system;
 #else
-inline void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
+inline void logFileMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
 }
 
-inline void writeBootLog(const char* data, size_t size, int level, const char* category) {
+inline void writeLogFile(const char* data, size_t size, int level, const char* category) {
 }
 
-inline bool isBootLogEnabledForLevel(int level, const char* category) {
+inline bool isLogFileEnabledForLevel(int level, const char* category) {
     return false;
 }
 
-inline bool isBootLogEnabled() {
+inline bool isLogFileEnabled() {
     return false;
 }
-#endif // !HAL_PLATFORM_BOOT_LOG
+#endif // !HAL_PLATFORM_LOG_FILE
 
 } // namespace
 
@@ -99,7 +99,7 @@ void log_set_callbacks(log_message_callback_type log_msg, log_write_callback_typ
 }
 
 void log_message_v(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, va_list args) {
-    if (!log_msg_callback && !isBootLogEnabled()) {
+    if (!log_msg_callback && !isLogFileEnabled()) {
         return;
     }
     // Set default attributes
@@ -114,7 +114,7 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
     if (log_msg_callback) {
         log_msg_callback(buf, level, category, attr, nullptr /* reserved */);
     }
-    bootLogMessage(buf, level, category, attr);
+    logFileMessage(buf, level, category, attr);
 }
 
 void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...) {
@@ -131,11 +131,11 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     if (log_write_callback) {
         log_write_callback(data, size, level, category, nullptr /* reserved */);
     }
-    writeBootLog(data, size, level, category);
+    writeLogFile(data, size, level, category);
 }
 
 void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
-    if (!log_write_callback && !isBootLogEnabled()) {
+    if (!log_write_callback && !isLogFileEnabled()) {
         return;
     }
     char buf[LOG_MAX_STRING_LENGTH];
@@ -147,7 +147,7 @@ void log_printf_v(int level, const char *category, void *reserved, const char *f
     if (log_write_callback) {
         log_write_callback(buf, n, level, category, nullptr /* reserved */);
     }
-    writeBootLog(buf, n, level, category);
+    writeLogFile(buf, n, level, category);
 }
 
 void log_printf(int level, const char *category, void *reserved, const char *fmt, ...) {
@@ -158,7 +158,7 @@ void log_printf(int level, const char *category, void *reserved, const char *fmt
 }
 
 void log_dump(int level, const char *category, const void *data, size_t size, int flags, void *reserved) {
-    if (!size || (!log_write_callback && !isBootLogEnabled())) {
+    if (!size || (!log_write_callback && !isLogFileEnabled())) {
         return;
     }
     static const char hex[] = "0123456789abcdef";
@@ -173,7 +173,7 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
             if (log_write_callback) {
                 log_write_callback(buf, sizeof(buf) - 1, level, category, nullptr /* reserved */);
             }
-            writeBootLog(buf, sizeof(buf) - 1, level, category);
+            writeLogFile(buf, sizeof(buf) - 1, level, category);
             offs = 0;
         }
     }
@@ -181,12 +181,12 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
         if (log_write_callback) {
             log_write_callback(buf, offs, level, category, nullptr /* reserved */);
         }
-        writeBootLog(buf, offs, level, category);
+        writeLogFile(buf, offs, level, category);
     }
 }
 
 int log_enabled(int level, const char *category, void *reserved) {
-    if (isBootLogEnabledForLevel(level, category)) {
+    if (isLogFileEnabledForLevel(level, category)) {
         return 1;
     }
     if (log_enabled_callback) {

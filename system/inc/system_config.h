@@ -5,10 +5,10 @@
 
 #include "hal_platform.h"
 
-#if HAL_PLATFORM_BOOT_LOG
+#if HAL_PLATFORM_LOG_FILE
 
 /**
- * Boot log configuration.
+ * Log file configuration.
  */
 typedef struct {
     /**
@@ -35,10 +35,10 @@ typedef struct {
      * If 0, all messages will be logged.
      */
     int level;
-} system_boot_log_config;
+} system_log_file_config;
 
 /**
- * Options for `system_flush_boot_log()`.
+ * Options for `system_print_log_file()`.
  */
 typedef struct {
     /**
@@ -48,7 +48,7 @@ typedef struct {
     /**
      * Logging category with which to print the contents of the log.
      *
-     * If `NULL`, `system.boot` is used.
+     * If `NULL`, `app` is used.
      */
     const char* category;
     /**
@@ -57,45 +57,82 @@ typedef struct {
      * If 0, the contents are printed at the `LOG_LEVEL_INFO` level.
      */
     int level;
-} system_boot_log_flush_options;
+} system_log_file_print_options;
 
-#endif // HAL_PLATFORM_BOOT_LOG
+#endif // HAL_PLATFORM_LOG_FILE
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if HAL_PLATFORM_BOOT_LOG
+#if HAL_PLATFORM_LOG_FILE
 
 /**
- * Enable the boot log.
+ * Enable the log file.
  *
- * The boot log stores the messages logged while the device is booting so that they can be retrieved
- * by the application once it starts.
+ * The log file stores the messages logged by the system and the application in the filesystem so
+ * that they can be retrieved later, in particular after the device reboots.
  *
- * The configuration is stored in the backup RAM and applied when the device boots next time.
+ * The log starts capturing the messages immediately. Calling this function again reconfigures the
+ * log without losing its contents. The configuration is also stored in the backup RAM so that the
+ * log is enabled automatically when the device boots next time.
  *
- * @param config Boot log configuration. If `NULL`, the default configuration is used.
+ * This function accesses the filesystem and must not be called from an ISR.
+ *
+ * @param config Log file configuration. If `NULL`, the default configuration is used.
  */
-void system_enable_boot_log(const system_boot_log_config* config);
+void system_enable_log_file(const system_log_file_config* config);
 
 /**
- * Disable the boot log.
+ * Disable the log file.
  *
- * Prevents the device from writing to the boot log when it boots next time.
+ * The log stops capturing the messages, the buffered data is discarded and the contents of the log
+ * are deleted. The log is not enabled automatically when the device boots next time.
+ *
+ * This function accesses the filesystem and must not be called from an ISR.
  *
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void system_disable_boot_log(void* reserved);
+void system_disable_log_file(void* reserved);
 
 /**
- * Print the contents of the boot log and delete it.
+ * Write the buffered log data to the file.
  *
- * @param opts Options. If `NULL`, the defaults are used (see `system_boot_log_flush_options`).
+ * The messages are buffered in RAM and written to the file periodically, so this function can be
+ * used to make sure that nothing is lost before the device is reset. The log keeps capturing the
+ * messages.
+ *
+ * This function accesses the filesystem and must not be called from an ISR.
+ *
+ * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void system_flush_boot_log(const system_boot_log_flush_options* opts);
+void system_flush_log_file(void* reserved);
 
-#endif // HAL_PLATFORM_BOOT_LOG
+/**
+ * Print the contents of the log file.
+ *
+ * The buffered data is written to the file first, so that the printed contents are complete. The
+ * messages generated while the log is being printed are not stored in the log. The log keeps
+ * capturing the messages otherwise.
+ *
+ * This function accesses the filesystem and must not be called from an ISR.
+ *
+ * @param opts Options. If `NULL`, the defaults are used (see `system_log_file_print_options`).
+ */
+void system_print_log_file(const system_log_file_print_options* opts);
+
+/**
+ * Delete the contents of the log file.
+ *
+ * The buffered data is discarded as well. The log keeps capturing the messages.
+ *
+ * This function accesses the filesystem and must not be called from an ISR.
+ *
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ */
+void system_clear_log_file(void* reserved);
+
+#endif // HAL_PLATFORM_LOG_FILE
 
 #ifdef __cplusplus
 } // extern "C"

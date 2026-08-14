@@ -21,7 +21,7 @@
 #include "system_task.h"
 #include "system_cloud_internal.h"
 #include "system_threading.h"
-#include "boot_log.h"
+#include "log_file.h"
 
 #include "core_hal.h"
 
@@ -35,9 +35,9 @@ System_Mode_TypeDef current_mode = DEFAULT;
 volatile uint8_t SPARK_CLOUD_AUTO_CONNECT = 1; //default is AUTOMATIC mode
 
 int systemResetImpl(system_reset_mode mode, System_Reset_Reason reason, unsigned value, unsigned flags) {
-#if HAL_PLATFORM_BOOT_LOG
+#if HAL_PLATFORM_LOG_FILE
     if (!hal_interrupt_is_isr()) {
-        closeBootLog(); // Flush the boot log
+        closeLogFile(); // Flush the log file
     }
 #endif
     if (!(flags & SYSTEM_RESET_FLAG_NO_WAIT)) {

@@ -72,7 +72,7 @@
 #include "system_network_manager.h"
 #include "ledger/ledger_manager.h"
 #include "ledger/ledger.h"
-#include "boot_log.h"
+#include "log_file.h"
 
 #include "ota_module.h"
 #include "user_hal.h"
@@ -491,8 +491,10 @@ void app_loop(bool threaded)
                 DECLARE_SYS_HEALTH(ENTERED_Setup);
                 if (system_mode() != SAFE_MODE) {
                     setup();
-#if HAL_PLATFORM_BOOT_LOG
-                    system::closeBootLog();
+#if HAL_PLATFORM_LOG_FILE
+                    // Note: the log keeps capturing the messages after setup() returns, it's only
+                    // flushed here so that the data logged during the boot is not lost
+                    system::flushLogFile();
 #endif
                 }
                 SPARK_WIRING_APPLICATION = 1;
@@ -813,8 +815,8 @@ void app_setup_and_loop(void)
 {
     main_thread_current(nullptr /* reserved */);
 
-#if HAL_PLATFORM_BOOT_LOG
-    system::initBootLog();
+#if HAL_PLATFORM_LOG_FILE
+    system::initLogFile();
 #endif
 
 #if HAL_PLATFORM_ENV
@@ -932,8 +934,8 @@ void app_setup_and_loop(void)
     }
 #endif // HAL_PLATFORM_LEDGER
 
-#if HAL_PLATFORM_BOOT_LOG
-    system::flushBootLog();
+#if HAL_PLATFORM_LOG_FILE
+    system::flushLogFile();
 #endif
 
 #if PLATFORM_THREADING

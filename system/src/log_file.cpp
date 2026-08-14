@@ -1,6 +1,6 @@
-#include "boot_log.h"
+#include "log_file.h"
 
-#if HAL_PLATFORM_BOOT_LOG
+#if HAL_PLATFORM_LOG_FILE
 
 #include "system_task.h"
 #include "system_threading.h"
@@ -15,6 +15,7 @@
 #include "str_util.h"
 #include "str_compat.h"
 #include "logging.h"
+#include "scope_guard.h"
 #include "check.h"
 
 #include <algorithm>
@@ -23,18 +24,23 @@
 #include <cstdio>
 
 // Set to a non-zero value to enable logging from ISRs
-#define BOOT_LOG_FROM_ISR 0
+#define LOG_FILE_FROM_ISR 0
 
 namespace particle::system {
 
 namespace {
 
-const auto BOOT_LOG_FILE1 = "/sys/bootlog.1";
-const auto BOOT_LOG_FILE2 = "/sys/bootlog.2";
+const auto LOG_FILE1 = "/sys/log.1";
+const auto LOG_FILE2 = "/sys/log.2";
 
-const size_t DEFAULT_BOOT_LOG_SIZE = 50000;
+const size_t DEFAULT_LOG_FILE_SIZE = 50000;
 
-const size_t BOOT_LOG_BUFFER_SIZE = 2 * 1024;
+const size_t LOG_FILE_BUFFER_SIZE = 2 * 1024;
+
+// Paths used by earlier versions of this feature. Removed on startup so that they don't
+// linger in the filesystem after an update
+const auto OLD_LOG_FILE1 = "/sys/bootlog.1";
+const auto OLD_LOG_FILE2 = "/sys/bootlog.2";
 
 // Note: The caller must acquire the filesystem lock before calling the methods of this class
 class RotatingLogReader: public InputStream {
@@ -50,7 +56,7 @@ public:
         bool readingLast = true;
 
         // Open the latest file
-        auto fileName = rotated ? BOOT_LOG_FILE2 : BOOT_LOG_FILE1;
+        auto fileName = rotated ? LOG_FILE2 : LOG_FILE1;
         int r = file.open(fileName, LFS_O_RDONLY);
         if (r < 0 && (r != SYSTEM_ERROR_FILESYSTEM_NOENT || rotated)) {
             return r;
@@ -59,7 +65,7 @@ public:
             size_t lastFileSize = CHECK(file.size());
             if (lastFileSize < maxSize && rotated) {
                 // Open the previous file
-                CHECK(file.open(BOOT_LOG_FILE1, LFS_O_RDONLY));
+                CHECK(file.open(LOG_FILE1, LFS_O_RDONLY));
 
                 size_t prevFileSize = CHECK(file.size());
                 size_t prevFileAvail = std::min(maxSize - lastFileSize, prevFileSize);
@@ -96,7 +102,7 @@ public:
                 return SYSTEM_ERROR_BAD_DATA;
             }
             // Open the latest file
-            CHECK(file_.open(BOOT_LOG_FILE2, LFS_O_RDONLY));
+            CHECK(file_.open(LOG_FILE2, LFS_O_RDONLY));
 
             bytesToRead -= totalBytesRead;
             bytesRead = CHECK(file_.read(data + totalBytesRead, bytesToRead));
@@ -153,7 +159,7 @@ public:
         bool remove = false;
 
         lfs_info info = {};
-        int r = fs::stat(BOOT_LOG_FILE2, &info);
+        int r = fs::stat(LOG_FILE2, &info);
         if (r >= 0 && info.type == LFS_TYPE_REG) {
             rotated = true;
         } else if ((r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) || (r >= 0 && info.type != LFS_TYPE_REG)) {
@@ -161,7 +167,7 @@ public:
         }
 
         if (!remove) {
-            int r = fs::stat(BOOT_LOG_FILE1, &info);
+            int r = fs::stat(LOG_FILE1, &info);
             if ((r < 0 && r != SYSTEM_ERROR_FILESYSTEM_NOENT) || (r == SYSTEM_ERROR_FILESYSTEM_NOENT && rotated) ||
                     (r >= 0 && info.type != LFS_TYPE_REG)) {
                 remove = true;
@@ -169,8 +175,8 @@ public:
         }
 
         if (remove) {
-            CHECK(rmrf(BOOT_LOG_FILE2));
-            CHECK(rmrf(BOOT_LOG_FILE1));
+            CHECK(rmrf(LOG_FILE2));
+            CHECK(rmrf(LOG_FILE1));
             rotated = false;
         }
 
@@ -182,7 +188,7 @@ public:
         size_t totalBytesWritten = 0;
 
         if (!file_.isOpen()) {
-            auto fileName = rotated_ ? BOOT_LOG_FILE2 : BOOT_LOG_FILE1;
+            auto fileName = rotated_ ? LOG_FILE2 : LOG_FILE1;
             CHECK(file_.open(fileName, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND));
         }
 
@@ -198,9 +204,9 @@ public:
             // Rotate the log
             CHECK(file_.close());
             if (rotated_) {
-                CHECK(fs::rename(BOOT_LOG_FILE2, BOOT_LOG_FILE1));
+                CHECK(fs::rename(LOG_FILE2, LOG_FILE1));
             }
-            CHECK(file_.open(BOOT_LOG_FILE2, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC | LFS_O_APPEND));
+            CHECK(file_.open(LOG_FILE2, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC | LFS_O_APPEND));
 
             bytesToWrite = size - totalBytesWritten;
             bytesWritten = CHECK(file_.write(data + totalBytesWritten, bytesToWrite));
@@ -229,6 +235,19 @@ public:
         return 0;
     }
 
+    // Closes the file and deletes its contents
+    int clear() {
+        CHECK(file_.close());
+        CHECK(rmrf(LOG_FILE2));
+        CHECK(rmrf(LOG_FILE1));
+        rotated_ = false;
+        return 0;
+    }
+
+    size_t maxSize() const {
+        return maxSize_;
+    }
+
     int openForRead(std::unique_ptr<InputStream>& stream) {
         CHECK(file_.close()); // Flush the data
 
@@ -248,46 +267,61 @@ private:
     bool rotated_;
 };
 
-struct BootLogConfig {
-    char category[20];
+// Wrapper for the category filter. Copied as a whole so that it can be updated while the logging
+// functions are running
+struct Category {
+    char name[20];
+};
+
+struct LogFileConfig {
+    Category category;
     size_t maxSize;
     unsigned magic;
     int level;
     bool enabled;
 };
 
-class BootLog {
+class LogFile {
 public:
-    BootLog() :
+    LogFile() :
             bufMem_(),
             bytesDropped_(0),
             category_(),
-            minLevel_(0) {
+            minLevel_(0),
+            printing_(false) {
     }
 
-    int init(const BootLogConfig& conf) {
+    // Can be called repeatedly to reconfigure the log
+    int init(const LogFileConfig& conf) {
         fs::FsLock lock;
 
         CHECK(fs::mount());
 
-        std::unique_ptr<char[]> bufMem(new(std::nothrow) char[BOOT_LOG_BUFFER_SIZE]);
-        if (!bufMem) {
-            return SYSTEM_ERROR_NO_MEMORY;
+        if (!bufMem_) {
+            std::unique_ptr<char[]> bufMem(new(std::nothrow) char[LOG_FILE_BUFFER_SIZE]);
+            if (!bufMem) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            buf_.init(bufMem.get(), LOG_FILE_BUFFER_SIZE);
+            bufMem_ = std::move(bufMem);
         }
-        std::unique_ptr<RotatingLog> log(new(std::nothrow) RotatingLog(conf.maxSize));
-        if (!log) {
-            return SYSTEM_ERROR_NO_MEMORY;
+        if (!log_ || log_->maxSize() != conf.maxSize) {
+            std::unique_ptr<RotatingLog> log(new(std::nothrow) RotatingLog(conf.maxSize));
+            if (!log) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            CHECK(log->init());
+            // The buffered data is preserved and will be written to the new log
+            log_ = std::move(log);
         }
-        CHECK(log->init());
-
-        buf_.init(bufMem.get(), BOOT_LOG_BUFFER_SIZE);
-        bufMem_ = std::move(bufMem);
-        log_ = std::move(log);
-        strlcpy(category_, conf.category, sizeof(category_));
-        minLevel_ = conf.level;
+        ATOMIC_BLOCK() {
+            category_ = conf.category;
+            minLevel_ = conf.level;
+        }
         return 0;
     }
 
+    // Discards the buffered data, deletes the contents of the log and releases the resources
     void destroy() {
         fs::FsLock lock;
 
@@ -296,7 +330,25 @@ public:
             bytesDropped_ = 0;
         }
         bufMem_.reset();
+        if (log_) {
+            log_->clear();
+        }
         log_.reset();
+    }
+
+    // Discards the buffered data and deletes the contents of the log. Writing to the log continues
+    int clear() {
+        fs::FsLock lock;
+
+        if (!log_) {
+            return 0;
+        }
+        ATOMIC_BLOCK() {
+            buf_.reset();
+            bytesDropped_ = 0;
+        }
+        CHECK(log_->clear());
+        return 0;
     }
 
     void logMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
@@ -361,6 +413,15 @@ public:
         if (!log_) {
             return SYSTEM_ERROR_INVALID_STATE;
         }
+        CHECK(flushBuffer());
+
+        // Printing the log generates log messages of its own. Suppress them for the duration of the
+        // operation so that they don't end up in the log
+        printing_ = true;
+        SCOPE_GUARD({
+            printing_ = false;
+        });
+
         std::unique_ptr<InputStream> in;
         CHECK(log_->openForRead(in));
 
@@ -371,7 +432,7 @@ public:
                 break;
             }
             size_t n = std::min(bytesAvail, sizeof(buf));
-            CHECK(in->read(buf, n));
+            n = CHECK(in->read(buf, n));
             log_write(level, category, buf, n, nullptr /* reserved */);
         }
 
@@ -380,10 +441,19 @@ public:
     }
 
     bool isEnabledForLevel(int level, const char* category) const {
-        if (level < minLevel_) {
+        if (printing_) {
             return false;
         }
-        if (category && !startsWith(category, category_)) {
+        Category cat;
+        int minLevel = 0;
+        ATOMIC_BLOCK() {
+            cat = category_;
+            minLevel = minLevel_;
+        }
+        if (level < minLevel) {
+            return false;
+        }
+        if (category && !startsWith(category, cat.name)) {
             return false;
         }
         return true;
@@ -400,10 +470,13 @@ private:
     std::unique_ptr<char[]> bufMem_;
     services::RingBuffer<char> buf_;
     size_t bytesDropped_;
-    // Read-only copy of the current configuration. The logging functions run without a lock, so they
-    // can't access the global configuration object directly
-    char category_[sizeof(BootLogConfig::category)];
+    // Copy of the current configuration. The logging functions run without the filesystem lock, so
+    // they can't access the global configuration object directly
+    Category category_;
     int minLevel_;
+    // Set while the contents of the log are being printed. Written under the filesystem lock and
+    // read without it: a stale read can only cause a message to be dropped
+    bool printing_;
 
     void append(const Chunk* chunks, size_t count) {
         size_t size = 0;
@@ -486,92 +559,103 @@ private:
     }
 };
 
-const auto BOOT_LOG_CONFIG_MAGIC = 0xe62a3e5eu;
+const auto LOG_FILE_CONFIG_MAGIC = 0xe62a3e5eu;
 
-retained_system BootLogConfig g_bootLogConfig = {};
-std::atomic<bool> g_bootLogEnabled;
+retained_system LogFileConfig g_logFileConfig = {};
+std::atomic<bool> g_logFileEnabled;
 
-// Note: The instance is assigned in initBootLog() and never reset. Resetting it would create a race
-// between the logging functions and the boot log's deinitialization
-std::unique_ptr<BootLog> g_bootLog;
+// Note: The instance is assigned in enableLogFile() and never reset. Resetting it would create a
+// race between the logging functions and the log file's deinitialization
+std::unique_ptr<LogFile> g_logFile;
+
+// Note: The caller must acquire the filesystem lock before calling this function
+int enableLogFile(const LogFileConfig& conf) {
+    if (!g_logFile) {
+        std::unique_ptr<LogFile> log(new(std::nothrow) LogFile());
+        if (!log) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        g_logFile = std::move(log);
+    }
+    CHECK(g_logFile->init(conf));
+    g_logFileEnabled.store(true, std::memory_order_release);
+    return 0;
+}
 
 } // namespace
 
 // Called by the system thread
-int initBootLog() {
+int initLogFile() {
     fs::FsLock lock;
 
-    if (g_bootLogConfig.magic != BOOT_LOG_CONFIG_MAGIC || !g_bootLogConfig.enabled) {
+    if (g_logFileConfig.magic != LOG_FILE_CONFIG_MAGIC || !g_logFileConfig.enabled) {
         return 0;
     }
-    std::unique_ptr<BootLog> log(new(std::nothrow) BootLog());
-    if (!log) {
-        return SYSTEM_ERROR_NO_MEMORY;
-    }
-    CHECK(log->init(g_bootLogConfig));
+    CHECK(fs::mount());
+    rmrf(OLD_LOG_FILE2);
+    rmrf(OLD_LOG_FILE1);
 
-    g_bootLog = std::move(log);
-    g_bootLogEnabled.store(true, std::memory_order_release);
+    CHECK(enableLogFile(g_logFileConfig));
     return 0;
 }
 
 // Called by the system thread
-int flushBootLog() {
-    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+int flushLogFile() {
+    if (!g_logFileEnabled.load(std::memory_order_acquire)) {
         return 0;
     }
-    return g_bootLog->flush();
+    return g_logFile->flush();
 }
 
 // Can be called from any thread, e.g. through system_reset()
-void closeBootLog() {
-    // Disable the boot log but don't flush it unless this is the system or app thread that has
+void closeLogFile() {
+    // Stop writing to the log but don't flush it unless this is the system or app thread that has
     // a large enough stack for file IO
-    g_bootLogEnabled.exchange(false, std::memory_order_acq_rel);
+    g_logFileEnabled.exchange(false, std::memory_order_acq_rel);
 
-    if (g_bootLog && (SYSTEM_THREAD_CURRENT() || APPLICATION_THREAD_CURRENT())) {
-        g_bootLog->close();
+    if (g_logFile && (SYSTEM_THREAD_CURRENT() || APPLICATION_THREAD_CURRENT())) {
+        g_logFile->close();
     }
 }
 
-void bootLogMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
-    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+void logFileMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
+    if (!g_logFileEnabled.load(std::memory_order_acquire)) {
         return;
     }
-#if !BOOT_LOG_FROM_ISR
+#if !LOG_FILE_FROM_ISR
     if (hal_interrupt_is_isr()) {
         return;
     }
 #endif
-    g_bootLog->logMessage(msg, level, category, attrs);
+    g_logFile->logMessage(msg, level, category, attrs);
 }
 
-void writeBootLog(const char* data, size_t size, int level, const char* category) {
-    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+void writeLogFile(const char* data, size_t size, int level, const char* category) {
+    if (!g_logFileEnabled.load(std::memory_order_acquire)) {
         return;
     }
-#if !BOOT_LOG_FROM_ISR
+#if !LOG_FILE_FROM_ISR
     if (hal_interrupt_is_isr()) {
         return;
     }
 #endif
-    g_bootLog->write(data, size, level, category);
+    g_logFile->write(data, size, level, category);
 }
 
-bool isBootLogEnabledForLevel(int level, const char* category) {
-    if (!g_bootLogEnabled.load(std::memory_order_acquire)) {
+bool isLogFileEnabledForLevel(int level, const char* category) {
+    if (!g_logFileEnabled.load(std::memory_order_acquire)) {
         return false;
     }
-#if !BOOT_LOG_FROM_ISR
+#if !LOG_FILE_FROM_ISR
     if (hal_interrupt_is_isr()) {
         return false;
     }
 #endif
-    return g_bootLog->isEnabledForLevel(level, category);
+    return g_logFile->isEnabledForLevel(level, category);
 }
 
-bool isBootLogEnabled() {
-    return g_bootLogEnabled.load(std::memory_order_relaxed);
+bool isLogFileEnabled() {
+    return g_logFileEnabled.load(std::memory_order_relaxed);
 }
 
 } // namespace particle::system
@@ -579,63 +663,79 @@ bool isBootLogEnabled() {
 using namespace particle;
 using namespace particle::system;
 
-void system_enable_boot_log(const system_boot_log_config* config) {
+void system_enable_log_file(const system_log_file_config* config) {
     fs::FsLock lock;
 
-    BootLogConfig newConfig = {};
-    newConfig.magic = BOOT_LOG_CONFIG_MAGIC;
+    LogFileConfig newConfig = {};
+    newConfig.magic = LOG_FILE_CONFIG_MAGIC;
     newConfig.enabled = true;
 
     if (config) {
         if (config->category) {
-            strlcpy(newConfig.category, config->category, sizeof(newConfig.category));
+            strlcpy(newConfig.category.name, config->category, sizeof(newConfig.category.name));
         }
-        newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_BOOT_LOG_SIZE;
+        newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_LOG_FILE_SIZE;
         newConfig.level = config->level;
     } else {
-        newConfig.maxSize = DEFAULT_BOOT_LOG_SIZE;
+        newConfig.maxSize = DEFAULT_LOG_FILE_SIZE;
         newConfig.level = LOG_LEVEL_ALL;
     }
 
-    g_bootLogConfig = newConfig;
+    // Apply the configuration to the current session as well
+    if (enableLogFile(newConfig) < 0) {
+        return;
+    }
+    g_logFileConfig = newConfig;
 }
 
-void system_disable_boot_log(void* reserved) {
+void system_disable_log_file(void* reserved) {
     fs::FsLock lock;
 
-    closeBootLog();
+    // Stop writing to the log without flushing it
+    g_logFileEnabled.store(false, std::memory_order_release);
 
-    BootLogConfig newConfig = {};
-    newConfig.magic = BOOT_LOG_CONFIG_MAGIC;
-    newConfig.enabled = false;
-
-    g_bootLogConfig = newConfig;
-}
-
-void system_flush_boot_log(const system_boot_log_flush_options* opts) {
-    fs::FsLock lock;
-
-    closeBootLog();
-
-    if (g_bootLog) {
-        int level = LOG_LEVEL_INFO;
-        auto category = "system.boot";
-        if (opts) {
-            if (opts->level > 0) {
-                level = opts->level;
-            }
-            if (opts->category) {
-                category = opts->category;
-            }
-        }
-        if (level < LOG_LEVEL_NONE) {
-            g_bootLog->printLog(level, category);
-        }
-        g_bootLog->destroy();
+    if (g_logFile) {
+        g_logFile->destroy();
     }
 
-    rmrf(BOOT_LOG_FILE2);
-    rmrf(BOOT_LOG_FILE1);
+    LogFileConfig newConfig = {};
+    newConfig.magic = LOG_FILE_CONFIG_MAGIC;
+    newConfig.enabled = false;
+
+    g_logFileConfig = newConfig;
 }
 
-#endif // HAL_PLATFORM_BOOT_LOG
+void system_flush_log_file(void* reserved) {
+    flushLogFile();
+}
+
+void system_print_log_file(const system_log_file_print_options* opts) {
+    fs::FsLock lock;
+
+    if (!g_logFile) {
+        return;
+    }
+    int level = LOG_LEVEL_INFO;
+    auto category = "app";
+    if (opts) {
+        if (opts->level > 0) {
+            level = opts->level;
+        }
+        if (opts->category) {
+            category = opts->category;
+        }
+    }
+    if (level < LOG_LEVEL_NONE) {
+        g_logFile->printLog(level, category);
+    }
+}
+
+void system_clear_log_file(void* reserved) {
+    fs::FsLock lock;
+
+    if (g_logFile) {
+        g_logFile->clear();
+    }
+}
+
+#endif // HAL_PLATFORM_LOG_FILE

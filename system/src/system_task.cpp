@@ -33,7 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
-#include "boot_log.h"
+#include "log_file.h"
 #include "v2/coap_channel.h"
 #include "spark_macros.h"
 #include "string.h"
@@ -549,8 +549,8 @@ void Spark_Idle_Events(bool force_events/*=false*/)
 #endif
     system_shutdown_if_needed();
 
-#if HAL_PLATFORM_BOOT_LOG
-    system::flushBootLog();
+#if HAL_PLATFORM_LOG_FILE
+    system::flushLogFile();
 #endif
 }
 
