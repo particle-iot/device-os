@@ -322,6 +322,7 @@ public:
     LogFile() :
             buf_(),
             bytesDropped_(0),
+            printing_(false),
             flushing_(false) {
     }
 
