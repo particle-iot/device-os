@@ -512,7 +512,10 @@ private:
                     return 0;
                 }
             }
-            // canFlush is true so we're either in the system or app thread
+            // Flush the buffer automatically if this is the system or app thread
+            //
+            // TODO: Detect if we're potentially inside a LittleFS call so that we don't call into
+            // it recursively
             fs::FsLock lock;
             CHECK(flushBuffer());
             canFlush = false;
