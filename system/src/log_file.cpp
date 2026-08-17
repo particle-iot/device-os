@@ -321,8 +321,8 @@ class LogFile {
 public:
     LogFile() :
             buf_(),
-            bytesDropped_(0),
             printing_(false),
+            bytesDropped_(0),
             flushing_(false) {
     }
 
