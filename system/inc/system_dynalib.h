@@ -153,12 +153,11 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 DYNALIB_FN(BASE_IDX4 + 0, system, system_thread_invoke, int(void (*)(void*), void*, void*))
 
 #if HAL_PLATFORM_LOG_FILE
-DYNALIB_FN(BASE_IDX4 + 1, system, system_enable_log_file, void(const system_log_file_config*))
+DYNALIB_FN(BASE_IDX4 + 1, system, system_enable_log_file, int(const system_log_file_config*))
 DYNALIB_FN(BASE_IDX4 + 2, system, system_disable_log_file, void(void*))
-DYNALIB_FN(BASE_IDX4 + 3, system, system_flush_log_file, void(void*))
-DYNALIB_FN(BASE_IDX4 + 4, system, system_print_log_file, void(const system_log_file_print_options*))
-DYNALIB_FN(BASE_IDX4 + 5, system, system_clear_log_file, void(void*))
-#define BASE_IDX5 (BASE_IDX4 + 6)
+DYNALIB_FN(BASE_IDX4 + 3, system, system_print_log_file, int(const system_print_log_file_options*))
+DYNALIB_FN(BASE_IDX4 + 4, system, system_clear_log_file, int(void*))
+#define BASE_IDX5 (BASE_IDX4 + 5)
 #else
 #define BASE_IDX5 (BASE_IDX4 + 1)
 #endif // HAL_PLATFORM_LOG_FILE

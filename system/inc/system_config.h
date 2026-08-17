@@ -19,26 +19,36 @@ typedef struct {
      * Logging category.
      *
      * If not `NULL`, only the messages logged for a category starting with this string will be stored
-     * in the log.
+     * in the log file.
      */
     const char* category;
     /**
-     * Maximum size of the log in bytes.
+     * Maximum size of the log data in bytes.
      *
-     * Up to twice this amount of filesystem storage may be used internally. If 0, a default size
-     * is used.
+     * Specifies how much of the most recent log data can be stored in the filesystem. Up to twice this
+     * amount of filesystem storage may be used internally.
+     *
+     * If 0, a default size is used.
      */
     size_t max_size;
     /**
+     * Size of the buffer for log data.
+     *
+     * TODO: Describe what the parameter actually does.
+     *
+     * If 0, a default size is used.
+     */
+    size_t buffer_size;
+    /**
      * Minimum logging level as defined by the `LogLevel` enum.
      *
-     * If 0, all messages will be logged.
+     * If 0, messages at any level will be logged.
      */
     int level;
 } system_log_file_config;
 
 /**
- * Options for `system_print_log_file()`.
+ * Options for `system_print_log_file`.
  */
 typedef struct {
     /**
@@ -46,18 +56,24 @@ typedef struct {
      */
     size_t size;
     /**
-     * Logging category with which to print the contents of the log.
+     * Logging category.
      *
-     * If `NULL`, `app` is used.
+     * TODO: More docs.
      */
     const char* category;
     /**
-     * Logging level, as defined by the `LogLevel` enum, at which to print the contents of the log.
+     * Maximum size of the log data to print.
      *
-     * If 0, the contents are printed at the `LOG_LEVEL_INFO` level.
+     * TODO: More docs.
+     */
+    size_t max_size;
+    /**
+     * Logging level.
+     *
+     * TODO: More docs.
      */
     int level;
-} system_log_file_print_options;
+} system_print_log_file_options;
 
 #endif // HAL_PLATFORM_LOG_FILE
 
@@ -68,69 +84,42 @@ extern "C" {
 #if HAL_PLATFORM_LOG_FILE
 
 /**
- * Enable the log file.
+ * Enable logging to a file.
  *
- * The log file stores the messages logged by the system and the application in the filesystem so
- * that they can be retrieved later, in particular after the device reboots.
- *
- * The log starts capturing the messages immediately. Calling this function again reconfigures the
- * log without losing its contents. The configuration is also stored in the backup RAM so that the
- * log is enabled automatically when the device boots next time.
- *
- * This function accesses the filesystem and must not be called from an ISR.
+ * The configuration is stored persistently so that the log is enabled automatically when
+ * the device boots next time.
  *
  * @param config Log file configuration. If `NULL`, the default configuration is used.
  */
-void system_enable_log_file(const system_log_file_config* config);
+int system_enable_log_file(const system_log_file_config* config);
 
 /**
- * Disable the log file.
+ * Disable logging to a file.
  *
- * The log stops capturing the messages, the buffered data is discarded and the contents of the log
- * are deleted. The log is not enabled automatically when the device boots next time.
- *
- * This function accesses the filesystem and must not be called from an ISR.
+ * TODO: Describe what the function actually does.
  *
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
 void system_disable_log_file(void* reserved);
 
 /**
- * Write the buffered log data to the file.
- *
- * The messages are buffered in RAM and written to the file periodically, so this function can be
- * used to make sure that nothing is lost before the device is reset. The log keeps capturing the
- * messages.
- *
- * This function accesses the filesystem and must not be called from an ISR.
- *
- * @param reserved Reserved argument. Must be set to `NULL`.
- */
-void system_flush_log_file(void* reserved);
-
-/**
  * Print the contents of the log file.
  *
- * The buffered data is written to the file first, so that the printed contents are complete. The
- * messages generated while the log is being printed are not stored in the log. The log keeps
- * capturing the messages otherwise.
- *
- * This function accesses the filesystem and must not be called from an ISR.
- *
- * @param opts Options. If `NULL`, the defaults are used (see `system_log_file_print_options`).
+ * @param size Maximum size of the log data to print. If 0, prints the entire log.
+ * @param level Level at which to print the contents of the log.
+ * @param category Category with which to print the contents of the log.
+ * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void system_print_log_file(const system_log_file_print_options* opts);
+int system_print_log_file(const system_print_log_file_options* opts);
 
 /**
- * Delete the contents of the log file.
+ * Delete all log files.
  *
- * The buffered data is discarded as well. The log keeps capturing the messages.
- *
- * This function accesses the filesystem and must not be called from an ISR.
+ * The log keeps capturing the messages.
  *
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void system_clear_log_file(void* reserved);
+int system_clear_log_file(void* reserved);
 
 #endif // HAL_PLATFORM_LOG_FILE
 

@@ -11,11 +11,11 @@ namespace particle::system {
 // Called by the system
 int initLogFile();
 int flushLogFile();
-void closeLogFile();
+int closeLogFile();
 
 // Called by the logging service
-void logFileMessage(const char* msg, int level, const char* category, const LogAttributes* attrs);
-void writeLogFile(const char* data, size_t size, int level, const char* category);
+void logMessageToFile(const char* msg, int level, const char* category, const LogAttributes* attrs);
+void writeToLogFile(const char* data, size_t size, int level, const char* category);
 bool isLogFileEnabledForLevel(int level, const char* category);
 bool isLogFileEnabled();
 

@@ -74,10 +74,10 @@ volatile log_enabled_callback_type log_enabled_callback = 0;
 #if HAL_PLATFORM_LOG_FILE
 using namespace particle::system;
 #else
-inline void logFileMessage(const char* msg, int level, const char* category, const LogAttributes* attrs) {
+inline void logMessageToFile(const char* msg, int level, const char* category, const LogAttributes* attrs) {
 }
 
-inline void writeLogFile(const char* data, size_t size, int level, const char* category) {
+inline void writeToLogFile(const char* data, size_t size, int level, const char* category) {
 }
 
 inline bool isLogFileEnabledForLevel(int level, const char* category) {
@@ -114,7 +114,7 @@ void log_message_v(int level, const char *category, LogAttributes *attr, void *r
     if (log_msg_callback) {
         log_msg_callback(buf, level, category, attr, nullptr /* reserved */);
     }
-    logFileMessage(buf, level, category, attr);
+    logMessageToFile(buf, level, category, attr);
 }
 
 void log_message(int level, const char *category, LogAttributes *attr, void *reserved, const char *fmt, ...) {
@@ -131,7 +131,7 @@ void log_write(int level, const char *category, const char *data, size_t size, v
     if (log_write_callback) {
         log_write_callback(data, size, level, category, nullptr /* reserved */);
     }
-    writeLogFile(data, size, level, category);
+    writeToLogFile(data, size, level, category);
 }
 
 void log_printf_v(int level, const char *category, void *reserved, const char *fmt, va_list args) {
@@ -147,7 +147,7 @@ void log_printf_v(int level, const char *category, void *reserved, const char *f
     if (log_write_callback) {
         log_write_callback(buf, n, level, category, nullptr /* reserved */);
     }
-    writeLogFile(buf, n, level, category);
+    writeToLogFile(buf, n, level, category);
 }
 
 void log_printf(int level, const char *category, void *reserved, const char *fmt, ...) {
@@ -173,7 +173,7 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
             if (log_write_callback) {
                 log_write_callback(buf, sizeof(buf) - 1, level, category, nullptr /* reserved */);
             }
-            writeLogFile(buf, sizeof(buf) - 1, level, category);
+            writeToLogFile(buf, sizeof(buf) - 1, level, category);
             offs = 0;
         }
     }
@@ -181,7 +181,7 @@ void log_dump(int level, const char *category, const void *data, size_t size, in
         if (log_write_callback) {
             log_write_callback(buf, offs, level, category, nullptr /* reserved */);
         }
-        writeLogFile(buf, offs, level, category);
+        writeToLogFile(buf, offs, level, category);
     }
 }
 
