@@ -716,8 +716,10 @@ int system_enable_log_file(const system_log_file_config* config) {
         newConfig.bufferSize = DEFAULT_LOG_BUFFER_SIZE;
     }
 
-    CHECK(enableLogFile(newConfig));
-    g_logFileConfig = newConfig;
+    if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
+        CHECK(enableLogFile(newConfig));
+        g_logFileConfig = newConfig;
+    }
     return 0;
 }
 
