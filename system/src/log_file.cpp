@@ -321,7 +321,8 @@ class LogFile {
 public:
     LogFile() :
             buf_(),
-            bytesDropped_(0) {
+            bytesDropped_(0),
+            flushing_(false) {
     }
 
     // Can be called repeatedly to reconfigure the log
@@ -637,9 +638,11 @@ int closeLogFile() {
     }
     fs::FsLock lock;
 
-    int r = g_logFile->flush();
-    g_logFile->destroy();
-    CHECK(r);
+    if (g_logFile) {
+        int r = g_logFile->flush();
+        g_logFile->destroy();
+        CHECK(r);
+    }
     return 0;
 }
 
@@ -737,7 +740,7 @@ int system_print_log_file(const system_print_log_file_options* opts) {
     if (!g_logFile) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    int level = LOG_LEVEL_ALL;
+    int level = LOG_LEVEL_INFO;
     auto category = "";
     size_t size = 0;
     if (opts) {
