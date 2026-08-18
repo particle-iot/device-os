@@ -65,7 +65,8 @@ void filesystem_lock(filesystem_t* fs);
 void filesystem_unlock(filesystem_t* fs);
 
 // Returns how many times the calling thread has acquired the filesystem lock via `filesystem_lock()`
-// without a corresponding `filesystem_unlock()`
+// without a corresponding `filesystem_unlock()`. The lock must be acquired before calling this
+// function
 int filesystem_lock_depth(filesystem_t* fs);
 
 int filesystem_to_system_error(int error);

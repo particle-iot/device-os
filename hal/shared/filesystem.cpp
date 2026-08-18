@@ -61,12 +61,10 @@ void filesystem_unlock(filesystem_t* fs) {
 
 __attribute__((weak)) void filesystem_lock(filesystem_t* fs) {
     (void)fs;
-    return 0;
 }
 
 __attribute__((weak)) void filesystem_unlock(filesystem_t* fs) {
     (void)fs;
-    return 0;
 }
 
 #endif /* MODULE_FUNCTION != MOD_FUNC_BOOTLOADER */
