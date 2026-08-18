@@ -28,5 +28,6 @@ include $(COMMON_BUILD)/verbose.mk
 clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH_BASE)
 
+.NOTPARALLEL:
 
 .PHONY: all

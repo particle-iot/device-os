@@ -72,6 +72,7 @@ include $(COMMON_BUILD)/common-tools.mk
 include $(COMMON_BUILD)/recurse.mk
 include $(COMMON_BUILD)/verbose.mk
 
+.NOTPARALLEL:
 
 .PHONY: program-dfu clean all
 

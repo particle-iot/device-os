@@ -22,4 +22,6 @@ $(makefiles):
 	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES)
 
 
+.NOTPARALLEL:
+
 .PHONY: clean all $(makefiles)

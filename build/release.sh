@@ -2,6 +2,10 @@
 set -o errexit -o pipefail -o noclobber -o nounset
 
 VERSION=${VERSION:="6.5.0"}
+MAKE_JOBS=${MAKE_JOBS:-1}
+if [ "$MAKE_JOBS" = "nproc" ]; then
+    MAKE_JOBS=$(nproc)
+fi
 
 function display_help ()
 {
@@ -366,8 +370,9 @@ if [ $PLATFORM_ID -eq 12 ] || [ $PLATFORM_ID -eq 13 ] || [ $PLATFORM_ID -eq 15 ]
 
     for app in ${apps[@]}; do
         # Compose, echo and execute the `make` command
-        MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
-        MAKE_COMMAND+=" APP=$app"
+        MAKE_ARGS="PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=n DEBUG_BUILD=$DEBUG_BUILD MODULAR=$MODULAR USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+        MAKE_ARGS+=" APP=$app"
+        MAKE_COMMAND="make -s clean $MAKE_ARGS && make -s -j $MAKE_JOBS all $MAKE_ARGS"
         echo $MAKE_COMMAND
         eval $MAKE_COMMAND
 
@@ -407,7 +412,8 @@ else
 fi
 
 # Compose, echo and execute the `make` command
-MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+MAKE_ARGS="PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO DEBUG_BUILD=$DEBUG_BUILD USE_SWD_JTAG=$USE_SWD_JTAG USE_SWD=n"
+MAKE_COMMAND="make -s clean $MAKE_ARGS && make -s -j $MAKE_JOBS all $MAKE_ARGS"
 echo $MAKE_COMMAND
 eval $MAKE_COMMAND
 
@@ -422,7 +428,8 @@ COMPILE_LTO="n"
 DEBUG_BUILD="n"
 SUFFIX="-m"
 
-MAKE_COMMAND="make -s clean all PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO"
+MAKE_ARGS="PLATFORM_ID=$PLATFORM_ID COMPILE_LTO=$COMPILE_LTO"
+MAKE_COMMAND="make -s clean $MAKE_ARGS && make -s -j $MAKE_JOBS all $MAKE_ARGS"
 echo $MAKE_COMMAND
 eval $MAKE_COMMAND
 

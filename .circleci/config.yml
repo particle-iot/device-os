@@ -268,7 +268,7 @@ jobs:
             export BUILD_PLATFORM="<< parameters.platform >>"
             export BUILDPACK_NORM=1
             export BUILD_PLATFORM_NORMALIZED=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
-            export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG"
+            export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG --env MAKE_JOBS=nproc"
             mkdir -p $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED
             export BUILD_START=$(date +%s)
             $HOME/firmware-buildpack-builder/scripts/ci | tee $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/log | tee >(grep -E '^has_failures [0-9]+ ' > $HOME/failures/has_failures); export TMPRESULT=${PIPESTATUS[0]}

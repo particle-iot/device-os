@@ -52,4 +52,6 @@ $(makefiles):
 
 make_deps: $(makefiles)
 
+.NOTPARALLEL:
+
 .PHONY: system program-dfu clean make_deps $(makefiles)

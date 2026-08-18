@@ -306,6 +306,19 @@ MAKEFLAGS += --no-builtin-rules
 
 include $(COMMON_BUILD)/recurse.mk
 
+ifneq ($(strip $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)),)
+$(sort $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)): | $(MAKE_DEPENDENCIES) prebuild
+endif
+ifneq ($(strip $(MAKE_DEPENDENCIES)),)
+$(MAKE_DEPENDENCIES): | prebuild
+endif
+postbuild: | $(TARGET)
+
+# elf_fi relinks and replaces $(TARGET_BASE).elf in place
+ifneq ("$(findstring elf_fi,$(TARGET))","")
+$(TARGET_BASE).bin $(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE)_fi.elf
+endif
+
 
 # Include auto generated dependency files
 ifneq ("MAKECMDGOALS","clean")
