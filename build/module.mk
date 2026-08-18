@@ -320,9 +320,13 @@ ifneq (,$(filter-out clean,$(MAKECMDGOALS)))
 endif
 endif
 
-# elf_fi relinks and replaces $(TARGET_BASE).elf in place
 ifneq ("$(findstring elf_fi,$(TARGET))","")
 $(TARGET_BASE).bin $(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE)_fi.elf
+.NOTPARALLEL:
+endif
+
+ifneq (,$(filter bin,$(TARGET)))
+$(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE).bin
 endif
 
 
