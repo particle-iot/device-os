@@ -314,6 +314,10 @@ $(MAKE_DEPENDENCIES): | prebuild
 endif
 postbuild: | $(TARGET)
 
+ifneq (,$(filter clean,$(MAKECMDGOALS)))
+prebuild $(MAKE_DEPENDENCIES): | clean
+endif
+
 # elf_fi relinks and replaces $(TARGET_BASE).elf in place
 ifneq ("$(findstring elf_fi,$(TARGET))","")
 $(TARGET_BASE).bin $(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE)_fi.elf

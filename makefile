@@ -28,6 +28,10 @@ include $(COMMON_BUILD)/verbose.mk
 clean: clean_deps
 	$(VERBOSE)$(RMDIR) $(BUILD_PATH_BASE)
 
+ifneq (,$(filter clean,$(MAKECMDGOALS)))
+$(MAKE_DEPENDENCIES): | clean
+endif
+
 .NOTPARALLEL:
 
 .PHONY: all
