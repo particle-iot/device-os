@@ -315,7 +315,9 @@ endif
 postbuild: | $(TARGET)
 
 ifneq (,$(filter clean,$(MAKECMDGOALS)))
-prebuild $(MAKE_DEPENDENCIES): | clean
+ifneq (,$(filter-out clean,$(MAKECMDGOALS)))
+.NOTPARALLEL:
+endif
 endif
 
 # elf_fi relinks and replaces $(TARGET_BASE).elf in place

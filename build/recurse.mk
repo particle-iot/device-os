@@ -9,7 +9,14 @@ export MODULAR_FIRMWARE
 
 $(MAKE_DEPENDENCIES):
 	$(call,echo,'Making module $@')
+ifneq (,$(filter clean,$(SUBDIR_GOALS)))
+	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$@ clean
+ifneq (,$(strip $(filter-out clean,$(SUBDIR_GOALS))))
+	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$@ $(filter-out clean,$(SUBDIR_GOALS))
+endif
+else
 	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$@ $(SUBDIR_GOALS)
+endif
 
 $(CLEAN_DEPENDENCIES):
 	$(VERBOSE)$(MAKE) -C $(PROJECT_ROOT)/$(patsubst clean_%,%,$@) clean

@@ -21,7 +21,14 @@ clean: $(makefiles)
 
 $(makefiles):
 	$(call,echo,'Making module $@')
+ifneq (,$(filter clean,$(SUBDIR_GOALS)))
+	$(VERBOSE)$(MAKE) -C $(dir $@) clean $(MAKE_ARGS) $(MAKEOVERRIDES)
+ifneq (,$(strip $(filter-out clean,$(SUBDIR_GOALS))))
+	$(VERBOSE)$(MAKE) -C $(dir $@) $(filter-out clean,$(SUBDIR_GOALS)) $(MAKE_ARGS) $(MAKEOVERRIDES)
+endif
+else
 	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES)
+endif
 
 
 .NOTPARALLEL:
