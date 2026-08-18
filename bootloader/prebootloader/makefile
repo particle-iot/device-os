@@ -17,6 +17,8 @@ SUBDIR_GOALS := $(MAKECMDGOALS)
 
 all: $(makefiles)
 
+clean: $(makefiles)
+
 $(makefiles):
 	$(call,echo,'Making module $@')
 	$(VERBOSE)$(MAKE) -C $(dir $@) $(SUBDIR_GOALS) $(MAKE_ARGS) $(MAKEOVERRIDES)
