@@ -129,6 +129,8 @@ private:
     size_t bytesInWindow_ = 0;
     bool cgattWorkaroundApplied_ = false;
     bool configuredPlmn_ = false;
+    system_tick_t atProbeTime_ = 0;
+    unsigned atProbeFailStreak_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -160,6 +162,8 @@ private:
     int checkRunningImsi();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
+    bool checkAtWhileConnected();
+    void recoverModem();
     int checkNetConfForImsi();
 
     int modemInit() const;

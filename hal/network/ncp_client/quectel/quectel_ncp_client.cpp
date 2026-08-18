@@ -114,6 +114,12 @@ const auto QUECTEL_NCP_PPP_CHANNEL = 2;
 
 const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
+// AT probe: 3s timeout every 35s, declared on the 4th consecutive failure, so ~105s.
+// Just above the 90s default command timeout, in case a command uses a shorter one.
+const auto AT_PROBE_INTERVAL = 35000;
+const auto AT_PROBE_TIMEOUT = 3000;
+const auto AT_PROBE_MAX_INTERVALS = 3u;
+
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;

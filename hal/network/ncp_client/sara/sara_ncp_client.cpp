@@ -156,6 +156,12 @@ const int UUFWINSTALL_COMPLETE = 128;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_TIMEOUT = 300000;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD = 10000;
 
+// AT probe: 3s timeout every 35s, declared on the 4th consecutive failure, so ~105s.
+// Just above the 90s default command timeout, in case a command uses a shorter one.
+const auto AT_PROBE_INTERVAL = 35000;
+const auto AT_PROBE_TIMEOUT = 3000;
+const auto AT_PROBE_MAX_INTERVALS = 3u;
+
 const unsigned CHECK_SIM_CARD_INTERVAL = 1000;
 const unsigned CHECK_SIM_CARD_ATTEMPTS = 10;
 
@@ -526,6 +532,8 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * for a certain amount of time defined by UBLOX_NCP_R4_WINDOW_SIZE_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    // The muxer channel is gone once we are OFF, but PPP keeps writing until it is brought down
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     // Just in case perform some state checks to ensure that LwIP PPP implementation
     // does not write into the data channel when it's not supposed do
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
@@ -2511,6 +2519,10 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     }
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        // A streak from a previous connection must not carry into this one.
+        // atProbeTime_ is deliberately left stale so the first probe runs immediately.
+        atProbeFailStreak_ = 0;
+
         // Reset CGATT workaround flag
         cgattWorkaroundApplied_ = false;
 
@@ -2699,6 +2711,57 @@ int SaraNcpClient::checkRunningImsi() {
     return 0;
 }
 
+// Power cycle the modem without issuing any AT command, for the faults where it will not answer one.
+// Caller must hold the client lock. Leaves the client OFF, PppNcpNetif::loop() brings it back up.
+void SaraNcpClient::recoverModem() {
+    // We are going into an OFF state immediately before stopping the muxer
+    // otherwise the muxer channel state callback will disable us unnecessarily.
+    ncpState(NcpState::OFF);
+    // Disable ourselves/channel, so that the muxer can stop faster non-gracefully
+    serial_->enabled(false);
+    muxer_.stop();
+    serial_->enabled(true);
+    // Not off(), its modemSoftPowerOff() would try to talk to the modem first
+    if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+        modemHardReset(true);
+    }
+}
+
+// Periodic AT probe while CONNECTED. Returns false once the interface is declared unresponsive.
+//
+// Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
+// checkParser() -> waitReady() -> modemHardReset() instead of the reset sequence run by the caller.
+bool SaraNcpClient::checkAtWhileConnected() {
+    // Every other state has its own recovery path, probing during them only adds noise.
+    // An R510 firmware install stops answering AT for minutes by design, so it is not a fault.
+    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || firmwareUpdateR510_) {
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+    if (millis() - atProbeTime_ < (unsigned)AT_PROBE_INTERVAL) {
+        return true;
+    }
+    atProbeTime_ = millis();
+
+    // Keep the probe out of the AT log
+    const auto logEnabled = parser_.config().logEnabled();
+    parser_.logEnabled(false);
+    SCOPE_GUARD({ parser_.logEnabled(logEnabled); });
+
+    const int r = parser_.execCommand(AT_PROBE_TIMEOUT, "AT");
+    if (r == AtResponse::OK) {
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+
+    if (++atProbeFailStreak_ > AT_PROBE_MAX_INTERVALS) {
+        LOG(ERROR, "AT unresponsive (%u)", atProbeFailStreak_);
+        return false;
+    }
+    LOG(WARN, "AT probe failed (%u/%u): %d", atProbeFailStreak_, (unsigned)AT_PROBE_MAX_INTERVALS, r);
+    return true;
+}
+
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
@@ -2706,6 +2769,16 @@ int SaraNcpClient::processEventsImpl() {
     interveneRegistration();
     checkRunningImsi();
     configurePlmn(); // ignore errors
+
+    // Must stay above the connState_ != CONNECTING early return below, the point is to run while CONNECTED
+    if (!checkAtWhileConnected()) {
+        LOG(WARN, "Resetting the modem due to an unresponsive AT interface");
+        // connectionState(CONNECTED) clears this too, but nothing does if we never reconnect
+        atProbeFailStreak_ = 0;
+        recoverModem();
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
@@ -2735,14 +2808,7 @@ int SaraNcpClient::processEventsImpl() {
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
         LOG(WARN, "Resetting the modem due to the network registration timeout");
-        // We are going into an OFF state immediately before stopping the muxer
-        // otherwise the muxer channel state callback will disable us unnecessarily.
-        ncpState(NcpState::OFF);
-        muxer_.stop();
-        int rv = modemPowerOff();
-        if (rv != 0) {
-            modemHardReset(true);
-        }
+        recoverModem();
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
