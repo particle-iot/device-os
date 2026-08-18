@@ -2,7 +2,7 @@
 /* eslint no-undef: 'off' */
 
 const { UsbCdcPort } = require('../../test/usb_cdc');
-const { platforms } = require('@particle/device-constants');
+const { platformForName } = require('../../test/platform_util');
 
 suite('USB');
 platform('gen3', 'gen4');
@@ -142,8 +142,7 @@ before(function() {
     if (!device) {
         throw new Error('No device assigned to this test');
     }
-    platformInfo = Object.values(platforms).find((p) => p.name === device.platform.name);
-    expect(platformInfo, `Unknown platform ${device.platform.name}`).to.exist;
+    platformInfo = platformForName(device.platform.name);
     isRtl = platformInfo.baseMcu === 'rtl872x';
     cdc = new UsbCdcPort(device.id);
 });
