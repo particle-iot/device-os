@@ -113,7 +113,7 @@ USE_LTO=1
 endif
 
 ifeq ($(USE_LTO),1)
-LDFLAGS += -flto -Os -fuse-linker-plugin
+LDFLAGS += -flto=auto -Os -fuse-linker-plugin
 CFLAGS += -fuse-linker-plugin
 else
 # Be explicit and disable LTO
