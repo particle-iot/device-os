@@ -736,27 +736,31 @@ void system_disable_log_file(void* reserved) {
     g_logFileConfig = newConfig;
 }
 
-int system_print_log_file(const system_print_log_file_options* opts) {
+int system_print_log_file(size_t size, int level, const char* category, void* reserved) {
     fs::FsLock lock;
 
     if (!g_logFile) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    int level = LOG_LEVEL_INFO;
-    auto category = "";
-    size_t size = 0;
-    if (opts) {
-        if (opts->level > 0) {
-            level = opts->level;
-        }
-        if (opts->category) {
-            category = opts->category;
-        }
-        if (opts->max_size > 0) {
-            size = opts->max_size;
-        }
+    if (level <= 0) {
+        level = LOG_LEVEL_TRACE;
+    }
+    if (!category) {
+        category = "";
     }
     size_t n = CHECK(g_logFile->printLog(size, level, category));
+    return n;
+}
+
+int system_read_log_file(size_t size, system_read_log_file_callback callback, void* arg, void* reserved) {
+    fs::FsLock lock;
+
+    if (!g_logFile) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    size_t n = CHECK(g_logFile->readLog(size, [=](const char* data, size_t size) {
+        return callback(data, size, arg);
+    }));
     return n;
 }
 

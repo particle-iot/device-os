@@ -50,34 +50,14 @@ typedef struct {
 } system_log_file_config;
 
 /**
- * Options for `system_print_log_file`.
- */
-typedef struct {
-    /**
-     * Size of this structure.
-     */
-    size_t size;
-    /**
-     * Logging category with which the contents of the log are printed.
-     *
-     * If `NULL`, an empty category is used.
-     */
-    const char* category;
-    /**
-     * Maximum size of the log data to print in bytes.
-     *
-     * If the log contains more data than that, only the most recent `max_size` bytes are printed.
-     *
-     * If 0, the entire log is printed.
-     */
-    size_t max_size;
-    /**
-     * Logging level, as defined by the `LogLevel` enum, at which the contents of the log are printed.
-     *
-     * If 0, `LOG_LEVEL_INFO` is used.
-     */
-    int level;
-} system_print_log_file_options;
+ * Callback for `system_read_log_file`.
+ *
+ * @param data Chunk of log data.
+ * @param size Size of the chunk.
+ * @param arg User argument.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ **/
+typedef int (*system_read_log_file_callback)(const char* data, size_t size, void* arg);
 
 #endif // HAL_PLATFORM_LOG_FILE
 
@@ -110,10 +90,24 @@ void system_disable_log_file(void* reserved);
 /**
  * Print the contents of the log file.
  *
- * @param opts Options. If `NULL`, the default options are used.
+ * @param size Maximum size of the log data to print. If 0, the entire log is printed.
+ * @param level Logging level, as defined by the `LogLevel` enum, at which the contents of the log
+ *        are printed.
+ * @param category Logging category with which the contents of the log are printed. If `NULL`,
+ *        an empty category is used.
  * @return 0 on success, otherwise an error code defined by `system_error_t`.
  */
-int system_print_log_file(const system_print_log_file_options* opts);
+int system_print_log_file(size_t size, int level, const char* category, void* reserved);
+
+/**
+ * Read the contents of the log file.
+ *
+ * @param size Maximum size of the log data to read. If 0, the entire log is read.
+ * @param callback Callback to invoke for each chunk of the log data.
+ * @param arg User argument to pass to the callback.
+ * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ */
+int system_read_log_file(size_t size, system_read_log_file_callback callback, void* arg, void* reserved);
 
 /**
  * Delete all log files.
