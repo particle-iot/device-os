@@ -61,8 +61,12 @@ int filesystem_invalidate(filesystem_t* fs);
 filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved);
 int filesystem_dump_info(filesystem_t* fs);
 
-int filesystem_lock(filesystem_t* fs);
-int filesystem_unlock(filesystem_t* fs);
+void filesystem_lock(filesystem_t* fs);
+void filesystem_unlock(filesystem_t* fs);
+
+// Returns how many times the calling thread has acquired the filesystem lock via `filesystem_lock()`
+// without a corresponding `filesystem_unlock()`
+int filesystem_lock_depth(filesystem_t* fs);
 
 int filesystem_to_system_error(int error);
 

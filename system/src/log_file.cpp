@@ -50,10 +50,13 @@ int removeLogFiles() {
     return result;
 }
 
-bool canFlushLogFile() {
-    // The system and application threads have large enough stacks for file IO
-    return !hal_interrupt_is_isr() && (SYSTEM_THREAD_CURRENT() || APPLICATION_THREAD_CURRENT() ||
-            main_thread_current(nullptr /* reserved */));
+inline bool isSystemOrMainThread() {
+    return !hal_interrupt_is_isr() && (SYSTEM_THREAD_CURRENT() || (!SystemThread.isStarted() &&
+            main_thread_current(nullptr /* reserved */)));
+}
+
+inline bool isAppThread() {
+    return !hal_interrupt_is_isr() && APPLICATION_THREAD_CURRENT();
 }
 
 // Note: The caller must acquire the filesystem lock before calling the methods of this class
@@ -322,8 +325,7 @@ public:
     LogFile() :
             buf_(),
             printing_(false),
-            bytesDropped_(0),
-            flushing_(false) {
+            bytesDropped_(0) {
     }
 
     // Can be called repeatedly to reconfigure the log
@@ -491,14 +493,13 @@ private:
     LogFilter filter_;
     std::atomic<bool> printing_;
     size_t bytesDropped_;
-    bool flushing_;
 
     int append(const Chunk* chunks, size_t count) {
         size_t size = 0;
         for (size_t i = 0; i < count; ++i) {
             size += chunks[i].size;
         }
-        bool canFlush = canFlushLogFile();
+        bool canFlush = isSystemOrMainThread();
         for (;;) {
             ATOMIC_BLOCK() {
                 // The message is stored either in its entirety or not at all
@@ -512,27 +513,21 @@ private:
                     return 0;
                 }
             }
-            // Flush the buffer automatically if this is the system or app thread
-            //
-            // TODO: Detect if we're potentially inside a LittleFS call so that we don't call into
-            // it recursively
             fs::FsLock lock;
-            CHECK(flushBuffer());
+            // If the filesystem lock acquired above is not the outermost one, do not attempt to write
+            // to the filesystem as we might potentially be within a LittleFS call already
+            if (filesystem_lock_depth(nullptr /* fs */) == 1) {
+                CHECK(flushBuffer());
+            }
             canFlush = false;
         }
         // Unreachable
     }
 
     int flushBuffer() {
-        // Prevent this method from being called recursively if it happens to log something of its own
-        if (!log_ || flushing_) {
+        if (!log_) {
             return 0;
         }
-        flushing_ = true;
-        SCOPE_GUARD({
-            flushing_ = false;
-        });
-
         size_t bytesAvail = 0;
         size_t bytesDropped = 0;
         ATOMIC_BLOCK() {
@@ -637,7 +632,7 @@ int closeLogFile() {
     // a large enough stack for file IO
     g_logFileEnabled.exchange(false, std::memory_order_acq_rel);
 
-    if (!canFlushLogFile()) {
+    if (!isSystemOrMainThread() && !isAppThread()) {
         return 0;
     }
     fs::FsLock lock;

@@ -28,6 +28,12 @@
 
 using particle::fs::FsLock;
 
+namespace {
+
+int s_fsLockDepth = 0;
+
+} /* anonymous */
+
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 #include "static_recursive_mutex.h"
@@ -35,34 +41,40 @@ using particle::fs::FsLock;
 
 namespace {
 
-static StaticRecursiveMutex s_lfs_mutex;
+StaticRecursiveMutex s_fsMutex;
 
 } /* anonymous */
 
-int filesystem_lock(filesystem_t* fs) {
+void filesystem_lock(filesystem_t* fs) {
     (void)fs;
-    return !s_lfs_mutex.lock();
+    s_fsMutex.lock();
+    ++s_fsLockDepth;
 }
 
-int filesystem_unlock(filesystem_t* fs) {
+void filesystem_unlock(filesystem_t* fs) {
     (void)fs;
-    return !s_lfs_mutex.unlock();
+    --s_fsLockDepth;
+    s_fsMutex.unlock();
 }
 
 #else
 
-__attribute__((weak)) int filesystem_lock(filesystem_t* fs) {
+__attribute__((weak)) void filesystem_lock(filesystem_t* fs) {
     (void)fs;
     return 0;
 }
 
-__attribute__((weak)) int filesystem_unlock(filesystem_t* fs) {
+__attribute__((weak)) void filesystem_unlock(filesystem_t* fs) {
     (void)fs;
     return 0;
 }
 
 #endif /* MODULE_FUNCTION != MOD_FUNC_BOOTLOADER */
 
+int filesystem_lock_depth(filesystem_t* fs) {
+    (void)fs;
+    return s_fsLockDepth;
+}
 
 namespace {
 
