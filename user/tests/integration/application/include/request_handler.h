@@ -18,6 +18,8 @@
 #pragma once
 
 #include "system_control.h"
+#include "system_tick_hal.h"
+#include "spark_wiring_vector.h"
 
 namespace particle {
 
@@ -31,12 +33,21 @@ public:
     void destroy();
 
     void process(ctrl_request* ctrlReq);
+    // Completes deferred requests; called from the application loop
+    void loop();
 
     static RequestHandler* instance();
 
 private:
     class Request;
 
+    // A request completed with a delay (see the echo command)
+    struct DeferredRequest {
+        ctrl_request* req;
+        system_tick_t deadline;
+    };
+
+    spark::Vector<DeferredRequest> deferred_;
     bool inited_;
 
     int request(ctrl_request* ctrlReq);
@@ -49,6 +60,7 @@ private:
     int reset(Request* req);
     int readMailbox(Request* req);
     int ackMailbox(Request* req);
+    int echo(Request* req);
 };
 
 } // namespace particle

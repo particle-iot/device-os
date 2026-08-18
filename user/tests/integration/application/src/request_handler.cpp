@@ -107,6 +107,14 @@ public:
         }
     }
 
+    // Releases ownership of the request handle so that it can be completed
+    // later, after this wrapper is destroyed
+    ctrl_request* detach() {
+        const auto req = req_;
+        req_ = nullptr;
+        return req;
+    }
+
     JSONValue get(const char* name) const {
         return getValue(data_, name);
     }
@@ -179,6 +187,8 @@ int RequestHandler::request(Request* req) {
         return ackMailbox(req);
     } else if (cmd == "r") { // Reset
         return reset(req);
+    } else if (cmd == "e") { // Echo
+        return echo(req);
     } else if (req->isEmpty()) { // Ping request
         return SYSTEM_ERROR_NONE;
     } else {
@@ -338,6 +348,38 @@ int RequestHandler::ackMailbox(Request* req) {
 int RequestHandler::reset(Request* req) {
     TestSuite::instance()->destroy();
     return Result::RESET_PENDING;
+}
+
+int RequestHandler::echo(Request* req) {
+    // Used by the USB tests to exercise the application custom request path
+    const auto data = req->get("d").toString();
+    CHECK(req->reply([&data](JSONWriter& w) {
+        w.value(data.data(), data.size());
+    }));
+    const int delay = req->get("t").toInt(); // Optional completion delay, ms
+    if (delay > 0) {
+        // Complete the request from loop() so that the host observes it as
+        // PENDING across multiple CHECK polls
+        const DeferredRequest d = { req->detach(), millis() + delay };
+        if (!deferred_.append(d)) {
+            system_ctrl_set_result(d.req, SYSTEM_ERROR_NO_MEMORY, nullptr, nullptr, nullptr);
+        }
+    }
+    return 0;
+}
+
+void RequestHandler::loop() {
+    // Both the custom request handler and this method run in the application
+    // thread, so deferred_ needs no locking
+    int i = 0;
+    while (i < deferred_.size()) {
+        if ((int32_t)(millis() - deferred_.at(i).deadline) >= 0) {
+            const auto d = deferred_.takeAt(i);
+            system_ctrl_set_result(d.req, SYSTEM_ERROR_NONE, nullptr, nullptr, nullptr);
+        } else {
+            ++i;
+        }
+    }
 }
 
 RequestHandler* RequestHandler::instance() {
