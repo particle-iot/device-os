@@ -270,7 +270,9 @@ jobs:
             export BUILD_PLATFORM_NORMALIZED=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
             export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG"
             mkdir -p $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED
+            export BUILD_START=$(date +%s)
             $HOME/firmware-buildpack-builder/scripts/ci | tee $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/log | tee >(grep -E '^has_failures [0-9]+ ' > $HOME/failures/has_failures); export TMPRESULT=${PIPESTATUS[0]}
+            echo $(( $(date +%s) - BUILD_START )) > $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/duration
             cp -r $HOME/failures/* $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/ || true
             export RESULT=${TMPRESULT}
             echo ${RESULT}

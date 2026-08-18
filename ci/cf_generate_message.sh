@@ -24,15 +24,32 @@ flash_suffix() {
         'BEGIN { printf " (%d/%d KiB, %s%%)", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
 }
 
+time_suffix() {
+    local platform="$1"
+    local duration_file duration
+
+    duration_file="${RELEASE_DIR}/${platform}/duration"
+    if [ ! -f "$duration_file" ]; then
+        return 0
+    fi
+
+    duration="$(tr -cd '0-9' < "$duration_file")"
+    if [ -z "$duration" ]; then
+        return 0
+    fi
+
+    printf ' %dm%02ds' $((duration / 60)) $((duration % 60))
+}
+
 platform_msg() {
     local label="$1"
     local platform
     platform="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
 
     if echo -e "${failures}" | grep -q "PLATFORM=\"${platform}\""; then
-        echo ":scrum_closed: ${label}$(flash_suffix "${platform}")\\n"
+        echo ":scrum_closed: ${label}$(flash_suffix "${platform}")$(time_suffix "${platform}")\\n"
     else
-        echo ":scrum_finished: ${label}$(flash_suffix "${platform}")\\n"
+        echo ":scrum_finished: ${label}$(flash_suffix "${platform}")$(time_suffix "${platform}")\\n"
     fi
 }
 
