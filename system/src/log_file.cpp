@@ -614,6 +614,7 @@ int initLogFile() {
         return 0;
     }
     CHECK(enableLogFile(g_logFileConfig));
+    LOG(INFO, "~~~~~~~~~~");
     return 0;
 }
 
