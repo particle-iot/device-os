@@ -1,6 +1,11 @@
 include $(COMMON_BUILD)/os.mk
 include $(COMMON_BUILD)/verbose.mk
 
+# opt out with CCACHE=
+ifeq ($(origin CCACHE),undefined)
+CCACHE := $(shell command -v ccache > /dev/null 2>&1 && echo ccache)
+endif
+
 # recursively finds files matching the given pattern
 # $1 is the directory to search for files (should end with a slash)
 # $2 is the wildcard specifying the files to find

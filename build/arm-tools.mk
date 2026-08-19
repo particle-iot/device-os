@@ -121,7 +121,10 @@ LDFLAGS += -fno-lto
 endif
 
 # We are using newlib-nano for all the platforms
-CFLAGS += --specs=nano.specs
+# resolved to a full path, as ccache cannot hash a bare specs file name and
+# falls back to the real compiler for every invocation
+NANO_SPECS := $(or $(shell $(CC) -print-file-name=nano.specs 2>/dev/null),nano.specs)
+CFLAGS += --specs=$(NANO_SPECS)
 
 ifneq ($(LTO_EXTRA_OPTIMIZATIONS),)
 CFLAGS += -fmerge-all-constants -flto-partition=one

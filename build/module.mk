@@ -105,7 +105,7 @@ none:
 ifeq ($(PLATFORM_MCU),rtl872x)
 .PHONY: rtl-flash
 rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
-rtl-flash:
+rtl-flash: | $(TARGET_BASE).bin
 	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
 endif
 
