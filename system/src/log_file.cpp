@@ -5,6 +5,7 @@
 #include "system_task.h"
 #include "system_threading.h"
 #include "system_config.h"
+#include "dct_hal.h"
 #include "interrupts_hal.h"
 #include "filesystem.h"
 #include "file_util.h"
@@ -22,6 +23,7 @@
 #include <memory>
 #include <cstring>
 #include <cstdio>
+#include <cstdint>
 
 // Set to a non-zero value to enable logging from ISRs
 #define LOG_FROM_ISR 0
@@ -32,6 +34,7 @@ namespace {
 
 const auto LOG_FILE1 = "/sys/log.1";
 const auto LOG_FILE2 = "/sys/log.2";
+const auto LOG_CONFIG_FILE = "/sys/log_config";
 
 const size_t DEFAULT_LOG_FILE_SIZE = 50000;
 
@@ -312,13 +315,17 @@ struct LogFilter {
     }
 };
 
-struct LogFileConfig {
-    LogFilter filter;
-    size_t maxSize;
-    size_t bufferSize;
-    unsigned magic;
-    bool enabled;
+struct __attribute__((packed)) LogFileConfig {
+    uint8_t version;
+    uint8_t level;
+    uint16_t reserved;
+    char category[sizeof(LogFilter::category)];
+    uint32_t maxSize;
+    uint32_t bufferSize;
 };
+
+const size_t LOG_FILE_CONFIG_SIZE_V1 = 28;
+static_assert(sizeof(LogFileConfig) == LOG_FILE_CONFIG_SIZE_V1);
 
 class LogFile {
 public:
@@ -345,9 +352,14 @@ public:
         }
         CHECK(log->init());
 
+        LogFilter filter;
+        static_assert(sizeof(filter.category) == sizeof(conf.category));
+        std::memcpy(filter.category, conf.category, sizeof(conf.category));
+        filter.level = conf.level;
+
         ATOMIC_BLOCK() {
             buf_.init(bufMem.get(), conf.bufferSize);
-            filter_ = conf.filter;
+            filter_ = filter;
             bytesDropped_ = 0;
         }
         bufMem_ = std::move(bufMem);
@@ -581,14 +593,11 @@ private:
     }
 };
 
-const auto LOG_FILE_CONFIG_MAGIC = 0xe62a3e5eu;
-
-retained_system LogFileConfig g_logFileConfig = {};
-std::atomic<bool> g_logFileEnabled;
-
 // Note: The instance is assigned in enableLogFile() and never reset. Resetting it would create a
 // race between the logging functions and the log's deinitialization
 std::unique_ptr<LogFile> g_logFile;
+std::atomic<bool> g_logFileEnabled;
+LogFileConfig g_logFileConfig = {};
 
 // Note: The caller must acquire the filesystem lock before calling this function
 int enableLogFile(const LogFileConfig& conf) {
@@ -604,16 +613,67 @@ int enableLogFile(const LogFileConfig& conf) {
     return 0;
 }
 
+int loadLogFileConfig(LogFileConfig& config) {
+    fs::File file;
+    CHECK(file.open(LOG_CONFIG_FILE, LFS_O_RDONLY));
+
+    LogFileConfig conf = {};
+    size_t n = CHECK(file.read(&conf, LOG_FILE_CONFIG_SIZE_V1));
+    file.close();
+    if (n < LOG_FILE_CONFIG_SIZE_V1 || conf.version < 1) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+
+    config = conf;
+    return 0;
+}
+
+int saveLogFileConfig(const LogFileConfig& config) {
+    fs::File file;
+    char tempPath[fs::TEMP_PATH_BUF_SIZE] = {};
+    CHECK(createTempFile(file, tempPath, sizeof(tempPath), LFS_O_WRONLY));
+    CHECK(file.write(&config, sizeof(config)));
+    CHECK(file.close());
+    CHECK(fs::rename(tempPath, LOG_CONFIG_FILE));
+    return 0;
+}
+
+int readLogFileDctFlag(bool& enabled) {
+    uint8_t val = 0;
+    int r = dct_read_app_data_copy(DCT_LOG_FILE_ENABLED_OFFSET, &val, sizeof(val));
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    enabled = (val == 0x01); // Can be 0xff if not initialized
+    return 0;
+}
+
+int writeLogFileDctFlag(bool enabled) {
+    uint8_t val = enabled ? 0x01 : 0xff;
+    int r = dct_write_app_data(&val, DCT_LOG_FILE_ENABLED_OFFSET, sizeof(val));
+    if (r != 0) {
+        return SYSTEM_ERROR_IO;
+    }
+    return 0;
+}
+
 } // namespace
 
 // Called by the system thread
 int initLogFile() {
     fs::FsLock lock;
 
-    if (g_logFileConfig.magic != LOG_FILE_CONFIG_MAGIC || !g_logFileConfig.enabled) {
+    bool enabled = 0;
+    CHECK(readLogFileDctFlag(enabled));
+    if (!enabled) {
         return 0;
     }
-    CHECK(enableLogFile(g_logFileConfig));
+
+    LogFileConfig conf = {};
+    CHECK(loadLogFileConfig(conf));
+    CHECK(enableLogFile(conf));
+    g_logFileConfig = conf;
+
     LOG_PRINT(INFO, "~~~~~~~~~~\r\n");
     return 0;
 }
@@ -696,23 +756,24 @@ int system_enable_log_file(const system_log_file_config* config) {
     fs::FsLock lock;
 
     LogFileConfig newConfig = {};
-    newConfig.magic = LOG_FILE_CONFIG_MAGIC;
-    newConfig.enabled = true;
+    newConfig.version = 1;
 
     if (config) {
         if (config->category) {
-            strlcpy(newConfig.filter.category, config->category, sizeof(newConfig.filter.category));
+            strlcpy(newConfig.category, config->category, sizeof(newConfig.category));
         }
-        newConfig.filter.level = (config->level > 0) ? config->level : LOG_LEVEL_ALL;
+        newConfig.level = (config->level > 0) ? config->level : LOG_LEVEL_ALL;
         newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_LOG_FILE_SIZE;
         newConfig.bufferSize = (config->buffer_size > 0) ? config->buffer_size : DEFAULT_LOG_BUFFER_SIZE;
     } else {
-        newConfig.filter.level = LOG_LEVEL_ALL;
+        newConfig.level = LOG_LEVEL_ALL;
         newConfig.maxSize = DEFAULT_LOG_FILE_SIZE;
         newConfig.bufferSize = DEFAULT_LOG_BUFFER_SIZE;
     }
 
     if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
+        CHECK(saveLogFileConfig(newConfig));
+        CHECK(writeLogFileDctFlag(true /* enabled */));
         CHECK(enableLogFile(newConfig));
         g_logFileConfig = newConfig;
     }
@@ -729,11 +790,9 @@ void system_disable_log_file(void* reserved) {
     }
     removeLogFiles();
 
-    LogFileConfig newConfig = {};
-    newConfig.magic = LOG_FILE_CONFIG_MAGIC;
-    newConfig.enabled = false;
-
-    g_logFileConfig = newConfig;
+    writeLogFileDctFlag(false /* enabled */);
+    rmrf(LOG_CONFIG_FILE);
+    g_logFileConfig = LogFileConfig();
 }
 
 int system_print_log_file(size_t size, int level, const char* category, void* reserved) {
