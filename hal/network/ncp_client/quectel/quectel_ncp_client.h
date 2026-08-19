@@ -102,6 +102,13 @@ private:
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
+    enum class ModemPowerReason {
+        Unknown = 0,
+        ModemOff = 1,
+        AtUnresponsive = 2,
+        RegTimeout = 3
+    };
+
     enum class ModemState {
         Unknown = 0,
         MuxerAtChannel = 1,
@@ -166,7 +173,7 @@ private:
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
     bool checkAtWhileConnected();
-    void recoverModem();
+    int configModemPowerState(ModemPowerReason reason);
 
     /** Is this a Quectel Cat-M1 device ? */
     bool isQuecCatM1Device();

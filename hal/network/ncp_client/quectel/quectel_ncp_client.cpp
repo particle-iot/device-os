@@ -378,44 +378,71 @@ int QuectelNcpClient::on() {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::off() {
-    const NcpClientLock lock(this);
-    if (ncpState_ == NcpState::DISABLED) {
-        return SYSTEM_ERROR_INVALID_STATE;
+// Take the modem down. ModemOff is the ordinary off() sequence, the other reasons are faults where
+// the modem will not answer an AT command, so the sequence never issues one.
+// Caller must hold the client lock.
+int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
+    const bool recovering = (reason != ModemPowerReason::ModemOff && reason != ModemPowerReason::Unknown);
+    int r = SYSTEM_ERROR_NONE;
+
+    if (recovering) {
+        LOG(WARN, "Resetting the modem due to %s", reason == ModemPowerReason::AtUnresponsive ?
+                "an unresponsive AT interface" : "the network registration timeout");
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
+        // off() deliberately leaves this until the end.
+        ncpState(NcpState::OFF);
+    } else {
+        // Try using AT command to turn off the modem first.
+        r = modemSoftPowerOff();
     }
-    // Try using AT command to turn off the modem first.
-    int r = modemSoftPowerOff();
 
     // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
     serial_->enabled(false);
     muxer_.stop();
     serial_->enabled(true);
 
-    // Disable voltage translator
-    modemSetUartState(false);
-
-    if (!r) {
-        LOG(TRACE, "Soft power off modem success");
-        // WARN: We assume that the modem can turn off itself reliably.
-    } else {
-        // Power down using hardware
+    if (recovering) {
+        // Not modemSoftPowerOff(), it would retry AT+QPOWD six times against a dead interface
         if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to turn off");
+            modemHardReset(true);
         }
-        // FIXME: There is power leakage still if powering off the modem failed.
+    } else {
+        // Disable voltage translator
+        modemSetUartState(false);
+
+        if (!r) {
+            LOG(TRACE, "Soft power off modem success");
+            // WARN: We assume that the modem can turn off itself reliably.
+        } else {
+            // Power down using hardware
+            if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to turn off");
+            }
+            // FIXME: There is power leakage still if powering off the modem failed.
+        }
+
+        // Disable the UART interface.
+        LOG(TRACE, "Deinit modem serial.");
+        serial_->on(false);
+
+        ready_ = false;
+        ncpState(NcpState::OFF);
     }
 
-    // Disable the UART interface.
-    LOG(TRACE, "Deinit modem serial.");
-    serial_->on(false);
-
-    ready_ = false;
-    ncpState(NcpState::OFF);
-
+    // The modem is gone, the inactivity timer must not fire and try to close the channel
     apduChannelTimer_.stop();
     apduChannel_ = 0;
 
     return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::off() {
+    const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    return configModemPowerState(ModemPowerReason::ModemOff);
 }
 
 int QuectelNcpClient::enable() {
@@ -2543,25 +2570,6 @@ int QuectelNcpClient::checkRunningImsi() {
     return 0;
 }
 
-// Power cycle the modem without issuing any AT command, for the faults where it will not answer one.
-// Caller must hold the client lock. Leaves the client OFF, PppNcpNetif::loop() brings it back up.
-void QuectelNcpClient::recoverModem() {
-    // We are going into an OFF state immediately before stopping the muxer
-    // otherwise the muxer channel state callback will disable us unnecessarily.
-    ncpState(NcpState::OFF);
-    // Disable ourselves/channel, so that the muxer can stop faster non-gracefully
-    serial_->enabled(false);
-    muxer_.stop();
-    serial_->enabled(true);
-    // Not off(), its modemSoftPowerOff() would retry AT+QPOWD six times first
-    if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-        modemHardReset(true);
-    }
-    // The modem is gone, the inactivity timer must not fire and try to close the channel
-    apduChannelTimer_.stop();
-    apduChannel_ = 0;
-}
-
 // Periodic AT probe while CONNECTED. Returns false once the interface is declared unresponsive.
 //
 // Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
@@ -2606,10 +2614,9 @@ int QuectelNcpClient::processEventsImpl() {
 
     // Must stay above the connState_ != CONNECTING early return below, the point is to run while CONNECTED
     if (!checkAtWhileConnected()) {
-        LOG(WARN, "Resetting the modem due to an unresponsive AT interface");
         // connectionState(CONNECTED) clears this too, but nothing does if we never reconnect
         atProbeFailStreak_ = 0;
-        recoverModem();
+        configModemPowerState(ModemPowerReason::AtUnresponsive);
         return SYSTEM_ERROR_TIMEOUT;
     }
 
@@ -2645,8 +2652,7 @@ int QuectelNcpClient::processEventsImpl() {
     CHECK_PARSER(parser_.execCommand("AT+QENG=\"servingcell\""));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
-        LOG(WARN, "Resetting the modem due to the network registration timeout");
-        recoverModem();
+        configModemPowerState(ModemPowerReason::RegTimeout);
         return SYSTEM_ERROR_TIMEOUT;
     }
 
