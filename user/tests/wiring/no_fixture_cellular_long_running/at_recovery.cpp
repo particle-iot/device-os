@@ -17,8 +17,9 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "test_suite.h"
 
-#if Wiring_Cellular
+#if HAL_PLATFORM_CELLULAR
 
 /* unresponsive AT interface
  *
@@ -60,6 +61,10 @@ const system_tick_t PROVOKE_BUDGET = 15 * 60 * 1000;
 // occurrences were on transition #1 after a power cycle. That is the same fault again, not a failed
 // recovery, so allow Device OS a few rounds to land a connection with a working AT interface.
 const unsigned MAX_RECOVERY_ROUNDS = 3;
+
+// The msom platform covers both cellular and Wi-Fi devices, so a Wi-Fi one can be selected here.
+// Not retained, nothing in this suite resets the device between tests.
+bool skipTests = false;
 
 unsigned cycles = 0;
 unsigned falseAlarms = 0;
@@ -106,11 +111,24 @@ bool waitForRecovery() {
 } // namespace
 
 test(AT_RECOVERY_00_init) {
+    if (TestSuite::instance()->network() != NETWORK_INTERFACE_ALL &&
+            TestSuite::instance()->network() != NETWORK_INTERFACE_CELLULAR) {
+        skipTests = true;
+        skip();
+        return;
+    }
+    skipTests = false;
+
     Cellular.on();
     assertTrue(waitFor(Cellular.isOn, CONNECT_TIMEOUT));
 }
 
 test(AT_RECOVERY_01_data_mode_cycling_provokes_unresponsive_at) {
+    if (skipTests) {
+        skip();
+        return;
+    }
+
     const system_tick_t start = millis();
     while (millis() - start < PROVOKE_BUDGET) {
         const system_tick_t cycleStart = millis();
@@ -149,6 +167,11 @@ test(AT_RECOVERY_01_data_mode_cycling_provokes_unresponsive_at) {
 }
 
 test(AT_RECOVERY_02_device_os_recovers_the_modem) {
+    if (skipTests) {
+        skip();
+        return;
+    }
+
     if (!wedgeConfirmed) {
         assertEqual(0, pushMailboxMsg(String::format(
                 "{\"reproduced\": false, \"cycles\": %u, \"falseAlarms\": %u, \"lastProbe\": %d}",
@@ -182,4 +205,4 @@ test(AT_RECOVERY_02_device_os_recovers_the_modem) {
     assertTrue(recovered);
 }
 
-#endif // Wiring_Cellular
+#endif // HAL_PLATFORM_CELLULAR

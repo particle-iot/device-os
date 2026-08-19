@@ -10,7 +10,11 @@ before(function() {
   device = this.particle.devices[0];
 });
 
-test('AT_RECOVERY_00_init', async () => {
+test('AT_RECOVERY_00_init', async function() {
+  // Selects a cellular device, so a Wi-Fi configured M-SoM is not picked up by platform('msom').
+  // Same idiom as system/cellular_env.
+  this.test.parent.particle.network = 'cellular';
+  this.test.parent.particle.suiteInitialized = false;
 });
 
 test('AT_RECOVERY_01_data_mode_cycling_provokes_unresponsive_at', async () => {
