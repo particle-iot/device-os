@@ -5,7 +5,7 @@
 # Additionally release/prerelease information is used to automatically create
 # build targets in Particle Cloud when pushing a tag.
 
-export BUILDPACK_BUILDER_VERSION=0.2.3
+export BUILDPACK_BUILDER_VERSION=0.2.4
 
 # GCC version is no longer managed by this variable.
 # GCC dependencies come from .workbench/manifest.json
