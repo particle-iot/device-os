@@ -620,9 +620,11 @@ int loadLogFileConfig(LogFileConfig& config) {
     LogFileConfig conf = {};
     size_t n = CHECK(file.read(&conf, LOG_FILE_CONFIG_SIZE_V1));
     file.close();
-    if (n < LOG_FILE_CONFIG_SIZE_V1 || conf.version < 1) {
+    if (n < LOG_FILE_CONFIG_SIZE_V1 || conf.version < 1 || conf.maxSize == 0 || conf.bufferSize == 0) {
         return SYSTEM_ERROR_BAD_DATA;
     }
+    // Make sure all strings are null-terminated
+    conf.category[sizeof(conf.category - 1)] = '\0';
 
     config = conf;
     return 0;
@@ -663,7 +665,9 @@ int writeLogFileDctFlag(bool enabled) {
 int initLogFile() {
     fs::FsLock lock;
 
-    bool enabled = 0;
+    CHECK(fs::mount());
+
+    bool enabled = false;
     CHECK(readLogFileDctFlag(enabled));
     if (!enabled) {
         return 0;
