@@ -1157,7 +1157,7 @@ public:
      *        the log.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    int enableLogFile(LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr) {
+    static int enableLogFile(LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr) {
         return enableLogFile(0 /* maxSize */, minLevel, category);
     }
 
@@ -1173,7 +1173,7 @@ public:
      *        the log.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    int enableLogFile(size_t maxSize, LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr);
+    static int enableLogFile(size_t maxSize, LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr);
 
     /**
      * Disable logging to a file.
@@ -1181,7 +1181,7 @@ public:
      * The log stops capturing the messages and its contents are deleted. The log will not be
      * enabled again when the device boots next time.
      */
-    void disableLogFile();
+    static void disableLogFile();
 
     /**
      * Print the contents of the log file.
@@ -1194,7 +1194,7 @@ public:
      * @return On success, the number of bytes printed, otherwise an error code defined by
      *         `Error::Type`.
      */
-    int printLogFile(LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY()) {
+    static int printLogFile(LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY()) {
         return printLogFile(0 /* size */, level, category);
     }
 
@@ -1210,7 +1210,7 @@ public:
      * @return On success, the number of bytes printed, otherwise an error code defined by
      *         `Error::Type`.
      */
-    int printLogFile(size_t size, LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY());
+    static int printLogFile(size_t size, LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY());
 
     /**
      * Delete the contents of the log file.
@@ -1219,7 +1219,7 @@ public:
      *
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    int clearLogFile();
+    static int clearLogFile();
 #endif // HAL_PLATFORM_LOG_FILE
 
 private:
