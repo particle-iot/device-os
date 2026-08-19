@@ -21,7 +21,7 @@ flash_suffix() {
 
     pct="$(awk -v u="$used" -v a="$available" 'BEGIN { printf "%.1f", (u * 100.0) / a }')"
     awk -v u="$used" -v a="$available" -v p="$pct" \
-        'BEGIN { printf " (%d/%d KiB, %s%%)", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
+        'BEGIN { printf " %d/%dK %s%%", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
 }
 
 time_suffix() {
@@ -38,7 +38,7 @@ time_suffix() {
         return 0
     fi
 
-    printf ' %dm%02ds' $((duration / 60)) $((duration % 60))
+    awk -v d="$duration" 'BEGIN { printf " %.1fm", d / 60.0 }'
 }
 
 platform_msg() {
