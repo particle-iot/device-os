@@ -30,7 +30,6 @@
 #include "system_sleep.h"
 #include "system_cloud.h"
 #include "system_event.h"
-#include "system_config.h"
 #include "interrupts_hal.h"
 #include "core_hal.h"
 #include "system_user.h"
@@ -52,6 +51,7 @@
 #include "backup_ram_hal.h"
 #include "spark_wiring_asset.h"
 #include "security_mode.h"
+#include "logging.h"
 
 using spark::Vector;
 
@@ -1143,6 +1143,84 @@ public:
     // resets the device automatically
     static bool clearEnv(bool reset = true);
 #endif // HAL_PLATFORM_ENV
+
+#if HAL_PLATFORM_LOG_FILE
+    /**
+     * Enable logging to a file.
+     *
+     * The log starts capturing the messages immediately. The configuration is stored persistently so
+     * that the log is enabled automatically when the device boots next time. This makes it possible
+     * to retrieve the messages logged while the device is booting.
+     *
+     * @param minLevel Minimum level of the messages to store in the log.
+     * @param category If not `nullptr`, only the messages logged for this category are stored in
+     *        the log.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int enableLogFile(LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr) {
+        return enableLogFile(0 /* maxSize */, minLevel, category);
+    }
+
+    /**
+     * Enable logging to a file.
+     *
+     * @see enableLogFile(LogLevel, const char*)
+     *
+     * @param maxSize Maximum size of the log data in bytes. Specifies how much of the most recent
+     *        log data is retained. If 0, a default size is used.
+     * @param minLevel Minimum level of the messages to store in the log.
+     * @param category If not `nullptr`, only the messages logged for this category are stored in
+     *        the log.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int enableLogFile(size_t maxSize, LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr);
+
+    /**
+     * Disable logging to a file.
+     *
+     * The log stops capturing the messages and its contents are deleted. The log will not be
+     * enabled again when the device boots next time.
+     */
+    void disableLogFile();
+
+    /**
+     * Print the contents of the log file.
+     *
+     * The contents are printed via the logging system, that is, through the log handlers registered
+     * by the application.
+     *
+     * @param level Level at which the contents of the log are printed.
+     * @param category Category with which the contents of the log are printed.
+     * @return On success, the number of bytes printed, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    int printLogFile(LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY()) {
+        return printLogFile(0 /* size */, level, category);
+    }
+
+    /**
+     * Print the contents of the log file.
+     *
+     * @see printLogFile(LogLevel, const char*)
+     *
+     * @param size Maximum size of the log data to print. If the log contains more data than that,
+     *        only the most recent `size` bytes are printed. If 0, the entire log is printed.
+     * @param level Level at which the contents of the log are printed.
+     * @param category Category with which the contents of the log are printed.
+     * @return On success, the number of bytes printed, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    int printLogFile(size_t size, LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY());
+
+    /**
+     * Delete the contents of the log file.
+     *
+     * The log keeps capturing the messages.
+     *
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    int clearLogFile();
+#endif // HAL_PLATFORM_LOG_FILE
 
 private:
     SystemSleepResult systemSleepResult_;

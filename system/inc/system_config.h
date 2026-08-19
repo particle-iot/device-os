@@ -95,7 +95,8 @@ void system_disable_log_file(void* reserved);
  *        are printed.
  * @param category Logging category with which the contents of the log are printed. If `NULL`,
  *        an empty category is used.
- * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ * @return On success, the number of bytes printed, otherwise an error code defined by
+ *         `system_error_t`.
  */
 int system_print_log_file(size_t size, int level, const char* category, void* reserved);
 
@@ -105,7 +106,8 @@ int system_print_log_file(size_t size, int level, const char* category, void* re
  * @param size Maximum size of the log data to read. If 0, the entire log is read.
  * @param callback Callback to invoke for each chunk of the log data.
  * @param arg User argument to pass to the callback.
- * @return 0 on success, otherwise an error code defined by `system_error_t`.
+ * @return On success, the number of bytes read, otherwise an error code defined by
+ *         `system_error_t`.
  */
 int system_read_log_file(size_t size, system_read_log_file_callback callback, void* arg, void* reserved);
 

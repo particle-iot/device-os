@@ -8,6 +8,7 @@
 #include "system_control.h"
 #include "system_network.h"
 #include "system_env.h"
+#include "system_config.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -246,6 +247,31 @@ bool SystemClass::clearEnv(bool reset) {
 }
 
 #endif // HAL_PLATFORM_ENV
+
+#if HAL_PLATFORM_LOG_FILE
+
+int SystemClass::enableLogFile(size_t maxSize, LogLevel minLevel, const char* category) {
+    system_log_file_config conf = {};
+    conf.size = sizeof(conf);
+    conf.level = minLevel;
+    conf.category = category;
+    conf.max_size = maxSize;
+    return system_enable_log_file(&conf);
+}
+
+void SystemClass::disableLogFile() {
+    system_disable_log_file(nullptr /* reserved */);
+}
+
+int SystemClass::printLogFile(size_t size, LogLevel level, const char* category) {
+    return system_print_log_file(size, level, category, nullptr /* reserved */);
+}
+
+int SystemClass::clearLogFile() {
+    return system_clear_log_file(nullptr /* reserved */);
+}
+
+#endif // HAL_PLATFORM_LOG_FILE
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {
