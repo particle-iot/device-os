@@ -20,6 +20,7 @@
 #include "check.h"
 
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <cstring>
 #include <cstdio>
@@ -624,7 +625,7 @@ int loadLogFileConfig(LogFileConfig& config) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     // Make sure all strings are null-terminated
-    conf.category[sizeof(conf.category - 1)] = '\0';
+    conf.category[sizeof(conf.category) - 1] = '\0';
 
     config = conf;
     return 0;
