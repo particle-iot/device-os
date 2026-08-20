@@ -160,11 +160,11 @@ public:
         memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
 
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE || config->mode == HAL_SLEEP_MODE_POWER_OFF) {
-            /* Backup (sic!) backup RAM into flash */
-            hal_backup_ram_sync(nullptr);
 #if HAL_PLATFORM_LOG_FILE
             system::closeLogFile();
 #endif
+            /* Backup (sic!) backup RAM into flash */
+            hal_backup_ram_sync(nullptr);
         }
 
         if (config->mode == HAL_SLEEP_MODE_POWER_OFF) {
