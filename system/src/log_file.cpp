@@ -473,6 +473,7 @@ public:
         while ((bytesAvail = CHECK(in->availForRead())) > 0) {
             size_t n = std::min(bytesAvail, sizeof(buf));
             n = CHECK(in->read(buf, n));
+            // TODO: Release the lock before calling the user callback
             CHECK(fn(buf, n));
             bytesRead += n;
         }
@@ -487,7 +488,7 @@ public:
         if (level < filter.level) {
             return false;
         }
-        if (category && !startsWith(category, filter.category)) {
+        if (filter.category[0] && (!category || !startsWith(category, filter.category))) {
             return false;
         }
         return true;
