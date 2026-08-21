@@ -130,7 +130,9 @@ private:
     int firmwareInstallRespCodeR510_ = 0;
     int lastFirmwareInstallRespCodeR510_ = 0;
     int waitReadyRetries_ = 0;
-    bool sleepNoPPPWrite_ = false;
+    // Set by urcs(false) when going to sleep: the AT muxer channel is suspended and the muxer
+    // keepalive is off, so neither PPP writes nor AT probes can expect anything back.
+    bool sleepUrcsDisabled_ = false;
     bool ehsExtendedTiming_ = false;
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;

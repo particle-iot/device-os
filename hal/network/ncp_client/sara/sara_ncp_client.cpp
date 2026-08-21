@@ -216,7 +216,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     firmwareInstallRespCodeR510_ = -1;
     lastFirmwareInstallRespCodeR510_ = -1;
     waitReadyRetries_ = 0;
-    sleepNoPPPWrite_ = false;
+    sleepUrcsDisabled_ = false;
     ehsExtendedTiming_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
@@ -529,7 +529,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     }
 
     int err = gsm0710::GSM0710_ERROR_NONE;
-    if (!sleepNoPPPWrite_) {
+    if (!sleepUrcsDisabled_) {
         err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
     }
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
@@ -2437,8 +2437,8 @@ int SaraNcpClient::getMtu() {
 
 int SaraNcpClient::urcs(bool enable) {
     const NcpClientLock lock(this);
+    sleepUrcsDisabled_ = !enable;
     if (enable) {
-        sleepNoPPPWrite_ = false;
         CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
         if ((ncpId() != PLATFORM_NCP_SARA_R510) ||
                 ((ncpId() == PLATFORM_NCP_SARA_R510) &&
@@ -2451,8 +2451,6 @@ int SaraNcpClient::urcs(bool enable) {
             CHECK(waitAtResponse(5000, gsm0710::proto::DEFAULT_T2));
         }
     } else {
-        sleepNoPPPWrite_ = true;
-
         // R510 may be in low power mode, wake it up so we can get our muxer data channel suspend
         // echo, before we get into sleep and potentially prematurely wake by "network activity" (RX data)
         if (ncpId() == PLATFORM_NCP_SARA_R510) {
@@ -2745,7 +2743,13 @@ int SaraNcpClient::configModemPowerState(ModemPowerReason reason) {
 bool SaraNcpClient::checkAtWhileConnected() {
     // Every other state has its own recovery path, probing during them only adds noise.
     // An R510 firmware install stops answering AT for minutes by design, so it is not a fault.
-    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || firmwareUpdateR510_) {
+    // R510 runs UPSV=1: it drops to low power after ~9s of UART idle, and while CONNECTED the muxer
+    // keepalive is off and the LCP echo is stretched to 240s to set a reasonable balance between power
+    // usage and keep alive responsiveness. The probe is a second, independent wake source with no
+    // phase relationship to the echo, so it costs another ~9s awake per period no matter what
+    // interval we pick. Not worth it for a defect we have only ever seen on EG91, so skip R510 entirely.
+    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || firmwareUpdateR510_ ||
+            sleepUrcsDisabled_ || ncpId() == PLATFORM_NCP_SARA_R510) {
         atProbeFailStreak_ = 0;
         return true;
     }

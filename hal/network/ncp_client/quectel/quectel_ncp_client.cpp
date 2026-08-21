@@ -197,6 +197,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     policymanSrvModeCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
+    sleepUrcsDisabled_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -488,16 +489,19 @@ int QuectelNcpClient::disconnect() {
         return SYSTEM_ERROR_NONE;
     }
 
-    // Tear the connection state down unconditionally, on every exit path
     SCOPE_GUARD({
         resetRegistrationState();
         connectionState(NcpConnectionState::DISCONNECTED);
     });
 
+    // If we disconnect due to the AT interface being dead, a forced check
+    // is required because ready_ is true and parserError_ is 0.
+    const int r = parser_.execCommand(1000, "AT");
+    if (r != AtResponse::OK) {
+        parserError_ = r;
+    }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
-    (void)r;
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_PARSER(setModuleFunctionality(CellularFunctionality::MINIMUM, false /* check */));
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1114,7 +1118,7 @@ int QuectelNcpClient::setupBands() {
             } else if (retBand == 4) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr, qbandNtnStr));
             }
-            
+
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
         }
     }
@@ -2197,6 +2201,7 @@ int QuectelNcpClient::getMtu() {
 }
 
 int QuectelNcpClient::urcs(bool enable) {
+    sleepUrcsDisabled_ = !enable;
     if (enable) {
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
             CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",1,1"));
@@ -2575,8 +2580,8 @@ int QuectelNcpClient::checkRunningImsi() {
 // Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
 // checkParser() -> waitReady() -> modemHardReset() instead of the reset sequence run by the caller.
 bool QuectelNcpClient::checkAtWhileConnected() {
-    if (connState_ != NcpConnectionState::CONNECTED || !ready_) {
-        // Every other state has its own recovery path, probing during them only adds noise
+    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || sleepUrcsDisabled_) {
+        // Every other state has its own recovery path, probing during them only adds noise.
         atProbeFailStreak_ = 0;
         return true;
     }

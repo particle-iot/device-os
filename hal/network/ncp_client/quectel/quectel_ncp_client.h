@@ -133,6 +133,10 @@ private:
     bool configuredPlmn_ = false;
     system_tick_t atProbeTime_ = 0;
     unsigned atProbeFailStreak_ = 0;
+    // Set by urcs(false) when going to sleep. On the muxer path the AT channel is suspended and a
+    // probe cannot be answered; on the BG95 QINDCFG path it would be answered but would wake the
+    // module, which is the thing sleep is trying to avoid. Suppress the probe either way.
+    bool sleepUrcsDisabled_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -153,7 +157,7 @@ private:
     int selectSimCard();
     int checkSimCard();
     int getModuleFunctionality();
-    int setModuleFunctionality(CellularFunctionality cfun, bool check);
+    int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
     int getPolicymanServiceMode();
     int setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check);
     int set2gAttenuation3dB();
