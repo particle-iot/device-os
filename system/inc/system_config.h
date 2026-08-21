@@ -8,7 +8,7 @@
 #if HAL_PLATFORM_LOG_FILE
 
 /**
- * Flags for `system_enable_log_file` and `system_disable_log_file`.
+ * Log file flags.
  */
 typedef enum {
     /**
@@ -19,8 +19,16 @@ typedef enum {
      * applied automatically when the system is starting up. This allows capturing the early boot
      * messages as well as the messages logged while the device is in safe mode, which otherwise
      * are not visible to the application.
+     *
+     * Used with `system_enable_log_file` and `system_disable_log_file`.
      */
-    SYSTEM_LOG_FILE_UNTIL_RESET = 0x01
+    SYSTEM_LOG_FILE_NO_PERSIST = 0x01,
+    /**
+     * If set, stops writing to the log but doesn't clear it.
+     *
+     * Used with `system_disable_log_file`.
+     */
+    SYSTEM_LOG_FILE_NO_CLEAR = 0x02
 } system_log_file_flag;
 
 /**

@@ -12,6 +12,8 @@
 #include "scope_guard.h"
 #include "check.h"
 
+using namespace particle;
+
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
 #endif
@@ -250,17 +252,30 @@ bool SystemClass::clearEnv(bool reset) {
 
 #if HAL_PLATFORM_LOG_FILE
 
-int SystemClass::enableLogFile(size_t maxSize, LogLevel minLevel, const char* category) {
-    system_log_file_config conf = {};
-    conf.size = sizeof(conf);
-    conf.level = minLevel;
-    conf.category = category;
-    conf.max_size = maxSize;
-    return system_enable_log_file(&conf);
+int SystemClass::enableLogFile(bool persist, const LogFileOptions& appOpts) {
+    system_log_file_options opts = {};
+    opts.size = sizeof(opts);
+    opts.level = appOpts.level();
+    opts.category = appOpts.category();
+    opts.max_size = appOpts.maxSize();
+    opts.buffer_size = appOpts.bufferSize();
+
+    int flags = 0;
+    if (!persist) {
+        flags |= SYSTEM_LOG_FILE_NO_PERSIST;
+    }
+    return system_enable_log_file(flags, &opts);
 }
 
-void SystemClass::disableLogFile() {
-    system_disable_log_file(nullptr /* reserved */);
+void SystemClass::disableLogFile(bool persist, bool clear) {
+    int flags = 0;
+    if (!persist) {
+        flags |= SYSTEM_LOG_FILE_NO_PERSIST;
+    }
+    if (!clear) {
+        flags |= SYSTEM_LOG_FILE_NO_CLEAR;
+    }
+    system_disable_log_file(flags, nullptr /* reserved */);
 }
 
 int SystemClass::printLogFile(size_t size, LogLevel level, const char* category) {

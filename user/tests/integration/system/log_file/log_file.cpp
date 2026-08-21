@@ -45,13 +45,13 @@ test(01_init) {
 }
 
 test(02_enable_and_capture) {
-    assertEqual(System.enableLogFile(LOG_LEVEL_ALL, "app"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app")), 0);
     Log.info("message_A");
     assertTrue(logContains("message_A"));
 }
 
 test(03_level_filter) {
-    assertEqual(System.enableLogFile(LOG_LEVEL_WARN, "app"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app").level(LOG_LEVEL_WARN)), 0);
     assertEqual(System.clearLogFile(), 0);
     Log.info("message_A"); // Filtered out
     Log.warn("message_B"); // Stored
@@ -61,7 +61,7 @@ test(03_level_filter) {
 }
 
 test(04_category_filter) {
-    assertEqual(System.enableLogFile(LOG_LEVEL_ALL, "app.foo"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app")), 0);
     assertEqual(System.clearLogFile(), 0);
     Log.info("message_A"); // Filtered out
     Logger subLog("app.foo.bar");
@@ -72,7 +72,7 @@ test(04_category_filter) {
 }
 
 test(05_clear_and_keep_capturing) {
-    assertEqual(System.enableLogFile(LOG_LEVEL_ALL, "app"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app")), 0);
     assertEqual(System.clearLogFile(), 0);
     Log.info("message_A");
     assertTrue(logContains("message_A"));
@@ -88,7 +88,7 @@ test(05_clear_and_keep_capturing) {
 test(06_rotation) {
     const size_t maxLogSize = 2000;
 
-    assertEqual(System.enableLogFile(maxLogSize, LOG_LEVEL_ALL, "app"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app").maxSize(maxLogSize)), 0);
     assertEqual(System.clearLogFile(), 0);
 
     String s = "a" + repeat('b', maxLogSize - 1);
@@ -103,13 +103,7 @@ test(06_rotation) {
 }
 
 test(07_dropped_bytes_reported) {
-    system_log_file_config conf = {
-        .size = sizeof(system_log_file_config),
-        .category = "app",
-        .buffer_size = 10,
-        .level = LOG_LEVEL_ALL
-    };
-    assertEqual(system_enable_log_file(&conf), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app").bufferSize(10)), 0);
     assertEqual(System.clearLogFile(), 0);
 
     Log.print("aaaaaaaaaa");
@@ -118,13 +112,7 @@ test(07_dropped_bytes_reported) {
 }
 
 test(08_system_thread_auto_flush) {
-    system_log_file_config conf = {
-        .size = sizeof(system_log_file_config),
-        .category = "app",
-        .buffer_size = 10,
-        .level = LOG_LEVEL_ALL
-    };
-    assertEqual(system_enable_log_file(&conf), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app").bufferSize(10)), 0);
     assertEqual(System.clearLogFile(), 0);
 
     callbackCalled = false;
@@ -141,7 +129,7 @@ test(08_system_thread_auto_flush) {
 }
 
 test(09_read_size_limit) {
-    assertEqual(System.enableLogFile(10 /* maxSize */, LOG_LEVEL_ALL, "app"), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app").maxSize(10)), 0);
     assertEqual(System.clearLogFile(), 0);
     Log.print("aaaaabbbbb");
 

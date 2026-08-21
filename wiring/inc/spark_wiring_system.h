@@ -414,9 +414,69 @@ private:
     int error_;
 };
 
+namespace particle {
+
+#if HAL_PLATFORM_LOG_FILE
+/**
+ * Options for SystemClass::enableLogFile.
+ */
+class LogFileOptions {
+public:
+    LogFileOptions() :
+            category_(nullptr),
+            maxSize_(0),
+            bufSize_(0),
+            level_(0) {
+    }
+
+    LogFileOptions& category(const char* category) {
+        category_ = category;
+        return *this;
+    }
+
+    const char* category() const {
+        return category_;
+    }
+
+    LogFileOptions& maxSize(size_t size) {
+        maxSize_ = size;
+        return *this;
+    }
+
+    size_t maxSize() const {
+        return maxSize_;
+    }
+
+    LogFileOptions& bufferSize(size_t size) {
+        bufSize_ = size;
+        return *this;
+    }
+
+    size_t bufferSize() const {
+        return bufSize_;
+    }
+
+    LogFileOptions& level(int level) {
+        level_ = level;
+        return *this;
+    }
+
+    int level() const {
+        return level_;
+    }
+
+private:
+    const char* category_;
+    size_t maxSize_;
+    size_t bufSize_;
+    int level_;
+};
+#endif // HAL_PLATFORM_LOG_FILE
+
+} // namespace particle
+
 class SystemClass {
 public:
-
     SystemClass(System_Mode_TypeDef mode = DEFAULT) {
         set_system_mode(mode);
     }
@@ -1148,40 +1208,41 @@ public:
     /**
      * Enable logging to a file.
      *
-     * The log starts capturing the messages immediately. The configuration is stored persistently so
-     * that the log is enabled automatically when the device boots next time. This makes it possible
-     * to retrieve the messages logged while the device is booting.
+     * Stores the logging configuration persistently - see `enableLogFile(bool, const LogFileOptions&)`.
      *
-     * @param minLevel Minimum level of the messages to store in the log.
-     * @param category If not `nullptr`, only the messages logged for this category are stored in
-     *        the log.
+     * @param opts Options.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    static int enableLogFile(LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr) {
-        return enableLogFile(0 /* maxSize */, minLevel, category);
+    static int enableLogFile(const particle::LogFileOptions& opts = particle::LogFileOptions()) {
+        return enableLogFile(true, opts);
     }
 
     /**
      * Enable logging to a file.
      *
-     * @see enableLogFile(LogLevel, const char*)
-     *
-     * @param maxSize Maximum size of the log data in bytes. Specifies how much of the most recent
-     *        log data is retained. If 0, a default size is used.
-     * @param minLevel Minimum level of the messages to store in the log.
-     * @param category If not `nullptr`, only the messages logged for this category are stored in
-     *        the log.
+     * @param persist If `true`, saves the logging configuration persistently in which case the log
+     *        will be enabled automatically next time the device boots. This allows capturing the
+     *        early boot messages as well as the messages logged while the device is in safe mode,
+     *        which otherwise are not visible to the application.
+     *        If `false`, the log is enabled for the duration of the current session, i.e. until
+     *        the device is reset.
+     * @param opts Options.
      * @return 0 on success, otherwise an error code defined by `Error::Type`.
      */
-    static int enableLogFile(size_t maxSize, LogLevel minLevel = LOG_LEVEL_ALL, const char* category = nullptr);
+    static int enableLogFile(bool persist, const particle::LogFileOptions& opts = particle::LogFileOptions());
 
     /**
      * Disable logging to a file.
      *
-     * The log stops capturing the messages and its contents are deleted. The log will not be
-     * enabled again when the device boots next time.
+     * @param persist If `true`, saves the logging configuration persistently in which case the log
+     *        will not be enabled automatically next time the device boots.
+     *        If `false`, the log is disabled for the duration of the current session, i.e. until
+     *        the device is reset.
+     * @param clear If `true`, clears the current contents of the log.
+     *        If `false`, stops writing to the log but doesn't clear the contents of the log.
+     * @param opts Options.
      */
-    static void disableLogFile();
+    static void disableLogFile(bool persist = true, bool clear = true);
 
     /**
      * Print the contents of the log file.

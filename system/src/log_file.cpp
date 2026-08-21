@@ -41,7 +41,7 @@ const size_t DEFAULT_LOG_FILE_SIZE = 50000;
 const size_t DEFAULT_LOG_BUFFER_SIZE = 2 * 1024;
 
 // These are just some valid but not necessarily reasonable limits (for an embedded device) to keep
-// the parameters bounded
+// the configuration parameters bounded
 const size_t MAX_LOG_FILE_SIZE = 10 * 1024 * 1024;
 const size_t MAX_LOG_BUFFER_SIZE = 1 * 1024 * 1024;
 
@@ -271,20 +271,6 @@ public:
         return 0;
     }
 
-    int clear() {
-        int result = 0;
-        int r = file_.close();
-        if (r < 0) {
-            result = r;
-        }
-        r = removeLogFiles();
-        if (r < 0 && result >= 0) {
-            result = r;
-        }
-        rotated_ = false;
-        return result;
-    }
-
     int openForRead(std::unique_ptr<InputStream>& stream) {
         if (file_.isOpen()) {
             CHECK(file_.sync());
@@ -300,8 +286,9 @@ public:
         return 0;
     }
 
-    size_t maxSize() const {
-        return maxSize_;
+    void reset() {
+        file_.close();
+        rotated_ = false;
     }
 
 private:
@@ -311,7 +298,7 @@ private:
 };
 
 struct LogFilter {
-    char category[16];
+    char category[20];
     int level;
 
     LogFilter() :
@@ -329,7 +316,7 @@ struct __attribute__((packed)) LogFileConfig {
     uint32_t bufferSize;
 };
 
-const size_t LOG_FILE_CONFIG_SIZE_V1 = 28;
+const size_t LOG_FILE_CONFIG_SIZE_V1 = 32;
 static_assert(sizeof(LogFileConfig) == LOG_FILE_CONFIG_SIZE_V1);
 
 class LogFile {
@@ -433,8 +420,10 @@ public:
             bytesDropped_ = 0;
         }
         if (log_) {
-            CHECK(log_->clear());
+            CHECK(log_->close());
+            log_->reset();
         }
+        CHECK(removeLogFiles());
         return 0;
     }
 
@@ -482,6 +471,20 @@ public:
             bytesRead += n;
         }
         return bytesRead;
+    }
+
+    int getSize() {
+        fs::FsLock lock;
+
+        if (!log_) {
+            return SYSTEM_ERROR_INVALID_STATE;
+        }
+        CHECK(flushBuffer());
+
+        std::unique_ptr<InputStream> in;
+        CHECK(log_->openForRead(in));
+        size_t size = CHECK(in->availForRead());
+        return size;
     }
 
     bool isEnabledForLevel(int level, const char* category) const {
@@ -628,7 +631,8 @@ int loadLogFileConfig(LogFileConfig& config) {
     if (n < LOG_FILE_CONFIG_SIZE_V1 ||
             conf.version < 1 ||
             conf.maxSize == 0 || conf.maxSize > MAX_LOG_FILE_SIZE ||
-            conf.bufferSize == 0 || conf.bufferSize > MAX_LOG_BUFFER_SIZE) {
+            conf.bufferSize == 0 || conf.bufferSize > MAX_LOG_BUFFER_SIZE ||
+            (conf.version == 1 && conf.reserved != 0)) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     // Make sure all strings are null-terminated
@@ -790,7 +794,7 @@ int system_enable_log_file(int flags, const system_log_file_options* opts) {
         if (opts->category) {
             strlcpy(newConfig.category, opts->category, sizeof(newConfig.category));
         }
-        if (opts->level > LOG_LEVEL_ALL /* 1 */) {
+        if (opts->level > 0) {
             newConfig.level = std::min<int>(opts->level, LOG_LEVEL_NONE /* 70 */);
         }
         if (opts->max_size > 0) {
@@ -801,8 +805,13 @@ int system_enable_log_file(int flags, const system_log_file_options* opts) {
         }
     }
 
+    if ((flags & SYSTEM_LOG_FILE_NO_PERSIST) && g_logFileConfig.version > 0) {
+        // Delete the configuration in case the logging was enabled persistently
+        clearLogFileConfigAndDctFlag();
+        g_logFileConfig = LogFileConfig();
+    }
     if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
-        if (!(flags & SYSTEM_LOG_FILE_UNTIL_RESET)) {
+        if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
             CHECK(saveLogFileConfig(newConfig));
             CHECK(writeLogFileDctFlag(true /* enabled */));
         }
@@ -818,11 +827,15 @@ void system_disable_log_file(int flags, void* reserved) {
     g_logFileEnabled.store(false, std::memory_order_relaxed);
 
     if (g_logFile) {
+        if (!(flags & SYSTEM_LOG_FILE_NO_CLEAR)) {
+            g_logFile->flush();
+        }
         g_logFile->destroy();
     }
-    removeLogFiles();
-
-    if (!(flags & SYSTEM_LOG_FILE_UNTIL_RESET)) {
+    if (!(flags & SYSTEM_LOG_FILE_NO_CLEAR)) {
+        removeLogFiles();
+    }
+    if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
         clearLogFileConfigAndDctFlag();
     }
     g_logFileConfig = LogFileConfig();
@@ -850,10 +863,15 @@ int system_read_log_file(size_t size, system_read_log_file_callback callback, vo
     if (!g_logFile) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    size_t n = CHECK(g_logFile->readLog(size, [=](const char* data, size_t size) {
-        return callback(data, size, arg);
-    }));
-    return n;
+    size_t count = 0;
+    if (callback) {
+        count = CHECK(g_logFile->readLog(size, [=](const char* data, size_t size) {
+            return callback(data, size, arg);
+        }));
+    } else {
+        count = CHECK(g_logFile->getSize());
+    }
+    return count;
 }
 
 int system_clear_log_file(void* reserved) {
@@ -861,6 +879,8 @@ int system_clear_log_file(void* reserved) {
 
     if (g_logFile) {
         CHECK(g_logFile->clear());
+    } else {
+        CHECK(removeLogFiles());
     }
     return 0;
 }
