@@ -8,7 +8,23 @@
 #if HAL_PLATFORM_LOG_FILE
 
 /**
- * Log file configuration.
+ * Flags for `system_enable_log_file` and `system_disable_log_file`.
+ */
+typedef enum {
+    /**
+     * If set, enables or disables logging for the duration of the current session, i.e. until
+     * the device is reset.
+     *
+     * By default, when the flag is not set, the logging configuration is stored persistently and
+     * applied automatically when the system is starting up. This allows capturing the early boot
+     * messages as well as the messages logged while the device is in safe mode, which otherwise
+     * are not visible to the application.
+     */
+    SYSTEM_LOG_FILE_UNTIL_RESET = 0x01
+} system_log_file_flag;
+
+/**
+ * Log file options.
  */
 typedef struct {
     /**
@@ -47,7 +63,7 @@ typedef struct {
      * If 0, messages at any level will be logged.
      */
     int level;
-} system_log_file_config;
+} system_log_file_options;
 
 /**
  * Callback for `system_read_log_file`.
@@ -70,22 +86,19 @@ extern "C" {
 /**
  * Enable logging to a file.
  *
- * The configuration is stored persistently so that the log is enabled automatically when the device
- * boots next time.
- *
- * @param config Log file configuration. If `NULL`, the default configuration is used.
+ * @param flags Flags defined by `system_log_file_flag`.
+ * @param opts Log file options. If `NULL`, the defaults are used (see `system_log_file_options`).
  * @return 0 on success, otherwise an error code defined by `system_error_t`.
  */
-int system_enable_log_file(const system_log_file_config* config);
+int system_enable_log_file(int flags, const system_log_file_options* opts);
 
 /**
  * Disable logging to a file.
  *
- * The log will not be enabled again when the device boots next time.
- *
+ * @param flags Flags defined by `system_log_file_flag`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  */
-void system_disable_log_file(void* reserved);
+void system_disable_log_file(int flags, void* reserved);
 
 /**
  * Print the contents of the log file.

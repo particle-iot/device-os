@@ -38,8 +38,12 @@ const auto LOG_FILE2 = "/sys/log.2";
 const auto LOG_CONFIG_FILE = "/sys/log_config";
 
 const size_t DEFAULT_LOG_FILE_SIZE = 50000;
-
 const size_t DEFAULT_LOG_BUFFER_SIZE = 2 * 1024;
+
+// These are just some valid but not necessarily reasonable limits (for an embedded device) to keep
+// the parameters bounded
+const size_t MAX_LOG_FILE_SIZE = 10 * 1024 * 1024;
+const size_t MAX_LOG_BUFFER_SIZE = 1 * 1024 * 1024;
 
 int removeLogFiles() {
     int result = 0;
@@ -621,8 +625,10 @@ int loadLogFileConfig(LogFileConfig& config) {
 
     LogFileConfig conf = {};
     size_t n = CHECK(file.read(&conf, LOG_FILE_CONFIG_SIZE_V1));
-    file.close();
-    if (n < LOG_FILE_CONFIG_SIZE_V1 || conf.version < 1 || conf.maxSize == 0 || conf.bufferSize == 0) {
+    if (n < LOG_FILE_CONFIG_SIZE_V1 ||
+            conf.version < 1 ||
+            conf.maxSize == 0 || conf.maxSize > MAX_LOG_FILE_SIZE ||
+            conf.bufferSize == 0 || conf.bufferSize > MAX_LOG_BUFFER_SIZE) {
         return SYSTEM_ERROR_BAD_DATA;
     }
     // Make sure all strings are null-terminated
@@ -659,6 +665,19 @@ int writeLogFileDctFlag(bool enabled) {
         return SYSTEM_ERROR_IO;
     }
     return 0;
+}
+
+int clearLogFileConfigAndDctFlag() {
+    int result = 0;
+    int r = writeLogFileDctFlag(false /* enabled */);
+    if (r < 0) {
+        result = r;
+    }
+    r = rmrf(LOG_CONFIG_FILE);
+    if (r < 0 && result >= 0) {
+        result = r;
+    }
+    return result;
 }
 
 } // namespace
@@ -758,35 +777,42 @@ bool isLogFileEnabled() {
 using namespace particle;
 using namespace particle::system;
 
-int system_enable_log_file(const system_log_file_config* config) {
+int system_enable_log_file(int flags, const system_log_file_options* opts) {
     fs::FsLock lock;
 
     LogFileConfig newConfig = {};
     newConfig.version = 1;
+    newConfig.level = LOG_LEVEL_ALL;
+    newConfig.maxSize = DEFAULT_LOG_FILE_SIZE;
+    newConfig.bufferSize = DEFAULT_LOG_BUFFER_SIZE;
 
-    if (config) {
-        if (config->category) {
-            strlcpy(newConfig.category, config->category, sizeof(newConfig.category));
+    if (opts) {
+        if (opts->category) {
+            strlcpy(newConfig.category, opts->category, sizeof(newConfig.category));
         }
-        newConfig.level = (config->level > 0) ? config->level : LOG_LEVEL_ALL;
-        newConfig.maxSize = config->max_size ? config->max_size : DEFAULT_LOG_FILE_SIZE;
-        newConfig.bufferSize = (config->buffer_size > 0) ? config->buffer_size : DEFAULT_LOG_BUFFER_SIZE;
-    } else {
-        newConfig.level = LOG_LEVEL_ALL;
-        newConfig.maxSize = DEFAULT_LOG_FILE_SIZE;
-        newConfig.bufferSize = DEFAULT_LOG_BUFFER_SIZE;
+        if (opts->level > LOG_LEVEL_ALL /* 1 */) {
+            newConfig.level = std::min<int>(opts->level, LOG_LEVEL_NONE /* 70 */);
+        }
+        if (opts->max_size > 0) {
+            newConfig.maxSize = std::min(opts->max_size, MAX_LOG_FILE_SIZE);
+        }
+        if (opts->buffer_size > 0) {
+            newConfig.bufferSize = std::min(opts->buffer_size, MAX_LOG_BUFFER_SIZE);
+        }
     }
 
     if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
-        CHECK(saveLogFileConfig(newConfig));
-        CHECK(writeLogFileDctFlag(true /* enabled */));
+        if (!(flags & SYSTEM_LOG_FILE_UNTIL_RESET)) {
+            CHECK(saveLogFileConfig(newConfig));
+            CHECK(writeLogFileDctFlag(true /* enabled */));
+        }
         CHECK(enableLogFile(newConfig));
         g_logFileConfig = newConfig;
     }
     return 0;
 }
 
-void system_disable_log_file(void* reserved) {
+void system_disable_log_file(int flags, void* reserved) {
     fs::FsLock lock;
 
     g_logFileEnabled.store(false, std::memory_order_relaxed);
@@ -796,8 +822,9 @@ void system_disable_log_file(void* reserved) {
     }
     removeLogFiles();
 
-    writeLogFileDctFlag(false /* enabled */);
-    rmrf(LOG_CONFIG_FILE);
+    if (!(flags & SYSTEM_LOG_FILE_UNTIL_RESET)) {
+        clearLogFileConfigAndDctFlag();
+    }
     g_logFileConfig = LogFileConfig();
 }
 
