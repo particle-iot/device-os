@@ -40,6 +40,7 @@ LOG_SOURCE_CATEGORY("system.sleep");
 #endif // HAL_PLATFORM_CELLULAR
 #include "check.h"
 #include "system_network_manager.h"
+#include "log_file.h"
 
 using namespace particle;
 using namespace particle::system;
@@ -190,6 +191,10 @@ int system_sleep_ext_impl(const hal_sleep_config_t* config, hal_wakeup_source_ba
         ethernetStatus = system_sleep_network_suspend(NETWORK_INTERFACE_ETHERNET);
     // }
 #endif // HAL_PLATFORM_ETHERNET
+
+#if HAL_PLATFORM_LOG_FILE
+    flushLogFile();
+#endif
 
     // Let the sleep HAL layer to turn off the NCP interface if necessary.
 

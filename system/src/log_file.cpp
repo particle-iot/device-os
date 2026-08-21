@@ -625,9 +625,15 @@ int loadLogFileConfig(LogFileConfig& config) {
 
     LogFileConfig conf;
     ::strlcpy(conf.filter.category, pbConf.category, sizeof(conf.filter.category));
-    conf.filter.level = pbConf.level;
-    conf.maxSize = pbConf.max_size;
-    conf.bufferSize = pbConf.buffer_size;
+    if (pbConf.level > 0) {
+        conf.filter.level = pbConf.level;
+    }
+    if (pbConf.max_size > 0) {
+        conf.maxSize = pbConf.max_size;
+    }
+    if (pbConf.buffer_size > 0) {
+        conf.bufferSize = pbConf.buffer_size;
+    }
 
     config = conf;
     return 0;
@@ -789,12 +795,13 @@ int system_enable_log_file(int flags, const system_log_file_options* opts) {
 
     if (!g_logFileEnabled.load(std::memory_order_relaxed) ||
             std::memcmp(&newConf, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
+        CHECK(enableLogFile(newConf));
+        g_logFileConfig = newConf;
+
         if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
             CHECK(saveLogFileConfig(newConf));
             CHECK(writeLogFileDctFlag(true /* enabled */));
         }
-        CHECK(enableLogFile(newConf));
-        g_logFileConfig = newConf;
     }
     return 0;
 }

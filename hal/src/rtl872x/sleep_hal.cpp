@@ -53,8 +53,6 @@ extern "C" {
 #include "delay_hal.h"
 #include "exrtc_hal_internal.h"
 
-#include "../../../system/src/log_file.h" // FIXME
-
 using namespace particle;
 
 extern uintptr_t platform_psram_start;
@@ -160,9 +158,6 @@ public:
         memcpy(&alignedConfig_.config, config, sizeof(hal_sleep_config_t));
 
         if (config->mode == HAL_SLEEP_MODE_HIBERNATE || config->mode == HAL_SLEEP_MODE_POWER_OFF) {
-#if HAL_PLATFORM_LOG_FILE
-            system::closeLogFile();
-#endif
             /* Backup (sic!) backup RAM into flash */
             hal_backup_ram_sync(nullptr);
         }

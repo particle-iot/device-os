@@ -60,7 +60,7 @@ test(03_level_filter) {
 }
 
 test(04_category_filter) {
-    assertEqual(System.enableLogFile(LogFileOptions().category("app")), 0);
+    assertEqual(System.enableLogFile(LogFileOptions().category("app.foo")), 0);
     assertEqual(System.clearLogFile(), 0);
     Log.info("message_A"); // Filtered out
     Logger subLog("app.foo.bar");
