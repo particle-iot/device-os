@@ -420,7 +420,6 @@ public:
             bytesDropped_ = 0;
         }
         if (log_) {
-            CHECK(log_->close());
             log_->reset();
         }
         CHECK(removeLogFiles());
@@ -671,19 +670,6 @@ int writeLogFileDctFlag(bool enabled) {
     return 0;
 }
 
-int clearLogFileConfigAndDctFlag() {
-    int result = 0;
-    int r = writeLogFileDctFlag(false /* enabled */);
-    if (r < 0) {
-        result = r;
-    }
-    r = rmrf(LOG_CONFIG_FILE);
-    if (r < 0 && result >= 0) {
-        result = r;
-    }
-    return result;
-}
-
 } // namespace
 
 // Called by the system thread
@@ -805,11 +791,6 @@ int system_enable_log_file(int flags, const system_log_file_options* opts) {
         }
     }
 
-    if ((flags & SYSTEM_LOG_FILE_NO_PERSIST) && g_logFileConfig.version > 0) {
-        // Delete the configuration in case the logging was enabled persistently
-        clearLogFileConfigAndDctFlag();
-        g_logFileConfig = LogFileConfig();
-    }
     if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
         if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
             CHECK(saveLogFileConfig(newConfig));
@@ -827,7 +808,7 @@ void system_disable_log_file(int flags, void* reserved) {
     g_logFileEnabled.store(false, std::memory_order_relaxed);
 
     if (g_logFile) {
-        if (!(flags & SYSTEM_LOG_FILE_NO_CLEAR)) {
+        if (flags & SYSTEM_LOG_FILE_NO_CLEAR) {
             g_logFile->flush();
         }
         g_logFile->destroy();
@@ -836,7 +817,8 @@ void system_disable_log_file(int flags, void* reserved) {
         removeLogFiles();
     }
     if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
-        clearLogFileConfigAndDctFlag();
+        writeLogFileDctFlag(false /* enabled */);
+        rmrf(LOG_CONFIG_FILE);
     }
     g_logFileConfig = LogFileConfig();
 }
@@ -870,6 +852,9 @@ int system_read_log_file(size_t size, system_read_log_file_callback callback, vo
         }));
     } else {
         count = CHECK(g_logFile->getSize());
+        if (size > 0 && size < count) {
+            count = size;
+        }
     }
     return count;
 }

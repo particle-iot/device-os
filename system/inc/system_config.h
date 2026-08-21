@@ -13,7 +13,7 @@
 typedef enum {
     /**
      * If set, enables or disables logging for the duration of the current session, i.e. until
-     * the device is reset.
+     * the device is reset. The persistently stored configuration is not affected.
      *
      * By default, when the flag is not set, the logging configuration is stored persistently and
      * applied automatically when the system is starting up. This allows capturing the early boot
