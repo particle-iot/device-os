@@ -491,11 +491,6 @@ void app_loop(bool threaded)
                 DECLARE_SYS_HEALTH(ENTERED_Setup);
                 if (system_mode() != SAFE_MODE) {
                     setup();
-#if HAL_PLATFORM_LOG_FILE
-                    // Note: the log keeps capturing the messages after setup() returns, it's only
-                    // flushed here so that the data logged during the boot is not lost
-                    system::flushLogFile();
-#endif
                 }
                 SPARK_WIRING_APPLICATION = 1;
                 // In the automatic mode, application DESCRIBE and subscriptions are sent when
