@@ -796,12 +796,12 @@ int system_enable_log_file(int flags, const system_log_file_options* opts) {
     if (!g_logFileEnabled.load(std::memory_order_relaxed) ||
             std::memcmp(&newConf, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
         CHECK(enableLogFile(newConf));
-        g_logFileConfig = newConf;
 
         if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
             CHECK(saveLogFileConfig(newConf));
             CHECK(writeLogFileDctFlag(true /* enabled */));
         }
+        g_logFileConfig = newConf;
     }
     return 0;
 }

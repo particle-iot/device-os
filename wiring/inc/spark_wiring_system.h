@@ -38,6 +38,7 @@
 #include <chrono>
 #include <limits>
 #include <mutex>
+#include <functional>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
 #include "system_control.h"
