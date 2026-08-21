@@ -26,8 +26,12 @@
 #include <cstdio>
 #include <cstdint>
 
+#include "log_file_config.pb.h"
+
 // Set to a non-zero value to enable logging from ISRs
 #define LOG_FROM_ISR 0
+
+#define PB_INTERNAL(_name) particle_firmware_##_name
 
 namespace particle::system {
 
@@ -39,11 +43,6 @@ const auto LOG_CONFIG_FILE = "/sys/log_config";
 
 const size_t DEFAULT_LOG_FILE_SIZE = 50000;
 const size_t DEFAULT_LOG_BUFFER_SIZE = 2 * 1024;
-
-// These are just some valid but not necessarily reasonable limits (for an embedded device) to keep
-// the configuration parameters bounded
-const size_t MAX_LOG_FILE_SIZE = 10 * 1024 * 1024;
-const size_t MAX_LOG_BUFFER_SIZE = 1 * 1024 * 1024;
 
 int removeLogFiles() {
     int result = 0;
@@ -298,26 +297,27 @@ private:
 };
 
 struct LogFilter {
-    char category[20];
+    char category[32];
     int level;
 
     LogFilter() :
             category(),
-            level(0) {
+            level(LOG_LEVEL_ALL) {
     }
 };
 
-struct __attribute__((packed)) LogFileConfig {
-    uint8_t version;
-    uint8_t level;
-    uint16_t reserved;
-    char category[sizeof(LogFilter::category)];
-    uint32_t maxSize;
-    uint32_t bufferSize;
-};
+struct LogFileConfig {
+    LogFilter filter;
+    size_t maxSize;
+    size_t bufferSize;
+    int flags;
 
-const size_t LOG_FILE_CONFIG_SIZE_V1 = 32;
-static_assert(sizeof(LogFileConfig) == LOG_FILE_CONFIG_SIZE_V1);
+    LogFileConfig() :
+            maxSize(DEFAULT_LOG_FILE_SIZE),
+            bufferSize(DEFAULT_LOG_BUFFER_SIZE),
+            flags(0) {
+    }
+};
 
 class LogFile {
 public:
@@ -344,14 +344,9 @@ public:
         }
         CHECK(log->init());
 
-        LogFilter filter;
-        static_assert(sizeof(filter.category) == sizeof(conf.category));
-        std::memcpy(filter.category, conf.category, sizeof(conf.category));
-        filter.level = conf.level;
-
         ATOMIC_BLOCK() {
             buf_.init(bufMem.get(), conf.bufferSize);
-            filter_ = filter;
+            filter_ = conf.filter;
             bytesDropped_ = 0;
         }
         bufMem_ = std::move(bufMem);
@@ -605,7 +600,7 @@ private:
 // race between the logging functions and the log's deinitialization
 std::unique_ptr<LogFile> g_logFile;
 std::atomic<bool> g_logFileEnabled;
-LogFileConfig g_logFileConfig = {};
+LogFileConfig g_logFileConfig;
 
 // Note: The caller must acquire the filesystem lock before calling this function
 int enableLogFile(const LogFileConfig& conf) {
@@ -625,27 +620,31 @@ int loadLogFileConfig(LogFileConfig& config) {
     fs::File file;
     CHECK(file.open(LOG_CONFIG_FILE, LFS_O_RDONLY));
 
-    LogFileConfig conf = {};
-    size_t n = CHECK(file.read(&conf, LOG_FILE_CONFIG_SIZE_V1));
-    if (n < LOG_FILE_CONFIG_SIZE_V1 ||
-            conf.version < 1 ||
-            conf.maxSize == 0 || conf.maxSize > MAX_LOG_FILE_SIZE ||
-            conf.bufferSize == 0 || conf.bufferSize > MAX_LOG_BUFFER_SIZE ||
-            (conf.version == 1 && conf.reserved != 0)) {
-        return SYSTEM_ERROR_BAD_DATA;
-    }
-    // Make sure all strings are null-terminated
-    conf.category[sizeof(conf.category) - 1] = '\0';
+    PB_INTERNAL(LogFileConfig) pbConf = {};
+    CHECK(decodeProtobufFromFile(file.handle(), &PB_INTERNAL(LogFileConfig_msg), &pbConf));
+
+    LogFileConfig conf;
+    ::strlcpy(conf.filter.category, pbConf.category, sizeof(conf.filter.category));
+    conf.filter.level = pbConf.level;
+    conf.maxSize = pbConf.max_size;
+    conf.bufferSize = pbConf.buffer_size;
 
     config = conf;
     return 0;
 }
 
-int saveLogFileConfig(const LogFileConfig& config) {
+int saveLogFileConfig(const LogFileConfig& conf) {
     fs::File file;
     char tempPath[fs::TEMP_PATH_BUF_SIZE] = {};
     CHECK(createTempFile(file, tempPath, sizeof(tempPath), LFS_O_WRONLY));
-    CHECK(file.write(&config, sizeof(config)));
+
+    PB_INTERNAL(LogFileConfig) pbConf = {};
+    ::strlcpy(pbConf.category, conf.filter.category, sizeof(pbConf.category));
+    pbConf.level = conf.filter.level;
+    pbConf.max_size = conf.maxSize;
+    pbConf.buffer_size = conf.bufferSize;
+
+    CHECK(encodeProtobufToFile(file.handle(), &PB_INTERNAL(LogFileConfig_msg), &pbConf));
     CHECK(file.close());
     CHECK(fs::rename(tempPath, LOG_CONFIG_FILE));
     return 0;
@@ -684,7 +683,7 @@ int initLogFile() {
         return 0;
     }
 
-    LogFileConfig conf = {};
+    LogFileConfig conf;
     CHECK(loadLogFileConfig(conf));
     CHECK(enableLogFile(conf));
     g_logFileConfig = conf;
@@ -770,34 +769,32 @@ using namespace particle::system;
 int system_enable_log_file(int flags, const system_log_file_options* opts) {
     fs::FsLock lock;
 
-    LogFileConfig newConfig = {};
-    newConfig.version = 1;
-    newConfig.level = LOG_LEVEL_ALL;
-    newConfig.maxSize = DEFAULT_LOG_FILE_SIZE;
-    newConfig.bufferSize = DEFAULT_LOG_BUFFER_SIZE;
+    LogFileConfig newConf;
+    newConf.flags = flags;
 
     if (opts) {
         if (opts->category) {
-            strlcpy(newConfig.category, opts->category, sizeof(newConfig.category));
+            ::strlcpy(newConf.filter.category, opts->category, sizeof(newConf.filter.category));
         }
         if (opts->level > 0) {
-            newConfig.level = std::min<int>(opts->level, LOG_LEVEL_NONE /* 70 */);
+            newConf.filter.level = std::min<int>(opts->level, LOG_LEVEL_NONE /* 70 */);
         }
         if (opts->max_size > 0) {
-            newConfig.maxSize = std::min(opts->max_size, MAX_LOG_FILE_SIZE);
+            newConf.maxSize = opts->max_size;
         }
         if (opts->buffer_size > 0) {
-            newConfig.bufferSize = std::min(opts->buffer_size, MAX_LOG_BUFFER_SIZE);
+            newConf.bufferSize = opts->buffer_size;
         }
     }
 
-    if (std::memcmp(&newConfig, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
+    if (!g_logFileEnabled.load(std::memory_order_relaxed) ||
+            std::memcmp(&newConf, &g_logFileConfig, sizeof(LogFileConfig)) != 0) {
         if (!(flags & SYSTEM_LOG_FILE_NO_PERSIST)) {
-            CHECK(saveLogFileConfig(newConfig));
+            CHECK(saveLogFileConfig(newConf));
             CHECK(writeLogFileDctFlag(true /* enabled */));
         }
-        CHECK(enableLogFile(newConfig));
-        g_logFileConfig = newConfig;
+        CHECK(enableLogFile(newConf));
+        g_logFileConfig = newConf;
     }
     return 0;
 }

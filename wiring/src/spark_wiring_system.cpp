@@ -282,6 +282,19 @@ int SystemClass::printLogFile(size_t size, LogLevel level, const char* category)
     return system_print_log_file(size, level, category, nullptr /* reserved */);
 }
 
+int SystemClass::readLogFile(size_t size, std::function<int(const char*, size_t)> fn) {
+    using Fn = decltype(fn);
+    std::unique_ptr<Fn> fnPtr(new(std::nothrow) Fn(std::move(fn)));
+    if (!fnPtr) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    int r = system_read_log_file(size, [](const char* data, size_t size, void* arg) {
+        auto fnPtr = static_cast<Fn*>(arg);
+        return (*fnPtr)(data, size);
+    }, fnPtr.get(), nullptr /* reserved */);
+    return r;
+}
+
 int SystemClass::clearLogFile() {
     return system_clear_log_file(nullptr /* reserved */);
 }

@@ -38,6 +38,7 @@
 #include <chrono>
 #include <limits>
 #include <mutex>
+#include <utility>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
 #include "system_control.h"
@@ -1272,6 +1273,12 @@ public:
      *         `Error::Type`.
      */
     static int printLogFile(size_t size, LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY());
+
+    static int readLogFile(std::function<int(const char*, size_t)> fn) {
+        return readLogFile(0 /* size */, std::move(fn));
+    }
+
+    static int readLogFile(size_t size, std::function<int(const char*, size_t)> fn);
 
     /**
      * Delete the contents of the log file.

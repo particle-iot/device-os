@@ -9,13 +9,12 @@ namespace {
 
 String readLog() {
     String s;
-    int r = system_read_log_file(0 /* size */, [](const char* data, size_t size, void* arg) -> int {
-        auto s = static_cast<String*>(arg);
-        if (!s->concat(data, size)) {
+    int r = System.readLogFile([&](const char* data, size_t size) -> int {
+        if (!s.concat(data, size)) {
             return Error::NO_MEMORY;
         }
         return 0;
-    }, &s, nullptr /* reserved */);
+    });
     if (r < 0) {
         return String();
     }
