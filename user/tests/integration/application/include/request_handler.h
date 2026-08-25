@@ -36,8 +36,6 @@ public:
     // Completes deferred requests; called from the application loop
     void loop();
 
-    static RequestHandler* instance();
-
 private:
     class Request;
 

@@ -283,7 +283,7 @@ test('USB_09_InterfaceLayout', async function() {
     const byNumber = new Map();
     for (const alts of conf.interfaces) {
         for (const iface of alts) {
-            if (iface.alternateSetting === 0) {
+            if (iface.bAlternateSetting === 0) {
                 byNumber.set(iface.bInterfaceNumber, iface);
             }
         }

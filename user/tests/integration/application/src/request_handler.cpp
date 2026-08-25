@@ -352,11 +352,11 @@ int RequestHandler::reset(Request* req) {
 
 int RequestHandler::echo(Request* req) {
     // Used by the USB tests to exercise the application custom request path
+    const int delay = req->get("t").toInt(); // Optional completion delay, ms
     const auto data = req->get("d").toString();
     CHECK(req->reply([&data](JSONWriter& w) {
         w.value(data.data(), data.size());
     }));
-    const int delay = req->get("t").toInt(); // Optional completion delay, ms
     if (delay > 0) {
         // Complete the request from loop() so that the host observes it as
         // PENDING across multiple CHECK polls
@@ -380,11 +380,6 @@ void RequestHandler::loop() {
             ++i;
         }
     }
-}
-
-RequestHandler* RequestHandler::instance() {
-    static RequestHandler handler;
-    return &handler;
 }
 
 } // namespace particle

@@ -76,7 +76,7 @@ test(USB_16_DeviceEndBeginStress) {
         delay(1000);
         Serial.begin();
         assertTrue(Serial.isEnabled());
-        delay(1000);
+        delay(5000);
     }
 }
 

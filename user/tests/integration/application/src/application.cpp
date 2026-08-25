@@ -35,7 +35,7 @@ void testAppSetup() {
 
 void testAppLoop() {
     TestRunner::instance()->loop();
-    RequestHandler::instance()->loop();
+    TestSuite::instance()->requestHandler()->loop();
 }
 
 } // namespace particle
