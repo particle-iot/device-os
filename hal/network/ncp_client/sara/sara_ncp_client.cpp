@@ -134,6 +134,15 @@ const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t UBLOX_CIMI_TIMEOUT = 10 * 1000; // Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times
+
+// AT wake budget after a parser error on R510.
+//
+// R510 enables UPSV=1 Low Power mode.
+// With UPSV=1 the module sleeps its UART after ~9.2s of idle and needs a wake character, consuming
+// the first one, so a command issued cold after an idle period goes unanswered. waitReady()'s
+// default 2s budget allows only 2-3 attempts. Measured recoveries run to ~7.6s, so the modem was
+// being hard reset while it was alive and about to answer.
+const system_tick_t UBLOX_R510_UPSV_WAKE_TIMEOUT = 15 * 1000;
 const system_tick_t UBLOX_UBANDMASK_TIMEOUT = 10 * 1000;
 
 const auto UBLOX_MUXER_T1 = 2530;
@@ -1014,7 +1023,10 @@ int SaraNcpClient::waitReady(bool powerOn) {
         if (stream) {
             skipAll(stream, 1000);
             parser_.reset();
-            ready_ = waitAtResponse(2000) == 0;
+            // See UBLOX_R510_UPSV_WAKE_TIMEOUT
+            const system_tick_t atWait = (ncpId() == PLATFORM_NCP_SARA_R510)
+                    ? UBLOX_R510_UPSV_WAKE_TIMEOUT : 2000;
+            ready_ = waitAtResponse(atWait) == 0;
             if (muxer_.isRunning()) {
                 modemState = ModemState::MuxerAtChannel;
             } else {
@@ -1880,6 +1892,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get());
     parser_.reset();
+    // NOTE: Do NOT widen this for the R510 UPSV=1 wake the way waitReady()'s parser-error branch does
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
         return SYSTEM_ERROR_NONE;
