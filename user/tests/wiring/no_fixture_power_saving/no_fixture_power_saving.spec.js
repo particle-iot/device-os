@@ -11,6 +11,18 @@ let deviceId = null;
 let limits = null;
 let skipTest = false;
 let returnVal = 12345;
+let wakeCall = null;
+let sleepingDeferred = null;
+
+// Resolved from the 'mailbox' handler when the device says it is about to sleep. The runner emits
+// that event in real time from inside waitTest()'s polling loop, so it arrives while the device
+// test is still running.
+function waitForSleeping() {
+    let resolve;
+    const promise = new Promise((res) => { resolve = res; });
+    sleepingDeferred = { resolve };
+    return promise;
+}
 
 async function delayMs(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -49,6 +61,14 @@ before(function() {
         if (msg.d === "skip_test") {
             skipTest = true;
             return;
+        }
+        if (msg.d === "sleeping" && sleepingDeferred) {
+            sleepingDeferred.resolve();
+            sleepingDeferred = null;
+            return;
+        }
+        if (msg.d) {
+            console.log(msg.d); // device-side findings, e.g. the low power result
         }
     });
 });
@@ -104,7 +124,19 @@ test('POWER_SAVING_05_check_current_thread', async function () {
         return;
     }
 
-    // See power_saving_mode.cpp
+    // Arm the wake here, deliberately not awaited. The runner runs each device test inside an
+    // awaited beforeEach hook, so nothing in test 06_1's own body can run while the device sleeps.
+    // The call has to already be in flight before that hook starts. Gating on the device's own
+    // event rather than a fixed offset keeps this correct if the pre-sleep work changes length.
+    const sleeping = waitForSleeping();
+    wakeCall = (async () => {
+        await sleeping;
+        // console.log('device is asleep, waiting 30s before waking it');
+        await delayMs(30000);
+        // console.log('waking up device with a function call');
+        return api.callFunction({ deviceId, name: 'fnlp1', argument: 'argument string low power sleep', auth });
+    })();
+    wakeCall.catch(() => {}); // keep node quiet until 06_1 awaits it
 });
 
 test('POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mode_wake_by_network_1', async function() {
@@ -112,23 +144,10 @@ test('POWER_SAVING_06_system_sleep_with_configuration_object_ultra_low_power_mod
         return;
     }
 
-    // See power_saving_mode.cpp
-
-    // console.log('waiting for device to enter low power');
-    await delayMs(30000);
-    // console.log('waking up device with a function call');
-    let lastError;
-    try {
-        let resp = await api.callFunction({ deviceId, name: 'fnlp1', argument: 'argument string low power sleep', auth });
-        // console.log(resp.body.return_value + ' == ' + (returnVal+1));
-        expect(resp.body.return_value).to.equal(returnVal + 1);
-    } catch (e) {
-        lastError = e;
-    }
-    if (lastError) {
-        // console.log(lastError);
-        throw lastError;
-    }
+    // Armed in test 05's body; by now it has already woken the device.
+    const resp = await wakeCall;
+    // console.log(resp.body.return_value + ' == ' + (returnVal + 1));
+    expect(resp.body.return_value).to.equal(returnVal + 1);
 });
 
 
