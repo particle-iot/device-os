@@ -97,6 +97,13 @@ private:
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
+    enum class ModemPowerReason {
+        Unknown = 0,
+        ModemOff = 1,
+        AtUnresponsive = 2,
+        RegTimeout = 3
+    };
+
     enum class ModemState {
         Unknown = 0,
         MuxerAtChannel = 1,
@@ -123,12 +130,16 @@ private:
     int firmwareInstallRespCodeR510_ = 0;
     int lastFirmwareInstallRespCodeR510_ = 0;
     int waitReadyRetries_ = 0;
-    bool sleepNoPPPWrite_ = false;
+    // Set by urcs(false) when going to sleep: the AT muxer channel is suspended and the muxer
+    // keepalive is off, so neither PPP writes nor AT probes can expect anything back.
+    bool sleepUrcsDisabled_ = false;
     bool ehsExtendedTiming_ = false;
     system_tick_t lastWindow_ = 0;
     size_t bytesInWindow_ = 0;
     bool cgattWorkaroundApplied_ = false;
     bool configuredPlmn_ = false;
+    system_tick_t atProbeTime_ = 0;
+    unsigned atProbeFailStreak_ = 0;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -160,6 +171,8 @@ private:
     int checkRunningImsi();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
+    bool checkAtWhileConnected();
+    int configModemPowerState(ModemPowerReason reason);
     int checkNetConfForImsi();
 
     int modemInit() const;

@@ -134,6 +134,15 @@ const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
 const system_tick_t UBLOX_COPS_TIMEOUT = 5 * 60 * 1000;
 const system_tick_t UBLOX_CFUN_TIMEOUT = 3 * 60 * 1000;
 const system_tick_t UBLOX_CIMI_TIMEOUT = 10 * 1000; // Should be immediate, but have observed 3 seconds occassionally on u-blox and rarely longer times
+
+// AT wake budget after a parser error on R510.
+//
+// R510 enables UPSV=1 Low Power mode.
+// With UPSV=1 the module sleeps its UART after ~9.2s of idle and needs a wake character, consuming
+// the first one, so a command issued cold after an idle period goes unanswered. waitReady()'s
+// default 2s budget allows only 2-3 attempts. Measured recoveries run to ~7.6s, so the modem was
+// being hard reset while it was alive and about to answer.
+const system_tick_t UBLOX_R510_UPSV_WAKE_TIMEOUT = 15 * 1000;
 const system_tick_t UBLOX_UBANDMASK_TIMEOUT = 10 * 1000;
 
 const auto UBLOX_MUXER_T1 = 2530;
@@ -155,6 +164,12 @@ const int CCID_MAX_RETRY_CNT = 2;
 const int UUFWINSTALL_COMPLETE = 128;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_TIMEOUT = 300000;
 const int UBLOX_WAIT_AT_RESPONSE_WHILE_UUFWINSTALL_PERIOD = 10000;
+
+// AT probe: 3s timeout every 35s, declared on the 4th consecutive failure, so ~105s.
+// Just above the 90s default command timeout, in case a command uses a shorter one.
+const auto AT_PROBE_INTERVAL = 35000;
+const auto AT_PROBE_TIMEOUT = 3000;
+const auto AT_PROBE_MAX_INTERVALS = 3u;
 
 const unsigned CHECK_SIM_CARD_INTERVAL = 1000;
 const unsigned CHECK_SIM_CARD_ATTEMPTS = 10;
@@ -210,7 +225,7 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     firmwareInstallRespCodeR510_ = -1;
     lastFirmwareInstallRespCodeR510_ = -1;
     waitReadyRetries_ = 0;
-    sleepNoPPPWrite_ = false;
+    sleepUrcsDisabled_ = false;
     ehsExtendedTiming_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
@@ -406,35 +421,7 @@ int SaraNcpClient::off() {
     if (ncpState_ == NcpState::DISABLED) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // Try using AT command to turn off the modem first.
-    int r = modemSoftPowerOff();
-
-    // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
-    serial_->enabled(false);
-    muxer_.stop();
-    serial_->enabled(true);
-
-    // Disable voltage translator
-    modemSetUartState(false);
-
-    if (!r) {
-        LOG(TRACE, "Soft power off success");
-        // WARN: We assume that the modem can turn off itself reliably.
-    } else {
-        // Power down using hardware
-        if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to turn off");
-        }
-        // FIXME: There is power leakage still if powering off the modem failed.
-    }
-
-    // Disable the UART interface.
-    LOG(TRACE, "Deinit UART");
-    serial_->on(false);
-
-    ready_ = false;
-    ncpState(NcpState::OFF);
-    return SYSTEM_ERROR_NONE;
+    return configModemPowerState(ModemPowerReason::ModemOff);
 }
 
 int SaraNcpClient::enable() {
@@ -526,6 +513,8 @@ int SaraNcpClient::updateFirmware(InputStream* file, size_t size) {
 * for a certain amount of time defined by UBLOX_NCP_R4_WINDOW_SIZE_MS
 */
 int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    // The muxer channel is gone once we are OFF, but PPP keeps writing until it is brought down
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     // Just in case perform some state checks to ensure that LwIP PPP implementation
     // does not write into the data channel when it's not supposed do
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
@@ -549,7 +538,7 @@ int SaraNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
     }
 
     int err = gsm0710::GSM0710_ERROR_NONE;
-    if (!sleepNoPPPWrite_) {
+    if (!sleepUrcsDisabled_) {
         err = muxer_.writeChannel(UBLOX_NCP_PPP_CHANNEL, data, size);
     }
     if (err == gsm0710::GSM0710_ERROR_FLOW_CONTROL) {
@@ -1034,7 +1023,10 @@ int SaraNcpClient::waitReady(bool powerOn) {
         if (stream) {
             skipAll(stream, 1000);
             parser_.reset();
-            ready_ = waitAtResponse(2000) == 0;
+            // See UBLOX_R510_UPSV_WAKE_TIMEOUT
+            const system_tick_t atWait = (ncpId() == PLATFORM_NCP_SARA_R510)
+                    ? UBLOX_R510_UPSV_WAKE_TIMEOUT : 2000;
+            ready_ = waitAtResponse(atWait) == 0;
             if (muxer_.isRunning()) {
                 modemState = ModemState::MuxerAtChannel;
             } else {
@@ -1900,6 +1892,7 @@ int SaraNcpClient::checkRuntimeState(ModemState& state) {
     CHECK(initParser(serial_.get()));
     skipAll(serial_.get());
     parser_.reset();
+    // NOTE: Do NOT widen this for the R510 UPSV=1 wake the way waitReady()'s parser-error branch does
     if (!waitAtResponse(2000)) {
         state = ModemState::RuntimeBaudrate;
         return SYSTEM_ERROR_NONE;
@@ -2457,8 +2450,8 @@ int SaraNcpClient::getMtu() {
 
 int SaraNcpClient::urcs(bool enable) {
     const NcpClientLock lock(this);
+    sleepUrcsDisabled_ = !enable;
     if (enable) {
-        sleepNoPPPWrite_ = false;
         CHECK_TRUE(muxer_.resumeChannel(UBLOX_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
         if ((ncpId() != PLATFORM_NCP_SARA_R510) ||
                 ((ncpId() == PLATFORM_NCP_SARA_R510) &&
@@ -2471,8 +2464,6 @@ int SaraNcpClient::urcs(bool enable) {
             CHECK(waitAtResponse(5000, gsm0710::proto::DEFAULT_T2));
         }
     } else {
-        sleepNoPPPWrite_ = true;
-
         // R510 may be in low power mode, wake it up so we can get our muxer data channel suspend
         // echo, before we get into sleep and potentially prematurely wake by "network activity" (RX data)
         if (ncpId() == PLATFORM_NCP_SARA_R510) {
@@ -2511,6 +2502,10 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     }
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        // A streak from a previous connection must not carry into this one.
+        // atProbeTime_ is deliberately left stale so the first probe runs immediately.
+        atProbeFailStreak_ = 0;
+
         // Reset CGATT workaround flag
         cgattWorkaroundApplied_ = false;
 
@@ -2699,6 +2694,102 @@ int SaraNcpClient::checkRunningImsi() {
     return 0;
 }
 
+// Take the modem down. ModemOff is the ordinary off() sequence, the other reasons are faults where
+// the modem will not answer an AT command, so the sequence never issues one.
+// Caller must hold the client lock.
+int SaraNcpClient::configModemPowerState(ModemPowerReason reason) {
+    const bool recovering = (reason != ModemPowerReason::ModemOff && reason != ModemPowerReason::Unknown);
+    int r = SYSTEM_ERROR_NONE;
+
+    if (recovering) {
+        LOG(WARN, "Resetting the modem due to %s", reason == ModemPowerReason::AtUnresponsive ?
+                "an unresponsive AT interface" : "the network registration timeout");
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
+        // off() deliberately leaves this until the end.
+        ncpState(NcpState::OFF);
+    } else {
+        // Try using AT command to turn off the modem first.
+        r = modemSoftPowerOff();
+    }
+
+    // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
+    serial_->enabled(false);
+    muxer_.stop();
+    serial_->enabled(true);
+
+    if (recovering) {
+        // Not modemSoftPowerOff(), it would try to talk to a dead interface first
+        if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+            modemHardReset(true);
+        }
+    } else {
+        // Disable voltage translator
+        modemSetUartState(false);
+
+        if (!r) {
+            LOG(TRACE, "Soft power off success");
+            // WARN: We assume that the modem can turn off itself reliably.
+        } else {
+            // Power down using hardware
+            if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to turn off");
+            }
+            // FIXME: There is power leakage still if powering off the modem failed.
+        }
+
+        // Disable the UART interface.
+        LOG(TRACE, "Deinit UART");
+        serial_->on(false);
+
+        ready_ = false;
+        ncpState(NcpState::OFF);
+    }
+
+    return SYSTEM_ERROR_NONE;
+}
+
+// Periodic AT probe while CONNECTED. Returns false once the interface is declared unresponsive.
+//
+// Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
+// checkParser() -> waitReady() -> modemHardReset() instead of the reset sequence run by the caller.
+bool SaraNcpClient::checkAtWhileConnected() {
+    // Every other state has its own recovery path, probing during them only adds noise.
+    // An R510 firmware install stops answering AT for minutes by design, so it is not a fault.
+    // R510 runs UPSV=1: it drops to low power after ~9s of UART idle, and while CONNECTED the muxer
+    // keepalive is off and the LCP echo is stretched to 240s to set a reasonable balance between power
+    // usage and keep alive responsiveness. The probe is a second, independent wake source with no
+    // phase relationship to the echo, so it costs another ~9s awake per period no matter what
+    // interval we pick. Not worth it for a defect we have only ever seen on EG91, so skip R510 entirely.
+    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || firmwareUpdateR510_ ||
+            sleepUrcsDisabled_ || ncpId() == PLATFORM_NCP_SARA_R510) {
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+    if (millis() - atProbeTime_ < (unsigned)AT_PROBE_INTERVAL) {
+        return true;
+    }
+    atProbeTime_ = millis();
+
+    // Keep the probe out of the AT log
+    const auto logEnabled = parser_.config().logEnabled();
+    parser_.logEnabled(false);
+    SCOPE_GUARD({ parser_.logEnabled(logEnabled); });
+
+    const int r = parser_.execCommand(AT_PROBE_TIMEOUT, "AT");
+    if (r == AtResponse::OK) {
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+
+    if (++atProbeFailStreak_ > AT_PROBE_MAX_INTERVALS) {
+        LOG(ERROR, "AT unresponsive (%u)", atProbeFailStreak_);
+        return false;
+    }
+    LOG(WARN, "AT probe failed (%u/%u): %d", atProbeFailStreak_, (unsigned)AT_PROBE_MAX_INTERVALS, r);
+    return true;
+}
+
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
@@ -2706,6 +2797,15 @@ int SaraNcpClient::processEventsImpl() {
     interveneRegistration();
     checkRunningImsi();
     configurePlmn(); // ignore errors
+
+    // Must stay above the connState_ != CONNECTING early return below, the point is to run while CONNECTED
+    if (!checkAtWhileConnected()) {
+        // connectionState(CONNECTED) clears this too, but nothing does if we never reconnect
+        atProbeFailStreak_ = 0;
+        configModemPowerState(ModemPowerReason::AtUnresponsive);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+
     if (connState_ != NcpConnectionState::CONNECTING ||
             millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
@@ -2734,15 +2834,7 @@ int SaraNcpClient::processEventsImpl() {
 
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
-        LOG(WARN, "Resetting the modem due to the network registration timeout");
-        // We are going into an OFF state immediately before stopping the muxer
-        // otherwise the muxer channel state callback will disable us unnecessarily.
-        ncpState(NcpState::OFF);
-        muxer_.stop();
-        int rv = modemPowerOff();
-        if (rv != 0) {
-            modemHardReset(true);
-        }
+        configModemPowerState(ModemPowerReason::RegTimeout);
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;

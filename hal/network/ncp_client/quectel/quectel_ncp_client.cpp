@@ -114,6 +114,12 @@ const auto QUECTEL_NCP_PPP_CHANNEL = 2;
 
 const auto QUECTEL_NCP_SIM_SELECT_PIN = 23;
 
+// AT probe: 3s timeout every 35s, declared on the 4th consecutive failure, so ~105s.
+// Just above the 90s default command timeout, in case a command uses a shorter one.
+const auto AT_PROBE_INTERVAL = 35000;
+const auto AT_PROBE_TIMEOUT = 3000;
+const auto AT_PROBE_MAX_INTERVALS = 3u;
+
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
@@ -191,6 +197,7 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     policymanSrvModeCheckTime_ = 0;
     parserError_ = 0;
     ready_ = false;
+    sleepUrcsDisabled_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -372,44 +379,71 @@ int QuectelNcpClient::on() {
     return SYSTEM_ERROR_NONE;
 }
 
-int QuectelNcpClient::off() {
-    const NcpClientLock lock(this);
-    if (ncpState_ == NcpState::DISABLED) {
-        return SYSTEM_ERROR_INVALID_STATE;
+// Take the modem down. ModemOff is the ordinary off() sequence, the other reasons are faults where
+// the modem will not answer an AT command, so the sequence never issues one.
+// Caller must hold the client lock.
+int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
+    const bool recovering = (reason != ModemPowerReason::ModemOff && reason != ModemPowerReason::Unknown);
+    int r = SYSTEM_ERROR_NONE;
+
+    if (recovering) {
+        LOG(WARN, "Resetting the modem due to %s", reason == ModemPowerReason::AtUnresponsive ?
+                "an unresponsive AT interface" : "the network registration timeout");
+        // We are going into an OFF state immediately before stopping the muxer
+        // otherwise the muxer channel state callback will disable us unnecessarily.
+        // off() deliberately leaves this until the end.
+        ncpState(NcpState::OFF);
+    } else {
+        // Try using AT command to turn off the modem first.
+        r = modemSoftPowerOff();
     }
-    // Try using AT command to turn off the modem first.
-    int r = modemSoftPowerOff();
 
     // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
     serial_->enabled(false);
     muxer_.stop();
     serial_->enabled(true);
 
-    // Disable voltage translator
-    modemSetUartState(false);
-
-    if (!r) {
-        LOG(TRACE, "Soft power off modem success");
-        // WARN: We assume that the modem can turn off itself reliably.
-    } else {
-        // Power down using hardware
+    if (recovering) {
+        // Not modemSoftPowerOff(), it would retry AT+QPOWD six times against a dead interface
         if (modemPowerOff() != SYSTEM_ERROR_NONE) {
-            LOG(ERROR, "Failed to turn off");
+            modemHardReset(true);
         }
-        // FIXME: There is power leakage still if powering off the modem failed.
+    } else {
+        // Disable voltage translator
+        modemSetUartState(false);
+
+        if (!r) {
+            LOG(TRACE, "Soft power off modem success");
+            // WARN: We assume that the modem can turn off itself reliably.
+        } else {
+            // Power down using hardware
+            if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+                LOG(ERROR, "Failed to turn off");
+            }
+            // FIXME: There is power leakage still if powering off the modem failed.
+        }
+
+        // Disable the UART interface.
+        LOG(TRACE, "Deinit modem serial.");
+        serial_->on(false);
+
+        ready_ = false;
+        ncpState(NcpState::OFF);
     }
 
-    // Disable the UART interface.
-    LOG(TRACE, "Deinit modem serial.");
-    serial_->on(false);
-
-    ready_ = false;
-    ncpState(NcpState::OFF);
-
+    // The modem is gone, the inactivity timer must not fire and try to close the channel
     apduChannelTimer_.stop();
     apduChannel_ = 0;
 
     return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::off() {
+    const NcpClientLock lock(this);
+    if (ncpState_ == NcpState::DISABLED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    return configModemPowerState(ModemPowerReason::ModemOff);
 }
 
 int QuectelNcpClient::enable() {
@@ -454,14 +488,21 @@ int QuectelNcpClient::disconnect() {
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return SYSTEM_ERROR_NONE;
     }
+
+    SCOPE_GUARD({
+        resetRegistrationState();
+        connectionState(NcpConnectionState::DISCONNECTED);
+    });
+
+    // If we disconnect due to the AT interface being dead, a forced check
+    // is required because ready_ is true and parserError_ is 0.
+    const int r = parser_.execCommand(1000, "AT");
+    if (r != AtResponse::OK) {
+        parserError_ = r;
+    }
     CHECK(checkParser());
-    const int r = CHECK_PARSER(parser_.execCommand("AT+CFUN=0,0"));
-    (void)r;
-    // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
+    CHECK_PARSER(setModuleFunctionality(CellularFunctionality::MINIMUM, false /* check */));
 
-    resetRegistrationState();
-
-    connectionState(NcpConnectionState::DISCONNECTED);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -488,6 +529,9 @@ int QuectelNcpClient::updateFirmware(InputStream* file, size_t size) {
 }
 
 int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size) {
+    // Once disable() has been called the muxer channel is gone, but PPP does not know that yet and keeps
+    // writing until the interface is brought down. This check prevents log spam.
+    CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     // Just in case perform some state checks to ensure that LwIP PPP implementation
     // does not write into the data channel when it's not supposed do
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
@@ -1074,7 +1118,7 @@ int QuectelNcpClient::setupBands() {
             } else if (retBand == 4) {
                 CHECK_PARSER_OK(parser_.execCommand("AT+QCFG=\"band\",%s,%s,%s,%s,1", qbandGsmStr, (const char*)envPreferredBands.toString(), qbandCatNbStr, qbandNtnStr));
             }
-            
+
             CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
         }
     }
@@ -2157,6 +2201,7 @@ int QuectelNcpClient::getMtu() {
 }
 
 int QuectelNcpClient::urcs(bool enable) {
+    sleepUrcsDisabled_ = !enable;
     if (enable) {
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
             CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",1,1"));
@@ -2333,6 +2378,9 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        // A streak from a previous connection must not carry into this one.
+        // atProbeTime_ is deliberately left stale so the first probe runs immediately.
+        atProbeFailStreak_ = 0;
         inFlowControl_ = false;
         // Open data channel and resume it just in case
         int r = muxer_.openChannel(QUECTEL_NCP_PPP_CHANNEL);
@@ -2527,6 +2575,40 @@ int QuectelNcpClient::checkRunningImsi() {
     return 0;
 }
 
+// Periodic AT probe while CONNECTED. Returns false once the interface is declared unresponsive.
+//
+// Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
+// checkParser() -> waitReady() -> modemHardReset() instead of the reset sequence run by the caller.
+bool QuectelNcpClient::checkAtWhileConnected() {
+    if (connState_ != NcpConnectionState::CONNECTED || !ready_ || sleepUrcsDisabled_) {
+        // Every other state has its own recovery path, probing during them only adds noise.
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+    if (millis() - atProbeTime_ < (unsigned)AT_PROBE_INTERVAL) {
+        return true;
+    }
+    atProbeTime_ = millis();
+
+    // Keep the probe out of the AT log
+    const auto logEnabled = parser_.config().logEnabled();
+    parser_.logEnabled(false);
+    SCOPE_GUARD({ parser_.logEnabled(logEnabled); });
+
+    const int r = parser_.execCommand(AT_PROBE_TIMEOUT, "AT");
+    if (r == AtResponse::OK) {
+        atProbeFailStreak_ = 0;
+        return true;
+    }
+
+    if (++atProbeFailStreak_ > AT_PROBE_MAX_INTERVALS) {
+        LOG(ERROR, "AT unresponsive (%u)", atProbeFailStreak_);
+        return false;
+    }
+    LOG(WARN, "AT probe failed (%u/%u): %d", atProbeFailStreak_, (unsigned)AT_PROBE_MAX_INTERVALS, r);
+    return true;
+}
+
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
@@ -2534,6 +2616,15 @@ int QuectelNcpClient::processEventsImpl() {
     interveneRegistration();
     checkRunningImsi();
     configurePlmn(); // ignore errors
+
+    // Must stay above the connState_ != CONNECTING early return below, the point is to run while CONNECTED
+    if (!checkAtWhileConnected()) {
+        // connectionState(CONNECTED) clears this too, but nothing does if we never reconnect
+        atProbeFailStreak_ = 0;
+        configModemPowerState(ModemPowerReason::AtUnresponsive);
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+
     if (connState_ != NcpConnectionState::CONNECTING || millis() - regCheckTime_ < REGISTRATION_CHECK_INTERVAL) {
         return SYSTEM_ERROR_NONE;
     }
@@ -2566,15 +2657,7 @@ int QuectelNcpClient::processEventsImpl() {
     CHECK_PARSER(parser_.execCommand("AT+QENG=\"servingcell\""));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
-        LOG(WARN, "Resetting the modem due to the network registration timeout");
-        // We are going into an OFF state immediately before stopping the muxer
-        // otherwise the muxer channel state callback will disable us unnecessarily.
-        ncpState(NcpState::OFF);
-        muxer_.stop();
-        int rv = modemPowerOff();
-        if (rv != 0) {
-            modemHardReset(true);
-        }
+        configModemPowerState(ModemPowerReason::RegTimeout);
         return SYSTEM_ERROR_TIMEOUT;
     }
 

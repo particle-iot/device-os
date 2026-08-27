@@ -102,6 +102,13 @@ private:
     CellularGlobalIdentity cgi_ = {};
     CellularAccessTechnology act_ = CellularAccessTechnology::NONE;
 
+    enum class ModemPowerReason {
+        Unknown = 0,
+        ModemOff = 1,
+        AtUnresponsive = 2,
+        RegTimeout = 3
+    };
+
     enum class ModemState {
         Unknown = 0,
         MuxerAtChannel = 1,
@@ -124,6 +131,12 @@ private:
     system::SystemTimer apduChannelTimer_;
     int apduChannel_ = 0;
     bool configuredPlmn_ = false;
+    system_tick_t atProbeTime_ = 0;
+    unsigned atProbeFailStreak_ = 0;
+    // Set by urcs(false) when going to sleep. On the muxer path the AT channel is suspended and a
+    // probe cannot be answered; on the BG95 QINDCFG path it would be answered but would wake the
+    // module, which is the thing sleep is trying to avoid. Suppress the probe either way.
+    bool sleepUrcsDisabled_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -144,7 +157,7 @@ private:
     int selectSimCard();
     int checkSimCard();
     int getModuleFunctionality();
-    int setModuleFunctionality(CellularFunctionality cfun, bool check);
+    int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
     int getPolicymanServiceMode();
     int setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check);
     int set2gAttenuation3dB();
@@ -163,6 +176,9 @@ private:
     int checkRunningImsi();
     int processEventsImpl();
     int getIccidImpl(char* buf, size_t size);
+    bool checkAtWhileConnected();
+    int configModemPowerState(ModemPowerReason reason);
+
     /** Is this a Quectel Cat-M1 device ? */
     bool isQuecCatM1Device();
     /** Is this a Quectel Cat-1 device ? */
