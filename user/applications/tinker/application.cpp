@@ -58,15 +58,21 @@ const PinMapping g_pinmap[] = {
 #  endif // PLATFORM_ID == PLATFORM_BSOM || PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_ASOM
 # endif // PLATFORM_ID == PLATFORM_TRACKER
 
-#elif HAL_PLATFORM_RTL872X // P2, TrackerM or MSoM
+#elif HAL_PLATFORM_RTL872X
     PIN(D0), PIN(D1), PIN(D2), PIN(D3), PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D8), PIN(D9),
     PIN(D10), PIN(D11), PIN(D12), PIN(D13), PIN(D14), PIN(D15), PIN(D16), PIN(D17), PIN(D18),
-    PIN(D19), PIN(D20), PIN(D21),
+    PIN(D19),
     PIN(A0), PIN(A1), PIN(A2), PIN(A3), PIN(A4), PIN(A5),
     PIN(SS), PIN(SCK), PIN(MISO), PIN(MOSI), PIN(SS1), PIN(SCK1), PIN(MISO1), PIN(MOSI1),
     PIN(SDA), PIN(SCL),
     PIN(TX), PIN(RX), PIN(TX1), PIN(RX1),
     PIN(WKP)
+# if PLATFORM_ID == PLATFORM_SULU
+    ,
+    PIN(CTS), PIN(RTS)
+# else // P2, TrackerM or MSoM
+    ,
+    PIN(D20), PIN(D21)
 #  if PLATFORM_ID == PLATFORM_P2
     // P2 exposes pins for Serial3, NCP pins not exposed on TrackerM or MSoM
     ,
@@ -84,6 +90,7 @@ const PinMapping g_pinmap[] = {
 #  else
 #  error Unsupported HAL_PLATFORM_RTL872X platform
 #  endif
+# endif
 #elif PLATFORM_ID == PLATFORM_GCC
 // Ok
 #else
