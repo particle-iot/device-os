@@ -368,7 +368,7 @@ void sleepProcess(void) {
                     // There is a user LED connected on D7, which is PA27 (SWD-DAT). There is an internal
                     // pull-up resister on this I/O, which will turn on the user LED when enter the stop/ulp mode.
                     PAD_PullCtrl(27, GPIO_PuPd_DOWN);
-#else // PLATFORM_MSOM
+#else // PLATFORM_MSOM, PLATFORM_SULU
                     // For MSoM, there is an external pull-up resistor
                     PAD_PullCtrl(27, GPIO_PuPd_UP);
 #endif
