@@ -252,6 +252,8 @@ test(LED_11_MirroringWorks) {
 #elif HAL_PLATFORM_RTL872X
 # if PLATFORM_ID == PLATFORM_MSOM
     const hal_pin_t pins[3] = {D4, D5, D6};
+# elif PLATFORM_ID == PLATFORM_SULU
+    const hal_pin_t pins[3] = {D9, D10, D11};
 # else
     const hal_pin_t pins[3] = {A2, A5, S0};
 # endif // PLATFORM_ID == PLATFORM_MSOM
