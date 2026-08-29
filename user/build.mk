@@ -47,7 +47,7 @@ endif
 
 ifeq ($(APPLAYOUT),extended)
 # add vendored libraries to module libraries
-MODULE_LIBSV2 += $(wildcard $(APPROOT)/lib/*)
+MODULE_LIBSV2 += $(call remove_slash,$(dir $(wildcard $(APPROOT)/lib/*/.)))
 SOURCE_PATH := $(APPROOT)/
 USRSRC = src
 endif
