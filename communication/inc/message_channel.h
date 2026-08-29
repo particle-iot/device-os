@@ -272,6 +272,15 @@ struct MessageChannel : public Channel
 	 * Enable/disable debugging.
 	 */
 	virtual void set_debug_enabled(bool enabled) = 0;
+
+	/**
+	 * Returns true if the channel establishment (e.g. DTLS handshake) is
+	 * in progress across multiple calls. Default is false for channels
+	 * that complete establishment synchronously.
+	 */
+	virtual bool is_establish_in_progress() const {
+		return false;
+	}
 };
 
 class AbstractMessageChannel : public MessageChannel

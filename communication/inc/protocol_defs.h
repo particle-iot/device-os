@@ -61,6 +61,7 @@ enum ProtocolError
     IO_ERROR_SOCKET_RECV_FAILED = 34,
     IO_ERROR_REMOTE_END_CLOSED = 35,
     COAP_ERROR = 36,
+    IN_PROGRESS = 37, // Operation in progress, call again to continue (not an error)
     // NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
     UNKNOWN = 0x7FFFF
 };
