@@ -804,6 +804,16 @@ int hal_usb_cdc_pvt_recv_data(char* data, size_t size) {
         m_usb_instance.rx_done = false;
     }
 
+    if (data == NULL) {
+        // app_fifo_read() with a NULL buffer only queries the length without consuming
+        uint32_t to_skip = FIFO_LENGTH(&m_usb_instance.rx_fifo);
+        if (to_skip > size) {
+            to_skip = size;
+        }
+        m_usb_instance.rx_fifo.read_pos += to_skip;
+        return to_skip;
+    }
+
     uint32_t to_read = size;
     if (app_fifo_read(&m_usb_instance.rx_fifo, (uint8_t*)data, &to_read) == NRF_SUCCESS) {
         return to_read;
