@@ -22,6 +22,8 @@ const OPEN_PORT_AFTER_TESTS = new Set([
 ]);
 const RX_STRESS_CHUNK_SIZE = 64;
 const RX_STRESS_ITERATIONS = 256;
+const SKIP_TEST_DATA_SIZE = 64;
+const SKIP_TEST_PATTERN_OFFSET = 3;
 const PAUSED_INPUT_TESTS = new Set([
     NONBLOCKING_STRESS_TEST,
     NONBLOCKING_CHARACTER_STRESS_TEST
@@ -206,4 +208,13 @@ test('USBSERIAL_19_DeviceReceiveStress', async function() {
     expect(cdc.isOpen()).to.be.true;
     await rxStressWrite;
     expect(rxWriteError).to.be.null;
+});
+
+test('USBSERIAL_20_NullReceiveSetup', async function() {
+    expect(cdc.isOpen()).to.be.true;
+    await cdc.write(rxData(SKIP_TEST_PATTERN_OFFSET, SKIP_TEST_DATA_SIZE));
+});
+
+test('USBSERIAL_21_ReceiveWithNullBufferSkipsData', async function() {
+    expect(cdc.isOpen()).to.be.true;
 });

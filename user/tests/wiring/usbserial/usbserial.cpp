@@ -12,6 +12,8 @@ static constexpr size_t RX_STRESS_CHUNK_SIZE = 64;
 static constexpr unsigned RX_STRESS_ITERATIONS = 256;
 static uint8_t bulkWriteBuffer[TX_STRESS_CHUNK_SIZE] = {};
 static constexpr size_t RX_TEST_DATA_SIZE = USB_RX_BUFFER_SIZE - 1;
+static constexpr size_t SKIP_TEST_DATA_SIZE = 64;
+static constexpr unsigned SKIP_TEST_PATTERN_OFFSET = 3;
 
 int randomString(char *buf, int len) {
     for (int i = 0; i < len; i++) {
@@ -369,4 +371,41 @@ test(USBSERIAL_19_DeviceReceiveStress) {
     assertEqual(Serial.available(), 0);
     assertEqual(Serial.peek(), -1);
     assertEqual(Serial.read(), -1);
+}
+
+test(USBSERIAL_20_NullReceiveSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    consume(Serial);
+    assertEqual(Serial.available(), 0);
+}
+
+test(USBSERIAL_21_ReceiveWithNullBufferSkipsData) {
+    assertTrue(Serial.isConnected());
+    assertTrue(waitFor([] {
+        return Serial.available() >= (int)SKIP_TEST_DATA_SIZE;
+    }, 10000));
+
+    auto expected = [](size_t i) -> char {
+        return "0123456789ABCDEF"[(i + SKIP_TEST_PATTERN_OFFSET) % 16];
+    };
+    char data[SKIP_TEST_DATA_SIZE / 4] = {};
+
+    assertEqual(Serial.readBytes(data, sizeof(data)), sizeof(data));
+    for (size_t i = 0; i < sizeof(data); ++i) {
+        assertEqual(data[i], expected(i));
+    }
+
+    assertEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, sizeof(data)), (int)sizeof(data));
+    assertEqual(Serial.available(), (int)(SKIP_TEST_DATA_SIZE / 2));
+
+    assertEqual(Serial.readBytes(data, sizeof(data)), sizeof(data));
+    for (size_t i = 0; i < sizeof(data); ++i) {
+        assertEqual(data[i], expected(SKIP_TEST_DATA_SIZE / 2 + i));
+    }
+
+    assertEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, SKIP_TEST_DATA_SIZE), (int)(SKIP_TEST_DATA_SIZE / 4));
+    assertEqual(Serial.available(), 0);
+    assertEqual(Serial.read(), -1);
+
+    assertLessOrEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, 1), 0);
 }
