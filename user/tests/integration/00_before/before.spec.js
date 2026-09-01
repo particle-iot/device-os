@@ -61,13 +61,15 @@ test('06_clear_env', async function () {
 });
 
 test('07_restore_cloud_after_env_clear', async function () {
-    await waitFlashStatusEvent(this, { status: 'success' });
+
 });
 
 test('08_finalize_env_clear', async function () {
+
 });
 
 test('09_disable_external_rtc', async function() {
+
 });
 
 test('10_verify_external_rtc_default_state', async function() {

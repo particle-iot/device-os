@@ -57,6 +57,7 @@ enum class FirmwareUpdateStatus {
 
 auto firmwareUpdateStatus = FirmwareUpdateStatus::NONE;
 std::atomic<int> firmwareUpdateProgressCount;
+static const int ENV_VAR_OTA_TIMEOUT_MS = 30000;
 
 void firmwareUpdateEventHandler(system_event_t, int data, void*) {
     switch (data) {
@@ -118,6 +119,10 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
     System.enableReset();
 }
 
+bool firmwareUpdateComplete() {
+    return firmwareUpdateStatus == FirmwareUpdateStatus::SUCCESS;
+}
+
 } // namespace
 
 test(01_ota_self_flash_start) {
@@ -170,11 +175,18 @@ test(07_restore_cloud_after_env_clear) {
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // We are supposed to get an empty env
+    // We do not know if we will have an env var asset sent to us or none if it is empty
 }
 
 test(08_finalize_env_clear) {
-    completeFirmwareUpdate();
+    // Wait for a potential env var asset ota to come down
+    if (waitFor(firmwareUpdateComplete, ENV_VAR_OTA_TIMEOUT_MS)) {
+        Log.info("Cloud pushed env vars down, reset expected");
+        completeFirmwareUpdate();
+    } else {
+        System.off(firmware_update);
+        System.enableReset();
+    }
 }
 
 #endif // HAL_PLATFORM_ENV
