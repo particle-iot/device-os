@@ -240,7 +240,7 @@ jobs:
             TIMESTAMP_FILE=timestamp_$RANDOM
             mkdir -p $HOME/workspace/release
             date +%s > $HOME/workspace/release/$TIMESTAMP_FILE
-            apk -q update && apk -q add bash curl xz
+            apk -q update && apk -q add bash
       - run:
           name: "Fetch dependencies"
           shell: /bin/bash
@@ -268,19 +268,7 @@ jobs:
             export BUILD_PLATFORM="<< parameters.platform >>"
             export BUILDPACK_NORM=1
             export BUILD_PLATFORM_NORMALIZED=$(echo "$BUILD_PLATFORM" | sed 's/ /_/g')
-            # stage a modern ccache into the build container: the one shipped in ubuntu 20.04 (3.7.7)
-            # cannot share cache entries between objects with different output paths
-            CCACHE_ARG=""
-            if curl -fsSL --retry 3 -o /tmp/ccache.tar.xz https://github.com/ccache/ccache/releases/download/v4.11.3/ccache-4.11.3-linux-x86_64.tar.xz \
-                && echo "7766991b91b3a5a177ab33fa043fe09e72c68586d5a86d20a563a05b74f119c0  /tmp/ccache.tar.xz" | sha256sum -c -s -; then
-              tar xf /tmp/ccache.tar.xz -C /tmp
-              docker volume create ccache_ext
-              docker create -v ccache_ext:/ccache-ext --name ccseed alpine true
-              docker cp /tmp/ccache-4.11.3-linux-x86_64/ccache ccseed:/ccache-ext/ccache
-              docker rm ccseed
-              CCACHE_ARG="--volume ccache_ext:/ccache-ext --env CCACHE=/ccache-ext/ccache"
-            fi
-            export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG --env MAKE_JOBS=nproc ${CCACHE_ARG}"
+            export EXTRA_ARG="--env DEVICE_OS_CI_API_TOKEN=$DEVICE_OS_CI_API_TOKEN --env CI_BUILD_RELEASE=1 --name build --env VERSION=$TAG --env MAKE_JOBS=nproc"
             mkdir -p $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED
             export BUILD_START=$(date +%s)
             $HOME/firmware-buildpack-builder/scripts/ci | tee $HOME/workspace/release/$BUILD_PLATFORM_NORMALIZED/log | tee >(grep -E '^has_failures [0-9]+ ' > $HOME/failures/has_failures); export TMPRESULT=${PIPESTATUS[0]}
