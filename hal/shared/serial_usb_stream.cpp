@@ -84,7 +84,11 @@ int SerialUSBStream::read(char* data, size_t size) {
         return 0;
     }
 
-    return hal_usb_cdc_pvt_recv_data(data, size);
+    auto r = hal_usb_cdc_pvt_recv_data(data, size);
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
+    }
+    return r;
 }
 
 int SerialUSBStream::peek(char* data, size_t size) {
@@ -94,7 +98,11 @@ int SerialUSBStream::peek(char* data, size_t size) {
     if (size == 0) {
         return 0;
     }
-    return HAL_USB_USART_Peek_Buffer(serial_, data, size);
+    auto r = HAL_USB_USART_Peek_Buffer(serial_, data, size);
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
+    }
+    return r;
 }
 
 int SerialUSBStream::skip(size_t size) {
@@ -110,14 +118,17 @@ int SerialUSBStream::write(const char* data, size_t size) {
     }
 
     int32_t available = HAL_USB_USART_Available_Data_For_Write(serial_);
-    if (available <= 0) {
+    if (available < 0) {
+        return available;
+    }
+    if (available == 0) {
         return 0;
     }
 
     size_t writeSize = std::min((size_t)available, size);
     auto r = hal_usb_cdc_pvt_send_data(data, writeSize);
-    if (r < 0) {
-        return r;
+    if (r == SYSTEM_ERROR_NO_MEMORY) {
+        return 0;
     }
     return r;
 }

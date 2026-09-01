@@ -3,6 +3,18 @@
 #include "usb_settings.h"
 #include "ringbuf_helper.h"
 
+static constexpr size_t TX_STRESS_CHUNK_SIZE = USB_TX_BUFFER_SIZE * 16;
+static constexpr unsigned TX_NONBLOCKING_STRESS_ATTEMPTS = 2048;
+static constexpr unsigned TX_BLOCKING_STRESS_ITERATIONS = 256;
+static constexpr unsigned TX_CHAR_NONBLOCKING_STRESS_ATTEMPTS = 4096;
+static constexpr unsigned TX_CHAR_BLOCKING_STRESS_ITERATIONS = 64 * 1024;
+static constexpr size_t RX_STRESS_CHUNK_SIZE = 64;
+static constexpr unsigned RX_STRESS_ITERATIONS = 256;
+static uint8_t bulkWriteBuffer[TX_STRESS_CHUNK_SIZE] = {};
+static constexpr size_t RX_TEST_DATA_SIZE = USB_RX_BUFFER_SIZE - 1;
+static constexpr size_t SKIP_TEST_DATA_SIZE = 64;
+static constexpr unsigned SKIP_TEST_PATTERN_OFFSET = 3;
+
 int randomString(char *buf, int len) {
     for (int i = 0; i < len; i++) {
         uint8_t d = random(0, 15);
@@ -20,6 +32,12 @@ void consume(Stream& serial)
     while (serial.available() > 0) {
         (void)serial.read();
     }
+}
+
+bool waitForEmptyTxBuffer() {
+    return waitFor([] {
+        return Serial.availableForWrite() == USB_TX_BUFFER_SIZE;
+    }, 5000);
 }
 
 test(USBSERIAL_00_RingBufferHelperIsSane) {
@@ -118,133 +136,276 @@ test(USBSERIAL_01_SerialDoesNotDeadlockWhenInterruptsAreMasked) {
     }
     HAL_enable_irq(state);
     Serial.println();
+    Serial.flush();
 }
 
 test(USBSERIAL_02_ReadWrite) {
-    //The following code will test all the important USB Serial routines
-    char test[] = "hello";
-    char message[10];
-    // when
     consume(Serial);
-    Serial.print("Type the following message and press Enter: ");
-    Serial.println(test);
-    serialReadLine(&Serial, message, 9, 10000);//10 sec timeout
-    Serial.println("");
-    // then
-    assertTrue(strncmp(test, message, 5)==0);
+    constexpr char data[] = "device-to-host";
+    assertEqual(Serial.write((const uint8_t*)data, sizeof(data) - 1), sizeof(data) - 1);
+    Serial.flush();
 }
 
-test(USBSERIAL_03_isConnectedWorksCorrectly) {
-    Serial.println("Please close the USB Serial port and open it again within 60 seconds");
-
-    uint32_t mil = millis();
-    // Wait for 60 seconds maximum for the host to close the USB Serial port
-    while(Serial.isConnected()) {
-        assertTrue((millis() - mil) < 60000);
-        // We may have to send some data here as DTR is not always deasserted
-        Serial.print('.');
-        delay(1000);
-    }
-    // Wait for 60 seconds maximum for the host to open the USB Serial port again
-    while(!Serial.isConnected()) {
-        assertTrue((millis() - mil) < 60000);
-    }
-
-    delay(10);
-    Serial.println();
-    Serial.println("Glad too see you back!");
-
-    char test[] = "hello";
-    char message[10];
-    // when
-    consume(Serial);
-    Serial.print("Type the following message and press Enter: ");
-    Serial.println(test);
-    serialReadLine(&Serial, message, 9, 10000);//10 sec timeout
-    Serial.println("");
-    // then
-    assertTrue(strncmp(test, message, 5)==0);
+test(USBSERIAL_03_ReadWriteVerifiesHostData) {
+    constexpr char expected[] = "host-to-device";
+    char data[sizeof(expected) - 1] = {};
+    assertTrue(waitFor([] {
+        return Serial.available() >= (int)(sizeof(expected) - 1);
+    }, 5000));
+    assertEqual(Serial.readBytes(data, sizeof(data)), sizeof(data));
+    assertTrue(!memcmp(data, expected, sizeof(data)));
 }
 
-test(USBSERIAL_04_RxBufferFillsCompletely) {
-    Serial.println("We will now test USB Serial RX buffer");
-    Serial.println("Please close the USB Serial port and open it again once the device reattaches");
+test(USBSERIAL_04_isConnectedInitially) {
+    assertTrue(Serial.isConnected());
+}
 
-    uint32_t mil = millis();
-    // Wait for 60 seconds maximum for the host to close the USB Serial port
-    while(Serial.isConnected()) {
-        assertTrue((millis() - mil) < 60000);
-        // We may have to send some data here as DTR is not always deasserted
-        Serial.print('.');
-        delay(1000);
-    }
+test(USBSERIAL_05_ClosedPortWritesFailWithoutBlocking) {
+    assertTrue(waitForNot(Serial.isConnected, 5000));
 
+    uint8_t data[16] = {};
+    assertEqual(Serial.availableForWrite(), 0);
+    assertEqual(Serial.available(), 0);
+    assertEqual(Serial.peek(), -1);
+    assertEqual(Serial.read(), -1);
+
+    const auto start = millis();
+    Serial.blockOnOverrun(false);
+    assertEqual(Serial.write((uint8_t)'a'), 0);
+    assertEqual(Serial.write(data, sizeof(data)), 0);
+    Serial.blockOnOverrun(true);
+    assertEqual(Serial.write((uint8_t)'b'), 0);
+    assertEqual(Serial.write(data, sizeof(data)), 0);
+    Serial.flush();
+    assertTrue(millis() - start < 1000);
+}
+
+test(USBSERIAL_06_isConnectedDetectsReopenedPort) {
+    assertTrue(waitFor(Serial.isConnected, 5000));
+}
+
+test(USBSERIAL_07_EndBeginWhilePortIsClosed) {
+    assertTrue(waitForNot(Serial.isConnected, 5000));
+
+    // Serial.end() re-enumerates USB, which temporarily removes the control
+    // interface used by the test runner. RESET_PENDING is also used by sleep
+    // tests as the generic notification for an expected USB detach.
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     Serial.end();
     assertEqual(Serial.isEnabled(), false);
     Serial.begin();
     assertEqual(Serial.isEnabled(), true);
+}
 
-    // Wait for 60 seconds maximum for the host to open the USB Serial port again
-    while(!Serial.isConnected()) {
-        assertTrue((millis() - mil) < 60000);
-    }
-
+test(USBSERIAL_08_RxBufferSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    consume(Serial);
     assertEqual(Serial.available(), 0);
 
-    delay(10);
-    Serial.println("Glad too see you back!");
+    char size[16] = {};
+    snprintf(size, sizeof(size), "%u", (unsigned)RX_TEST_DATA_SIZE);
+    assertEqual(0, pushMailboxMsg(size, 10000));
+}
 
-    for (int attmpt = 0; attmpt < 3; attmpt++) {
-        char randStr[USB_RX_BUFFER_SIZE + 2];
-        char rStr[USB_RX_BUFFER_SIZE + 2];
-        memset(randStr, 0, USB_RX_BUFFER_SIZE + 2);
-        memset(rStr, 0, USB_RX_BUFFER_SIZE + 2);
-        srand(millis());
-        randomString(randStr, USB_RX_BUFFER_SIZE - 1);
+void verifyRxBuffer(unsigned iteration) {
+    assertTrue(waitFor([] {
+        return Serial.available() >= (int)RX_TEST_DATA_SIZE;
+    }, 10000));
 
-        Serial.println("Please copy and paste the following string:");
-        Serial.println(randStr);
+    uint8_t data[RX_TEST_DATA_SIZE] = {};
+    assertEqual(Serial.readBytes((char*)data, sizeof(data)), sizeof(data));
+    for (size_t i = 0; i < sizeof(data); ++i) {
+        const uint8_t expected = "0123456789ABCDEF"[(i + iteration) % 16];
+        assertEqual(data[i], expected);
+    }
+    assertEqual(Serial.available(), 0);
+}
 
-        int32_t avail = 0;
-        mil = millis();
-        uint32_t milsame = 0;
-        while(Serial.available() != (USB_RX_BUFFER_SIZE - 1)) {
-            if (avail == Serial.available() && avail != 0) {
-                if (milsame == 0) {
-                    milsame = millis();
-                } else {
-                    if ((millis() - milsame) >= 5000) {
-                        // Depending on the host driver, we might have received (USB_RX_BUFFER_SIZE - 64)
-                        break;
-                    }
-                }
-            } else {
-                avail = Serial.available();
-                milsame = 0;
-            }
-            assertTrue((millis() - mil) < 120000);
+test(USBSERIAL_09_RxBufferFillsCompletelyFirst) {
+    verifyRxBuffer(0);
+}
+
+test(USBSERIAL_10_RxBufferFillsCompletelySecond) {
+    verifyRxBuffer(1);
+}
+
+test(USBSERIAL_11_RxBufferFillsCompletelyThird) {
+    verifyRxBuffer(2);
+}
+
+test(USBSERIAL_12_NonBlockingWriteStressSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    assertTrue(waitForEmptyTxBuffer());
+}
+
+test(USBSERIAL_13_NonBlockingWriteStressHandlesBackpressure) {
+    assertTrue(Serial.isConnected());
+    assertTrue(waitForEmptyTxBuffer());
+
+    Serial.blockOnOverrun(false);
+    size_t totalWritten = 0;
+    unsigned partialWrites = 0;
+    unsigned zeroWrites = 0;
+    bool invalidWriteCount = false;
+    for (unsigned i = 0; i < TX_NONBLOCKING_STRESS_ATTEMPTS; ++i) {
+        const size_t written = Serial.write(bulkWriteBuffer, sizeof(bulkWriteBuffer));
+        if (written > sizeof(bulkWriteBuffer)) {
+            invalidWriteCount = true;
+            break;
         }
-        avail = Serial.available();
-        Serial.printf("OK. Read back %d bytes\r\n", avail);
-
-        assertTrue((avail == (USB_RX_BUFFER_SIZE - 1)) ||
-                   (avail >= ((USB_RX_BUFFER_SIZE - 1) / 64 * 64)));
-        for (int i = 0; i < avail; i++) {
-            rStr[i] = Serial.read();
+        totalWritten += written;
+        if (written < sizeof(bulkWriteBuffer)) {
+            ++partialWrites;
         }
-
-        Serial.printf("Data: %s\r\n\r\n", rStr);
-
-        assertTrue(!strncmp(randStr, rStr, avail));
-
-        delay(500);
-        while(Serial.available()) {
-            (void)Serial.read();
+        if (written == 0) {
+            ++zeroWrites;
         }
+    }
+    Serial.blockOnOverrun(true);
 
-        if (!((avail == (USB_RX_BUFFER_SIZE - 1)) || (avail == ((USB_RX_BUFFER_SIZE - 1) / 64 * 64)))) {
-            // Continue only if we received data in 64-byte blocks
+    assertFalse(invalidWriteCount);
+    assertTrue(totalWritten > 0);
+    assertTrue(partialWrites > 0);
+    assertTrue(zeroWrites > 0);
+}
+
+test(USBSERIAL_14_BlockingWriteStressWritesEveryBuffer) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    assertTrue(waitForEmptyTxBuffer());
+
+    Serial.blockOnOverrun(true);
+    for (unsigned i = 0; i < TX_BLOCKING_STRESS_ITERATIONS; ++i) {
+        const size_t written = Serial.write(bulkWriteBuffer, sizeof(bulkWriteBuffer));
+        assertEqual(written, sizeof(bulkWriteBuffer));
+    }
+    Serial.flush();
+}
+
+test(USBSERIAL_15_NonBlockingCharacterWriteStressSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    assertTrue(waitForEmptyTxBuffer());
+}
+
+test(USBSERIAL_16_NonBlockingCharacterWriteStressHandlesBackpressure) {
+    assertTrue(Serial.isConnected());
+    assertTrue(waitForEmptyTxBuffer());
+
+    Serial.blockOnOverrun(false);
+    bool backpressureReached = false;
+    for (unsigned i = 0; i < TX_NONBLOCKING_STRESS_ATTEMPTS; ++i) {
+        if (Serial.write(bulkWriteBuffer, sizeof(bulkWriteBuffer)) == 0) {
+            backpressureReached = true;
             break;
         }
     }
+
+    unsigned zeroWrites = 0;
+    bool invalidWriteCount = false;
+    for (unsigned i = 0; i < TX_CHAR_NONBLOCKING_STRESS_ATTEMPTS; ++i) {
+        const size_t written = Serial.write((uint8_t)i);
+        if (written > 1) {
+            invalidWriteCount = true;
+            break;
+        }
+        if (written == 0) {
+            ++zeroWrites;
+        }
+    }
+    Serial.blockOnOverrun(true);
+
+    assertTrue(backpressureReached);
+    assertFalse(invalidWriteCount);
+    assertTrue(zeroWrites > 0);
+}
+
+test(USBSERIAL_17_BlockingCharacterWriteStressWritesEveryByte) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    assertTrue(waitForEmptyTxBuffer());
+
+    Serial.blockOnOverrun(true);
+    for (unsigned i = 0; i < TX_CHAR_BLOCKING_STRESS_ITERATIONS; ++i) {
+        assertEqual(Serial.write((uint8_t)i), 1);
+    }
+    Serial.flush();
+}
+
+test(USBSERIAL_18_DeviceReceiveStressSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    consume(Serial);
+}
+
+test(USBSERIAL_19_DeviceReceiveStress) {
+    assertTrue(Serial.isConnected());
+
+    uint8_t data[RX_STRESS_CHUNK_SIZE] = {};
+    for (unsigned iteration = 0; iteration < RX_STRESS_ITERATIONS; ++iteration) {
+        assertTrue(waitFor([] {
+            return Serial.available() >= (int)RX_STRESS_CHUNK_SIZE;
+        }, 10000));
+
+        if ((iteration % 2) == 0) {
+            // Exercise the legacy single-byte receive and peek paths.
+            for (size_t i = 0; i < RX_STRESS_CHUNK_SIZE; ++i) {
+                const int expected = "0123456789ABCDEF"[(i + iteration) % 16];
+                assertEqual(Serial.peek(), expected);
+                assertEqual(Serial.read(), expected);
+            }
+        } else {
+            // Exercise the buffer receive and buffer peek paths.
+            const int peeked = Serial.peek((char*)data, sizeof(data));
+            assertTrue(peeked > 0);
+            assertTrue(peeked <= (int)sizeof(data));
+            for (int i = 0; i < peeked; ++i) {
+                const uint8_t expected = "0123456789ABCDEF"[(i + iteration) % 16];
+                assertEqual(data[i], expected);
+            }
+            memset(data, 0, sizeof(data));
+            assertEqual(Serial.readBytes((char*)data, sizeof(data)), sizeof(data));
+            for (size_t i = 0; i < sizeof(data); ++i) {
+                const uint8_t expected = "0123456789ABCDEF"[(i + iteration) % 16];
+                assertEqual(data[i], expected);
+            }
+        }
+    }
+
+    assertEqual(Serial.available(), 0);
+    assertEqual(Serial.peek(), -1);
+    assertEqual(Serial.read(), -1);
+}
+
+test(USBSERIAL_20_NullReceiveSetup) {
+    assertTrue(waitFor(Serial.isConnected, 30000));
+    consume(Serial);
+    assertEqual(Serial.available(), 0);
+}
+
+test(USBSERIAL_21_ReceiveWithNullBufferSkipsData) {
+    assertTrue(Serial.isConnected());
+    assertTrue(waitFor([] {
+        return Serial.available() >= (int)SKIP_TEST_DATA_SIZE;
+    }, 10000));
+
+    auto expected = [](size_t i) -> char {
+        return "0123456789ABCDEF"[(i + SKIP_TEST_PATTERN_OFFSET) % 16];
+    };
+    char data[SKIP_TEST_DATA_SIZE / 4] = {};
+
+    assertEqual(Serial.readBytes(data, sizeof(data)), sizeof(data));
+    for (size_t i = 0; i < sizeof(data); ++i) {
+        assertEqual(data[i], expected(i));
+    }
+
+    assertEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, sizeof(data)), (int)sizeof(data));
+    assertEqual(Serial.available(), (int)(SKIP_TEST_DATA_SIZE / 2));
+
+    assertEqual(Serial.readBytes(data, sizeof(data)), sizeof(data));
+    for (size_t i = 0; i < sizeof(data); ++i) {
+        assertEqual(data[i], expected(SKIP_TEST_DATA_SIZE / 2 + i));
+    }
+
+    assertEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, SKIP_TEST_DATA_SIZE), (int)(SKIP_TEST_DATA_SIZE / 4));
+    assertEqual(Serial.available(), 0);
+    assertEqual(Serial.read(), -1);
+
+    assertLessOrEqual(HAL_USB_USART_Receive_Buffer(HAL_USB_USART_SERIAL, nullptr, 1), 0);
 }

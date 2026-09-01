@@ -1,5 +1,6 @@
 #include "test.h"
 #include "test_suite.h"
+#include "request_handler.h"
 
 #include "spark_wiring_startup.h"
 
@@ -34,6 +35,7 @@ void testAppSetup() {
 
 void testAppLoop() {
     TestRunner::instance()->loop();
+    TestSuite::instance()->requestHandler()->loop();
 }
 
 } // namespace particle
