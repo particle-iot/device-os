@@ -491,7 +491,7 @@ test(15_check_immediate_device_env_update) {
     assertEqual(System.getEnv("DEV_VAR2"), String("dev 2 ") + nonce);
 }
 
-test(97_cleanup) {
+test(98_cleanup) {
     expectSystemReset();
     System.clearEnv(false /* reset */);
     unlink("/sys/env_app");
@@ -502,24 +502,8 @@ test(97_cleanup) {
     System.reset();
 }
 
-test(98_cleanup) {
-    prepareForFirmwareUpdate();
+test(99_cleanup) {
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // We are supposed to get an empty env
-}
-
-test(99_cleanup_1) {
-    completeFirmwareUpdate();
-}
-
-test(99_cleanup_2) {
-    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
-        expectSystemReset();
-        System.enableReset();
-        // Should normally be unreachable
-        delay(5000);
-        System.reset();
-    }
 }
