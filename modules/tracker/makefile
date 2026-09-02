@@ -1,4 +1,7 @@
 include modular.mk
 
-%:
-	$(MAKE) -C .. $(MAKECMDGOALS) 
+GOALS := $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
+.PHONY: $(GOALS) submake
+$(GOALS): submake ;
+submake:
+	$(MAKE) -C .. $(MAKECMDGOALS)

@@ -21,7 +21,24 @@ flash_suffix() {
 
     pct="$(awk -v u="$used" -v a="$available" 'BEGIN { printf "%.1f", (u * 100.0) / a }')"
     awk -v u="$used" -v a="$available" -v p="$pct" \
-        'BEGIN { printf " (%d/%d KiB, %s%%)", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
+        'BEGIN { printf " %d/%dK %s%%", int((u + 1023) / 1024), int((a + 1023) / 1024), p }'
+}
+
+time_suffix() {
+    local platform="$1"
+    local duration_file duration
+
+    duration_file="${RELEASE_DIR}/${platform}/duration"
+    if [ ! -f "$duration_file" ]; then
+        return 0
+    fi
+
+    duration="$(tr -cd '0-9' < "$duration_file")"
+    if [ -z "$duration" ]; then
+        return 0
+    fi
+
+    awk -v d="$duration" 'BEGIN { printf " %.1fm", d / 60.0 }'
 }
 
 platform_msg() {
@@ -30,9 +47,9 @@ platform_msg() {
     platform="$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')"
 
     if echo -e "${failures}" | grep -q "PLATFORM=\"${platform}\""; then
-        echo ":scrum_closed: ${label}$(flash_suffix "${platform}")\\n"
+        echo ":scrum_closed: ${label}$(flash_suffix "${platform}")$(time_suffix "${platform}")\\n"
     else
-        echo ":scrum_finished: ${label}$(flash_suffix "${platform}")\\n"
+        echo ":scrum_finished: ${label}$(flash_suffix "${platform}")$(time_suffix "${platform}")\\n"
     fi
 }
 

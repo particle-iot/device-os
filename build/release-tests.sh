@@ -1,5 +1,10 @@
 #!/bin/bash
 
+MAKE_JOBS=${MAKE_JOBS:-1}
+if [ "$MAKE_JOBS" = "nproc" ]; then
+    MAKE_JOBS=$(nproc)
+fi
+
 function display_help ()
 {
     echo '
@@ -213,7 +218,7 @@ for test_object in $(jq '.platforms[] | select(.platform == "'${PLATFORM}'") | .
     mkdir -p $TEST_DIRECTORY
 
     # Base strings
-    MAKE_COMMAND="make -s all PLATFORM_ID=$PLATFORM_ID"
+    MAKE_COMMAND="make -s -j $MAKE_JOBS all PLATFORM_ID=$PLATFORM_ID"
     QUALIFIED_FILENAME="${PLATFORM}-$(json $test_object .name)@${VERSION}"
 
     # Compose make command and file name

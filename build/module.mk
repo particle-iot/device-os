@@ -105,7 +105,7 @@ none:
 ifeq ($(PLATFORM_MCU),rtl872x)
 .PHONY: rtl-flash
 rtl_module_start_address = $(subst 0x08,0x00,$(call get_module_start_address))
-rtl-flash:
+rtl-flash: | $(TARGET_BASE).bin
 	$(PROJECT_ROOT)/scripts/flash.sh $(PROJECT_ROOT)/scripts/rtl872x.tcl $(TARGET_BASE).bin $(call rtl_module_start_address)
 endif
 
@@ -305,6 +305,29 @@ MAKEFLAGS += --no-builtin-rules
 .SUFFIXES:
 
 include $(COMMON_BUILD)/recurse.mk
+
+ifneq ($(strip $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)),)
+$(sort $(ALLOBJ) $(LIB_DEPS) $(LINKER_DEPS)): | $(MAKE_DEPENDENCIES) prebuild
+endif
+ifneq ($(strip $(MAKE_DEPENDENCIES)),)
+$(MAKE_DEPENDENCIES): | prebuild
+endif
+postbuild: | $(TARGET)
+
+ifneq (,$(filter clean,$(MAKECMDGOALS)))
+ifneq (,$(filter-out clean,$(MAKECMDGOALS)))
+.NOTPARALLEL:
+endif
+endif
+
+ifneq ("$(findstring elf_fi,$(TARGET))","")
+$(TARGET_BASE).bin $(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE)_fi.elf
+.NOTPARALLEL:
+endif
+
+ifneq (,$(filter bin,$(TARGET)))
+$(TARGET_BASE).hex $(TARGET_BASE).lst size: | $(TARGET_BASE).bin
+endif
 
 
 # Include auto generated dependency files
