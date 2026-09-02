@@ -61,8 +61,13 @@ int filesystem_invalidate(filesystem_t* fs);
 filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserved);
 int filesystem_dump_info(filesystem_t* fs);
 
-int filesystem_lock(filesystem_t* fs);
-int filesystem_unlock(filesystem_t* fs);
+void filesystem_lock(filesystem_t* fs);
+void filesystem_unlock(filesystem_t* fs);
+
+// Returns how many times the calling thread has acquired the filesystem lock via `filesystem_lock()`
+// without a corresponding `filesystem_unlock()`. The lock must be acquired before calling this
+// function
+int filesystem_lock_depth(filesystem_t* fs);
 
 int filesystem_to_system_error(int error);
 
@@ -81,6 +86,9 @@ int filesystem_to_system_error(int error);
         })
 
 namespace particle::fs {
+
+const char TEMP_PATH_PREFIX[] = "/tmp/";
+const size_t TEMP_PATH_BUF_SIZE = sizeof(TEMP_PATH_PREFIX) + 6; // strlen("/tmp/XXXXXX") + 1
 
 inline filesystem_t* defaultFs() {
     return filesystem_get_instance(FILESYSTEM_INSTANCE_DEFAULT, nullptr /* reserved */);
@@ -154,6 +162,8 @@ int unmount(filesystem_t* fs = defaultFs());
 int remove(const char* path, filesystem_t* fs = defaultFs());
 int rename(const char* oldPath, const char* newPath, filesystem_t* fs = defaultFs());
 int stat(const char* path, lfs_info* info, filesystem_t* fs = defaultFs());
+
+int createTempFile(File& file, char* pathBuf, size_t pathBufSize, int openFlags = LFS_O_RDWR | LFS_O_APPEND);
 
 } // particle::fs
 

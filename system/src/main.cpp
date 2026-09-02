@@ -72,6 +72,7 @@
 #include "system_network_manager.h"
 #include "ledger/ledger_manager.h"
 #include "ledger/ledger.h"
+#include "log_file.h"
 
 #include "ota_module.h"
 #include "user_hal.h"
@@ -796,7 +797,6 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
 }
 #endif /* HAL_PLATFORM_LWIP */
 
-
 } // namespace
 
 /*******************************************************************************
@@ -808,6 +808,12 @@ void if_init_postpone(system_event_t event, int param, void* pointer, void* cont
  *******************************************************************************/
 void app_setup_and_loop(void)
 {
+    main_thread_current(nullptr /* reserved */);
+
+#if HAL_PLATFORM_LOG_FILE
+    system::initLogFile();
+#endif
+
 #if HAL_PLATFORM_ENV
     // Initialize the env vars as early as possible
     int r = system::Env::instance().init();
@@ -842,7 +848,6 @@ void app_setup_and_loop(void)
     system_part2_post_init();
 
     HAL_Core_Init();
-    main_thread_current(NULL);
     // We have running firmware, otherwise we wouldn't have gotten here
     DECLARE_SYS_HEALTH(ENTERED_Main);
 
@@ -923,6 +928,10 @@ void app_setup_and_loop(void)
         system::LedgerManager::instance();
     }
 #endif // HAL_PLATFORM_LEDGER
+
+#if HAL_PLATFORM_LOG_FILE
+    system::flushLogFile();
+#endif
 
 #if PLATFORM_THREADING
     if (threaded)

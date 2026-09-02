@@ -38,6 +38,7 @@
 #include <chrono>
 #include <limits>
 #include <mutex>
+#include <functional>
 #include "spark_wiring_system_power.h"
 #include "system_sleep_configuration.h"
 #include "system_control.h"
@@ -51,6 +52,7 @@
 #include "backup_ram_hal.h"
 #include "spark_wiring_asset.h"
 #include "security_mode.h"
+#include "logging.h"
 
 using spark::Vector;
 
@@ -413,9 +415,126 @@ private:
     int error_;
 };
 
+namespace particle {
+
+#if HAL_PLATFORM_LOG_FILE
+/**
+ * Options for `System.enableLogFile()`.
+ */
+class LogFileOptions {
+public:
+    /**
+     * Construct an object with the default options.
+     */
+    LogFileOptions() :
+            category_(nullptr),
+            maxSize_(0),
+            bufSize_(0),
+            level_(0) {
+    }
+
+    /**
+     * Set the logging category.
+     *
+     * If set, only messages logged for a category starting with this string are stored in the log.
+     *
+     * @param category Category name.
+     * @return This object.
+     */
+    LogFileOptions& category(const char* category) {
+        category_ = category;
+        return *this;
+    }
+
+    /**
+     * Get the logging category.
+     *
+     * @return Category name, or `nullptr` if the category is not set.
+     */
+    const char* category() const {
+        return category_;
+    }
+
+    /**
+     * Set the maximum size of the log data.
+     *
+     * Specifies how much of the most recent log data is retained. Up to twice this amount of
+     * filesystem storage may be used internally.
+     *
+     * @param size Size in bytes. If 0, a default size is used.
+     * @return This object.
+     */
+    LogFileOptions& maxSize(size_t size) {
+        maxSize_ = size;
+        return *this;
+    }
+
+    /**
+     * Get the maximum size of the log data.
+     *
+     * @return Size in bytes.
+     */
+    size_t maxSize() const {
+        return maxSize_;
+    }
+
+    /**
+     * Set the size of the buffer for log data.
+     *
+     * Messages are stored in a buffer in RAM and written to the file periodically. A larger buffer
+     * makes it less likely that messages are dropped when they are logged faster than they can be
+     * written to the file.
+     *
+     * @param size Size in bytes. If 0, a default size is used.
+     * @return This object.
+     */
+    LogFileOptions& bufferSize(size_t size) {
+        bufSize_ = size;
+        return *this;
+    }
+
+    /**
+     * Get the size of the buffer for log data.
+     *
+     * @return Size in bytes.
+     */
+    size_t bufferSize() const {
+        return bufSize_;
+    }
+
+    /**
+     * Set the minimum logging level.
+     *
+     * @param level Level as defined by the `LogLevel` enum. If 0, messages at all levels are
+     *        logged.
+     * @return This object.
+     */
+    LogFileOptions& level(int level) {
+        level_ = level;
+        return *this;
+    }
+
+    /**
+     * Get the minimum logging level.
+     *
+     * @return Level as defined by the `LogLevel` enum.
+     */
+    int level() const {
+        return level_;
+    }
+
+private:
+    const char* category_;
+    size_t maxSize_;
+    size_t bufSize_;
+    int level_;
+};
+#endif // HAL_PLATFORM_LOG_FILE
+
+} // namespace particle
+
 class SystemClass {
 public:
-
     SystemClass(System_Mode_TypeDef mode = DEFAULT) {
         set_system_mode(mode);
     }
@@ -1142,6 +1261,112 @@ public:
     // resets the device automatically
     static bool clearEnv(bool reset = true);
 #endif // HAL_PLATFORM_ENV
+
+#if HAL_PLATFORM_LOG_FILE
+    /**
+     * Enable logging to a file.
+     *
+     * Stores the logging configuration persistently.
+     *
+     * @see enableLogFile(bool, const particle::LogFileOptions&)
+     *
+     * @param opts Options.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int enableLogFile(const particle::LogFileOptions& opts = particle::LogFileOptions()) {
+        return enableLogFile(true, opts);
+    }
+
+    /**
+     * Enable logging to a file.
+     *
+     * @param persist If `true`, saves the logging configuration persistently, in which case the
+     *        log is enabled automatically next time the device boots. This allows capturing the
+     *        early boot messages, as well as the messages logged while the device is in safe mode,
+     *        which are otherwise not visible to the application.
+     *        If `false`, the log is enabled for the duration of the current session, i.e. until
+     *        the device is reset.
+     * @param opts Options.
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int enableLogFile(bool persist, const particle::LogFileOptions& opts = particle::LogFileOptions());
+
+    /**
+     * Disable logging to a file.
+     *
+     * @param persist If `true`, saves the logging configuration persistently, in which case the log
+     *        is not enabled automatically next time the device boots.
+     *        If `false`, the log is disabled for the duration of the current session, i.e. until
+     *        the device is reset.
+     * @param clear If `true`, deletes the current contents of the log.
+     *        If `false`, keeps the contents of the log.
+     */
+    static void disableLogFile(bool persist = true, bool clear = true);
+
+    /**
+     * Print the contents of the log file.
+     *
+     * The contents are printed via the logging system, that is, through the log handlers registered
+     * by the application.
+     *
+     * @param level Level at which the contents of the log are printed.
+     * @param category Category with which the contents of the log are printed.
+     * @return On success, the number of bytes printed, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    static int printLogFile(LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY()) {
+        return printLogFile(0 /* size */, level, category);
+    }
+
+    /**
+     * Print the contents of the log file.
+     *
+     * @see printLogFile(LogLevel, const char*)
+     *
+     * @param size Maximum size of the log data to print. If the log contains more data than that,
+     *        only the most recent `size` bytes are printed. If 0, the entire log is printed.
+     * @param level Level at which the contents of the log are printed.
+     * @param category Category with which the contents of the log are printed.
+     * @return On success, the number of bytes printed, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    static int printLogFile(size_t size, LogLevel level = LOG_LEVEL_INFO, const char* category = LOG_THIS_CATEGORY());
+
+    /**
+     * Read the contents of the log file.
+     *
+     * @param fn Function to invoke for each chunk of the log data. It must return 0 on success or
+     *        a negative error code to abort reading.
+     * @return On success, the number of bytes read, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    static int readLogFile(const std::function<int(const char*, size_t)>& fn) {
+        return readLogFile(0 /* size */, fn);
+    }
+
+    /**
+     * Read the contents of the log file.
+     *
+     * @see readLogFile(const std::function<int(const char*, size_t)>&)
+     *
+     * @param size Maximum size of the log data to read. If the log contains more data than that,
+     *        only the most recent `size` bytes are read. If 0, the entire log is read.
+     * @param fn Function to invoke for each chunk of the log data. It must return 0 on success or
+     *        a negative error code to abort reading.
+     * @return On success, the number of bytes read, otherwise an error code defined by
+     *         `Error::Type`.
+     */
+    static int readLogFile(size_t size, const std::function<int(const char*, size_t)>& fn);
+
+    /**
+     * Delete the contents of the log file.
+     *
+     * The log keeps capturing messages.
+     *
+     * @return 0 on success, otherwise an error code defined by `Error::Type`.
+     */
+    static int clearLogFile();
+#endif // HAL_PLATFORM_LOG_FILE
 
 private:
     SystemSleepResult systemSleepResult_;

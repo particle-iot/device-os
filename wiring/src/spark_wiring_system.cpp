@@ -8,8 +8,11 @@
 #include "system_control.h"
 #include "system_network.h"
 #include "system_env.h"
+#include "system_config.h"
 #include "scope_guard.h"
 #include "check.h"
+
+using namespace particle;
 
 #if Wiring_LogConfig
 extern void(*log_process_ctrl_request_callback)(ctrl_request* req);
@@ -246,6 +249,51 @@ bool SystemClass::clearEnv(bool reset) {
 }
 
 #endif // HAL_PLATFORM_ENV
+
+#if HAL_PLATFORM_LOG_FILE
+
+int SystemClass::enableLogFile(bool persist, const LogFileOptions& appOpts) {
+    system_log_file_options opts = {};
+    opts.size = sizeof(opts);
+    opts.level = appOpts.level();
+    opts.category = appOpts.category();
+    opts.max_size = appOpts.maxSize();
+    opts.buffer_size = appOpts.bufferSize();
+
+    int flags = 0;
+    if (!persist) {
+        flags |= SYSTEM_LOG_FILE_NO_PERSIST;
+    }
+    return system_enable_log_file(flags, &opts);
+}
+
+void SystemClass::disableLogFile(bool persist, bool clear) {
+    int flags = 0;
+    if (!persist) {
+        flags |= SYSTEM_LOG_FILE_NO_PERSIST;
+    }
+    if (!clear) {
+        flags |= SYSTEM_LOG_FILE_NO_CLEAR;
+    }
+    system_disable_log_file(flags, nullptr /* reserved */);
+}
+
+int SystemClass::printLogFile(size_t size, LogLevel level, const char* category) {
+    return system_print_log_file(size, level, category, nullptr /* reserved */);
+}
+
+int SystemClass::readLogFile(size_t size, const std::function<int(const char*, size_t)>& fn) {
+    return system_read_log_file(size, [](const char* data, size_t size, void* arg) {
+        auto fn = static_cast<const std::function<int(const char*, size_t)>*>(arg);
+        return (*fn)(data, size);
+    }, const_cast<std::function<int(const char*, size_t)>*>(&fn), nullptr /* reserved */);
+}
+
+int SystemClass::clearLogFile() {
+    return system_clear_log_file(nullptr /* reserved */);
+}
+
+#endif // HAL_PLATFORM_LOG_FILE
 
 SleepResult::SleepResult(int ret, const pin_t* pins, size_t pinsSize) {
     if (ret > 0) {

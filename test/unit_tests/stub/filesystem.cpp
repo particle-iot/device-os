@@ -32,12 +32,10 @@ filesystem_t* filesystem_get_instance(filesystem_instance_t index, void* reserve
     return &fs;
 }
 
-int filesystem_lock(filesystem_t* fs) {
-    return 0;
+void filesystem_lock(filesystem_t* fs) {
 }
 
-int filesystem_unlock(filesystem_t* fs) {
-    return 0;
+void filesystem_unlock(filesystem_t* fs) {
 }
 
 int lfs_file_open(lfs_t* lfs, lfs_file_t* file, const char* path, int flags) {
