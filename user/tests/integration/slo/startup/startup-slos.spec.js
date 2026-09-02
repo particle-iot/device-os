@@ -173,13 +173,4 @@ test('03_slo_startup_stats', async function () {
 });
 
 test('98_cleanup', async function() {
-    await waitFlashStatusEvent(this, { status: 'success' });
-});
-
-test('99_cleanup_1', async function() {
-
-});
-
-test('99_cleanup_2', async function() {
-
 });

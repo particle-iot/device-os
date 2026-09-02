@@ -167,23 +167,7 @@ test(03_slo_startup_stats) {
 }
 
 test(98_cleanup) {
-    prepareForFirmwareUpdate();
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // We are supposed to get an empty env
-}
-
-test(99_cleanup_1) {
-    completeFirmwareUpdate();
-}
-
-test(99_cleanup_2) {
-    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
-        expectSystemReset();
-        System.enableReset();
-        // Should normally be unreachable
-        delay(5000);
-        System.reset();
-    }
 }

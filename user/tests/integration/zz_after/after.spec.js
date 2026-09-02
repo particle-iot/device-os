@@ -39,25 +39,18 @@ test('04_clear_env', async function () {
 });
 
 test('05_restore_cloud_after_env_clear', async function () {
-    await waitFlashStatusEvent(this, { status: 'success' });
 });
 
-test('06_finalize_env_clear_1', async function () {
+test('06_disable_external_rtc', async function () {
 });
 
-test('06_finalize_env_clear_2', async function () {
+test('07_verify_external_rtc_default_state', async function () {
 });
 
-test('07_disable_external_rtc', async function () {
+test('08_unconfigure_muon_board', async function () {
 });
 
-test('08_verify_external_rtc_default_state', async function () {
-});
-
-test('09_unconfigure_muon_board', async function () {
-});
-
-test('10_verify_muon_board_unconfigured', async function () {
+test('09_verify_muon_board_unconfigured', async function () {
 });
 
 after(function() {

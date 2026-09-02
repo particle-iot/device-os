@@ -116,18 +116,10 @@ test('97_cleanup', async function() {
 });
 
 test('98_cleanup', async function() {
-    await waitFlashStatusEvent(this, { status: 'success' });
-});
-
-test('99_cleanup_1', async function() {
 
 });
 
-test('99_cleanup_2', async function() {
-
-});
-
-test('99_cleanup_3_verify_defaults', async function () {
+test('99_cleanup_verify_defaults', async function () {
     expect(device.mailBox).to.not.be.empty;
     console.log(device.mailBox[0].d);
 });

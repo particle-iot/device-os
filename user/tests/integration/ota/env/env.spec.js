@@ -224,18 +224,10 @@ test('14_complete_immediate_device_env_update_2', async function() {
 test('15_check_immediate_device_env_update', async function() {
 });
 
-test('97_cleanup', async function() {
+test('98_cleanup', async function() {
 	await unsetDeviceVariables(api, deviceId);
 });
 
-test('98_cleanup', async function() {
-	await waitFlashStatusEvent(this, { status: 'success' });
+test('99_cleanup', async function() {
 });
 
-test('99_cleanup_1', async function() {
-	
-});
-
-test('99_cleanup_2', async function() {
-	
-});

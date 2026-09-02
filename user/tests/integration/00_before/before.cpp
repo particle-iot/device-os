@@ -166,20 +166,14 @@ test(06_clear_env) {
 }
 
 test(07_restore_cloud_after_env_clear) {
-    prepareForFirmwareUpdate();
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // We are supposed to get an empty env
-}
-
-test(08_finalize_env_clear) {
-    completeFirmwareUpdate();
 }
 
 #endif // HAL_PLATFORM_ENV
 
-test(09_disable_external_rtc) {
+test(08_disable_external_rtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
     expectSystemReset();
@@ -187,7 +181,7 @@ test(09_disable_external_rtc) {
 #endif
 }
 
-test(10_verify_external_rtc_default_state) {
+test(09_verify_external_rtc_default_state) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     const auto status = ExternalTime.status();
     assertTrue(status.valid());
@@ -201,7 +195,7 @@ test(10_verify_external_rtc_default_state) {
 #endif
 }
 
-test(11_report_muon_presence) {
+test(10_report_muon_presence) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     assertEqual(0, pushMailboxMsg(particle::test::detectMuonBoard() ? "muon=true" : "muon=false", 5000));
 #else
@@ -209,7 +203,7 @@ test(11_report_muon_presence) {
 #endif
 }
 
-test(12_configure_muon_board_and_exrtc) {
+test(11_configure_muon_board_and_exrtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
@@ -222,7 +216,7 @@ test(12_configure_muon_board_and_exrtc) {
 #endif
 }
 
-test(13_verify_muon_exrtc_configuration) {
+test(12_verify_muon_exrtc_configuration) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();

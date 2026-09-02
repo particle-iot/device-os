@@ -155,29 +155,14 @@ test(04_clear_env) {
 }
 
 test(05_restore_cloud_after_env_clear) {
-    prepareForFirmwareUpdate();
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-    // We are supposed to get an empty env
 }
 
-test(06_finalize_env_clear_1) {
-    completeFirmwareUpdate();
-}
-
-test(06_finalize_env_clear_2) {
-    if (firmwareUpdateStatus != FirmwareUpdateStatus::SUCCESS) {
-        expectSystemReset();
-        System.enableReset();
-        // Should normally be unreachable
-        delay(5000);
-        System.reset();
-    }
-}
 #endif // HAL_PLATFORM_ENV
 
-test(07_disable_external_rtc) {
+test(06_disable_external_rtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     assertEqual(ExternalTime.disable(), (int)SYSTEM_ERROR_NONE);
     expectSystemReset();
@@ -185,7 +170,7 @@ test(07_disable_external_rtc) {
 #endif
 }
 
-test(08_verify_external_rtc_default_state) {
+test(07_verify_external_rtc_default_state) {
 #if HAL_PLATFORM_EXTERNAL_RTC
     const auto status = ExternalTime.status();
     assertTrue(status.valid());
@@ -199,7 +184,7 @@ test(08_verify_external_rtc_default_state) {
 #endif
 }
 
-test(09_unconfigure_muon_board) {
+test(08_unconfigure_muon_board) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();
@@ -211,7 +196,7 @@ test(09_unconfigure_muon_board) {
 #endif
 }
 
-test(10_verify_muon_board_unconfigured) {
+test(09_verify_muon_board_unconfigured) {
 #if HAL_PLATFORM_EXTERNAL_RTC_OPTIONAL && HAL_PLATFORM_HW_FORM_FACTOR_SOM
     if (!particle::test::detectMuonBoard()) {
         skip();

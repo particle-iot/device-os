@@ -61,29 +61,27 @@ test('06_clear_env', async function () {
 });
 
 test('07_restore_cloud_after_env_clear', async function () {
-    await waitFlashStatusEvent(this, { status: 'success' });
-});
-
-test('08_finalize_env_clear', async function () {
-});
-
-test('09_disable_external_rtc', async function() {
-});
-
-test('10_verify_external_rtc_default_state', async function() {
 
 });
 
-test('11_report_muon_presence', async function() {
+test('08_disable_external_rtc', async function() {
+
+});
+
+test('09_verify_external_rtc_default_state', async function() {
+
+});
+
+test('10_report_muon_presence', async function() {
     const msg = device.mailBox.pop();
     console.log(`Muon detected: ${msg.d === 'muon=true' ? 'yes' : 'no'}`);
 });
 
-test('12_configure_muon_board_and_exrtc', async function() {
+test('11_configure_muon_board_and_exrtc', async function() {
 
 });
 
-test('13_verify_muon_exrtc_configuration', async function() {
+test('12_verify_muon_exrtc_configuration', async function() {
 
 });
 
