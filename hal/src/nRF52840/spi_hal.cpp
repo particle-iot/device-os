@@ -342,11 +342,26 @@ static void spiTransferCancel(hal_spi_interface_t spi) {
 }
 
 void hal_spi_init(hal_spi_interface_t spi) {
-    os_thread_scheduling(false, nullptr);
-    if (spiMap[spi].mutex == nullptr) {
-        os_mutex_recursive_create(&spiMap[spi].mutex);
+    if (spi >= HAL_PLATFORM_SPI_NUM) {
+        return;
     }
-    os_thread_scheduling(true, nullptr);
+
+    if (spiMap[spi].mutex == nullptr) {
+        os_mutex_recursive_t mutex = nullptr;
+        os_mutex_recursive_create(&mutex);
+        SPARK_ASSERT(mutex);
+
+        os_thread_scheduling(false, nullptr);
+        if (spiMap[spi].mutex == nullptr) {
+            std::swap(spiMap[spi].mutex, mutex);
+        }
+        os_thread_scheduling(true, nullptr);
+
+        if (mutex) {
+            // Another thread got here first, destroy ours
+            os_mutex_recursive_destroy(mutex);
+        }
+    }
 
     hal_spi_acquire(spi, nullptr);
 

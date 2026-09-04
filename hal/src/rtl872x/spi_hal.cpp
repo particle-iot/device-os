@@ -188,11 +188,21 @@ public:
     }
 
     int init() {
-        os_thread_scheduling(false, nullptr);
         if (mutex_ == nullptr) {
-            os_mutex_recursive_create(&mutex_);
+            os_mutex_recursive_t mutex = nullptr;
+            CHECK_TRUE(os_mutex_recursive_create(&mutex) == 0, SYSTEM_ERROR_NO_MEMORY);
+
+            os_thread_scheduling(false, nullptr);
+            if (mutex_ == nullptr) {
+                std::swap(mutex, mutex_);
+            }
+            os_thread_scheduling(true, nullptr);
+
+            if (mutex) {
+                // Another thread got here first, destroy ours
+                os_mutex_recursive_destroy(mutex);
+            }
         }
-        os_thread_scheduling(true, nullptr);
 
         // Enable SPI Clock
         if (rtlSpiIndex_ == 0) {
@@ -213,7 +223,15 @@ public:
 
     int deinit() {
         end();
-        os_mutex_recursive_destroy(&mutex_);
+
+        os_thread_scheduling(false, nullptr);
+        auto mutex = mutex_;
+        mutex_ = nullptr;
+        os_thread_scheduling(true, nullptr);
+
+        if (mutex) {
+            os_mutex_recursive_destroy(mutex);
+        }
         return SYSTEM_ERROR_NONE;
     }
 

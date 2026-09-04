@@ -684,6 +684,9 @@ static void init_malloc_mutex(void) {
 
 void __malloc_lock(struct _reent *ptr) {
     if (malloc_mutex) {
+#ifdef DEBUG_BUILD
+        SPARK_ASSERT(xTaskGetSchedulerState() != taskSCHEDULER_SUSPENDED);
+#endif
         if (!xSemaphoreTakeRecursive(malloc_mutex, MALLOC_LOCK_TIMEOUT_MS)) {
             PANIC(HeapError, "Semaphore Lock Timeout");
             while (1);

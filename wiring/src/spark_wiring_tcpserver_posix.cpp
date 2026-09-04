@@ -61,10 +61,14 @@ TCPServer::TCPServer(uint16_t port, network_interface_t nif)
           _nif(nif),
           _sock(-1),
           _client(-1) {
-    SINGLE_THREADED_BLOCK() {
-        if (!s_invalid_client) {
-            s_invalid_client = new TCPClient(-1);
+    if (!s_invalid_client) {
+        auto client = new TCPClient(-1);
+        SINGLE_THREADED_BLOCK() {
+            if (!s_invalid_client) {
+                std::swap(s_invalid_client, client);
+            }
         }
+        delete client;
     }
 }
 
