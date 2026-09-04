@@ -87,11 +87,22 @@ public:
     }
 
     int init(const hal_i2c_config_t* conf) {
-        os_thread_scheduling(false, nullptr);
-        if (!mutex_) {
-            os_mutex_recursive_create(&mutex_);
+        if (mutex_ == nullptr) {
+            os_mutex_recursive_t mutex = nullptr;
+            CHECK_TRUE(os_mutex_recursive_create(&mutex) == 0, SYSTEM_ERROR_NO_MEMORY);
+
+            os_thread_scheduling(false, nullptr);
+            if (mutex_ == nullptr) {
+                std::swap(mutex, mutex_);
+            }
+            os_thread_scheduling(true, nullptr);
+
+            if (mutex) {
+                // Another thread got here first, destroy ours
+                os_mutex_recursive_destroy(mutex);
+            }
         }
-        os_thread_scheduling(true, nullptr);
+
         lock();
         if (state_ != HAL_I2C_STATE_NOT_INITIALIZED) {
             // Configured, but new buffers are invalid

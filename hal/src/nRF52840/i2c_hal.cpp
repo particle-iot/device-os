@@ -327,14 +327,23 @@ static bool isConfigValid(const hal_i2c_config_t* config) {
 
 int hal_i2c_init(hal_i2c_interface_t i2c, const hal_i2c_config_t* config) {
     CHECK_TRUE(i2c < HAL_PLATFORM_I2C_NUM, SYSTEM_ERROR_INVALID_ARGUMENT);
-    // Disable threading to create the I2C mutex
-    os_thread_scheduling(false, nullptr);
+
     if (i2cMap[i2c].mutex == nullptr) {
-        os_mutex_recursive_create(&i2cMap[i2c].mutex);
+        os_mutex_recursive_t mutex = nullptr;
+        CHECK_TRUE(os_mutex_recursive_create(&mutex) == 0, SYSTEM_ERROR_NO_MEMORY);
+
+        os_thread_scheduling(false, nullptr);
+        if (i2cMap[i2c].mutex == nullptr) {
+            std::swap(mutex, i2cMap[i2c].mutex);
+        }
+        os_thread_scheduling(true, nullptr);
+
+        if (mutex) {
+            // Another thread got here first, destroy ours
+            os_mutex_recursive_destroy(mutex);
+        }
     }
 
-    // Re-enable threading and capture the mutex
-    os_thread_scheduling(true, nullptr);
     I2cLock lk(i2c);
 
 // sc-137389
