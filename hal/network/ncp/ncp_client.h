@@ -41,7 +41,8 @@ enum class NcpPowerState {
 enum class NcpConnectionState {
     DISCONNECTED = 0,
     CONNECTING = 1,
-    CONNECTED = 2
+    CONNECTED = 2,
+    IDLE = 3
 };
 
 struct NcpEvent {

@@ -433,6 +433,15 @@ uint32_t compute_describe_system_checksum()
 	{
 		checksum += crc(info.modules[i].suffix.sha);
 	}
+	// Re-send the system describe when the SIM or eSIM profile changes
+	for (unsigned i = 0; i < info.key_value_count; i++)
+	{
+		const auto& keyVal = info.key_values[i];
+		if (strcmp(keyVal.key, "iccid") == 0 && keyVal.value[0])
+		{
+			checksum += string_crc(keyVal.value);
+		}
+	}
 	HAL_System_Info(&info, false, NULL);
 #if HAL_PLATFORM_ENV
     auto envSnapshotHash = Env::instance().snapshotHash();

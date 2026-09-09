@@ -280,6 +280,21 @@ int cellular_start_ncp_firmware_update(bool update = false, void* reserved = NUL
  */
 int cellular_send_apdu(const char* cmd, size_t cmd_size, char* resp, size_t* resp_size, void* reserved);
 
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+// Exported through dynalib but unstable, it reports an internal NCP connection state
+/**
+ * Check whether the modem is parked in the idle state, powered and reachable but deliberately not
+ * registering because the eUICC reports no enabled profile.
+ *
+ * Only meaningful once a connection has been requested. Before that the client reports itself as
+ * disconnected, which is what keeps the network interface from tearing it down.
+ *
+ * @param reserved Reserved argument. Must be set to `NULL`.
+ * @return 1 if idle, 0 if not, otherwise an error code defined by `system_error_t`.
+ */
+int cellular_is_idle(void* reserved);
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+
 #ifdef __cplusplus
 }
 #endif

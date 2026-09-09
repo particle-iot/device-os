@@ -21,6 +21,8 @@ LOG_SOURCE_CATEGORY("ncp.client");
 
 #include "quectel_ncp_client.h"
 
+#include "esim_profiles.h"
+
 #include "at_command.h"
 #include "at_response.h"
 #include "network/ncp/cellular/network_config_db.h"
@@ -128,7 +130,14 @@ const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 const unsigned QUECTEL_POLICYMAN_SRV_MODE_CHECK_INTERVAL = 60 * 1000;
 
 const system_tick_t QUECTEL_COPS_TIMEOUT = 3 * 60 * 1000;
-const system_tick_t QUECTEL_CFUN_TIMEOUT = 3 * 60 * 1000;
+const system_tick_t QUECTEL_CFUN_QUERY_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_CFUN_SET_TIMEOUT = 20 * 1000;
+const system_tick_t QUECTEL_CFUN_SET_WITH_RESET_TIMEOUT = 90 * 1000;
+const system_tick_t QUECTEL_CCID_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_CGSN_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_CGMR_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_QINDCFG_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_CEREG_TIMEOUT = 10 * 1000;
 
 const auto QUECTEL_CFUN_MAX_ATTEMPTS = 10;
 
@@ -157,7 +166,11 @@ const int CGDCONT_ATTEMPTS = 5;
 
 const int COPS_MAX_RETRY_CNT = 3;
 
-const int APDU_CHANNEL_TIMEOUT = 5 * 60 * 1000;
+const system_tick_t APDU_CHANNEL_TIMEOUT = 5 * 60 * 1000;
+const system_tick_t APDU_COMMAND_TIMEOUT = 20 * 1000;
+const system_tick_t APDU_POST_CLOSE_SETTLE = 250;
+const system_tick_t SIM_POST_CFUN_SETTLE = 3000; // Can be exited early by "+QUSIM: 1" URC
+
 
 } // anonymous
 
@@ -198,6 +211,8 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     parserError_ = 0;
     ready_ = false;
     sleepUrcsDisabled_ = false;
+    connectRequested_ = false;
+    apduRaisedCfun_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
     resetRegistrationState();
     if (modemPowerState()) {
@@ -356,6 +371,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
     CHECK(parser_.addUrcHandler("+QUSIM: 1", [](AtResponseReader* reader, const char* prefix, void* data) -> int {
         const auto self = (QuectelNcpClient*)data;
         self->checkImsi_ = true;
+        self->simSettleUntil_ = 0;
         return SYSTEM_ERROR_NONE;
     }, this));
     return SYSTEM_ERROR_NONE;
@@ -434,6 +450,8 @@ int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
     // The modem is gone, the inactivity timer must not fire and try to close the channel
     apduChannelTimer_.stop();
     apduChannel_ = 0;
+    simSettleUntil_ = 0;
+    apduRaisedCfun_ = false;
 
     return SYSTEM_ERROR_NONE;
 }
@@ -459,6 +477,21 @@ int QuectelNcpClient::enable() {
 }
 
 void QuectelNcpClient::disable() {
+    // Only disable when there is something to unblock, enable() power cycles the modem to recover.
+    // Nothing runs while idle, and a free lock means no AT command is in flight. Connected is left
+    // alone, the netif's PPP timeout disables on purpose. Trylock because this must not block.
+    if (connState_ == NcpConnectionState::IDLE) {
+        return;
+    }
+    if (connState_ != NcpConnectionState::CONNECTED && mutex_.trylock()) {
+        mutex_.unlock();
+        return;
+    }
+    disableImpl();
+}
+
+// Faults inside the client must disable regardless of the connection state
+void QuectelNcpClient::disableImpl() {
     // This method is used to unblock the network interface thread, so we're not trying to acquire
     // the client lock here
     const NcpState state = ncpState_;
@@ -507,13 +540,21 @@ int QuectelNcpClient::disconnect() {
 }
 
 NcpConnectionState QuectelNcpClient::connectionState() {
+    // While IDLE with nothing having asked to connect, tell the netif we're disconnected. Its
+    // teardown can't tell "nobody asked yet" from "asked to stop" and would otherwise call
+    // disconnect() on every tick. Once connect() has run we report IDLE, which is what keeps the
+    // netif's retry from calling connect() again. Everything inside the client should use
+    // connState_ instead of this.
+    if (connState_ == NcpConnectionState::IDLE && !connectRequested_) {
+        return NcpConnectionState::DISCONNECTED;
+    }
     return connState_;
 }
 
 int QuectelNcpClient::getFirmwareVersionString(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    auto resp = parser_.sendCommand("AT+CGMR");
+    auto resp = parser_.sendCommand(QUECTEL_CGMR_TIMEOUT, "AT+CGMR");
     CHECK_PARSER(resp.readLine(buf, size));
     const int r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
@@ -548,7 +589,7 @@ int QuectelNcpClient::dataChannelWrite(int id, const uint8_t* data, size_t size)
         // Make sure we are going into an error state if muxer for some reason fails
         // to write into the data channel.
         LOG(ERROR, "Failed to write into data channel %d", err);
-        disable();
+        disableImpl();
     }
 
     return err;
@@ -580,6 +621,27 @@ int QuectelNcpClient::ncpId() const {
 
 int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
     const NcpClientLock lock(this);
+
+    // Ask every time. Tooling may have changed the enabled profile since we last looked, and a
+    // disconnect leaves IDLE behind, so without this we would try to register with nothing enabled.
+    // Cheap enough: connect() is only reachable from disconnected or IDLE, never in a loop.
+    if (connState_ == NcpConnectionState::DISCONNECTED || connState_ == NcpConnectionState::IDLE) {
+        if (checkParser() == SYSTEM_ERROR_NONE) {
+            esimCheckProfiles();
+        }
+    }
+
+    if (connState_ == NcpConnectionState::IDLE) {
+        // We already asked the eUICC and there is nothing to register with, so don't touch the
+        // modem at all. Returning success matters: upImpl() powers the modem off on an error.
+        connectRequested_ = true;
+        // The state has not changed, so connectionState() would swallow this. Publish directly so
+        // the netif takes down the PPP session that upImpl() just started.
+        publishConnectionState();
+        LOG(INFO, "Cellular NCP in IDLE mode, reset or reconnect to exit");
+        return SYSTEM_ERROR_NONE;
+    }
+
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
 
@@ -593,7 +655,7 @@ int QuectelNcpClient::connect(const CellularNetworkConfig& conf) {
 }
 
 int QuectelNcpClient::getIccidImpl(char* buf, size_t size) {
-    auto resp = parser_.sendCommand("AT+CCID");
+    auto resp = parser_.sendCommand(QUECTEL_CCID_TIMEOUT, "AT+CCID");
     char iccid[32] = {};
     int r = CHECK_PARSER(resp.scanf("+CCID: %31s", iccid));
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
@@ -616,17 +678,96 @@ int QuectelNcpClient::getIccidImpl(char* buf, size_t size) {
     return n;
 }
 
+int QuectelNcpClient::esimHasUsableProfile(char* iccid, size_t iccidSize, bool duringInit) {
+    apduSkipStateCheck_ = duringInit;
+    SCOPE_GUARD({
+        apduSkipStateCheck_ = false;
+    });
+    const auto sendApduFn = [](void* ctx, const char* cmd, size_t cmdSize, char* resp,
+            size_t& respSize) -> int {
+        auto self = static_cast<QuectelNcpClient*>(ctx);
+        // autoClose off: the probe opens and closes its own channel. Turning it on would record
+        // that channel as the one the app is using and start the timer that closes it after five
+        // idle minutes, and the channel is gone before either could matter.
+        return self->sendApduImpl(cmd, cmdSize, resp, respSize, false /* autoClose */,
+                !self->apduSkipStateCheck_);
+    };
+    return esim::hasEnabledProfile(sendApduFn, this, iccid, iccidSize);
+}
+
+int QuectelNcpClient::esimCheckProfiles() {
+    // Keep the card powered across both the probe and the ICCID read below. The probe closes its
+    // own channel when it is done, and that would otherwise drop us back to CFUN 0, where AT+CCID
+    // can't reach the card at all and esimSyncSimIccid() would power cycle it for nothing. We leave
+    // the radio raised on the way out either way, since both outcomes below want it at 4 or higher.
+    apduRaiseFunctionality();
+    apduCfunHold_ = true;
+    SCOPE_GUARD({
+        apduCfunHold_ = false;
+        apduRaisedCfun_ = false;
+    });
+
+    char enabledIccid[32] = {};
+    const int usable = esimHasUsableProfile(enabledIccid, sizeof(enabledIccid));
+    if (usable < 0) {
+        // Never enter/exit IDLE on an error
+        LOG_DEBUG(TRACE, "Could not read eSIM profiles: %d", usable);
+        return usable;
+    }
+    if (usable == 0) {
+        LOG(INFO, "No enabled eSIM profile, not registering");
+        // Remain in airplane mode AT+CFUN=4 while IDLE. Do not error out, just go into IDLE
+        setModuleFunctionality(CellularFunctionality::AIRPLANE, true /* check */);
+        connectionState(NcpConnectionState::IDLE);
+        return SYSTEM_ERROR_NONE;
+    }
+    if (enabledIccid[0]) {
+        // Not fatal if it never agrees, registration will fail and the netif will recover the modem
+        esimSyncSimIccid(enabledIccid);
+    }
+    if (connState_ == NcpConnectionState::IDLE) {
+        LOG_DEBUG(INFO, "eSIM profile enabled, leaving IDLE");
+        connectionState(NcpConnectionState::DISCONNECTED);
+    }
+    return usable;
+}
+
+int QuectelNcpClient::esimSyncSimIccid(const char* expected) {
+    // The modem holds whatever it read off the card when its UICC session was set up, so a profile
+    // enabled since then leaves AT+CCID reporting the old ICCID and AT+CIMI failing outright. Coming
+    // up at CFUN 4 and going to 1 does not reload it, no matter how long we wait, but a cycle down
+    // through CFUN 0 does, and the card answers as soon as CFUN 1 returns.
+    char iccid[32] = {};
+    int r = getIccidImpl(iccid, sizeof(iccid));
+    if (r >= 0 && !strcmp(iccid, expected)) {
+        return SYSTEM_ERROR_NONE;
+    }
+    if (r < 0) {
+        LOG_DEBUG(INFO, "Could not read the ICCID (%d), cycling CFUN to load enabled profile %s", r, expected);
+    } else {
+        LOG_DEBUG(INFO, "Modem reports ICCID %s, cycling CFUN to load enabled profile %s", iccid, expected);
+    }
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
+    r = getIccidImpl(iccid, sizeof(iccid));
+    if (r < 0 || strcmp(iccid, expected)) {
+        LOG_DEBUG(WARN, "Modem still reports ICCID %s after a CFUN cycle", iccid);
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int QuectelNcpClient::getIccid(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
 
     // ICCID command errors if CFUN is 0. Run CFUN=4 before reading ICCID.
-    auto respCfun = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN?");
+    auto respCfun = parser_.sendCommand(QUECTEL_CFUN_QUERY_TIMEOUT, "AT+CFUN?");
     int cfunVal = -1;
     auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
     CHECK_PARSER_OK(respCfun.readResult());
     if (retCfun == 1 && cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=4,0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=4,0"));
     }
 
     auto res = getIccidImpl(buf, size);
@@ -634,7 +775,7 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
     // Modify CFUN back to 0 if it was changed previously,
     // as CFUN:0 is needed to prevent long reg problems on certain SIMs
     if (cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
     }
 
     return res;
@@ -643,7 +784,7 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
 int QuectelNcpClient::getImei(char* buf, size_t size) {
     const NcpClientLock lock(this);
     CHECK(checkParser());
-    auto resp = parser_.sendCommand("AT+CGSN");
+    auto resp = parser_.sendCommand(QUECTEL_CGSN_TIMEOUT, "AT+CGSN");
     const size_t n = CHECK_PARSER(resp.readLine(buf, size));
     CHECK_PARSER_OK(resp.readResult());
     return n;
@@ -939,6 +1080,10 @@ int QuectelNcpClient::getTxDelayInDataChannel() {
 int QuectelNcpClient::checkParser() {
     CHECK_TRUE(pwrState_ == NcpPowerState::ON, SYSTEM_ERROR_INVALID_STATE);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
+    // Anything that talks to the modem right after a channel close can hang on it, not just the
+    // next APDU. AT+CFUN?, AT+CCID and AT+CIMI have all been seen going out into that window and
+    // sitting there for their whole timeout, so everything coming through here waits it out.
+    apduWaitForSettle();
     if (ready_ && parserError_ != 0) {
         const int r = parser_.execCommand(1000, "AT");
         if (r == AtResponse::OK) {
@@ -1312,7 +1457,7 @@ int QuectelNcpClient::selectSimCard() {
     // int r = CHECK_PARSER(parser_.execCommand("AT+CMEE=2"));
     // CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    int simState = 0;
+    int simState = -1;
     unsigned attempts = 0;
     for (attempts = 0; attempts < 10; attempts++) {
         simState = checkSimCard();
@@ -1322,12 +1467,20 @@ int QuectelNcpClient::selectSimCard() {
         HAL_Delay_Milliseconds(1000);
     }
 
+    // If eSIM with no profile enabled, ignore CPIN errors.
+    if (simState != SYSTEM_ERROR_NONE) {
+        char enabledIccid[32] = {};
+        if (esimHasUsableProfile(enabledIccid, sizeof(enabledIccid), true /* duringInit */) == 0) {
+            return SYSTEM_ERROR_NONE;
+        }
+    }
+
     if (attempts != 0) {
         // There was an error initializing the SIM
         // We've seen issues on uBlox-based devices, as a precation, we'll cycle
         // the modem here through minimal/full functional state.
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
     }
     return simState;
 }
@@ -1479,12 +1632,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         skipAll(serial_.get(), 1000);
         CHECK(waitAtResponse(10000));
 
-        // Cannot use ncpId() as this is not programmed on first boot during manufacturing
-        // Read NCP ID from OTP when initializing the modem after provisioning
-        if (platform_primary_ncp_identifier() != PLATFORM_NCP_QUECTEL_BG95_S5) {
-            // Select either internal or external SIM card slot depending on the configuration
-            CHECK(selectSimCard());
-        }
+        CHECK(selectSimCard());
 
         // Just in case disconnect
         // int r = CHECK_PARSER(parser_.execCommand("AT+COPS=2"));
@@ -1573,6 +1721,8 @@ int QuectelNcpClient::initReady(ModemState state) {
     // Enable packet domain error reporting
     // Ignore error responses, this command is known to fail sometimes
     CHECK_PARSER(parser_.execCommand("AT+CGEREP=1,0"));
+
+    esimCheckProfiles();
 
     return SYSTEM_ERROR_NONE;
 }
@@ -1699,14 +1849,17 @@ int QuectelNcpClient::checkSimCard() {
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
     if (!strcmp(code, "READY")) {
-        CHECK_PARSER_OK(parser_.execCommand("AT+CCID"));
+        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CCID_TIMEOUT, "AT+CCID"));
         return SYSTEM_ERROR_NONE;
     }
     return SYSTEM_ERROR_UNKNOWN;
 }
 
 int QuectelNcpClient::getModuleFunctionality() {
-    auto resp = parser_.sendCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN?");
+    // Goes straight to the parser, so it misses the settle that checkParser() does for everyone
+    // else. This one matters: every APDU block opens with it, often a few ms after a channel close
+    apduWaitForSettle();
+    auto resp = parser_.sendCommand(QUECTEL_CFUN_QUERY_TIMEOUT, "AT+CFUN?");
     int curVal = -1;
     auto r = resp.scanf("+CFUN: %d", &curVal);
     CHECK_PARSER_OK(resp.readResult());
@@ -1715,8 +1868,10 @@ int QuectelNcpClient::getModuleFunctionality() {
 }
 
 int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool check) {
+    int prev = -1;
     if (check) {
-        if ((int)cfun == CHECK(getModuleFunctionality())) {
+        prev = CHECK(getModuleFunctionality());
+        if ((int)cfun == prev) {
             // Already in required state
             return 0;
         }
@@ -1724,9 +1879,16 @@ int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool ch
 
     int r = SYSTEM_ERROR_UNKNOWN;
 
-    r = parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=%d,0", (int)cfun);
+    r = parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=%d,0", (int)cfun);
 
     CHECK_PARSER(r);
+    // CFUN
+    // 1 to 4/0, 4 to 0: no settle required
+    // 0 to 1/4: needs settling
+    if (cfun != CellularFunctionality::MINIMUM &&
+            (prev < 0 || prev == (int)CellularFunctionality::MINIMUM)) {
+        simSettleUntil_ = millis() + SIM_POST_CFUN_SETTLE;
+    }
 
     // AtResponse::Result!
     return r;
@@ -2056,7 +2218,7 @@ int QuectelNcpClient::enterDataMode() {
             LOG(ERROR, "Failed to enter data mode");
             muxer_.setChannelDataHandler(QUECTEL_NCP_PPP_CHANNEL, nullptr, nullptr);
             // Go into an error state
-            disable();
+            disableImpl();
         }
     });
 
@@ -2204,15 +2366,15 @@ int QuectelNcpClient::urcs(bool enable) {
     sleepUrcsDisabled_ = !enable;
     if (enable) {
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",1,1"));
-            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CEREG=2"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_QINDCFG_TIMEOUT, "AT+QINDCFG=\"all\",1,1"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CEREG_TIMEOUT, "AT+CEREG=2"));
         } else {
             CHECK_TRUE(muxer_.resumeChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
         }
     } else {
         if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5 || ncpId() == PLATFORM_NCP_QUECTEL_BG95_M5) {
-            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+QINDCFG=\"all\",0,1"));
-            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CEREG=0"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_QINDCFG_TIMEOUT, "AT+QINDCFG=\"all\",0,1"));
+            CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CEREG_TIMEOUT, "AT+CEREG=0"));
         } else {
             CHECK_TRUE(muxer_.suspendChannel(QUECTEL_NCP_AT_CHANNEL) == 0, SYSTEM_ERROR_INTERNAL);
         }
@@ -2225,12 +2387,22 @@ int QuectelNcpClient::startNcpFwUpdate(bool update) {
 }
 
 int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize, bool autoClose) {
+    return sendApduImpl(cmdBuf, cmdSize, respBuf, respSize, autoClose, true /* checkState */);
+}
+
+int QuectelNcpClient::sendApduImpl(const char* cmdBuf, size_t cmdSize, char* respBuf, size_t& respSize,
+        bool autoClose, bool checkState) {
     if (cmdSize > MAX_APDU_COMMAND_SIZE) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
 
     NcpClientLock lock(this);
-    CHECK(checkParser());
+    if (checkState) {
+        // The probe in selectSimCard() skips this, same reason closeApduChannel() never calls it:
+        // initReady() has not moved ncpState_ to ON yet, so every APDU would come back
+        // INVALID_STATE before one was ever sent.
+        CHECK(checkParser());
+    }
 
     int cmdChannel = -1; // Channel number as encoded in the CLA field
     bool openChannel = false; // If true, this command opens a channel
@@ -2252,6 +2424,17 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
         }
     }
 
+    // Dismissed once we know a channel is open and there is something to close later
+    NAMED_SCOPE_GUARD(cfunGuard, {
+        apduRestoreFunctionality();
+    });
+    if (openChannel) {
+        apduWaitForSettle();
+        CHECK(apduRaiseFunctionality());
+    } else {
+        cfunGuard.dismiss();
+    }
+
     if (openChannel && autoClose && apduChannel_ > 0) {
         LOG(INFO, "Closing existing APDU channel %d", apduChannel_);
         int r = closeApduChannel(apduChannel_);
@@ -2259,15 +2442,21 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
             LOG(ERROR, "Error while closing APDU channel: %d", r);
         }
         apduChannel_ = 0;
+        apduWaitForSettle();
     }
 
     auto cmd = parser_.command();
-    cmd.printf("AT+CSIM=%d,\"", (int)(cmdSize * 2));
+    cmd.timeout(APDU_COMMAND_TIMEOUT);
 
+    // Build the whole command up front and send it in one write. Separate writes go out as separate
+    // mux frames and the modem sometimes drops the echo of the first one, which leaves the parser
+    // hunting for a match that can no longer come until the command times out.
     char strBuf[APDU_BUFFER_SIZE * 2 + 20]; // Add some room for AT command framing
-    toHex(cmdBuf, cmdSize, strBuf, sizeof(strBuf));
+    int n = std::snprintf(strBuf, sizeof(strBuf), "AT+CSIM=%d,\"", (int)(cmdSize * 2));
+    n += toHex(cmdBuf, cmdSize, strBuf + n, sizeof(strBuf) - n);
+    strBuf[n++] = '"';
+    strBuf[n] = '\0';
     cmd.print(strBuf);
-    cmd.print("\"");
 
     auto resp = cmd.send();
     // Not using AtResponse::scanf() as it may allocate memory dynamically
@@ -2309,6 +2498,7 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
                     }
                     if (channel > 0) {
                         LOG(INFO, "Opened APDU channel %d", channel);
+                        cfunGuard.dismiss();
                         if (autoClose) {
                             apduChannel_ = channel;
                             apduChannelTimer_.start(APDU_CHANNEL_TIMEOUT);
@@ -2317,10 +2507,12 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
                 } else if (closeChannel) {
                     int channel = (unsigned char)cmdBuf[3]; // P2
                     LOG(INFO, "Closed APDU channel %d", channel);
+                    simSettleUntil_ = millis() + APDU_POST_CLOSE_SETTLE;
                     if (channel > 0 && channel == apduChannel_) {
                         apduChannelTimer_.stop();
                         apduChannel_ = 0;
                     }
+                    apduRestoreFunctionality();
                 }
             }
         }
@@ -2334,17 +2526,60 @@ int QuectelNcpClient::sendApdu(const char* cmdBuf, size_t cmdSize, char* respBuf
 
 int QuectelNcpClient::closeApduChannel(int channel) {
     // Don't use checkParser() here as this method is also called from initReady()
-    auto cmd = parser_.command();
-    cmd.print("AT+CSIM=10,\"007080"); // CLA, INS, P1
-
     char hexBuf[3];
     char c = channel;
-    toHex(&c, 1, hexBuf, sizeof(hexBuf));
-    cmd.print(hexBuf); // P2
+    toHex(&c, 1, hexBuf, sizeof(hexBuf)); // P2
 
-    cmd.print("00\""); // Le
+    // CLA, INS, P1, P2, Le. One write, same reason as sendApduImpl()
+    char strBuf[32];
+    std::snprintf(strBuf, sizeof(strBuf), "AT+CSIM=10,\"007080%s00\"", hexBuf);
+
+    auto cmd = parser_.command();
+    cmd.timeout(APDU_COMMAND_TIMEOUT);
+    cmd.print(strBuf);
+    SCOPE_GUARD({
+        simSettleUntil_ = millis() + APDU_POST_CLOSE_SETTLE;
+    });
     CHECK_PARSER_OK(cmd.exec());
     return 0;
+}
+
+void QuectelNcpClient::apduWaitForSettle() {
+    // "+QUSIM: 1" URC will cut this delay short, but only because we force .processUrc()
+    while (simSettleUntil_ && (int32_t)(simSettleUntil_ - millis()) > 0) {
+        parser_.processUrc(); // Ignore errors
+        HAL_Delay_Milliseconds(10);
+    }
+    simSettleUntil_ = 0;
+}
+
+int QuectelNcpClient::apduRaiseFunctionality() {
+    if (apduRaisedCfun_) {
+        return SYSTEM_ERROR_NONE;
+    }
+    if (getModuleFunctionality() != (int)CellularFunctionality::MINIMUM) {
+        return SYSTEM_ERROR_NONE;
+    }
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, false /* check */));
+    apduRaisedCfun_ = true;
+    return SYSTEM_ERROR_NONE;
+}
+
+void QuectelNcpClient::apduRestoreFunctionality() {
+    if (apduCfunHold_ || !apduRaisedCfun_) {
+        // Somebody upstream wants the card kept powered past the end of this channel
+        return;
+    }
+    apduRaisedCfun_ = false;
+    if (getModuleFunctionality() != (int)CellularFunctionality::AIRPLANE) {
+        // Somebody changed it while the channel was open, a connect() for instance. Putting that back
+        // to 0 would take the connection down with it.
+        return;
+    }
+    const int r = setModuleFunctionality(CellularFunctionality::MINIMUM, false /* check */);
+    if (r != AtResponse::OK) {
+        LOG_DEBUG(WARN, "Failed to restore CFUN after APDU channel: %d", r);
+    }
 }
 
 void QuectelNcpClient::apduChannelTimeoutCb(void* arg) {
@@ -2365,6 +2600,7 @@ void QuectelNcpClient::apduChannelTimeoutCb(void* arg) {
         LOG(ERROR, "Error while closing APDU channel: %d", r);
     }
     self->apduChannel_ = 0;
+    self->apduRestoreFunctionality();
 }
 
 void QuectelNcpClient::connectionState(NcpConnectionState state) {
@@ -2400,15 +2636,24 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
         }
     }
 
+    if (connState_ != NcpConnectionState::IDLE) {
+        connectRequested_ = false;
+    }
+
+    const auto handler = conf_.eventHandler();
+    if (handler && state == NcpConnectionState::CONNECTED) {
+        CellularNcpAuthEvent event = {};
+        event.type = CellularNcpEvent::AUTH;
+        event.user = netConf_.user();
+        event.password = netConf_.password();
+        handler(event, conf_.eventHandlerData());
+    }
+    publishConnectionState();
+}
+
+void QuectelNcpClient::publishConnectionState() {
     const auto handler = conf_.eventHandler();
     if (handler) {
-        if (state == NcpConnectionState::CONNECTED) {
-            CellularNcpAuthEvent event = {};
-            event.type = CellularNcpEvent::AUTH;
-            event.user = netConf_.user();
-            event.password = netConf_.password();
-            handler(event, conf_.eventHandlerData());
-        }
         NcpConnectionStateChangedEvent event = {};
         event.type = NcpEvent::CONNECTION_STATE_CHANGED;
         event.state = connState_;
@@ -2434,12 +2679,13 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
         switch (channel) {
             case 0: {
                 // Muxer stopped
-                self->disable();
+                self->disableImpl();
                 break;
             }
             case QUECTEL_NCP_PPP_CHANNEL: {
                 // PPP channel closed
-                if (self->connState_ != NcpConnectionState::DISCONNECTED) {
+                if (self->connState_ != NcpConnectionState::DISCONNECTED &&
+                        self->connState_ != NcpConnectionState::IDLE) {
                     // It should be safe to notify the PPP netif/client about a change of state
                     // here exactly because the muxer channel is closed and there is no
                     // chance for a deadlock.
@@ -2502,8 +2748,8 @@ int QuectelNcpClient::interveneRegistration() {
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
         }
@@ -2516,8 +2762,8 @@ int QuectelNcpClient::interveneRegistration() {
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
                 return 0;
             }
         }
@@ -2556,8 +2802,8 @@ int QuectelNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
+                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
             }
         }
     }
@@ -2612,6 +2858,12 @@ bool QuectelNcpClient::checkAtWhileConnected() {
 int QuectelNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
+
+    if (connState_ == NcpConnectionState::IDLE) {
+        // Nothing below applies while IDLE and none of it should run. There is no polling either,
+        // we only leave IDLE on an explicit disconnect() or off().
+        return SYSTEM_ERROR_NONE;
+    }
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();

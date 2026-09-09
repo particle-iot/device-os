@@ -74,6 +74,7 @@ private:
     int downImpl();
 
     void setExpectedInternalState(NetifEvent ev);
+    void notifyIdleState(bool idle);
 
     static void loop(void* arg);
 
@@ -92,6 +93,7 @@ private:
     std::atomic<NcpConnectionState> expectedConnectionState_;
     CellularNetworkManager* celMan_ = nullptr;
     volatile system_tick_t connectStart_ = 0;
+    volatile bool idleNotified_ = false;
 };
 
 } } // namespace particle::net
