@@ -62,3 +62,5 @@ private:
 };
 
 } // namespace particle
+
+int test_app_ctrl_request_handler(ctrl_request* req);

@@ -115,6 +115,10 @@ public:
         return req;
     }
 
+    ctrl_request* ctrlRequest() const {
+        return req_;
+    }
+
     JSONValue get(const char* name) const {
         return getValue(data_, name);
     }
@@ -164,7 +168,7 @@ int RequestHandler::request(ctrl_request* ctrlReq) {
     CHECK_TRUE(inited_, SYSTEM_ERROR_INVALID_STATE);
     Request req;
     CHECK(req.init(ctrlReq));
-    const int r = CHECK(request(&req));
+    const int r = request(&req);
     req.done(r, (r == Result::RESET_PENDING) ? systemReset : nullptr);
     return 0;
 }
@@ -192,7 +196,7 @@ int RequestHandler::request(Request* req) {
     } else if (req->isEmpty()) { // Ping request
         return SYSTEM_ERROR_NONE;
     } else {
-        return SYSTEM_ERROR_INVALID_ARGUMENT;
+        return test_app_ctrl_request_handler(req->ctrlRequest());
     }
 }
 
@@ -383,3 +387,7 @@ void RequestHandler::loop() {
 }
 
 } // namespace particle
+
+int __attribute__((weak)) test_app_ctrl_request_handler(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
