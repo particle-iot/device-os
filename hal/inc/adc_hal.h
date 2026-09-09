@@ -43,9 +43,29 @@ int hal_adc_calibrate(uint32_t reserved, void* reserved1);
 int hal_adc_sleep(bool sleep, void* reserved);
 int hal_adc_set_reference(uint32_t reference, void* reserved);
 int hal_adc_get_reference(void* reserved);
+void hal_adc_lock(void);
+void hal_adc_unlock(void);
 
 #ifdef __cplusplus
 }
+
+namespace particle {
+
+class AdcLock {
+public:
+    AdcLock() {
+        hal_adc_lock();
+    }
+
+    ~AdcLock() {
+        hal_adc_unlock();
+    }
+
+    AdcLock(const AdcLock&) = delete;
+    AdcLock& operator=(const AdcLock&) = delete;
+};
+
+} // namespace particle
 #endif
 
 #endif  /* ADC_HAL_H */

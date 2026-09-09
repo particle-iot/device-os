@@ -50,7 +50,6 @@ ifneq ("$(BOOTLOADER_MODULE)","")
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_ram_hp.c
 # CSRC += $(TARGET_AMBD_SDK_SRC_SOC_PATH)/bootloader/boot_trustzone_hp.c
 else
-CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/platform_utils.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/rtk_coex.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/bt_fwconfig.c
 CSRC += $(TARGET_AMBD_SDK_BLUETOOTH_PATH)/board/amebad/src/hci/bt_normal_patch.c

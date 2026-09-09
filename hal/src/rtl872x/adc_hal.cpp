@@ -27,6 +27,7 @@ extern "C" {
 #include "service_debug.h"
 #include "logging.h"
 #include "system_cache.h"
+#include "static_recursive_mutex.h"
 #include <algorithm>
 
 #define APBPeriph_ADC_CLOCK         (SYS_CLK_CTRL1  << 30 | BIT_LSYS_ADC_CKE)
@@ -49,7 +50,10 @@ extern "C" {
 
 namespace {
 
+using namespace particle;
 using namespace particle::services;
+
+StaticRecursiveMutex adcMutex;
 
 class Adc {
 public:
@@ -283,15 +287,26 @@ void hal_adc_set_sample_time(uint8_t sample_time) {
  * Note: ADC is 12-bit. Currently it returns 0-4096
  */
 int32_t hal_adc_read(uint16_t pin) {
+    AdcLock lk;
     return Adc::instance().read(pin);
 }
 
 int hal_adc_sleep(bool sleep, void* reserved) {
+    AdcLock lk;
     return Adc::instance().sleep(sleep);
 }
 
 int hal_adc_calibrate(uint32_t reserved, void* reserved1) {
+    AdcLock lk;
     return Adc::instance().calibration();
+}
+
+void hal_adc_lock(void) {
+    adcMutex.lock();
+}
+
+void hal_adc_unlock(void) {
+    adcMutex.unlock();
 }
 
 int hal_adc_set_reference(uint32_t reference, void* reserved) {
