@@ -59,6 +59,8 @@ endif
 
 LDFLAGS += -u uxTopUsedPriority
 
+LDFLAGS += -Wl,--wrap=rtw_get_random_bytes
+
 INCLUDE_DIRS += $(SHARED_MODULAR)/inc/system-part1
 SYSTEM_PART1_MODULE_SRC_PATH = $(SYSTEM_PART1_MODULE_PATH)/src
 
