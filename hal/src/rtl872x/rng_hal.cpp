@@ -17,8 +17,10 @@
 
 #include "rng_hal.h"
 
+#include "backup_ram_hal.h"
 #include "check.h"
 #include "entropy_hal.h"
+#include "platform_headers.h"
 #include "scope_guard.h"
 #include "service_debug.h"
 #include "static_recursive_mutex.h"
@@ -45,7 +47,7 @@ struct RetainedSeed {
 
 static_assert(sizeof(RetainedSeed) == 40, "Invalid retained seed size");
 
-__attribute__((section(".retained_system_flags"))) RetainedSeed retainedSeed;
+retained_system RetainedSeed retainedSeed;
 
 mbedtls_ctr_drbg_context drbg = {};
 StaticRecursiveMutex drbgMutex;
@@ -72,7 +74,9 @@ int initDrbg() {
     SCOPE_GUARD({
         memset(seedMaterial, 0, sizeof(seedMaterial));
     });
-    if (retainedSeed.magic == RETAINED_SEED_MAGIC && retainedSeed.version == RETAINED_SEED_VERSION) {
+    const bool haveRetainedSeed = (retainedSeed.magic == RETAINED_SEED_MAGIC &&
+            retainedSeed.version == RETAINED_SEED_VERSION);
+    if (haveRetainedSeed) {
         memcpy(seedMaterial, retainedSeed.data, sizeof(retainedSeed.data));
         retainedSeed.magic = 0;
         CHECK(hal_entropy_read(seedMaterial + RETAINED_SEED_SIZE, REFRESH_SIZE, REFRESH_SIZE * 8));
@@ -90,6 +94,10 @@ int initDrbg() {
     CHECK(mbedtls_ctr_drbg_random(&drbg, retainedSeed.data, sizeof(retainedSeed.data)));
     retainedSeed.version = RETAINED_SEED_VERSION;
     retainedSeed.magic = RETAINED_SEED_MAGIC;
+
+    if (!haveRetainedSeed) {
+        CHECK(hal_backup_ram_sync(nullptr));
+    }
 
     drbgReady = true;
     return SYSTEM_ERROR_NONE;
