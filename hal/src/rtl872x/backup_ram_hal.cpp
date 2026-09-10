@@ -53,7 +53,7 @@ StaticRecursiveMutex backupMutex;
 uint8_t backupRamShadow[HAL_PLATFORM_BACKUP_RAM_SIZE] = {};
 }
 
-constexpr uint32_t HAL_BACKUP_RAM_VALID_VALUE = 0x4a171bc4;
+constexpr uint32_t HAL_BACKUP_RAM_VALID_VALUE = 0x94baa52a;
 retained_system uint32_t g_backupRamValidMarker;
 
 class BackupRamLock {
@@ -131,6 +131,13 @@ int hal_backup_ram_init(void) {
             // 2. Waking up from hibernate mode, but the session info is stale
             memset(&session, 0, sizeof(session));
         }
+    } else if (g_backupRamValidMarker != HAL_BACKUP_RAM_VALID_VALUE) {
+        // Cold boot: initialize the system region of the backup RAM with initial values
+        extern char link_global_retained_system_initial_values;
+        extern char link_global_retained_system_start;
+        extern char link_global_retained_system_end;
+        const size_t len = &link_global_retained_system_end - &link_global_retained_system_start;
+        memcpy(&link_global_retained_system_start, &link_global_retained_system_initial_values, len);
     }
     return SYSTEM_ERROR_NONE;
 }
