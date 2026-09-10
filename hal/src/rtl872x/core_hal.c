@@ -310,8 +310,6 @@ void HAL_Core_Config(void) {
 
     HAL_Core_Setup_override_interrupts();
 
-    HAL_RNG_Configuration();
-
 #if defined(MODULAR_FIRMWARE)
     const module_info_dynamic_location_ext_t* dyn = NULL;
     const uint8_t* user_end = (const uint8_t*)module_user.end_address - sizeof(uint32_t);
@@ -404,9 +402,6 @@ void HAL_Core_Setup(void) {
         HAL_Core_System_Reset();
     }
 
-    // Initialize stdlib PRNG with a seed from hardware RNG
-    srand(HAL_RNG_GetRandomNumber());
-
     // This was originally happening in Set_System(), which is called before malloc is enabled,
     // and global constructors have executed, but interrupt HAL can only be accessed after both of those things happened.
     hal_button_init(HAL_BUTTON1, HAL_BUTTON_MODE_EXTI);
@@ -415,6 +410,11 @@ void HAL_Core_Setup(void) {
 
     // Note: the rtc module has retained data, so hal_backup_ram_init() should be called first.
     hal_rtc_init();
+
+    HAL_RNG_Configuration();
+
+    // Initialize stdlib PRNG with a seed from hardware RNG
+    srand(HAL_RNG_GetRandomNumber());
 
 #if !defined(MODULAR_FIRMWARE) || !MODULAR_FIRMWARE
     module_user_init_hook();
