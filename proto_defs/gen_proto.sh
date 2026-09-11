@@ -53,4 +53,5 @@ gen_proto "${SHARED_DIR}/cloud/ledger.proto"
 
 # Compile internal definitions
 gen_proto "${INTERNAL_DIR}/network_config.proto"
+gen_proto "${INTERNAL_DIR}/log_file_config.proto"
 gen_proto "${INTERNAL_DIR}/ledger.proto"

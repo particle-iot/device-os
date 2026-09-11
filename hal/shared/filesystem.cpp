@@ -20,13 +20,21 @@
 #include "exflash_hal.h"
 #include "rgbled.h"
 #include <mutex>
+#include <cstring>
 #include "flash_mal.h"
 #include "system_error.h"
 #include "file_util.h"
+#include "random.h"
 #include "scope_guard.h"
 #include "check.h"
 
 using particle::fs::FsLock;
+
+namespace {
+
+int s_fsLockDepth = 0;
+
+} /* anonymous */
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
@@ -35,34 +43,38 @@ using particle::fs::FsLock;
 
 namespace {
 
-static StaticRecursiveMutex s_lfs_mutex;
+StaticRecursiveMutex s_fsMutex;
 
 } /* anonymous */
 
-int filesystem_lock(filesystem_t* fs) {
+void filesystem_lock(filesystem_t* fs) {
     (void)fs;
-    return !s_lfs_mutex.lock();
+    s_fsMutex.lock();
+    ++s_fsLockDepth;
 }
 
-int filesystem_unlock(filesystem_t* fs) {
+void filesystem_unlock(filesystem_t* fs) {
     (void)fs;
-    return !s_lfs_mutex.unlock();
+    --s_fsLockDepth;
+    s_fsMutex.unlock();
 }
 
 #else
 
-__attribute__((weak)) int filesystem_lock(filesystem_t* fs) {
+__attribute__((weak)) void filesystem_lock(filesystem_t* fs) {
     (void)fs;
-    return 0;
 }
 
-__attribute__((weak)) int filesystem_unlock(filesystem_t* fs) {
+__attribute__((weak)) void filesystem_unlock(filesystem_t* fs) {
     (void)fs;
-    return 0;
 }
 
 #endif /* MODULE_FUNCTION != MOD_FUNC_BOOTLOADER */
 
+int filesystem_lock_depth(filesystem_t* fs) {
+    (void)fs;
+    return s_fsLockDepth;
+}
 
 namespace {
 
@@ -499,8 +511,11 @@ int File::close() {
     if (!d_) {
         return 0;
     }
-    CHECK_FS(lfs_file_close(&d_->fs->instance, &d_->file));
+    // lfs_file_close() marks the file as closed and frees the associated memory even if an error
+    // occurs while syncing it
+    int r = lfs_file_close(&d_->fs->instance, &d_->file);
     d_.reset();
+    CHECK_FS(r);
     return 0;
 }
 
@@ -611,6 +626,35 @@ int stat(const char* path, lfs_info* info, filesystem_t* fs) {
         return SYSTEM_ERROR_FILESYSTEM;
     }
     return CHECK_FS(lfs_stat(&fs->instance, path, info));
+}
+
+int createTempFile(File& file, char* pathBuf, size_t pathBufSize, int openFlags) {
+    if (pathBufSize < TEMP_PATH_BUF_SIZE) {
+        return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    char path[TEMP_PATH_BUF_SIZE] = {};
+    std::memcpy(path, TEMP_PATH_PREFIX, sizeof(TEMP_PATH_PREFIX) - 1);
+
+    openFlags |= LFS_O_CREAT | LFS_O_EXCL;
+
+    File f;
+    Random rand;
+    int tries = 0;
+    for (;;) {
+        rand.genBase32(path + sizeof(TEMP_PATH_PREFIX) - 1, TEMP_PATH_BUF_SIZE - sizeof(TEMP_PATH_PREFIX));
+        int r = f.open(path, openFlags);
+        if (r < 0) {
+            if (r == SYSTEM_ERROR_FILESYSTEM_EXIST && ++tries < 3) {
+                continue;
+            }
+            return r;
+        }
+        break;
+    }
+
+    std::memcpy(pathBuf, path, TEMP_PATH_BUF_SIZE);
+    file = std::move(f);
+    return 0;
 }
 
 } // particle::fs

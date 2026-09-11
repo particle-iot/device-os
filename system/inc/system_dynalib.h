@@ -40,6 +40,7 @@
 #include "system_power.h"
 #include "system_ble_prov.h"
 #include "system_env.h"
+#include "system_config.h"
 #endif
 
 DYNALIB_BEGIN(system)
@@ -151,6 +152,17 @@ DYNALIB_FN(BASE_IDX3 + 5, system, system_clear_env, int(void*))
 
 DYNALIB_FN(BASE_IDX4 + 0, system, system_thread_invoke, int(void (*)(void*), void*, void*))
 
+#if HAL_PLATFORM_LOG_FILE
+DYNALIB_FN(BASE_IDX4 + 1, system, system_enable_log_file, int(int, const system_log_file_options*))
+DYNALIB_FN(BASE_IDX4 + 2, system, system_disable_log_file, void(int, void*))
+DYNALIB_FN(BASE_IDX4 + 3, system, system_print_log_file, int(size_t, int, const char*, void*))
+DYNALIB_FN(BASE_IDX4 + 4, system, system_read_log_file, int(size_t, system_read_log_file_callback, void*, void*))
+DYNALIB_FN(BASE_IDX4 + 5, system, system_clear_log_file, int(void*))
+#define BASE_IDX5 (BASE_IDX4 + 6)
+#else
+#define BASE_IDX5 (BASE_IDX4 + 1)
+#endif // HAL_PLATFORM_LOG_FILE
+
 DYNALIB_END(system)
 
 #undef BASE_IDX
@@ -158,5 +170,6 @@ DYNALIB_END(system)
 #undef BASE_IDX2
 #undef BASE_IDX3
 #undef BASE_IDX4
+#undef BASE_IDX5
 
 #endif	/* SYSTEM_DYNALIB_H */

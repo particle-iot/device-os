@@ -33,6 +33,7 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
+#include "log_file.h"
 #include "v2/coap_channel.h"
 #include "spark_macros.h"
 #include "string.h"
@@ -504,6 +505,24 @@ static bool process_isr_task_queue()
 extern void system_handle_button_clicks(bool isIsr);
 #endif
 
+namespace {
+
+#if HAL_PLATFORM_LOG_FILE
+
+system_tick_t g_lastLogFileFlush = 0;
+
+inline void flushLogFileIfNeeded() {
+    if (!system::isLogFileEnabled() || HAL_Timer_Get_Milli_Seconds() - g_lastLogFileFlush < 1000) {
+        return;
+    }
+    system::flushLogFile();
+    g_lastLogFileFlush = HAL_Timer_Get_Milli_Seconds();
+}
+
+#endif // HAL_PLATFORM_LOG_FILE
+
+} // namespace
+
 void Spark_Idle_Events(bool force_events/*=false*/)
 {
     ON_EVENT_DELTA();
@@ -547,6 +566,10 @@ void Spark_Idle_Events(bool force_events/*=false*/)
     }
 #endif
     system_shutdown_if_needed();
+
+#if HAL_PLATFORM_LOG_FILE
+    flushLogFileIfNeeded();
+#endif
 }
 
 namespace {

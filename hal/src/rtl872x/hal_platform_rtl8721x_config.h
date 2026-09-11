@@ -152,3 +152,9 @@
 #define HAL_PLATFORM_FLASH_COMMON_ATTRIBUTES __attribute__((section(".ram.text"), noinline))
 
 #define HAL_PLATFORM_PANIC_REGISTERS_COUNT (6)
+
+#if defined(MODULE_FUNCTION) && MODULE_FUNCTION == 2 // MOD_FUNC_BOOTLOADER
+#define HAL_PLATFORM_LOG_FILE (0)
+#else
+#define HAL_PLATFORM_LOG_FILE (1)
+#endif

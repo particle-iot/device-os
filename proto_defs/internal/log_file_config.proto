@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package particle.firmware;
+
+import "nanopb.proto";
+
+message LogFileConfig {
+  uint32 level = 1;
+  string category = 2 [(nanopb).max_length = 31];
+  uint32 max_size = 3;
+  uint32 buffer_size = 4;
+}
