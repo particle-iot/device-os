@@ -21,6 +21,8 @@
 #include "rgbled.h"
 #include "debug.h"
 
+#include <cmath>
+
 // TODO: Move synchronization macros to some header file
 #if PLATFORM_ID != PLATFORM_GCC
 
@@ -49,6 +51,9 @@
 #endif // PLATFORM_ID != PLATFORM_GCC
 
 namespace {
+
+// Avoid relying on M_PI, which isn't guaranteed to be defined by <cmath> on all toolchains
+constexpr float TWO_PI = 6.283185307f;
 
 class StatusQueue {
 public:
@@ -233,15 +238,13 @@ private:
             break;
         }
         case LED_PATTERN_FADE: {
-            period /= 2;
-            if (ticks < period) { // Fade out
-                ticks = period - ticks;
-            } else { // Fade in
-                ticks = ticks - period;
-            }
-            color->r = (uint32_t)color->r * ticks / period;
-            color->g = (uint32_t)color->g * ticks / period;
-            color->b = (uint32_t)color->b * ticks / period;
+            // Raised-cosine "breathing" envelope: eases 0 -> full -> 0 sinusoidally over one
+            // period, instead of ramping linearly.
+            const float phase = TWO_PI * (float)ticks / (float)period;
+            const float brightness = 0.5f * (1.0f - cosf(phase));
+            color->r = (uint16_t)((float)color->r * brightness);
+            color->g = (uint16_t)((float)color->g * brightness);
+            color->b = (uint16_t)((float)color->b * brightness);
             break;
         }
         default:
