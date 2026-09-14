@@ -21,8 +21,6 @@
 #include "rgbled.h"
 #include "debug.h"
 
-#include <cmath>
-
 // TODO: Move synchronization macros to some header file
 #if PLATFORM_ID != PLATFORM_GCC
 
@@ -52,8 +50,11 @@
 
 namespace {
 
-// Avoid relying on M_PI, which isn't guaranteed to be defined by <cmath> on all toolchains
-constexpr float TWO_PI = 6.283185307f;
+constexpr uint32_t Q15_ONE = (1 << 15);
+
+constexpr uint32_t q15Mul(uint32_t a, uint32_t b) {
+    return (a * b) >> 15;
+}
 
 class StatusQueue {
 public:
@@ -238,13 +239,19 @@ private:
             break;
         }
         case LED_PATTERN_FADE: {
-            // Raised-cosine "breathing" envelope: eases 0 -> full -> 0 sinusoidally over one
-            // period, instead of ramping linearly.
-            const float phase = TWO_PI * (float)ticks / (float)period;
-            const float brightness = 0.5f * (1.0f - cosf(phase));
-            color->r = (uint16_t)((float)color->r * brightness);
-            color->g = (uint16_t)((float)color->g * brightness);
-            color->b = (uint16_t)((float)color->b * brightness);
+            period /= 2;
+            if (ticks < period) { // Fade out
+                ticks = period - ticks;
+            } else { // Fade in
+                ticks = ticks - period;
+            }
+            // Smoothstep easing (3t^2 - 2t^3), a cheap integer approximation of a sinusoidal
+            // envelope, applied to the same linear ramp fraction the old code used directly.
+            const uint32_t rampProgress = ((uint32_t)ticks << 15) / period; // 0.0..1.0 in Q15
+            const uint32_t brightness = q15Mul(q15Mul(rampProgress, rampProgress), 3 * Q15_ONE - 2 * rampProgress);
+            color->r = q15Mul(color->r, brightness);
+            color->g = q15Mul(color->g, brightness);
+            color->b = q15Mul(color->b, brightness);
             break;
         }
         default:
