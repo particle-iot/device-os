@@ -980,15 +980,17 @@ private:
 };
 #endif
 
+#if PLATFORM_ID == PLATFORM_SULU
+static UsiI2cClass i2c0(SDA, SCL);
+static LpI2cClass i2c1(PMIC_SDA, PMIC_SCL);
+#else
 static LpI2cClass i2c0(SDA, SCL);
-#if HAL_PLATFORM_I2C2
-static UsiI2cClass i2c1(PMIC_SDA, PMIC_SCL);
 #endif
 
 I2cClass* getInstanceImpl(hal_i2c_interface_t i2c) {
     static I2cClass* i2cs[] = {
         &i2c0
-#if HAL_PLATFORM_I2C2
+#if PLATFORM_ID == PLATFORM_SULU
         ,&i2c1
 #endif
     };
