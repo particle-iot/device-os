@@ -17,7 +17,7 @@
 
 #include "nfc_hal.h"
 
-#if HAL_PLATFORM_NFC
+#if HAL_PLATFORM_NFC_DRIVER
 
 #include "nfc_t2t_lib.h"
 #include "app_error.h"
@@ -128,6 +128,36 @@ int hal_nfc_type2_set_callback(nfc_event_callback_t callback, void* context) {
     g_context = context;
 
     return 0;
+}
+
+#elif HAL_PLATFORM_NFC
+
+#include "system_error.h"
+
+// The hal_nfc dynalib slot still has to be filled, every table after it sits at a hard-coded offset
+
+int hal_nfc_type2_init(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_nfc_type2_uninit(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_nfc_type2_set_payload(const void* msg_buf, size_t msg_len) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_nfc_type2_start_emulation(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_nfc_type2_stop_emulation(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_nfc_type2_set_callback(nfc_event_callback_t callback, void* context) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 #endif
