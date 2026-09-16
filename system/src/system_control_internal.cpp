@@ -36,6 +36,7 @@
 #include "control/config.h"
 #include "control/storage.h"
 #include "control/cloud.h"
+#include "control/diagnostics.h"
 
 namespace particle {
 
@@ -246,6 +247,14 @@ void SystemControl::processRequest(ctrl_request* req, ControlRequestChannel* cha
         break;
     }
 #endif // HAL_PLATFORM_ASSETS
+    case CTRL_REQUEST_GET_LAST_PANIC_INFO: {
+        setResult(req, control::diagnostics::getLastPanicInfo(req));
+        break;
+    }
+    case CTRL_REQUEST_CLEAR_LAST_PANIC_INFO: {
+        setResult(req, control::diagnostics::clearLastPanicInfo(req));
+        break;
+    }
     case CTRL_REQUEST_DIAGNOSTIC_INFO: {
         if (req->request_size > 0) {
             // TODO: Querying a part of the diagnostic data is not supported
