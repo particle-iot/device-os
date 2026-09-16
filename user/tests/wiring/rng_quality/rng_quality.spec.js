@@ -5,8 +5,8 @@ timeout(60 * 60 * 1000);
 
 let device = null;
 
-const WORDS_PER_BLOCK = 8192;
-const BLOCKS = 48;
+const WORDS_PER_BLOCK = 16383; // 65532 bytes, the payload limit is 65535 (uint16_t wLength)
+const BLOCKS = 24;
 
 function berlekampMassey(bits) {
     const n = bits.length;
@@ -141,4 +141,10 @@ test('RNG_03_host_side_statistical_analysis', async function() {
 
     console.log(`words: ${words.length}, ones: ${stats.ones}/${n}, chi2: ${chi.toFixed(1)}, ` +
         `maxrun: ${stats.maxRun}, entropy: ${shannonEntropyBytes(bytes).toFixed(4)} bits/byte`);
+});
+
+test('RNG_04_initial_generation_1', async function() {
+});
+
+test('RNG_04_initial_generation_2', async function() {
 });

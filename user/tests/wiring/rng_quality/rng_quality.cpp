@@ -22,20 +22,29 @@
 #include "spark_wiring_json.h"
 #include "system_control.h"
 
+#if HAL_PLATFORM_RTL872X
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #include <string.h>
 
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
 
 namespace {
 
-const size_t MAX_DUMP_WORDS = 8192;
+const size_t MAX_DUMP_WORDS = 16383; // 65532 bytes, the payload limit is 65535 (uint16_t wLength)
 const uint32_t REPLAY_MAGIC = 0x5a5a5a5a;
+
+#if HAL_PLATFORM_RTL872X
+const char* const backupRamFilePath = "/sys/backup_ram.bin";
+#endif
 
 static retained uint32_t previousStream[8];
 static retained uint32_t replayState;
 
 int rngDumpRequest(ctrl_request* req) {
-    String command;
+    bool command = false;
     size_t size = 1024;
     const auto data = JSONValue::parse(req->request_data, req->request_size);
     CHECK_TRUE(data.isObject(), SYSTEM_ERROR_BAD_DATA);
@@ -43,18 +52,18 @@ int rngDumpRequest(ctrl_request* req) {
     JSONObjectIterator it(data);
     while (it.next()) {
         if (it.name() == "c") {
-            command = it.value().toString();
+            command = it.value().toString() == "R";
         } else if (it.name() == "n") {
             CHECK_TRUE(it.value().isNumber(), SYSTEM_ERROR_INVALID_ARGUMENT);
             size = it.value().toInt();
         }
     }
 
-    CHECK_TRUE(command == "R", SYSTEM_ERROR_NOT_SUPPORTED);
+    CHECK_TRUE(command, SYSTEM_ERROR_NOT_SUPPORTED);
     CHECK_TRUE(size > 0 && size <= MAX_DUMP_WORDS, SYSTEM_ERROR_INVALID_ARGUMENT);
     CHECK(system_ctrl_alloc_reply_data(req, size * sizeof(uint32_t), nullptr));
 
-    auto output = static_cast<uint32_t*>(req->reply_data);
+    auto output = reinterpret_cast<uint32_t*>(req->reply_data);
     for (size_t i = 0; i < size; ++i) {
         output[i] = HAL_RNG_GetRandomNumber();
     }
@@ -100,6 +109,7 @@ test(RNG_02_replay_across_soft_reset) {
             }
         }
         replayState = 0;
+        assertEqual(RESET_REASON_USER, System.resetReason());
         assertLess(same, 2);
         return;
     }
@@ -113,4 +123,36 @@ test(RNG_02_replay_across_soft_reset) {
 }
 
 test(RNG_03_host_side_statistical_analysis) {
+}
+
+test(RNG_04_initial_generation_1) {
+#if HAL_PLATFORM_RTL872X
+    unlink(backupRamFilePath);
+    extern uintptr_t platform_backup_ram_all_start[];
+    extern uintptr_t platform_backup_ram_all_end;
+    memset(platform_backup_ram_all_start, 0,
+            (uintptr_t)&platform_backup_ram_all_end - (uintptr_t)platform_backup_ram_all_start);
+#endif
+#ifdef PARTICLE_TEST_RUNNER
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+#endif
+    System.reset();
+}
+
+test(RNG_04_initial_generation_2) {
+#if HAL_PLATFORM_RTL872X
+    assertEqual(RESET_REASON_USER, System.resetReason());
+    struct stat st = {};
+    assertEqual(0, stat(backupRamFilePath, &st));
+    assertMoreOrEqual((int)st.st_size, 4);
+#endif
+
+    const uint32_t first = HAL_RNG_GetRandomNumber();
+    int same = 0;
+    for (int i = 0; i < 100; ++i) {
+        if (HAL_RNG_GetRandomNumber() == first) {
+            ++same;
+        }
+    }
+    assertLessOrEqual(same, 2);
 }
