@@ -28,6 +28,7 @@
 #include "hal_platform.h"
 #include "core_hal.h"
 #include "delay_hal.h"
+#include "backup_ram_hal.h"
 #include "check.h"
 
 #define PANIC_LED_COLOR RGB_COLOR_RED
@@ -95,6 +96,18 @@ int panic_get_last_panic_data(PanicData* panic, void* reserved) {
 
 void panic_set_last_panic_data_handled(void* reserved) {
     g_retainedPanicData.data.flags |= PANIC_DATA_FLAG_HANDLED;
+}
+
+int panic_clear_last_panic_data(void* reserved) {
+    g_retainedPanicData.marker = 0;
+    g_retainedPanicData.data.size = 0;
+#if HAL_PLATFORM_BACKUP_RAM_NEED_SYNC
+    const int ret = hal_backup_ram_sync(NULL);
+    if (ret != 0) {
+        return ret;
+    }
+#endif
+    return 0;
 }
 
 /****************************************************************************
