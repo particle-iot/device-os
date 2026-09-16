@@ -587,6 +587,119 @@ test(FS_POSIX_03_TruncateStress) {
 }
 
 
+test(FS_POSIX_03_TruncateRewrite) {
+    // Regression test for the pcache->block == 0xffffffff assert in littlefs lfs_cache_prog(),
+    // triggered by truncating an open multi-block file and rewriting it from the start without
+    // closing it (the SimpleFileStorage::save() sequence).
+    // Backport: littlefs commit 6095f5469f2bd8e24741143b78c0c5d9862982ef (upstream 12e464e)
+    const int num = 2;
+    const size_t dataSize = 8192; // > 1 filesystem block (4096)
+    const size_t smallSize = 1024;
+
+    auto files = generateRandomFilenames(TEST_DIR, num);
+
+    static char data[dataSize] = {};
+    static char tmpData[dataSize] = {};
+    particle::Random rand;
+    rand.gen(data, sizeof(data));
+
+    spark::Vector<int> fds(num);
+
+    // Create and write the initial multi-block files
+    for (int i = 0; i < num; i++) {
+        int fd = open(files[i], O_CREAT | O_RDWR);
+        assertMoreOrEqual(fd, 0);
+        fds[i] = fd;
+
+        ssize_t r = write(fds[i], data, sizeof(data));
+        assertEqual(r, sizeof(data));
+    }
+
+    // ftruncate to 0, seek to the start and rewrite in full, several times over
+    for (int iter = 0; iter < 3; iter++) {
+        rand.gen(data, sizeof(data));
+
+        for (int i = 0; i < num; i++) {
+            assertEqual(ftruncate(fds[i], 0), 0);
+            assertEqual(lseek(fds[i], 0, SEEK_SET), 0);
+
+            ssize_t r = write(fds[i], data, sizeof(data));
+            assertEqual(r, sizeof(data));
+        }
+
+        // Rewrite succeeded: validate size and content
+        for (int i = 0; i < num; i++) {
+            assertEqual(fsync(fds[i]), 0);
+
+            struct stat st;
+            assertEqual(0, stat(files[i], &st));
+            assertEqual(st.st_size, dataSize);
+
+            assertEqual(0, lseek(fds[i], 0, SEEK_SET));
+            memset(tmpData, 0, sizeof(tmpData));
+            ssize_t r = read(fds[i], tmpData, sizeof(tmpData));
+            assertEqual(r, sizeof(tmpData));
+            assertEqual(0, memcmp(tmpData, data, sizeof(tmpData)));
+        }
+    }
+
+    // ftruncate to a mid-file size, seek to the start and rewrite smaller
+    rand.gen(data, sizeof(data));
+    for (int i = 0; i < num; i++) {
+        assertEqual(ftruncate(fds[i], smallSize), 0);
+        assertEqual(lseek(fds[i], 0, SEEK_SET), 0);
+
+        ssize_t r = write(fds[i], data, smallSize);
+        assertEqual(r, smallSize);
+    }
+
+    // Rewrite smaller succeeded: validate
+    for (int i = 0; i < num; i++) {
+        assertEqual(fsync(fds[i]), 0);
+
+        struct stat st;
+        assertEqual(0, stat(files[i], &st));
+        assertEqual(st.st_size, smallSize);
+
+        assertEqual(0, lseek(fds[i], 0, SEEK_SET));
+        memset(tmpData, 0, sizeof(tmpData));
+        ssize_t r = read(fds[i], tmpData, sizeof(tmpData));
+        assertEqual(r, smallSize);
+        assertEqual(0, memcmp(tmpData, data, smallSize));
+    }
+
+    // ftruncate to 0, seek to the start and grow back to the full size
+    rand.gen(data, sizeof(data));
+    for (int i = 0; i < num; i++) {
+        assertEqual(ftruncate(fds[i], 0), 0);
+        assertEqual(lseek(fds[i], 0, SEEK_SET), 0);
+
+        ssize_t r = write(fds[i], data, sizeof(data));
+        assertEqual(r, sizeof(data));
+    }
+
+    // Grow after truncate succeeded: validate
+    for (int i = 0; i < num; i++) {
+        assertEqual(fsync(fds[i]), 0);
+
+        struct stat st;
+        assertEqual(0, stat(files[i], &st));
+        assertEqual(st.st_size, dataSize);
+
+        assertEqual(0, lseek(fds[i], 0, SEEK_SET));
+        memset(tmpData, 0, sizeof(tmpData));
+        ssize_t r = read(fds[i], tmpData, sizeof(tmpData));
+        assertEqual(r, sizeof(tmpData));
+        assertEqual(0, memcmp(tmpData, data, sizeof(tmpData)));
+    }
+
+    // Close and unlink
+    for (int i = 0; i < num; i++) {
+        assertEqual(close(fds[i]), 0);
+        assertEqual(0, unlink(files[i]));
+    }
+}
+
 test(FS_POSIX_99_Cleanup) {
     assertTrue(dirExists(TEST_DIR));
     assertEqual(0, rmDir(TEST_DIR));
