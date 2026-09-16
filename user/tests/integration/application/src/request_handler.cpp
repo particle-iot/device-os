@@ -65,8 +65,10 @@ public:
 
     int init(ctrl_request* req) {
         if (req->request_size > 0) {
-            // Parse request
-            auto d = JSONValue::parse(req->request_data, req->request_size);
+            // Parse request. parseCopy() leaves the request data untouched: the in-place
+            // parse would NUL-terminate tokens inside the buffer, breaking any downstream
+            // re-parse of the same request by the application request hook
+            auto d = JSONValue::parseCopy(req->request_data, req->request_size);
             CHECK_TRUE(d.isObject(), SYSTEM_ERROR_BAD_DATA);
             data_ = std::move(d);
         }
