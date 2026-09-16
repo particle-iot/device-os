@@ -23,16 +23,19 @@
 #include "platform_headers.h"
 #include "dct_hal.h"
 #include "dct.h"
+#include "logging.h"
 #include "rtl8721d.h"
-#include "timer_hal.h"
 #include "static_recursive_mutex.h"
 #include "scope_guard.h"
 #include "dtls_session_persist.h"
 #include "simple_file_storage.h"
 
 extern uintptr_t platform_backup_ram_all_start[];
-extern uintptr_t platform_backup_ram_all_end;
 extern uintptr_t platform_backup_ram_persisted_flash_size;
+
+extern char link_global_retained_system_initial_values;
+extern char link_global_retained_system_start;
+extern char link_global_retained_system_end;
 
 extern SessionPersistDataOpaque session;
 
@@ -47,15 +50,19 @@ const char* const backupRamFilePath = "/sys/backup_ram.bin";
 using namespace particle;
 
 int saveBackupRamFile() {
-    persistedCrc = Compute_CRC32((const uint8_t*)&platform_backup_ram_all_start, (size_t)&platform_backup_ram_persisted_flash_size, nullptr);
-    return SimpleFileStorage::save(backupRamFilePath, &platform_backup_ram_all_start,
+    const int r = SimpleFileStorage::save(backupRamFilePath, &platform_backup_ram_all_start,
             (size_t)&platform_backup_ram_persisted_flash_size);
+    if (r >= 0) {
+        persistedCrc = Compute_CRC32((const uint8_t*)&platform_backup_ram_all_start, (size_t)&platform_backup_ram_persisted_flash_size, nullptr);
+    }
+    return r;
 }
 
 int loadBackupRamFile() {
     const int r = SimpleFileStorage::load(backupRamFilePath, &platform_backup_ram_all_start,
             (size_t)&platform_backup_ram_persisted_flash_size);
     if (r != (int)(size_t)&platform_backup_ram_persisted_flash_size) {
+        LOG(ERROR, "Failed to load backup RAM file: %d", r);
         return SYSTEM_ERROR_NOT_FOUND;
     }
     persistedCrc = Compute_CRC32((const uint8_t*)&platform_backup_ram_all_start, (size_t)&platform_backup_ram_persisted_flash_size, nullptr);
@@ -63,9 +70,6 @@ int loadBackupRamFile() {
 }
 
 void initRetainedSystem() {
-    extern char link_global_retained_system_initial_values;
-    extern char link_global_retained_system_start;
-    extern char link_global_retained_system_end;
     const size_t len = &link_global_retained_system_end - &link_global_retained_system_start;
     memcpy(&link_global_retained_system_start, &link_global_retained_system_initial_values, len);
     persistedCrc = Compute_CRC32((const uint8_t*)&platform_backup_ram_all_start, (size_t)&platform_backup_ram_persisted_flash_size, nullptr);
@@ -78,7 +82,7 @@ retained_system uint32_t g_backupRamValidMarker;
 
 class BackupRamLock {
 public:
-    BackupRamLock(bool threading = true)
+    BackupRamLock()
             : locked_(false) {
         lock();
     }
