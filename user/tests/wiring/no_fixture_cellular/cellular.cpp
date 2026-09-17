@@ -395,4 +395,60 @@ test(MDM_03_restore_cloud_connection) {
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
 
+namespace {
+const system_tick_t CELLULAR_LOCK_HOLD_MS = 10000;
+
+volatile bool sCellularLockHeld = false;
+volatile bool sCellularLockReleased = false;
+} // anonymous
+
+test(CELLULAR_08_device_info_not_blocked_by_client_lock) {
+    if (system_thread_get_state(nullptr) != spark::feature::ENABLED) {
+        skip();
+        return;
+    }
+
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+    CellularDevice live = {};
+    live.size = sizeof(live);
+    assertEqual(cellular_device_info(&live, nullptr), 0);
+    assertTrue(strlen(live.imei) > 0);
+
+    Particle.disconnect();
+    waitFor(Particle.disconnected, 30000);
+    Cellular.off();
+    waitFor(Cellular.isOff, MAX_CELLULAR_OFF_TIME);
+    assertTrue(Cellular.isOff());
+
+    sCellularLockHeld = false;
+    sCellularLockReleased = false;
+    {
+        Thread holder("cellLockHolder", [] {
+            Cellular.lock();
+            sCellularLockHeld = true;
+            delay(CELLULAR_LOCK_HOLD_MS);
+            Cellular.unlock();
+            sCellularLockReleased = true;
+        });
+        assertTrue(holder.isValid());
+        SCOPE_GUARD({
+            holder.join();
+        });
+        assertTrue(waitFor([] { return (bool)sCellularLockHeld; }, 5000));
+
+        CellularDevice cached = {};
+        cached.size = sizeof(cached);
+        const system_tick_t start = millis();
+        assertEqual(cellular_device_info(&cached, nullptr), 0);
+        assertLess(millis() - start, 1000);
+        assertEqual(strcmp(cached.imei, live.imei), 0);
+        assertEqual(strcmp(cached.iccid, live.iccid), 0);
+    }
+    assertTrue((bool)sCellularLockReleased);
+
+    Cellular.on();
+    waitFor(Cellular.isOn, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+}
+
 #endif // Wiring_Cellular == 1
