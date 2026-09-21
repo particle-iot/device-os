@@ -86,3 +86,6 @@ test(USB_17_FinalCdcSanity) {
     assertEqual(Serial.write((const uint8_t*)data, sizeof(data) - 1), sizeof(data) - 1);
     Serial.flush();
 }
+
+test(USB_18_StringDescriptors) {
+}

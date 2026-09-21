@@ -410,3 +410,50 @@ test('USB_17_FinalCdcSanity', async function() {
     const usbDev = await device.getUsbDevice();
     await systemEcho(usbDev, echoPayload(512, 15));
 });
+
+test('USB_18_StringDescriptors', async function() {
+    const usbDev = await device.getUsbDevice();
+
+    const desc = rawUsbDevice(usbDev).deviceDescriptor;
+    expect(desc.iManufacturer).to.equal(1);
+    expect(desc.iProduct).to.equal(2);
+    expect(desc.iSerialNumber).to.equal(3);
+
+    const manufacturer = await getStringDescriptor(usbDev, 1);
+    expect(manufacturer).to.equal('Particle');
+
+    const product = await getStringDescriptor(usbDev, 2);
+    expect(product).to.be.a('string').that.is.not.empty;
+    const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    expect(norm(product)).to.include(norm(device.platform.name));
+
+    const conf = rawUsbDevice(usbDev).configDescriptor;
+    expect(conf.iConfiguration).to.equal(4);
+    const configuration = await getStringDescriptor(usbDev, 4);
+    expect(configuration).to.be.a('string').that.is.not.empty;
+
+    let vendorIface = null;
+    for (const alts of conf.interfaces) {
+        for (const iface of alts) {
+            if (iface.bAlternateSetting === 0 && iface.bInterfaceClass === 0xff) {
+                vendorIface = iface;
+                break;
+            }
+        }
+        if (vendorIface) {
+            break;
+        }
+    }
+    expect(vendorIface, 'vendor control interface').to.exist;
+    expect(vendorIface.iInterface).to.be.above(0);
+    const controlInterface = await getStringDescriptor(usbDev, vendorIface.iInterface);
+    expect(controlInterface).to.include('Control Interface');
+
+    let rejected = false;
+    try {
+        await getStringDescriptor(usbDev, 0xf0);
+    } catch (err) {
+        rejected = true;
+    }
+    expect(rejected).to.be.true;
+});
