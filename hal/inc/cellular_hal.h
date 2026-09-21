@@ -154,6 +154,46 @@ bool cellular_sim_ready(void* reserved);
  */
 cellular_result_t cellular_registration_timeout_set(system_tick_t timeout, void* reserved);
 
+// Must agree with CellularRegistrationBackoff::INTERVAL_COUNT
+#define CELLULAR_BACKOFF_INTERVAL_COUNT (3)
+
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+typedef struct cellular_backoff_state_t {
+    uint16_t size;
+    uint32_t stage;                   // 1 based, 1 means nothing has failed yet
+    uint32_t cooldown_remaining_ms;   // 0 when not in a cooldown
+    uint8_t in_cooldown;
+} cellular_backoff_state_t;
+
+/**
+ * Read the current registration backoff stage and cooldown
+ *
+ * @param state: filled in with the current backoff state
+ */
+cellular_result_t cellular_registration_backoff_state(cellular_backoff_state_t* state, void* reserved);
+
+/**
+ * Abandon any registration backoff and start trying to register again now
+ */
+cellular_result_t cellular_registration_backoff_reset(void* reserved);
+
+typedef struct cellular_backoff_schedule_t {
+    uint16_t size;
+    uint32_t active_window_ms;   // must match the registration timeout
+    uint32_t first_stages;       // stages that run at today's cadence with no cooldown
+    uint32_t intervals_ms[CELLULAR_BACKOFF_INTERVAL_COUNT]; // last one repeats forever
+    uint32_t heartbeat_ms;       // how often the cooldown logs that it is still alive
+} cellular_backoff_schedule_t;
+
+/**
+ * Replace the registration backoff schedule, for tests
+ *
+ * @param schedule: the schedule to apply, or NULL to restore the defaults. Restoring also puts the
+ *                  registration timeout back.
+ */
+cellular_result_t cellular_registration_backoff_set_schedule(const cellular_backoff_schedule_t* schedule, void* reserved);
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+
 /**
  * Attempts to stop/resume the cellular modem from performing AT operations.
  * Called from another thread or ISR context.

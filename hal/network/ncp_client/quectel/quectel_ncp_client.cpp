@@ -26,6 +26,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "at_command.h"
 #include "at_response.h"
 #include "network/ncp/cellular/network_config_db.h"
+#include "network/ncp/cellular/cellular_backoff_retained.h"
 
 #include "serial_stream.h"
 #include "check.h"
@@ -123,7 +124,8 @@ const auto AT_PROBE_TIMEOUT = 3000;
 const auto AT_PROBE_MAX_INTERVALS = 3u;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
-const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+// Shared with the backoff as its active window
+const unsigned REGISTRATION_TIMEOUT = CELLULAR_BACKOFF_ACTIVE_WINDOW;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
 const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
@@ -214,6 +216,11 @@ int QuectelNcpClient::init(const NcpClientConfig& conf) {
     connectRequested_ = false;
     apduRaisedCfun_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
+    const unsigned retainedStage = cellularBackoffRetainedStage();
+    if (retainedStage > 1) {
+        backoff_.restoreStage(retainedStage);
+        LOG(INFO, "Resuming registration backoff at stage %u", retainedStage);
+    }
     resetRegistrationState();
     if (modemPowerState()) {
         serial_->on(true);
@@ -1069,7 +1076,47 @@ int QuectelNcpClient::getSignalQuality(CellularSignalQuality* qual) {
 }
 
 int QuectelNcpClient::setRegistrationTimeout(unsigned timeout) {
+    const NcpClientLock lock(this);
     registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
+    backoff_.setActiveWindow(registrationTimeout_);
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::resetRegistrationBackoff() {
+    const NcpClientLock lock(this);
+    backoff_.reset(millis());
+    cellularBackoffSetRetainedStage(0);
+    if (connState_ == NcpConnectionState::BACKOFF) {
+        // Power cycle out of BACKOFF so a window starts now
+        LOG(INFO, "Registration backoff reset, starting stage 1");
+        CHECK(configModemPowerState(ModemPowerReason::RegTimeout));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::getRegistrationBackoffState(unsigned* stage, system_tick_t* cooldownRemaining,
+        bool* inCooldown) {
+    const NcpClientLock lock(this);
+    const system_tick_t now = millis();
+    if (stage) {
+        *stage = backoff_.stage();
+    }
+    if (cooldownRemaining) {
+        *cooldownRemaining = backoff_.cooldownRemaining(now);
+    }
+    if (inCooldown) {
+        *inCooldown = backoff_.inCooldown(now);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int QuectelNcpClient::setRegistrationBackoffSchedule(const CellularRegistrationBackoff::Config& conf) {
+    const NcpClientLock lock(this);
+    backoff_.setSchedule(conf);
+    registrationTimeout_ = conf.activeWindow;
+    // WARN: this is our only record that the defaults were replaced
+    LOG(WARN, "Registration backoff schedule overridden: window %lu s, %u free stages",
+            (unsigned long)(conf.activeWindow / 1000), conf.firstHourStages);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2614,6 +2661,8 @@ void QuectelNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        backoff_.reset(millis());
+        cellularBackoffSetRetainedStage(0);
         // A streak from a previous connection must not carry into this one.
         // atProbeTime_ is deliberately left stale so the first probe runs immediately.
         atProbeFailStreak_ = 0;
@@ -2685,7 +2734,8 @@ int QuectelNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::Chann
             case QUECTEL_NCP_PPP_CHANNEL: {
                 // PPP channel closed
                 if (self->connState_ != NcpConnectionState::DISCONNECTED &&
-                        self->connState_ != NcpConnectionState::IDLE) {
+                        self->connState_ != NcpConnectionState::IDLE &&
+                        self->connState_ != NcpConnectionState::BACKOFF) {
                     // It should be safe to notify the PPP netif/client about a change of state
                     // here exactly because the muxer channel is closed and there is no
                     // chance for a deadlock.
@@ -2821,6 +2871,30 @@ int QuectelNcpClient::checkRunningImsi() {
     return 0;
 }
 
+// An active window ended without registering
+void QuectelNcpClient::registrationFailed() {
+    const system_tick_t now = millis();
+    backoff_.attemptFailed(now);
+    cellularBackoffSetRetainedStage(backoff_.retainedStage());
+    if (backoff_.inCooldown(now) && enterRegistrationBackoff() == SYSTEM_ERROR_NONE) {
+        return;
+    }
+    // During the first hour, we need to power cycle the modem after registration failure
+    configModemPowerState(ModemPowerReason::RegTimeout);
+}
+
+// Park the modem with the radio off until the cooldown expires
+// CFUN=0 rather than the 4 that eSIM IDLE rests at, so the SIM supply drops too
+int QuectelNcpClient::enterRegistrationBackoff() {
+    // CHECK_PARSER_OK, ERROR is 1 here and CHECK would leave the radio up
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
+    resetRegistrationState();
+    connectionState(NcpConnectionState::BACKOFF);
+    LOG(INFO, "Registration backoff: stage %u, next attempt in %lu s",
+            backoff_.stage(), backoff_.cooldownLength() / 1000);
+    return SYSTEM_ERROR_NONE;
+}
+
 // Periodic AT probe while CONNECTED. Returns false once the interface is declared unresponsive.
 //
 // Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
@@ -2860,10 +2934,30 @@ int QuectelNcpClient::processEventsImpl() {
     parser_.processUrc(); // Ignore errors
 
     if (connState_ == NcpConnectionState::IDLE) {
-        // Nothing below applies while IDLE and none of it should run. There is no polling either,
-        // we only leave IDLE on an explicit disconnect() or off().
+        // Nothing below may run while in IDLE
+        // We only leave IDLE on an explicit disconnect() or off()
         return SYSTEM_ERROR_NONE;
     }
+
+    if (connState_ == NcpConnectionState::BACKOFF) {
+        // Nothing below may run while in BACKOFF
+        const system_tick_t now = millis();
+        if (!backoff_.inCooldown(now)) {
+            LOG(INFO, "Registration backoff over, starting stage %u",
+                    backoff_.stage());
+            // Power cycle to start the next window, which also leaves BACKOFF
+            configModemPowerState(ModemPowerReason::RegTimeout);
+            return SYSTEM_ERROR_NONE;
+        }
+        // Log we are in BACKOFF. Better than hours of silence, but still fairly quiet.
+        if (backoff_.heartbeatDue(now)) {
+            backoff_.heartbeatSent(now);
+            LOG(INFO, "Cellular registration backoff in-progress, SIM may be deactivated. Next attempt in %lu s",
+                    (backoff_.cooldownRemaining(now) + 500) / 1000);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
@@ -2909,7 +3003,7 @@ int QuectelNcpClient::processEventsImpl() {
     CHECK_PARSER(parser_.execCommand("AT+QENG=\"servingcell\""));
 
     if (connState_ == NcpConnectionState::CONNECTING && millis() - regStartTime_ >= registrationTimeout_) {
-        configModemPowerState(ModemPowerReason::RegTimeout);
+        registrationFailed();
         return SYSTEM_ERROR_TIMEOUT;
     }
 

@@ -25,6 +25,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "at_command.h"
 #include "at_response.h"
 #include "network/ncp/cellular/network_config_db.h"
+#include "network/ncp/cellular/cellular_backoff_retained.h"
 
 #include "serial_stream.h"
 #include "check.h"
@@ -126,7 +127,8 @@ const auto UBLOX_NCP_SIM_SELECT_PIN = 23;
 
 const unsigned REGISTRATION_CHECK_INTERVAL = 15 * 1000;
 const unsigned REGISTRATION_INTERVENTION_TIMEOUT = 15 * 1000;
-const unsigned REGISTRATION_TIMEOUT = 10 * 60 * 1000;
+// Shared with the backoff as its active window
+const unsigned REGISTRATION_TIMEOUT = CELLULAR_BACKOFF_ACTIVE_WINDOW;
 const unsigned REGISTRATION_TWILIO_HOLDOFF_TIMEOUT = 5 * 60 * 1000;
 
 const unsigned CHECK_IMSI_TIMEOUT = 60 * 1000;
@@ -228,6 +230,11 @@ int SaraNcpClient::init(const NcpClientConfig& conf) {
     sleepUrcsDisabled_ = false;
     ehsExtendedTiming_ = false;
     registrationTimeout_ = REGISTRATION_TIMEOUT;
+    const unsigned retainedStage = cellularBackoffRetainedStage();
+    if (retainedStage > 1) {
+        backoff_.restoreStage(retainedStage);
+        LOG(INFO, "Resuming registration backoff at stage %u", retainedStage);
+    }
     resetRegistrationState();
     if (modemPowerState()) {
         serial_->on(true);
@@ -2211,7 +2218,47 @@ int SaraNcpClient::configureApn(const CellularNetworkConfig& conf) {
 }
 
 int SaraNcpClient::setRegistrationTimeout(unsigned timeout) {
+    const NcpClientLock lock(this);
     registrationTimeout_ = std::max(timeout, REGISTRATION_TIMEOUT);
+    backoff_.setActiveWindow(registrationTimeout_);
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::resetRegistrationBackoff() {
+    const NcpClientLock lock(this);
+    backoff_.reset(millis());
+    cellularBackoffSetRetainedStage(0);
+    if (connState_ == NcpConnectionState::BACKOFF) {
+        // Power cycle out of BACKOFF so a window starts now
+        LOG(INFO, "Registration backoff reset, starting stage 1");
+        CHECK(configModemPowerState(ModemPowerReason::RegTimeout));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::getRegistrationBackoffState(unsigned* stage, system_tick_t* cooldownRemaining,
+        bool* inCooldown) {
+    const NcpClientLock lock(this);
+    const system_tick_t now = millis();
+    if (stage) {
+        *stage = backoff_.stage();
+    }
+    if (cooldownRemaining) {
+        *cooldownRemaining = backoff_.cooldownRemaining(now);
+    }
+    if (inCooldown) {
+        *inCooldown = backoff_.inCooldown(now);
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
+int SaraNcpClient::setRegistrationBackoffSchedule(const CellularRegistrationBackoff::Config& conf) {
+    const NcpClientLock lock(this);
+    backoff_.setSchedule(conf);
+    registrationTimeout_ = conf.activeWindow;
+    // WARN: this is our only record that the defaults were replaced
+    LOG(WARN, "Registration backoff schedule overridden: window %lu s, %u free stages",
+            (unsigned long)(conf.activeWindow / 1000), conf.firstHourStages);
     return SYSTEM_ERROR_NONE;
 }
 
@@ -2494,7 +2541,13 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     connState_ = state;
 
     if (ncpId() == PLATFORM_NCP_SARA_R510) {
-        if (connState_ == NcpConnectionState::CONNECTED || connState_ == NcpConnectionState::DISCONNECTED) {
+        // BACKOFF belongs with the settled states, not with CONNECTING. The keep alive exists to
+        // notice a dead modem while we are actively trying to get somewhere; during a cooldown we
+        // are deliberately doing nothing for hours, and leaving it on would put a frame on the
+        // muxer every 5s for the whole of it. The power cycle at the next window finds a dead
+        // modem anyway.
+        if (connState_ == NcpConnectionState::CONNECTED || connState_ == NcpConnectionState::DISCONNECTED ||
+                connState_ == NcpConnectionState::BACKOFF) {
             muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_R510);
         } else {
             muxer_.setKeepAlivePeriod(UBLOX_NCP_KEEPALIVE_PERIOD_DEFAULT);
@@ -2502,6 +2555,8 @@ void SaraNcpClient::connectionState(NcpConnectionState state) {
     }
 
     if (connState_ == NcpConnectionState::CONNECTED) {
+        backoff_.reset(millis());
+        cellularBackoffSetRetainedStage(0);
         // A streak from a previous connection must not carry into this one.
         // atProbeTime_ is deliberately left stale so the first probe runs immediately.
         atProbeFailStreak_ = 0;
@@ -2563,7 +2618,8 @@ int SaraNcpClient::muxChannelStateCb(uint8_t channel, decltype(muxer_)::ChannelS
             }
             case UBLOX_NCP_PPP_CHANNEL: {
                 // PPP channel closed
-                if (self->connState_ != NcpConnectionState::DISCONNECTED) {
+                if (self->connState_ != NcpConnectionState::DISCONNECTED &&
+                        self->connState_ != NcpConnectionState::BACKOFF) {
                     // It should be safe to notify the PPP netif/client about a change of state
                     // here exactly because the muxer channel is closed and there is no
                     // chance for a deadlock.
@@ -2753,6 +2809,29 @@ int SaraNcpClient::configModemPowerState(ModemPowerReason reason) {
 //
 // Deliberately not CHECK_PARSER*, that would set parserError_ and route the next command into
 // checkParser() -> waitReady() -> modemHardReset() instead of the reset sequence run by the caller.
+// An active window ended without registering
+void SaraNcpClient::registrationFailed() {
+    const system_tick_t now = millis();
+    backoff_.attemptFailed(now);
+    cellularBackoffSetRetainedStage(backoff_.retainedStage());
+    if (backoff_.inCooldown(now) && enterRegistrationBackoff() == SYSTEM_ERROR_NONE) {
+        return;
+    }
+    // During the first hour, we need to power cycle the modem after registration failure
+    configModemPowerState(ModemPowerReason::RegTimeout);
+}
+
+// Park the modem with the radio off until the cooldown expires
+// CFUN=0 rather than 4, so the SIM supply drops too
+int SaraNcpClient::enterRegistrationBackoff() {
+    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
+    resetRegistrationState();
+    connectionState(NcpConnectionState::BACKOFF);
+    LOG(INFO, "Registration backoff: stage %u, next attempt in %lu s",
+            backoff_.stage(), backoff_.cooldownLength() / 1000);
+    return SYSTEM_ERROR_NONE;
+}
+
 bool SaraNcpClient::checkAtWhileConnected() {
     // Every other state has its own recovery path, probing during them only adds noise.
     // An R510 firmware install stops answering AT for minutes by design, so it is not a fault.
@@ -2793,6 +2872,26 @@ bool SaraNcpClient::checkAtWhileConnected() {
 int SaraNcpClient::processEventsImpl() {
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
     parser_.processUrc(); // Ignore errors
+
+    if (connState_ == NcpConnectionState::BACKOFF) {
+        // Nothing below may run while in BACKOFF
+        const system_tick_t now = millis();
+        if (!backoff_.inCooldown(now)) {
+            LOG(INFO, "Registration backoff over, starting stage %u",
+                    backoff_.stage());
+            // Power cycle to start the next window, which also leaves BACKOFF
+            configModemPowerState(ModemPowerReason::RegTimeout);
+            return SYSTEM_ERROR_NONE;
+        }
+        // Log we are in BACKOFF. Better than hours of silence, but still fairly quiet.
+        if (backoff_.heartbeatDue(now)) {
+            backoff_.heartbeatSent(now);
+            LOG(INFO, "Cellular registration backoff in-progress, SIM may be deactivated. Next attempt in %lu s",
+                    (backoff_.cooldownRemaining(now) + 500) / 1000);
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
@@ -2834,7 +2933,7 @@ int SaraNcpClient::processEventsImpl() {
 
     if (connState_ == NcpConnectionState::CONNECTING &&
             millis() - regStartTime_ >= registrationTimeout_) {
-        configModemPowerState(ModemPowerReason::RegTimeout);
+        registrationFailed();
         return SYSTEM_ERROR_TIMEOUT;
     }
     return SYSTEM_ERROR_NONE;
