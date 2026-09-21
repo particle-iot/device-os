@@ -62,8 +62,16 @@ void disconnect_from_cloud(system_tick_t timeout, bool detach = false)
 }
 void connect_to_cloud(system_tick_t timeout)
 {
+    // Ask for the network by name first
+    // Particle.connect() only raises the cloud flag, it will not bring the interface back up
+    const system_tick_t start = millis();
+    Cellular.connect();
+    waitFor(Cellular.ready, timeout);
+
     Particle.connect();
-    waitFor(Particle.connected, timeout);
+    // Share one timeout budget across both waits
+    const system_tick_t elapsed = millis() - start;
+    waitFor(Particle.connected, elapsed < timeout ? timeout - elapsed : 1000);
 }
 
 namespace {
@@ -215,7 +223,7 @@ test(CELLULAR_07_urcs) {
 
     // Ensure we are disconnected, bad things can happen if messages are tx/rx
     // on the cloud connection when the AT command channel is suspended.
-    if (Particle.connected) {
+    if (Particle.connected()) {
         Particle.disconnect();
         waitFor(Particle.disconnected, 30000);
     }

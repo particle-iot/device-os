@@ -30,7 +30,20 @@ after(function() {
     device.removeAllListeners('mailbox');
 });
 
-test('01_ota_self_flash_start', async function () {
+test('01_remove_static_ip', async function () {
+
+});
+
+test('02_clear_env', async function () {
+    await unsetProductVariables(api, deviceId);
+    await unsetDeviceVariables(api, deviceId);
+});
+
+test('03_restore_cloud_after_env_clear', async function () {
+
+});
+
+test('04_ota_self_flash_start', async function () {
     this.timeout(10 * 60 * 1000);
     const appData = await readFile(device.testAppBinFile);
     // Reset device-service OTA flash attempt count by OTA flashing the current app test binary.
@@ -40,28 +53,15 @@ test('01_ota_self_flash_start', async function () {
     await flash(this, appData, { filename: '00_before.bin' });
 });
 
-test('02_ota_self_flash_finalize', async function () {
+test('05_ota_self_flash_finalize', async function () {
 
 });
 
-test('03_erase_factory_module', async function () {
+test('06_erase_factory_module', async function () {
 
 });
 
-test('04_remove_static_ip', async function () {
-
-});
-
-test('05_enable_listening_mode', async function () {
-
-});
-
-test('06_clear_env', async function () {
-    await unsetProductVariables(api, deviceId);
-    await unsetDeviceVariables(api, deviceId);
-});
-
-test('07_restore_cloud_after_env_clear', async function () {
+test('07_enable_listening_mode', async function () {
 
 });
 

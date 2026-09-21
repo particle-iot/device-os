@@ -2,13 +2,12 @@ suite('Cellular env vars');
 
 platform('cellular', 'msom');
 
-const { createEnvVarsAssetModule } = require('binary-version-reader');
-const tempy = require('tempy');
 const _ = require('lodash');
 
 const { readFile } = require('node:fs/promises');
 
 const { waitFlashStatusEvent } = require('../../test/ota');
+const { writeEnvVarsAsset } = require('../../test/env_vars');
 
 let appBinary;
 let deviceId;
@@ -17,9 +16,7 @@ let preferredBandsValue;
 let forbiddenBandsValue;
 
 async function setEnvVarsAndFlash(vars) {
-    const assetData = await createEnvVarsAssetModule(vars);
-    const assetPath = await tempy.write(assetData, { name: 'cellular_env_vars.bin' });
-    return device.flash(assetPath);
+    return device.flash(await writeEnvVarsAsset(vars, 'cellular_env_vars.bin'));
 }
 
 before(async function() {

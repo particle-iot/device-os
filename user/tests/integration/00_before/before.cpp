@@ -120,17 +120,45 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
 
 } // namespace
 
-test(01_ota_self_flash_start) {
+test(01_remove_static_ip) {
+    // Easiest way to erase all NETWORK_CONFIG settings, and default to dynamic IP
+    unlink("/sys/network.dat");
+
+    expectSystemReset();
+    System.reset();
+}
+
+#if HAL_PLATFORM_ENV
+test(02_clear_env) {
+    System.clearEnv(false /* reset */);
+    unlink("/sys/env_app");
+    unlink("/sys/env_app.staged");
+    unlink("/sys/env_snapshot");
+    unlink("/sys/env_snapshot.staged");
+
+    expectSystemReset();
+    System.reset();
+}
+
+test(03_restore_cloud_after_env_clear) {
+    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+
+#endif // HAL_PLATFORM_ENV
+
+test(04_ota_self_flash_start) {
     prepareForFirmwareUpdate();
     Particle.connect();
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
-test(02_ota_self_flash_finalize) {
+test(05_ota_self_flash_finalize) {
     completeFirmwareUpdate();
 }
 
-test(03_erase_factory_module) {
+test(06_erase_factory_module) {
     // Determine the factory reset module start address from the platform flash modules
     hal_module_t factoryModule = {};
     bool isFactoryModule = getFactoryModule(&factoryModule);
@@ -144,34 +172,9 @@ test(03_erase_factory_module) {
     }
 }
 
-test(04_remove_static_ip) {
-    // Easiest way to erase all NETWORK_CONFIG settings, and default to dynamic IP
-    unlink("/sys/network.dat");
-}
-
-test(05_enable_listening_mode) {
+test(07_enable_listening_mode) {
     System.disableFeature(FEATURE_DISABLE_LISTENING_MODE);
 }
-
-#if HAL_PLATFORM_ENV
-test(06_clear_env) {
-    System.clearEnv(false /* reset */);
-    unlink("/sys/env_app");
-    unlink("/sys/env_app.staged");
-    unlink("/sys/env_snapshot");
-    unlink("/sys/env_snapshot.staged");
-
-    expectSystemReset();
-    System.reset();
-}
-
-test(07_restore_cloud_after_env_clear) {
-    Particle.disconnect(CloudDisconnectOptions().clearSession(true));
-    Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
-}
-
-#endif // HAL_PLATFORM_ENV
 
 test(08_disable_external_rtc) {
 #if HAL_PLATFORM_EXTERNAL_RTC

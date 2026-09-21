@@ -22,24 +22,24 @@ before(function() {
     deviceId = device.id;
 });
 
-test('01_erase_factory_module', async function () {
+test('01_remove_static_ip', async function () {
 
 });
 
-test('02_remove_static_ip', async function () {
-
-});
-
-test('03_enable_listening_mode', async function () {
-
-});
-
-test('04_clear_env', async function () {
+test('02_clear_env', async function () {
     await unsetProductVariables(api, deviceId);
     await unsetDeviceVariables(api, deviceId);
 });
 
-test('05_restore_cloud_after_env_clear', async function () {
+test('03_restore_cloud_after_env_clear', async function () {
+});
+
+test('04_erase_factory_module', async function () {
+
+});
+
+test('05_enable_listening_mode', async function () {
+
 });
 
 test('06_disable_external_rtc', async function () {

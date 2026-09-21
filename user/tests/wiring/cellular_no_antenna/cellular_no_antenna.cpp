@@ -50,8 +50,16 @@ void disconnect_from_cloud(system_tick_t timeout) {
     delay(1000);
 }
 void connect_to_cloud(system_tick_t timeout) {
+    // Ask for the network by name first
+    // Particle.connect() only raises the cloud flag, it will not bring the interface back up
+    const system_tick_t start = millis();
+    Cellular.connect();
+    waitFor(Cellular.ready, timeout);
+
     Particle.connect();
-    waitFor(Particle.connected, timeout);
+    // Share one timeout budget across both waits
+    const system_tick_t elapsed = millis() - start;
+    waitFor(Particle.connected, elapsed < timeout ? timeout - elapsed : 1000);
 }
 // Global variable to indicate a connection attempt
 int g_state_conn_attempt = 0;
