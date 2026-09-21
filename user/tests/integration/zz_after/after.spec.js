@@ -3,7 +3,7 @@ suite('Cleanup for HIL Testing');
 platform('gen3', 'gen4');
 systemThread('enabled');
 
-const { unsetDeviceVariables } = require('../test/env');
+const { unsetDeviceVariables, unsetProductVariables } = require('../test/env');
 const Particle = require('particle-api-js');
 
 const { waitFlashStatusEvent } = require('../test/ota');
@@ -35,6 +35,7 @@ test('03_enable_listening_mode', async function () {
 });
 
 test('04_clear_env', async function () {
+    await unsetProductVariables(api, deviceId);
     await unsetDeviceVariables(api, deviceId);
 });
 

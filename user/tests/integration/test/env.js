@@ -18,6 +18,24 @@ async function unsetDeviceVariables(api, deviceId) {
 	}
 }
 
+async function unsetProductVariables(api, deviceId) {
+	const productId = await getProductId({ deviceId, api });
+
+	// Unset all product variables. Leftovers here get synced down on the next connect and reboot
+	// the device, which reads as an unexpected reset in whatever test is running at the time
+	const resp = await get(api, `/v1/products/${productId}/env`);
+	const ownProductVars = resp.last_snapshot?.own || {};
+	if (!_.isEmpty(ownProductVars)) {
+		await patch(api, `/v1/products/${productId}/env`, {
+			ops: Object.entries(ownProductVars).map(([key]) => ({ op: 'Unset', key }))
+		});
+		await post(api, `/v1/products/${productId}/env/rollout`, {
+			when: 'Connect'
+		});
+	}
+}
+
 module.exports = {
-	unsetDeviceVariables
+	unsetDeviceVariables,
+	unsetProductVariables
 };
