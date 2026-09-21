@@ -230,6 +230,7 @@ void Esp32NcpNetif::loop(void* arg) {
 }
 
 int Esp32NcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const auto client = wifiMan_->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
     CHECK_TRUE(profile, SYSTEM_ERROR_INVALID_ARGUMENT);
@@ -240,6 +241,9 @@ int Esp32NcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
     CHECK(client->getNetworkInfo(&info));
     *profile = spark::Vector<char>(info.ssid(), strlen(info.ssid()));
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int Esp32NcpNetif::up() {
@@ -322,6 +326,7 @@ int Esp32NcpNetif::upImpl() {
     if (r) { // Failed to query MAC address
         return r;
     }
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     // Ensure that we are disconnected
     downImpl();
     r = wifiMan_->connect();
@@ -330,6 +335,7 @@ int Esp32NcpNetif::upImpl() {
     if (r && wifiMan_->hasNetworkConfig()) {
         LOG(TRACE, "Failed to connect to WiFi: %d", r);
     }
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
     return r;
 }
 

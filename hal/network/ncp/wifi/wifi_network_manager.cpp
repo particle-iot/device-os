@@ -63,6 +63,8 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
     }
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 // TODO: Implement a couple functions to conveniently save/load a protobuf message to/from a file
 int loadConfig(Vector<WifiNetworkConfig>* networks) {
     // Get filesystem instance
@@ -185,6 +187,8 @@ void sortByRssi(Vector<WifiScanResult>* scanResults) {
     });
 }
 
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 } // unnamed
 
 WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
@@ -194,6 +198,7 @@ WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
 WifiNetworkManager::~WifiNetworkManager() {
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 int WifiNetworkManager::connect(WifiNetworkConfig conf) {
     return client_->connect(conf.ssid(), conf.bssid(), conf.security(), conf.credentials());
 }
@@ -407,5 +412,39 @@ bool WifiNetworkManager::hasNetworkConfig() {
     }
     return !networks.isEmpty();
 }
+
+#else // HAL_PLATFORM_WIFI_SCAN_ONLY
+
+int WifiNetworkManager::connect(WifiNetworkConfig conf) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int WifiNetworkManager::connect(const char* ssid) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConfigFlags flags) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int WifiNetworkManager::getNetworkConfig(const char* ssid, WifiNetworkConfig* conf) {
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+int WifiNetworkManager::getNetworkConfig(GetNetworkConfigCallback callback, void* data) {
+    return SYSTEM_ERROR_NOT_FOUND;
+}
+
+void WifiNetworkManager::removeNetworkConfig(const char* ssid) {
+}
+
+void WifiNetworkManager::clearNetworkConfig() {
+}
+
+bool WifiNetworkManager::hasNetworkConfig() {
+    return false;
+}
+
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 } // particle

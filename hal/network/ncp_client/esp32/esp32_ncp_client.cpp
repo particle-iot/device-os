@@ -73,9 +73,11 @@ void espReset() {
     HAL_Delay_Milliseconds(100);
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 size_t espEscape(const char* src, char* dest, size_t destSize) {
     return escape(src, ",\"\\", '\\', dest, destSize);
 }
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 const auto ESP32_NCP_MAX_MUXER_FRAME_SIZE = 1536;
 const auto ESP32_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -262,9 +264,11 @@ int Esp32NcpClient::disconnect() {
     if (connState_ == NcpConnectionState::DISCONNECTED) {
         return 0;
     }
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     CHECK(checkParser());
     const int r = CHECK_PARSER(parser_.execCommand("AT+CWQAP"));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
     connectionState(NcpConnectionState::DISCONNECTED);
     return 0;
 }
@@ -378,6 +382,7 @@ AtParser* Esp32NcpClient::atParser() {
 }
 
 int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
@@ -429,9 +434,13 @@ int Esp32NcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecur
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     connectionState(NcpConnectionState::CONNECTED);
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const NcpClientLock lock(this);
     CHECK_TRUE(connState_ == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     CHECK(checkParser());
@@ -448,6 +457,9 @@ int Esp32NcpClient::getNetworkInfo(WifiNetworkInfo* info) {
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
     *info = WifiNetworkInfo().ssid(ssid).bssid(bssid).channel(channel).rssi(rssi);
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int Esp32NcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {

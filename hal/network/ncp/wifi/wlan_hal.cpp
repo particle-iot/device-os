@@ -41,6 +41,7 @@ namespace {
 
 using namespace particle;
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 bool isSupportedSecurityType(WLanSecurityType type) {
     switch (type) {
     case WLanSecurityType::WLAN_SEC_UNSEC:
@@ -70,6 +71,7 @@ WifiSecurity toWifiSecurity(WLanSecurityType type) {
         return WifiSecurity::NONE;
     }
 }
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 } // unnamed
 
@@ -109,6 +111,7 @@ int wlan_connected_rssi() {
 }
 
 int wlan_connected_info(void* reserved, wlan_connected_info_t* halInfo, void* reserved1) {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     const auto client = mgr->ncpClient();
@@ -123,25 +126,37 @@ int wlan_connected_info(void* reserved, wlan_connected_info_t* halInfo, void* re
     halInfo->strength = std::min(std::max(2 * (rssi + 100), 0L), 100L) * 65535 / 100;
     halInfo->quality = std::min(std::max(halInfo->snr / 100 - 9, 0L), 31L) * 65535 / 31;
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int wlan_clear_credentials() {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     mgr->clearNetworkConfig();
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int wlan_has_credentials() {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     const auto mgr = wifiNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
     if (!mgr->hasNetworkConfig()) {
         return SYSTEM_ERROR_NOT_FOUND;
     }
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_FOUND;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 int wlan_set_credentials(WLanCredentials* halCred) {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     if (!isSupportedSecurityType((WLanSecurityType)halCred->security) ||
             (halCred->security != WLanSecurityType::WLAN_SEC_UNSEC && halCred->password_len == 0) ||
             halCred->ssid_len == 0) {
@@ -170,6 +185,9 @@ int wlan_set_credentials(WLanCredentials* halCred) {
     }
     CHECK(mgr->setNetworkConfig(std::move(conf), flags));
     return 0;
+#else
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 void wlan_smart_config_init() {
@@ -381,6 +399,7 @@ int wlan_scan(wlan_scan_result_t callback, void* cookie) {
 }
 
 int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
     struct Data {
         wlan_scan_result_t callback;
         void* data;
@@ -421,6 +440,9 @@ int wlan_get_credentials(wlan_scan_result_t callback, void* callback_data) {
         return 0;
     }, &d));
     return d.count;
+#else
+    return SYSTEM_ERROR_NOT_FOUND;
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 }
 
 bool isWiFiPowersaveClockDisabled() {
