@@ -64,6 +64,7 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
     }
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 void network_credentials_cleanup(void* ptr) {
     auto creds = static_cast<NetworkCredentials*>(ptr);
     free(creds);
@@ -106,9 +107,11 @@ NetworkCredentials* alloc_network_credentials_deep_copy(WifiNetworkConfig conf)
 
     return creds;
 }
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 } // unnamed
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 int joinNewNetwork(ctrl_request* req) {
     PB(JoinNewNetworkRequest) pbReq = {};
     DecodedCString dSsid(&pbReq.ssid);
@@ -294,6 +297,34 @@ int getCurrentNetwork(ctrl_request* req) {
     return 0;
 }
 
+#else // HAL_PLATFORM_WIFI_SCAN_ONLY
+
+int joinNewNetwork(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int joinKnownNetwork(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int getKnownNetworks(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int removeKnownNetwork(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int clearKnownNetworks(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int getCurrentNetwork(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+
 int scanNetworks(ctrl_request* req) {
     const auto wifiMgr = wifiNetworkManager();
     CHECK_TRUE(wifiMgr, SYSTEM_ERROR_UNKNOWN);
@@ -333,6 +364,7 @@ int scanNetworks(ctrl_request* req) {
     return 0;
 }
 
+#if !HAL_PLATFORM_WIFI_SCAN_ONLY
 int setNetworkCredentials(ctrl_request* req) {
     PB(SetNetworkCredentialsRequest) pbReq = {};
     DecodedCString dSsid(&pbReq.ssid);
@@ -375,6 +407,13 @@ int setNetworkCredentials(ctrl_request* req) {
 
     return 0;
 }
+#else // HAL_PLATFORM_WIFI_SCAN_ONLY
+
+int setNetworkCredentials(ctrl_request* req) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
 
 } // particle::ctrl::wifi
 
