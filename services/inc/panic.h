@@ -80,6 +80,17 @@ void panic_set_last_panic_data_handled(void* reserved);
         panic_ext(&_data, NULL); \
     })
 
+#define PANIC_COMPAT_EXT(_code, _extra, _text, ...) ({ \
+        PanicData _data = {}; \
+        _data.size = sizeof(_data); \
+        _data.code = _code; \
+        _data.text = _text; \
+        _data.lr = (uintptr_t)__builtin_return_address(0); /* XXX: __get_LR? */ \
+        _data.pc = __get_PC(); \
+        _data.extra_code = (uintptr_t)(_extra); \
+        panic_ext(&_data, NULL); \
+    })
+
 #ifdef __cplusplus
 }
 #endif
