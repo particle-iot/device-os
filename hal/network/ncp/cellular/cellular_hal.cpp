@@ -56,6 +56,23 @@ namespace {
 using namespace particle;
 using namespace services;
 
+int cachedCellularDeviceInfo(CellularDevice* info) {
+    CellularDeviceCached cacheRead = {};
+    const int r = SystemCache::instance().get(SystemCacheKey::CELLULAR_DEVICE_INFO,
+            (uint8_t*)&cacheRead, sizeof(cacheRead));
+    if (r != sizeof(CellularDeviceCached) || cacheRead.version != CELLULAR_DEVICE_VERSION) {
+        SystemCache::instance().del(SystemCacheKey::CELLULAR_DEVICE_INFO);
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    strlcpy(info->iccid, cacheRead.iccid, sizeof(info->iccid));
+    strlcpy(info->imei, cacheRead.imei, sizeof(info->imei));
+    info->dev = cacheRead.dev;
+    if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        strlcpy(info->radiofw, cacheRead.radiofw, sizeof(info->radiofw));
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 const size_t MAX_RESP_SIZE = 1024;
 
 int parseMdmType(const char* buf, size_t size) {
@@ -203,24 +220,20 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     const auto client = mgr->ncpClient();
     CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
 
-    CellularDeviceCached cacheRead = {};
-    int r = SystemCache::instance().get(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheRead, sizeof(cacheRead));
+    // The client lock may be held for the whole duration of a power on/off or reset
+    // sequence. ncpPowerState() is safe to check without the lock
+    if (client->ncpPowerState() != NcpPowerState::ON) {
+        return cachedCellularDeviceInfo(info);
+    }
 
     const NcpClientLock lock(client);
 
-    // If modem is off, return the cached values if present
     if (client->ncpPowerState() != NcpPowerState::ON) {
-        if (r != sizeof(CellularDeviceCached) || cacheRead.version != CELLULAR_DEVICE_VERSION) {
-            SystemCache::instance().del(SystemCacheKey::CELLULAR_DEVICE_INFO);
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-
-        strlcpy(info->iccid, cacheRead.iccid, sizeof(info->iccid));
-        strlcpy(info->imei, cacheRead.imei, sizeof(info->imei));
-        info->dev = cacheRead.dev;
-        strlcpy(info->radiofw, cacheRead.radiofw, sizeof(info->radiofw));
-        return 0;
+        return cachedCellularDeviceInfo(info);
     }
+
+    CellularDeviceCached cacheRead = {};
+    SystemCache::instance().get(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheRead, sizeof(cacheRead));
 
     CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
     CHECK(client->getImei(info->imei, sizeof(info->imei)));
