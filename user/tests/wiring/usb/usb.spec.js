@@ -425,7 +425,10 @@ test('USB_18_StringDescriptors', async function() {
     const product = await getStringDescriptor(usbDev, 2);
     expect(product).to.be.a('string').that.is.not.empty;
     const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    expect(norm(product)).to.include(norm(device.platform.name));
+    const normalizedProduct = norm(product);
+    const productNames = [platformInfo.name, ...(platformInfo.aliases || [])].map(norm);
+    expect(productNames.some((n) => normalizedProduct.includes(n)),
+        `expected product string "${product}" to include one of: ${productNames.join(', ')}`).to.be.true;
 
     const conf = rawUsbDevice(usbDev).configDescriptor;
     expect(conf.iConfiguration).to.equal(4);

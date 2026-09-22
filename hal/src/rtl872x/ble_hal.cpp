@@ -20,6 +20,7 @@
 LOG_SOURCE_CATEGORY("hal.ble");
 
 #include "ble_hal.h"
+#include "rng_hal.h"
 
 #if HAL_PLATFORM_BLE
 
@@ -4201,5 +4202,13 @@ int hal_ble_gap_get_connection_params_deprecated(hal_ble_conn_handle_t conn_hand
 }
 
 #endif // #if HAL_PLATFORM_BLE_BETA_COMPAT
+
+extern "C" uint32_t platform_random(uint32_t max) {
+    if (max == 0) {
+        return 0;
+    }
+    const uint32_t val = HAL_RNG_GetRandomNumber();
+    return val % max;
+}
 
 #endif // HAL_PLATFORM_BLE

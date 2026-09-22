@@ -444,6 +444,11 @@ static const char* const _log_category = NULL;
             LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
             PANIC_COMPAT(_code, _fmt, NULL); \
         } while (0)
+#define PANIC_WITH_EXTRA(_code, _extra, _fmt, ...) \
+        do { \
+            LOG_DEBUG(PANIC, _fmt, ##__VA_ARGS__); \
+            PANIC_COMPAT_EXT(_code, _extra, _fmt, NULL); \
+        } while (0)
 #define PANIC_EXT(_data, ...) ({ \
         if ((_data)->text) { \
             LOG_DEBUG(PANIC, (_data)->text, ##__VA_ARGS__); \
@@ -454,6 +459,10 @@ static const char* const _log_category = NULL;
 #define PANIC(_code, _fmt, ...) \
         do { \
             PANIC_COMPAT(_code, _fmt, NULL); \
+        } while (0)
+#define PANIC_WITH_EXTRA(_code, _extra, _fmt, ...) \
+        do { \
+            PANIC_COMPAT_EXT(_code, _extra, _fmt, NULL); \
         } while (0)
 #define PANIC_EXT(_data, ...) ({ \
         panic_ext((_data), NULL); \
