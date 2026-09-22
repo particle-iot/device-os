@@ -676,3 +676,12 @@ int cellular_send_apdu(const char* cmd, size_t cmdSize, char* resp, size_t* resp
     CHECK(client->sendApdu(cmd, cmdSize, resp, *respSize, true /* autoClose */));
     return 0;
 }
+
+int cellular_is_idle(void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+    // No lock, this has to stay readable while the client is busy
+    return client->connectionState() == NcpConnectionState::IDLE ? 1 : 0;
+}

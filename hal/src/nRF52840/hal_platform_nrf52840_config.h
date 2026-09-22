@@ -44,6 +44,13 @@
 
 #define HAL_PLATFORM_NFC (1)
 
+// Can stub the driver out at compile time for 3.3KB of free space - useful for debugging. Do not
+// touch HAL_PLATFORM_NFC instead, dropping its dynalib slot shifts every table after it:
+//   GLOBAL_DEFINES=HAL_PLATFORM_NFC_DRIVER=0 make clean all -s PLATFORM=b5som APP=tinker-serial1-debugging program-dfu
+#ifndef HAL_PLATFORM_NFC_DRIVER
+#define HAL_PLATFORM_NFC_DRIVER (1)
+#endif
+
 #define HAL_PLATFORM_NRF52840 (1)
 
 /* 25 seconds */

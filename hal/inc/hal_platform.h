@@ -320,6 +320,12 @@
 #define HAL_PLATFORM_NFC 0
 #endif /* HAL_PLATFORM_NFC */
 
+// Stubs the NFC driver out but keeps the hal_nfc dynalib slot, which HAL_PLATFORM_NFC owns and
+// the module linker scripts pin to a hard-coded offset
+#ifndef HAL_PLATFORM_NFC_DRIVER
+#define HAL_PLATFORM_NFC_DRIVER HAL_PLATFORM_NFC
+#endif /* HAL_PLATFORM_NFC_DRIVER */
+
 #ifndef HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE
 #define HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE (0)
 #endif // HAL_PLATFORM_POWER_WORKAROUND_USB_HOST_VIN_SOURCE

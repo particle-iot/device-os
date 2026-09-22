@@ -274,6 +274,22 @@ int PppNcpNetif::powerDown() {
     return SYSTEM_ERROR_NONE;
 }
 
+void PppNcpNetif::notifyIdleState(bool idle) {
+    // Only skip when we're already not idle. Idle is sent every time because the network manager
+    // changes the LED on its own transitions and ours needs to come after.
+    if (!idle && !idleNotified_) {
+        return;
+    }
+    idleNotified_ = idle;
+    if_event evt = {};
+    struct if_event_idle_state ev_if_idle_state = {};
+    evt.ev_len = sizeof(if_event);
+    evt.ev_type = IF_EVENT_IDLE_STATE;
+    evt.ev_idle_state = &ev_if_idle_state;
+    evt.ev_idle_state->state = idle ? IF_IDLE_STATE_ON : IF_IDLE_STATE_OFF;
+    if_notify_event(interface(), &evt, nullptr);
+}
+
 int PppNcpNetif::getPowerState(if_power_state_t* state) const {
     auto s = celMan_->ncpClient()->ncpPowerState();
     if (s == NcpPowerState::ON) {
@@ -402,11 +418,22 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             case NcpConnectionState::CONNECTING: {
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
                 self->connectStart_ = 0;
+                self->notifyIdleState(false);
                 break;
             }
             case NcpConnectionState::CONNECTED: {
                 self->connectStart_ = 0;
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_UP);
+                self->notifyIdleState(false);
+                break;
+            }
+            case NcpConnectionState::IDLE: {
+                // Modem is on but not registering. Take PPP down and let the system layer know, so
+                // it can show the radio as on rather than connecting.
+                self->client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+                self->connectStart_ = 0;
+                self->notifyIdleState(true);
+                break;
             }
         }
     } else if (ev.type == CellularNcpEvent::AUTH) {

@@ -165,6 +165,7 @@ private:
     void handleIfLinkLayerAddr(if_t iface, const struct if_event* ev);
     void handleIfPowerState(if_t iface, const struct if_event* ev);
     void handleIfPhyState(if_t iface, const struct if_event* ev);
+    void handleIfIdleState(if_t iface, const struct if_event* ev);
 
     unsigned int countIfacesWithFlags(unsigned int flags) const;
     void refreshIpState();

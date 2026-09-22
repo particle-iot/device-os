@@ -19,6 +19,8 @@
 
 #include <cstdlib>
 
+#include "hal_platform.h"
+
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #include "platform_ncp.h"
 
@@ -78,6 +80,8 @@ public:
     virtual int startNcpFwUpdate(bool update) override;
     virtual int dataModeError(int error) override;
     virtual int sendApdu(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose) override;
+    int sendApduImpl(const char* cmd, size_t cmdSize, char* resp, size_t& respSize, bool autoClose,
+            bool checkState);
 
     auto getMuxer() {
         return &muxer_;
@@ -88,6 +92,7 @@ private:
     AtParser dataParser_;
     std::unique_ptr<SerialStream> serial_;
     RecursiveMutex mutex_;
+    bool apduSkipStateCheck_ = false; // Set only while the init time eSIM probe runs
     CellularNcpClientConfig conf_;
     volatile NcpState ncpState_ = NcpState::OFF;
     volatile NcpState prevNcpState_;
@@ -130,6 +135,9 @@ private:
     unsigned int fwVersion_ = 0;
     system::SystemTimer apduChannelTimer_;
     int apduChannel_ = 0;
+    volatile system_tick_t simSettleUntil_ = 0;
+    bool apduRaisedCfun_ = false;
+    bool apduCfunHold_ = false;
     bool configuredPlmn_ = false;
     system_tick_t atProbeTime_ = 0;
     unsigned atProbeFailStreak_ = 0;
@@ -137,6 +145,10 @@ private:
     // probe cannot be answered; on the BG95 QINDCFG path it would be answered but would wake the
     // module, which is the thing sleep is trying to avoid. Suppress the probe either way.
     bool sleepUrcsDisabled_ = false;
+    // Set once connect() has been called, cleared whenever we leave IDLE. connectionState() reports
+    // DISCONNECTED while IDLE until this is set, otherwise the netif tears the IDLE state down on
+    // every tick after Cellular.on(). See esimHasUsableProfile().
+    bool connectRequested_ = false;
 
     int queryAndParseAtCops(CellularSignalQuality* qual);
     int initParser(Stream* stream);
@@ -175,8 +187,17 @@ private:
     int interveneRegistration();
     int checkRunningImsi();
     int processEventsImpl();
+    void disableImpl();
     int getIccidImpl(char* buf, size_t size);
     bool checkAtWhileConnected();
+    // Asks the eUICC whether any profile is enabled. Returns 1 if at least one is, 0 if all of them
+    // are disabled (or there are none), and a negative error if we could not find out. Callers must
+    // treat an error as "carry on as usual" and never enter IDLE on it. On a return of 1, iccid
+    // holds the enabled profile's ICCID.
+    int esimHasUsableProfile(char* iccid, size_t iccidSize, bool duringInit = false);
+    int esimSyncSimIccid(const char* expected);
+    int esimCheckProfiles();
+    void publishConnectionState();
     int configModemPowerState(ModemPowerReason reason);
 
     /** Is this a Quectel Cat-M1 device ? */
@@ -201,6 +222,9 @@ private:
     uint32_t getDefaultSerialConfig() const;
     void exitDataModeWithDtr() const;
     int closeApduChannel(int channel);
+    void apduWaitForSettle();
+    int apduRaiseFunctionality();
+    void apduRestoreFunctionality();
 
     static void apduChannelTimeoutCb(void* arg);
 };

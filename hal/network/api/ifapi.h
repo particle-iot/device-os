@@ -146,6 +146,7 @@ typedef enum if_event_type_t {
     IF_EVENT_LLADDR               = 0x06,
     IF_EVENT_POWER_STATE          = 0x07,
     IF_EVENT_PHY_STATE            = 0x08,
+    IF_EVENT_IDLE_STATE           = 0x09,
 } if_event_type_t;
 
 typedef enum if_state_t {
@@ -174,6 +175,13 @@ typedef enum if_phy_state_t {
     IF_PHY_STATE_ON = 0x02
 } if_phy_state_t;
 
+/* Interface is powered and reachable but deliberately not trying to connect */
+typedef enum if_idle_state_t {
+    IF_IDLE_STATE_NONE = 0x00,
+    IF_IDLE_STATE_OFF = 0x01,
+    IF_IDLE_STATE_ON = 0x02
+} if_idle_state_t;
+
 struct if_event_state {
     uint8_t state;
 };
@@ -189,6 +197,10 @@ struct if_event_power_state {
 };
 
 struct if_event_phy_state {
+    uint8_t state;
+};
+
+struct if_event_idle_state {
     uint8_t state;
 };
 
@@ -213,6 +225,7 @@ struct if_event {
         struct if_event_lladdr* ev_if_lladdr;
         struct if_event_power_state* ev_power_state;
         struct if_event_phy_state* ev_phy_state;
+        struct if_event_idle_state* ev_idle_state;
     };
 };
 

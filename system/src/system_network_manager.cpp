@@ -515,6 +515,10 @@ void NetworkManager::ifEventHandler(if_t iface, const struct if_event* ev) {
             handleIfPhyState(iface, ev);
             break;
         }
+        case IF_EVENT_IDLE_STATE: {
+            handleIfIdleState(iface, ev);
+            break;
+        }
     }
 }
 
@@ -711,6 +715,30 @@ void NetworkManager::handleIfPhyState(if_t iface, const struct if_event* ev) {
         system_notify_event(network_status, network_status_on);
     } else if (networkStatus_ == NetworkStatus::NETWORK_STATUS_POWERING_OFF && ev->ev_phy_state->state == IF_PHY_STATE_OFF) {
         system_notify_event(network_status, network_status_off);
+    }
+}
+
+void NetworkManager::handleIfIdleState(if_t iface, const struct if_event* ev) {
+    /* An interface that is powered but deliberately not connecting. The state machine parks in
+     * IFACE_UP because the interface is administratively up, which would otherwise leave us on the
+     * blinking NETWORK_CONNECTING signal. Show the radio as on instead. */
+    if (ev->ev_idle_state->state == IF_IDLE_STATE_ON) {
+        // Another interface may be carrying traffic or bringing itself up, and this signal shares
+        // BACKGROUND with the rest of the network ones, so it would take the front of the queue and
+        // hide them. state_ cannot answer that, it is one value for every interface and an IDLE one
+        // parks in IFACE_UP looking just like an interface that is still connecting
+        bool otherIfaceUp = false;
+        for_each_iface([&](if_t i, unsigned int flags) {
+            if (i != iface && (flags & IFF_UP)) {
+                otherIfaceUp = true;
+            }
+        });
+
+        if (!otherIfaceUp) {
+            LED_SIGNAL_START(NETWORK_ON, BACKGROUND);
+        }
+    } else if (ev->ev_idle_state->state == IF_IDLE_STATE_OFF && isEstablishingConnections()) {
+        LED_SIGNAL_START(NETWORK_CONNECTING, BACKGROUND);
     }
 }
 
