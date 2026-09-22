@@ -4,6 +4,7 @@ platform('gen3', 'gen4');
 timeout(60 * 60 * 1000);
 
 let device = null;
+let coldBootStream = null;
 
 const WORDS_PER_BLOCK = 16383; // 65532 bytes, the payload limit is 65535 (uint16_t wLength)
 const BLOCKS = 24;
@@ -144,7 +145,38 @@ test('RNG_03_host_side_statistical_analysis', async function() {
 });
 
 test('RNG_04_initial_generation_1', async function() {
+    const usbDev = await device.getUsbDevice();
+    coldBootStream = await pullRngBlock(usbDev, 32);
 });
 
 test('RNG_04_initial_generation_2', async function() {
+    expect(Buffer.isBuffer(coldBootStream)).to.be.true;
+    const usbDev = await device.getUsbDevice();
+    const secondStream = await pullRngBlock(usbDev, 32);
+    let diffWords = 0;
+    for (let i = 0; i < 32; ++i) {
+        if (secondStream.readUInt32LE(i * 4) !== coldBootStream.readUInt32LE(i * 4)) {
+            ++diffWords;
+        }
+    }
+    console.log(`cold boot streams: ${diffWords}/32 words differ`);
+    expect(diffWords).to.be.at.least(1);
+});
+
+test('RNG_05_reseed_stress', async function() {
+});
+
+test('RNG_06_seed_corruption_data_zeros', async function() {
+});
+
+test('RNG_07_seed_corruption_data_zeros_replay', async function() {
+});
+
+test('RNG_08_seed_corruption_data_zeros_replay', async function() {
+});
+
+test('RNG_09_seed_corruption_struct_garbage', async function() {
+});
+
+test('RNG_10_seed_corruption_struct_garbage_replay', async function() {
 });

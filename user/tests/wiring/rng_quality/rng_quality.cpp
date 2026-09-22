@@ -38,10 +38,34 @@ const uint32_t REPLAY_MAGIC = 0x5a5a5a5a;
 
 #if HAL_PLATFORM_RTL872X
 const char* const backupRamFilePath = "/sys/backup_ram.bin";
+
+const uint32_t retainedSeedMagic = 0x524e4753;
+const uint8_t retainedSeedVersion = 1;
+const size_t retainedSeedStructSize = 40;
+const size_t retainedSeedDataOffset = 8;
+
+} // namespace
+
+extern "C" uintptr_t platform_backup_ram_all_start[];
+extern "C" uintptr_t platform_backup_ram_all_end;
+
+namespace {
+
+uint32_t* findRetainedSeed() {
+    auto p = reinterpret_cast<uint32_t*>(platform_backup_ram_all_start);
+    const auto end = reinterpret_cast<uint32_t*>(&platform_backup_ram_all_end);
+    for (; p < end; ++p) {
+        if (*p == retainedSeedMagic && reinterpret_cast<const uint8_t*>(p)[4] == retainedSeedVersion) {
+            return p;
+        }
+    }
+    return nullptr;
+}
 #endif
 
 static retained uint32_t previousStream[8];
 static retained uint32_t replayState;
+static retained uint32_t corruptedSeedStream[8];
 
 int rngDumpRequest(ctrl_request* req) {
     bool command = false;
@@ -116,36 +140,29 @@ test(RNG_02_replay_across_soft_reset) {
 
     memcpy(previousStream, stream, sizeof(stream));
     replayState = REPLAY_MAGIC;
-#ifdef PARTICLE_TEST_RUNNER
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
-#endif
     System.reset();
 }
 
 test(RNG_03_host_side_statistical_analysis) {
 }
 
-test(RNG_04_initial_generation_1) {
 #if HAL_PLATFORM_RTL872X
+test(RNG_04_initial_generation_1) {
     unlink(backupRamFilePath);
     extern uintptr_t platform_backup_ram_all_start[];
     extern uintptr_t platform_backup_ram_all_end;
     memset(platform_backup_ram_all_start, 0,
             (uintptr_t)&platform_backup_ram_all_end - (uintptr_t)platform_backup_ram_all_start);
-#endif
-#ifdef PARTICLE_TEST_RUNNER
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
-#endif
     System.reset();
 }
 
 test(RNG_04_initial_generation_2) {
-#if HAL_PLATFORM_RTL872X
     assertEqual(RESET_REASON_USER, System.resetReason());
     struct stat st = {};
     assertEqual(0, stat(backupRamFilePath, &st));
     assertMoreOrEqual((int)st.st_size, 4);
-#endif
 
     const uint32_t first = HAL_RNG_GetRandomNumber();
     int same = 0;
@@ -155,4 +172,96 @@ test(RNG_04_initial_generation_2) {
         }
     }
     assertLessOrEqual(same, 2);
+
+    unlink(backupRamFilePath);
+    extern uintptr_t platform_backup_ram_all_start[];
+    extern uintptr_t platform_backup_ram_all_end;
+    memset(platform_backup_ram_all_start, 0,
+            (uintptr_t)&platform_backup_ram_all_end - (uintptr_t)platform_backup_ram_all_start);
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    System.reset();
 }
+
+test(RNG_05_reseed_stress) {
+    // One auto-reseed per 10001 calls: reseed_interval is 10000
+    const int cycles = 50;
+    uint32_t reference = 0;
+    int same = 0;
+    for (int cycle = 0; cycle < cycles; ++cycle) {
+        uint32_t word = 0;
+        for (int i = 0; i < 10001; ++i) {
+            word = HAL_RNG_GetRandomNumber();
+        }
+        if (cycle == 1) {
+            reference = word;
+        } else if (cycle > 1 && word == reference) {
+            ++same;
+        }
+    }
+    assertLessOrEqual(same, 1);
+}
+
+test(RNG_06_seed_corruption_data_zeros) {
+    // Corrupt the seed data, but not magic/version: the next boot takes the
+    // warm path, seeded from garbage plus the fresh ADC refresh bytes
+    const auto seed = findRetainedSeed();
+    assertTrue(seed != nullptr);
+    memset(reinterpret_cast<uint8_t*>(seed) + retainedSeedDataOffset, 0, 32);
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    System.reset();
+}
+
+test(RNG_07_seed_corruption_data_zeros_replay) {
+    // Corrupt the seed data again the same way, save the stream generated on
+    // this boot and reboot: both this and the next boot are seeded from the
+    // same zeros plus fresh refresh bytes, so a broken refresh harvest would
+    // make the two streams identical
+    const auto seed = findRetainedSeed();
+    assertTrue(seed != nullptr);
+    memset(reinterpret_cast<uint8_t*>(seed) + retainedSeedDataOffset, 0, 32);
+
+    uint32_t stream[8] = {};
+    for (auto& value: stream) {
+        value = HAL_RNG_GetRandomNumber();
+    }
+    memcpy(corruptedSeedStream, stream, sizeof(stream));
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    System.reset();
+}
+
+test(RNG_08_seed_corruption_data_zeros_replay) {
+    uint32_t stream[8] = {};
+    for (auto& value: stream) {
+        value = HAL_RNG_GetRandomNumber();
+    }
+    int same = 0;
+    for (size_t i = 0; i < sizeof(stream) / sizeof(stream[0]); ++i) {
+        if (stream[i] == corruptedSeedStream[i]) {
+            ++same;
+        }
+    }
+    assertLess(same, 2);
+}
+
+test(RNG_09_seed_corruption_struct_garbage) {
+    // Corrupt the whole seed structure: the magic check must fence it off and
+    // the next boot must reseed from a full ADC harvest
+    const auto seed = findRetainedSeed();
+    assertTrue(seed != nullptr);
+    memset(seed, 0xff, retainedSeedStructSize);
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    System.reset();
+}
+
+test(RNG_10_seed_corruption_struct_garbage_replay) {
+    assertEqual(RESET_REASON_USER, System.resetReason());
+    const uint32_t first = HAL_RNG_GetRandomNumber();
+    int same = 0;
+    for (int i = 0; i < 100; ++i) {
+        if (HAL_RNG_GetRandomNumber() == first) {
+            ++same;
+        }
+    }
+    assertLessOrEqual(same, 2);
+}
+#endif // HAL_PLATFORM_RTL872X
