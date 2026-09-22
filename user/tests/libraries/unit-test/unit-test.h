@@ -142,7 +142,8 @@ public:
             NONE = 0,
             RESET_PENDING = 1,
             DATA = 2,
-            SAFE_MODE_PENDING = 3
+            SAFE_MODE_PENDING = 3,
+            PANIC_PENDING = 4
         };
 
         MailboxEntry()

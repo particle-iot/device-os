@@ -67,6 +67,7 @@ void panic_(const ePanicCode code, const char* text, void* unused);
 void panic_ext(const PanicData* data, void* reserved);
 
 int panic_get_last_panic_data(PanicData* panic, void* reserved);
+int panic_clear_last_panic_data(void* reserved);
 void panic_set_last_panic_data_handled(void* reserved);
 
 #define PANIC_COMPAT(_code, _text, ...) ({ \
