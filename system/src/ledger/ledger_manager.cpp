@@ -1332,7 +1332,7 @@ int LedgerManager::sendResponse(int result, int reqId) {
         pbMsg.data = get_system_error_message(result);
         pbMsg.size = std::strlen(pbMsg.data);
     }
-    CHECK(coap_end_response(msg.get(), nullptr /* ack_cb */, requestErrorCallback, nullptr /* arg */, nullptr /* reserved */));
+    CHECK(coap_end_response(msg.get(), nullptr /* ack_cb */, requestErrorCallback, this /* arg */, nullptr /* reserved */));
     msg.release();
     return 0;
 }
