@@ -35,8 +35,9 @@ for PLATFORM in $CI_RELEASE_PLATFORMS; do
     rm -rf /firmware/build/target
     MAKEFLAGS=-j$(nproc) device-os-test --device-os-dir=/firmware --target-dir=$TEST_DIR --binary-dir=$TEST_DIR --config-file=/tmp/test.config.json build $PLATFORM
     testcase "0 PLATFORM=\"$PLATFORM\" device-os-test"
+    find $TEST_DIR -name '*.elf' -delete
     pushd /firmware/user/tests/integration
-    find -L ./ -name '*.spec.js' -exec cp --parents {} $TEST_DIR/$PLATFORM \;
+    find -L ./ -name '*.spec.js' -not -path '*/node_modules/*' -exec cp --parents {} $TEST_DIR/$PLATFORM \;
     cp package*.json $TEST_DIR/$PLATFORM/ || true
     popd
     ls -laR $RELEASE_OUTPUT
