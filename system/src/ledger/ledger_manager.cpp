@@ -1332,6 +1332,11 @@ int LedgerManager::sendResponse(int result, int reqId) {
         pbMsg.data = get_system_error_message(result);
         pbMsg.size = std::strlen(pbMsg.data);
     }
+    pb_ostream_t stream = {};
+    CHECK(pb_ostream_from_coap_message(&stream, msg.get(), nullptr));
+    if (!pb_encode(&stream, &PB_CLOUD(Response_msg), &pbResp)) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
     CHECK(coap_end_response(msg.get(), nullptr /* ack_cb */, requestErrorCallback, this /* arg */, nullptr /* reserved */));
     msg.release();
     return 0;
