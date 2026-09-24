@@ -243,7 +243,7 @@ bool hasDiagnosticPayload(const CoapMessage& msg) {
 
 bool hasStatsPayload(const CoapMessage& msg) {
     static const std::regex rx("^\\{\"recv_chunks\":\\d+,\"dup_chunks\":\\d+,\"ooo_chunks\":\\d+,\"sent_acks\":\\d+,"
-            "\"proc_time\":\\d+}$");
+            "\"proc_time\":\\d+\\}$");
     return msg.hasPayload() && std::regex_match(msg.payload(), rx);
 }
 
