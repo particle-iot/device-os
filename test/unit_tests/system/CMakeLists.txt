@@ -91,3 +91,5 @@ target_include_directories( ${target_name}
 catch_discover_tests( ${target_name}
   TEST_PREFIX ${target_name}_
 )
+
+add_subdirectory(ledger)
