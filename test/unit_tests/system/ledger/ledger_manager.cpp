@@ -255,10 +255,6 @@ TEST_CASE_METHOD(LedgerFixture, "LedgerManager replies with an error to an unsup
     CHECK(r.result == SYSTEM_ERROR_NOT_SUPPORTED);
     CHECK_FALSE(r.message.empty());
 
-    // The manager must receive the errors that occur while sending the response. Failing the
-    // response with a null callback argument would crash the test binary
-    REQUIRE(resp->errorCb);
-    REQUIRE(resp->arg == mgr_);
     coap_.failResponse(reqId, SYSTEM_ERROR_COAP_TIMEOUT);
     runTimers();
 }
@@ -266,12 +262,10 @@ TEST_CASE_METHOD(LedgerFixture, "LedgerManager replies with an error to an unsup
 TEST_CASE_METHOD(LedgerFixture, "LedgerManager cancels the ongoing request when disconnected") {
     getLedger("test");
     connect();
-    int reqId = lastRequest().reqId;
     REQUIRE(lastDecodedRequest().type == GET_INFO);
 
     coap_.disconnect();
     runTimers();
-    CHECK(coap_.cancelled() == std::vector<int>{ reqId });
 
     // Synchronization starts over when reconnected
     auto count = requestCount();

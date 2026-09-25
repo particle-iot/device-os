@@ -20,6 +20,7 @@
 #endif
 
 #include <algorithm>
+#include <cassert>
 #include <cstring>
 
 #include "v2/coap_channel.h"
