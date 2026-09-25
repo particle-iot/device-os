@@ -37,6 +37,7 @@ add_executable( ${target_name}
   forward_message_channel.cpp
   hal_stubs.cpp
   messages.cpp
+  nonblocking_handshake.cpp
   ping.cpp
   protocol.cpp
   publisher.cpp

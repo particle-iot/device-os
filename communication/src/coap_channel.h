@@ -382,6 +382,13 @@ public:
 		return head!=nullptr;
 	}
 
+	/**
+	 * Returns the head of the message linked list (for iteration).
+	 */
+	CoAPMessage* head_message() const {
+		return head;
+	}
+
 	bool has_unacknowledged_requests() const;
 
 	/**
@@ -551,10 +558,24 @@ class CoAPReliableChannel : public T
 
 	DelegateChannel delegateChannel;
 
+	CoAPMessage::delivery_fn confirm_handler;
+	message_id_t confirm_id;
+	ProtocolError confirm_result;
+	bool confirm_pending;
+	bool confirm_had_client_messages;
+
 public:
 
-	CoAPReliableChannel(M m=0) : millis(m) {
+	CoAPReliableChannel(M m=0) : millis(m), confirm_id(0), confirm_result(NO_ERROR),
+			confirm_pending(false), confirm_had_client_messages(false) {
 		delegateChannel.init(this);
+		confirm_handler = [this](CoAPMessage::Delivery delivered) {
+			if (delivered == CoAPMessage::NOT_DELIVERED) {
+				confirm_result = MESSAGE_TIMEOUT;
+			} else if (delivered == CoAPMessage::DELIVERED_NACK) {
+				confirm_result = MESSAGE_RESET;
+			}
+		};
 	}
 
 	void set_millis(M m) {
@@ -574,7 +595,9 @@ public:
 	 */
 	ProtocolError establish() override
 	{
-		reset();
+		if (!channel::is_establish_in_progress()) {
+			reset();
+		}
 		return channel::establish();
 	}
 
@@ -585,6 +608,9 @@ public:
 	{
 		server.clear();
 		client.clear();
+		confirm_pending = false;
+		confirm_result = NO_ERROR;
+		confirm_id = 0;
 		channel::reset();
 	}
 
@@ -599,7 +625,7 @@ public:
 			return delegateChannel.send(msg);
 
 		if (msg.is_request() && msg.get_confirm_received())
-			return send_synchronous(msg);
+			return send_confirmed(msg);
 
 		// determine the type of message.
 		CoAPMessageStore& store = msg.is_request() ? client : server;
@@ -668,53 +694,133 @@ public:
 	}
 
 	/**
-	 * Send a message synchronously, waiting for the acknowledgement.
+	 * Send a confirmable message and arm the delivery handler.
+	 * First half of the old send_synchronous - delivery is awaited by
+	 * the caller polling poll_confirmed().
 	 */
-	ProtocolError send_synchronous(Message& msg)
+	ProtocolError send_confirmed(Message& msg)
 	{
 		message_id_t id = msg.get_id();
-		DEBUG("sending message id=%x synchronously", id);
+		DEBUG("sending message id=%x confirmed", id);
 		CoAPType::Enum coapType = CoAP::type(msg.buf());
-		const bool had_client_messages = client.has_messages();
+		confirm_had_client_messages = client.has_messages();
 		ProtocolError error = client.send(msg, millis());
 		if (!error)
 			error = delegateChannel.send(msg);
-		if (!error && coapType==CoAPType::CON)
+		if (!error && coapType == CoAPType::CON)
 		{
-			CoAPMessage::delivery_fn flag_delivered = [&error](CoAPMessage::Delivery delivered) {
-				if (delivered==CoAPMessage::NOT_DELIVERED)
-					error = MESSAGE_TIMEOUT;
-				else if (delivered==CoAPMessage::DELIVERED_NACK)
-					error = MESSAGE_RESET;
-			};
 			CoAPMessage* coapmsg = client.from_id(id);
 			if (coapmsg)
-				coapmsg->set_delivered_handler(&flag_delivered);
+				coapmsg->set_delivered_handler(&confirm_handler);
 			else
 				ERROR("no coapmessage for msg id=%x", id);
-			while (client.from_id(id)!=nullptr && !error)
-			{
-				msg.clear();
-				msg.set_length(0);
-				error = delegateChannel.receive(msg);
-				if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
-				{
-					// handle acknowledgements, waiting for the one that
-					// acknowledges the original confirmation.
-					ProtocolError receive_error = client.receive(msg, delegateChannel, millis());
-					if (!error)
-						error = receive_error;
-				}
-				// drop CON messages on the floor since we cannot handle them now
-				client.process(millis(), delegateChannel);
-			}
+			confirm_id = id;
+			confirm_result = NO_ERROR;
+			confirm_pending = true;
+			// Delivery is now awaited by the caller via poll_confirmed()
+			return NO_ERROR;
 		}
+		// Non-CON or send error completes immediately
 		client.clear_message(id);
-		if (had_client_messages && !client.has_messages()) {
+		if (confirm_had_client_messages && !client.has_messages()) {
 			channel::notify_client_messages_processed();
 		}
-		// todo - if msg contains a delivery callback then call that with the outcome of this
 		return error;
+	}
+
+	/**
+	 * Poll for the confirmation of the message sent by send_confirmed().
+	 * One iteration of the old spin loop - preserves the narrow
+	 * confirmation-processing behavior (only ACK/RST fed to
+	 * client.receive(), other messages dropped, client.process() only).
+	 */
+	ProtocolError poll_confirmed()
+	{
+		if (!confirm_pending) {
+			return NO_ERROR; // nothing to poll
+		}
+
+		Message msg;
+		channel::create(msg, 0);
+		ProtocolError error = delegateChannel.receive(msg);
+		if (!error && msg.decode_id() && is_ack_or_reset(msg.buf(), msg.length()))
+		{
+			// handle acknowledgements, waiting for the one that
+			// acknowledges the original confirmation.
+			ProtocolError receive_error = client.receive(msg, delegateChannel, millis());
+			if (!error) {
+				error = receive_error;
+			}
+		}
+		// drop CON messages on the floor since we cannot handle them now
+		client.process(millis(), delegateChannel);
+
+		// Check if the message is still pending (not yet acknowledged)
+		if (client.from_id(confirm_id) != nullptr && !error && confirm_result == NO_ERROR)
+		{
+			return IN_PROGRESS; // still waiting for ACK
+		}
+
+		// Terminal: message acknowledged, timed out, reset, or error
+		client.clear_message(confirm_id);
+		if (confirm_had_client_messages && !client.has_messages()) {
+			channel::notify_client_messages_processed();
+		}
+		confirm_pending = false;
+		// Prefer the delivery handler result (MESSAGE_TIMEOUT/MESSAGE_RESET)
+		// over a receive error only when the handler fired
+		if (confirm_result != NO_ERROR) {
+			return confirm_result;
+		}
+		return error;
+	}
+
+	/**
+	 * Returns the remaining delay (ms) to the earliest retransmit
+	 * timeout in the client store, or 0 if none.
+	 *
+	 * An armed-but-expired timeout returns a 1 ms floor (not 0).
+	 */
+	system_tick_t client_next_timeout(system_tick_t now) const
+	{
+		bool found = false;
+		system_tick_t earliest = 0;
+		for (CoAPMessage* msg = client.head_message(); msg != nullptr; msg = msg->get_next())
+		{
+			const system_tick_t t = msg->get_timeout();
+			// Wrap-safe signed diff: positive = remaining, <=0 = expired
+			const int32_t diff = (int32_t)(t - now);
+			system_tick_t remaining;
+			if (diff <= 0) {
+				remaining = 1; // expired - floor
+			} else {
+				remaining = (system_tick_t)diff;
+			}
+			if (!found || remaining < earliest) {
+				earliest = remaining;
+				found = true;
+			}
+		}
+		return found ? earliest : 0;
+	}
+
+	/**
+	 * Send a message synchronously, waiting for the acknowledgement.
+	 * Wrapper: send_confirmed + spin-poll_confirmed (legacy/test callers).
+	 */
+	ProtocolError send_synchronous(Message& msg)
+	{
+		ProtocolError error = send_confirmed(msg);
+		if (error || !confirm_pending) {
+			return error;
+		}
+		while (true)
+		{
+			ProtocolError poll_err = poll_confirmed();
+			if (poll_err != IN_PROGRESS) {
+				return poll_err;
+			}
+		}
 	}
 };
 

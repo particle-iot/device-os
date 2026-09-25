@@ -398,11 +398,15 @@ void handle_cloud_connection(bool force_events)
                     LED_SIGNAL_STOP(CLOUD_HANDSHAKE);
                 }
             } else { // !SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE
-                LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+                if (!SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS) {
+                    LED_SIGNAL_START(CLOUD_HANDSHAKE, NORMAL);
+                }
                 err = cloud_handshake();
             }
-            if (err)
-            {
+
+            if (err == SYSTEM_ERROR_BUSY && SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS) {
+                // Handshake in progress, re-enter next loop iteration.
+            } else if (err) {
                 if (!SPARK_WLAN_RESET && !network_listening(0, 0, 0))
                 {
                     cloud_connection_failed();
@@ -428,7 +432,8 @@ void handle_cloud_connection(bool force_events)
                 cfod_count = 0;
             }
         }
-        if (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED)
+        if (!SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS &&
+                (SPARK_FLASH_UPDATE || force_events || System.mode() != MANUAL || system_thread_get_state(NULL)==spark::feature::ENABLED))
         {
             Spark_Process_Events();
         }
@@ -767,6 +772,7 @@ void cloud_disconnect(unsigned flags, cloud_disconnect_reason cloudReason, netwo
         SPARK_CLOUD_CONNECTED = 0;
         SPARK_CLOUD_HANDSHAKE_PENDING = 0;
         SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
+        SPARK_CLOUD_PROTOCOL_HANDSHAKE_IN_PROGRESS = 0;
         SPARK_CLOUD_SOCKETED = 0;
 
         LED_SIGNAL_STOP(CLOUD_CONNECTED);

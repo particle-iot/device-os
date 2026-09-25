@@ -60,6 +60,18 @@ namespace {
 // A custom content type for session resumption packets
 const unsigned ALT_CID_CONTENT_TYPE = 253;
 
+// Retry delay (ms) when the last handshake step returned WANT_WRITE
+const system_tick_t HANDSHAKE_SEND_RETRY_MS = 50;
+
+// Floor for an armed-but-expired timer - ensures prompt re-entry
+const system_tick_t HANDSHAKE_DELAY_EXPIRED_FLOOR_MS = 1;
+
+const system_tick_t HANDSHAKE_PROCESSING_SLICE_MS = 20;
+
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+const unsigned HANDSHAKE_ECP_MAX_OPS = 256;
+#endif
+
 } // namespace
 
 uint32_t compute_checksum(uint32_t(*calculate_crc)(const uint8_t* data, uint32_t len), const uint8_t* server, size_t server_len, const uint8_t* device, size_t device_len)
@@ -295,6 +307,11 @@ void DTLSMessageChannel::reset_session()
 	cancel_move_session();
 	mbedtls_ssl_session_reset(&ssl_context);
 	sessionPersist.clear(callbacks.save);
+	establish_state = EstablishState::NONE;
+	last_wait = WaitCondition::NONE;
+	timer_start = 0;
+	timer_int_ms = 0;
+	timer_fin_ms = 0;
 }
 
 inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
@@ -358,6 +375,40 @@ void DTLSMessageChannel::dispose()
 }
 
 
+system_tick_t DTLSMessageChannel::next_handshake_delay() const
+{
+	if (establish_state != EstablishState::HANDSHAKING) {
+		return 0; // no handshake in progress
+	}
+	if (last_wait == WaitCondition::CONTINUE ||
+			last_wait == WaitCondition::CRYPTO_IN_PROGRESS) {
+		return HANDSHAKE_DELAY_EXPIRED_FLOOR_MS;
+	}
+	// On WANT_WRITE, use the send-retry delay (but don't overshoot an
+	// imminent retransmit deadline)
+	if (last_wait == WaitCondition::WANT_WRITE) {
+		const system_tick_t retry = HANDSHAKE_SEND_RETRY_MS;
+		if (timer_fin_ms != 0) {
+			const system_tick_t elapsed = callbacks.millis() - timer_start;
+			if (elapsed < timer_fin_ms) {
+				const system_tick_t remaining = timer_fin_ms - elapsed;
+				return (remaining < retry) ? remaining : retry;
+			}
+			return HANDSHAKE_DELAY_EXPIRED_FLOOR_MS;
+		}
+		return retry;
+	}
+	// On WANT_READ (or NONE), use the DTLS retransmit timer
+	if (timer_fin_ms == 0) {
+		return 0; // unarmed - no wake hint
+	}
+	const system_tick_t elapsed = callbacks.millis() - timer_start;
+	if (elapsed >= timer_fin_ms) {
+		return HANDSHAKE_DELAY_EXPIRED_FLOOR_MS; // expired - re-enter promptly
+	}
+	return timer_fin_ms - elapsed;
+}
+
 ProtocolError DTLSMessageChannel::setup_context()
 {
 	int ret;
@@ -365,7 +416,30 @@ ProtocolError DTLSMessageChannel::setup_context()
 	ret = mbedtls_ssl_setup(&ssl_context, &conf);
 	EXIT_ERROR(ret, "unable to setup SSL context");
 
-	mbedtls_ssl_set_timer_cb(&ssl_context, &timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+	mbedtls_ssl_set_timer_cb(&ssl_context, this,
+			[](void* ctx, uint32_t int_ms, uint32_t fin_ms) {
+				auto* const ch = static_cast<DTLSMessageChannel*>(ctx);
+				ch->timer_int_ms = int_ms;
+				ch->timer_fin_ms = fin_ms;
+				if (fin_ms != 0) {
+					ch->timer_start = ch->callbacks.millis();
+				}
+			},
+			[](void* ctx) -> int {
+				auto* const ch = static_cast<DTLSMessageChannel*>(ctx);
+				if (ch->timer_fin_ms == 0) {
+					return -1; // cancelled
+				}
+				const system_tick_t elapsed = ch->callbacks.millis() - ch->timer_start;
+				if (elapsed >= ch->timer_fin_ms) {
+					return 2; // final delay passed
+				}
+				if (elapsed >= ch->timer_int_ms) {
+					return 1; // intermediate delay passed
+				}
+				return 0; // none passed
+			}
+	);
 	mbedtls_ssl_set_bio(&ssl_context, this, &DTLSMessageChannel::sendCallback, &DTLSMessageChannel::recvCallback, NULL);
 
 	if ((ssl_context.session_negotiate->peer_cert = (mbedtls_x509_crt*)calloc(1, sizeof(mbedtls_x509_crt))) == NULL)
@@ -394,63 +468,93 @@ ProtocolError DTLSMessageChannel::setup_context()
 ProtocolError DTLSMessageChannel::establish()
 {
 	int ret = 0;
-	// LOG(INFO,"setup context");
-	ProtocolError error = setup_context();
-	if (error) {
-		LOG(ERROR,"setup_context error %d", (int)error);
-		return error;
-	}
-	bool renegotiate = false;
 
-	SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore, callbacks.save);
-	LOG(INFO,"(CMPL,RENEG,NO_SESS,ERR) restoreStatus=%d", restoreStatus);
-	if (restoreStatus==SessionPersist::COMPLETE)
-	{
-		LOG(INFO,"out_ctr %d,%d,%d,%d,%d,%d,%d,%d, next_coap_id=%x", sessionPersist.out_ctr[0],
-				sessionPersist.out_ctr[1],sessionPersist.out_ctr[2],sessionPersist.out_ctr[3],
-				sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
-				sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
-		sessionPersist.make_persistent();
-		LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
-		return SESSION_RESUMED;
-	}
-	else if (restoreStatus==SessionPersist::RENEGOTIATE)
-	{
-		// session partially restored, fully restored via handshake
-	}
-	else // no session or clear
-	{
+	// First entry: setup and session restore (runs once per attempt)
+	if (establish_state == EstablishState::NONE) {
+		ProtocolError error = setup_context();
+		if (error) {
+			LOG(ERROR,"setup_context error %d", (int)error);
+			return error;
+		}
+		bool renegotiate = false;
+
+		SessionPersist::RestoreStatus restoreStatus = sessionPersist.restore(&ssl_context, renegotiate, keys_checksum, coap_state, callbacks.restore, callbacks.save);
+		LOG(INFO,"(CMPL,RENEG,NO_SESS,ERR) restoreStatus=%d", restoreStatus);
+		if (restoreStatus==SessionPersist::COMPLETE)
+		{
+			LOG(INFO,"out_ctr %d,%d,%d,%d,%d,%d,%d,%d, next_coap_id=%x", sessionPersist.out_ctr[0],
+					sessionPersist.out_ctr[1],sessionPersist.out_ctr[2],sessionPersist.out_ctr[3],
+					sessionPersist.out_ctr[4],sessionPersist.out_ctr[5],sessionPersist.out_ctr[6],
+					sessionPersist.out_ctr[7], sessionPersist.next_coap_id);
+			sessionPersist.make_persistent();
+			LOG(INFO,"restored session from persisted session data. next_msg_id=%d", *coap_state);
+			return SESSION_RESUMED;
+		}
+		else if (restoreStatus==SessionPersist::RENEGOTIATE)
+		{
+			// session partially restored, fully restored via handshake
+		}
+		else // no session or clear
+		{
 		reset_session();
 		ProtocolError error = setup_context();
-		if (error)
+		if (error) {
 			return error;
-	}
-	uint8_t random[64];
-
-	do
-	{
-		while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER)
-		{
-			ret = mbedtls_ssl_handshake_step(&ssl_context);
-
-			if (ret != 0)
-				break;
-
-			// we've already received the ServerHello, thus
-			// we have the random values for client and server
-			if (ssl_context.state == MBEDTLS_SSL_SERVER_KEY_EXCHANGE)
-			{
-				memcpy(random, ssl_context.handshake->randbytes, 64);
-			}
 		}
 	}
-	while(ret == MBEDTLS_ERR_SSL_WANT_READ ||
-	      ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+	establish_state = EstablishState::HANDSHAKING;
+	last_wait = WaitCondition::NONE;
+}
+
+	const system_tick_t sliceStart = callbacks.millis();
+	while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER) {
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+		mbedtls_ecp_set_max_ops(HANDSHAKE_ECP_MAX_OPS);
+#endif
+		ret = mbedtls_ssl_handshake_step(&ssl_context);
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+		mbedtls_ecp_set_max_ops(0);
+#endif
+
+		if (ret != 0) {
+			break;
+		}
+
+		if (ssl_context.state == MBEDTLS_SSL_SERVER_KEY_EXCHANGE) {
+			memcpy(handshake_random, ssl_context.handshake->randbytes, 64);
+		}
+
+		if (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER &&
+				callbacks.millis() - sliceStart >= HANDSHAKE_PROCESSING_SLICE_MS) {
+			last_wait = WaitCondition::CONTINUE;
+			return IN_PROGRESS;
+		}
+	}
+
+	// Yield to the caller when waiting for I/O
+	if (ret == MBEDTLS_ERR_SSL_WANT_READ) {
+		last_wait = WaitCondition::WANT_READ;
+		return IN_PROGRESS;
+	}
+	if (ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+		last_wait = WaitCondition::WANT_WRITE;
+		return IN_PROGRESS;
+	}
+#if defined(MBEDTLS_ECP_RESTARTABLE)
+	if (ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+		last_wait = WaitCondition::CRYPTO_IN_PROGRESS;
+		return IN_PROGRESS;
+	}
+#endif
+
+	// Terminal: handshake complete or fatal error
+	establish_state = EstablishState::NONE;
+	last_wait = WaitCondition::NONE;
 
 	bool ok = false;
 	if (ret) {
 		LOG(ERROR, "handshake failed -%x", -ret);
-	} if (sessionPersist.prepare_save(random, keys_checksum, &ssl_context, 0)) {
+	} if (sessionPersist.prepare_save(handshake_random, keys_checksum, &ssl_context, 0)) {
 		ok = true;
 	}
 	if (!ok) {
