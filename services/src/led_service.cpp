@@ -50,6 +50,12 @@
 
 namespace {
 
+constexpr uint32_t Q15_ONE = (1 << 15);
+
+constexpr uint32_t q15Mul(uint32_t a, uint32_t b) {
+    return (a * b) >> 15;
+}
+
 class StatusQueue {
 public:
     StatusQueue() :
@@ -239,9 +245,13 @@ private:
             } else { // Fade in
                 ticks = ticks - period;
             }
-            color->r = (uint32_t)color->r * ticks / period;
-            color->g = (uint32_t)color->g * ticks / period;
-            color->b = (uint32_t)color->b * ticks / period;
+            // Smoothstep easing (3t^2 - 2t^3), a cheap integer approximation of a sinusoidal
+            // envelope, applied to the same linear ramp fraction the old code used directly.
+            const uint32_t rampProgress = ((uint32_t)ticks << 15) / period; // 0.0..1.0 in Q15
+            const uint32_t brightness = q15Mul(q15Mul(rampProgress, rampProgress), 3 * Q15_ONE - 2 * rampProgress);
+            color->r = q15Mul(color->r, brightness);
+            color->g = q15Mul(color->g, brightness);
+            color->b = q15Mul(color->b, brightness);
             break;
         }
         default:
