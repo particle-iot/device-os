@@ -2,9 +2,9 @@
 #include "unit-test/unit-test.h"
 #include "../common/common.inc"
 
-static void I2C_Master_Configure()
+static void I2C_Master_Configure(uint32_t speed = 400000)
 {
-    USE_WIRE.setSpeed(400000);
+    USE_WIRE.setSpeed(speed);
     USE_WIRE.begin();
 }
 
@@ -337,6 +337,106 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
         // Exit sleep
         assertEqual(hal_i2c_sleep(USE_WIRE.interface(), false, NULL), (int)SYSTEM_ERROR_NONE);
     }
+
+    USE_WIRE.end();
+}
+
+test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
+{
+    uint8_t transferBuf[STALL_TRANSFER_SIZE];
+    uint32_t timeoutCount = 0;
+    uint32_t busClearFailCount = 0;
+    uint32_t seq = 0;
+
+    I2C_Master_Configure(CLOCK_SPEED_100KHZ);
+
+    auto runWrite = [&](uint32_t s) -> bool {
+        transferBuf[0] = STALL_FRAME_SEED;
+        transferBuf[1] = (uint8_t)((s >> 8) & 0xff);
+        transferBuf[2] = (uint8_t)(s & 0xff);
+        memset(transferBuf + STALL_HEADER_SIZE, STALL_FRAME_PADDING, STALL_TRANSFER_SIZE - STALL_HEADER_SIZE);
+        USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS).timeout(100ms));
+        USE_WIRE.write(transferBuf, STALL_TRANSFER_SIZE);
+        return USE_WIRE.endTransmission() == 0;
+    };
+
+    auto readStatus = [&](uint32_t* goodBytes, uint32_t* badBytes,
+            uint32_t* onReceiveCount, uint32_t* onRequestCount,
+            uint32_t* lastBadPos = nullptr, uint32_t* lastBadByte = nullptr) -> bool {
+        uint8_t buf[STALL_TRANSFER_SIZE + 1] = {};
+        (void)USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS).quantity(STALL_TRANSFER_SIZE).timeout(100ms));
+        if (USE_WIRE.available() != STALL_TRANSFER_SIZE) {
+            while (USE_WIRE.available()) {
+                USE_WIRE.read();
+            }
+            return false;
+        }
+        size_t i = 0;
+        while (USE_WIRE.available()) {
+            buf[i++] = (uint8_t)USE_WIRE.read();
+        }
+        unsigned long v[6] = {};
+        if (sscanf((const char*)buf, "%lu,%lu,%lu,%lu,%lu,%lx", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) != 6) {
+            return false;
+        }
+        *goodBytes = v[0];
+        *badBytes = v[1];
+        *onReceiveCount = v[2];
+        *onRequestCount = v[3];
+        if (lastBadPos) {
+            *lastBadPos = v[4];
+        }
+        if (lastBadByte) {
+            *lastBadByte = v[5];
+        }
+        return true;
+    };
+
+    uint32_t gapUs = 0;
+    uint32_t goodBytes = 0, badBytes = 0, onReceiveCount = 0, onRequestCount = 0;
+    uint32_t lastBadPos = 0, lastBadByte = 0;
+    uint32_t readyMs = millis();
+    while (!readStatus(&goodBytes, &badBytes, &onReceiveCount, &onRequestCount)) {
+        assertTrue((millis() - readyMs) < STALL_TRAFFIC_LIMIT_MS);
+        stallDelayUs(STALL_MAX_GAP_US);
+    }
+    uint32_t consecutiveTimeouts = 0;
+    for (uint32_t n = 0; n < STALL_TRANSFERS; n++) {
+        seq++;
+        if (!runWrite(seq)) {
+            timeoutCount++;
+            (void)hal_i2c_reset(USE_WIRE.interface(), 0, nullptr);
+            if (!runWrite(seq)) {
+                busClearFailCount++;
+            }
+            assertTrue(++consecutiveTimeouts < 3);
+            continue;
+        }
+        consecutiveTimeouts = 0;
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    assertEqual(timeoutCount, (uint32_t)0);
+    assertEqual(busClearFailCount, (uint32_t)0);
+
+    seq = STALL_STOP_SEQ;
+    assertTrue(runWrite(seq));
+
+    assertTrue(readStatus(&goodBytes, &badBytes, &onReceiveCount, &onRequestCount, &lastBadPos, &lastBadByte));
+    assertEqual(goodBytes, (uint32_t)((STALL_TRANSFERS + 1) * STALL_TRANSFER_SIZE));
+    assertEqual(lastBadPos, (uint32_t)0);
+    assertEqual(lastBadByte, (uint32_t)0);
+    assertEqual(badBytes, (uint32_t)0);
+
+    for (uint32_t n = 0; n < STALL_READ_TRANSFERS; n++) {
+        assertTrue(readStatus(&goodBytes, &badBytes, &onReceiveCount, &onRequestCount));
+        assertEqual(goodBytes, (uint32_t)((STALL_TRANSFERS + 1) * STALL_TRANSFER_SIZE));
+        assertEqual(badBytes, (uint32_t)0);
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+    assertMoreOrEqual(onRequestCount, (uint32_t)(STALL_READ_TRANSFERS + 1));
 
     USE_WIRE.end();
 }
