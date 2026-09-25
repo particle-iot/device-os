@@ -24,8 +24,10 @@
 #include "delay_hal.h"
 #include "rtc_hal.h"
 #include "system_cloud.h"
+#include "diagnostics.h"
 
 #include <map>
+#include <cstdlib>
 #include <stdexcept>
 
 namespace {
@@ -147,4 +149,12 @@ int hal_rtc_get_time(struct timeval* tv, hal_rtc_option_t* opt) {
 // Not using test/unit_tests/stub/system_cloud.cpp as it depends on a large part of Wiring
 bool spark_cloud_flag_connected() {
     return false; // LedgerManager::init() requires the device to be disconnected
+}
+
+extern "C" int diag_register_source(const struct diag_source* src, void* reserved) {
+    return 0;
+}
+
+extern "C" uint32_t HAL_RNG_GetRandomNumber() {
+    return rand();
 }

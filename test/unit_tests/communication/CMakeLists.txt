@@ -33,6 +33,7 @@ add_executable( ${target_name}
   util/descriptor_callbacks.cpp
   util/protocol_stub.cpp
   coap_reliability.cpp
+  coap_channel_v2.cpp
   coap.cpp
   forward_message_channel.cpp
   hal_stubs.cpp

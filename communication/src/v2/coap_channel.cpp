@@ -151,7 +151,7 @@ inline void addToList(T*& head, E* elem) {
 
 template<typename T, typename E, typename = std::enable_if_t<std::is_base_of_v<T, E> || std::is_base_of_v<E, T>>>
 inline void removeFromList(T*& head, E* elem) {
-    assert(elem->next || elem->prev);
+    assert(head); // The list contains at least the element being removed
     if (elem->prev) {
         assert(head != elem);
         elem->prev->next = elem->next;
@@ -1553,7 +1553,9 @@ int CoapChannel::prepareMessage(const RefCountPtr<Message>& msg, bool retransmit
 }
 
 int CoapChannel::updateMessage(const RefCountPtr<Message>& msg) {
-    assert(curMsgId_ == msg->id);
+    // Either the buffer is being prepared for this message (see prepareMessage()) or the message
+    // already owns the buffer (see writeBlock())
+    assert(!curMsgId_ || curMsgId_ == msg->id);
     char prefix[MAX_MESSAGE_PREFIX_SIZE];
     CoapMessageEncoder e(prefix, sizeof(prefix));
     e.type(CoapType::CON);
