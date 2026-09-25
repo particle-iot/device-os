@@ -2,6 +2,27 @@
 #include "unit-test/unit-test.h"
 #include "../common/common.inc"
 
+namespace {
+
+enum class StallMode {
+    OFF = 0,
+    STATUS = 1
+};
+
+// The I2C_06 state, maintained by the wire callbacks
+struct StallState {
+    volatile uint32_t lastRxMs;
+    volatile bool stop;
+    uint32_t onReceiveCount;
+    uint32_t lastGoodSeq;
+    uint32_t corruptCount;
+    uint32_t shortCount;
+    uint32_t onRequestCount;
+    StallMode mode;
+} stall;
+
+} // anonymous namespace
+
 static uint8_t done = 0;
 static uint32_t requestedLength = 0;
 static bool requested = false;
@@ -12,7 +33,65 @@ static int random_range(int minVal, int maxVal)
     return rand_r(&seed) % (maxVal - minVal + 1) + minVal;
 }
 
+static void handleStallFrame(int byteCount) {
+    static uint8_t buf[STALL_TRANSFER_SIZE + 1];
+    size_t i = 0;
+    while (USE_WIRE.available()) {
+        buf[i++] = (uint8_t)USE_WIRE.read();
+    }
+    stall.lastRxMs = millis();
+    stall.mode = StallMode::STATUS;
+    if (i < STALL_HEADER_SIZE || (int)i != byteCount) {
+        stall.shortCount++;
+        return;
+    }
+    const uint16_t seq = ((uint16_t)buf[1] << 8) | buf[2];
+    if (seq == STALL_STOP_SEQ) {
+        stall.stop = true;
+        return;
+    }
+    if (buf[0] != STALL_FRAME_SEED || i != STALL_TRANSFER_SIZE ||
+            seq != (uint16_t)(stall.lastGoodSeq + 1)) {
+        stall.corruptCount++;
+        return;
+    }
+    for (size_t j = STALL_HEADER_SIZE; j < i; j++) {
+        if (buf[j] != STALL_FRAME_PADDING) {
+            stall.corruptCount++;
+            return;
+        }
+    }
+    stall.lastGoodSeq = seq;
+    stall.onReceiveCount++;
+}
+
+static void writeStallStatus() {
+    char status[STALL_TRANSFER_SIZE + 1];
+    int n = snprintf(status, sizeof(status), "%lu,%lu,%lu,%lu,%lu",
+            (unsigned long)stall.onReceiveCount,
+            (unsigned long)stall.lastGoodSeq,
+            (unsigned long)stall.corruptCount,
+            (unsigned long)stall.shortCount,
+            (unsigned long)stall.onRequestCount);
+    if (n < 0) {
+        n = 0;
+    }
+    if (n > STALL_TRANSFER_SIZE) {
+        n = STALL_TRANSFER_SIZE;
+    }
+    while (n < STALL_TRANSFER_SIZE) {
+        status[n++] = ' ';
+    }
+    USE_WIRE.write((const uint8_t*)status, STALL_TRANSFER_SIZE);
+}
+
 void I2C_Slave_On_Request_Callback(void) {
+    if (stall.mode == StallMode::STATUS) {
+        stall.onRequestCount++;
+        stall.lastRxMs = millis();
+        writeStallStatus();
+        return;
+    }
     // Random delay.
     // Just to be on a safe side delay between 0 and 50ms (I2C EVENT_TIMEOUT / 2)
     delayMicroseconds(random_range(0, 50000));
@@ -26,7 +105,11 @@ void I2C_Slave_On_Request_Callback(void) {
     requested = false;
 }
 
-void I2C_Slave_On_Receive_Callback(int) {
+void I2C_Slave_On_Receive_Callback(int byteCount) {
+    if (byteCount > 0 && USE_WIRE.peek() == STALL_FRAME_SEED) {
+        handleStallFrame(byteCount);
+        return;
+    }
     if (!requested) {
         requested = true;
         requestedLength = 0;
@@ -49,6 +132,7 @@ void I2C_Slave_On_Receive_Callback(int) {
 
     if (requestedLength == 0)
         done = 1;
+    stall.mode = StallMode::OFF;
 }
 
 test(I2C_000_Prepare)
@@ -93,6 +177,23 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
 test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
 {
 
+}
+
+test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
+{
+    uint32_t startMs = millis();
+    stall.lastRxMs = startMs;
+    while (!stall.stop) {
+        if ((millis() - stall.lastRxMs) > STALL_TRAFFIC_LIMIT_MS) {
+            break;
+        }
+        if ((millis() - startMs) > STALL_LOOP_LIMIT_MS) {
+            break;
+        }
+        ATOMIC_BLOCK() {
+            stallDelayUs(STALL_MASK_US);
+        }
+    }
 }
 
 test(I2C_ZZZ_Cleanup)

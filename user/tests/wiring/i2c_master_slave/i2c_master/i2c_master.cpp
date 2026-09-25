@@ -341,6 +341,91 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
     USE_WIRE.end();
 }
 
+test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
+{
+    uint8_t transferBuf[STALL_TRANSFER_SIZE];
+    uint32_t timeoutCount = 0;
+    uint32_t busClearFailCount = 0;
+    uint32_t seq = 0;
+
+    I2C_Master_Configure();
+
+    auto runWrite = [&](uint32_t s) -> bool {
+        transferBuf[0] = STALL_FRAME_SEED;
+        transferBuf[1] = (uint8_t)((s >> 8) & 0xff);
+        transferBuf[2] = (uint8_t)(s & 0xff);
+        memset(transferBuf + STALL_HEADER_SIZE, STALL_FRAME_PADDING, STALL_TRANSFER_SIZE - STALL_HEADER_SIZE);
+        USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS).timeout(STALL_TIMEOUT_MS));
+        USE_WIRE.write(transferBuf, STALL_TRANSFER_SIZE);
+        return USE_WIRE.endTransmission() == 0;
+    };
+
+    auto readStatus = [&](uint32_t* onReceiveCount, uint32_t* lastGoodSeq,
+            uint32_t* corruptCount, uint32_t* shortCount, uint32_t* onRequestCount) -> bool {
+        uint8_t buf[STALL_TRANSFER_SIZE + 1] = {};
+        (void)USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS).quantity(STALL_TRANSFER_SIZE).timeout(STALL_TIMEOUT_MS));
+        if (USE_WIRE.available() != STALL_TRANSFER_SIZE) {
+            while (USE_WIRE.available()) {
+                USE_WIRE.read();
+            }
+            return false;
+        }
+        size_t i = 0;
+        while (USE_WIRE.available()) {
+            buf[i++] = (uint8_t)USE_WIRE.read();
+        }
+        unsigned long v[5] = {};
+        if (sscanf((const char*)buf, "%lu,%lu,%lu,%lu,%lu", &v[0], &v[1], &v[2], &v[3], &v[4]) != 5) {
+            return false;
+        }
+        *onReceiveCount = v[0];
+        *lastGoodSeq = v[1];
+        *corruptCount = v[2];
+        *shortCount = v[3];
+        *onRequestCount = v[4];
+        return true;
+    };
+
+    uint32_t gapUs = 0;
+    for (uint32_t n = 0; n < STALL_TRANSFERS; n++) {
+        seq++;
+        if (!runWrite(seq)) {
+            timeoutCount++;
+            (void)hal_i2c_reset(USE_WIRE.interface(), 0, nullptr);
+            if (!runWrite(seq)) {
+                busClearFailCount++;
+            }
+            continue;
+        }
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    assertEqual(timeoutCount, (uint32_t)0);
+    assertEqual(busClearFailCount, (uint32_t)0);
+
+    uint32_t onReceiveCount = 0, lastGoodSeq = 0, corruptCount = 0, shortCount = 0, onRequestCount = 0;
+    for (uint32_t n = 0; n < STALL_READ_TRANSFERS; n++) {
+        assertTrue(readStatus(&onReceiveCount, &lastGoodSeq, &corruptCount, &shortCount, &onRequestCount));
+        assertEqual(corruptCount, (uint32_t)0);
+        assertEqual(shortCount, (uint32_t)0);
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    seq = STALL_STOP_SEQ;
+    assertTrue(runWrite(seq));
+    assertTrue(readStatus(&onReceiveCount, &lastGoodSeq, &corruptCount, &shortCount, &onRequestCount));
+
+    assertEqual(lastGoodSeq, (uint32_t)(STALL_TRANSFERS & 0xffff));
+    assertEqual(onReceiveCount, STALL_TRANSFERS);
+    assertEqual(corruptCount, (uint32_t)0);
+    assertEqual(shortCount, (uint32_t)0);
+    assertEqual(onRequestCount, (uint32_t)(STALL_READ_TRANSFERS + 1));
+
+    USE_WIRE.end();
+}
+
 test(I2C_ZZZ_Cleanup)
 {
 

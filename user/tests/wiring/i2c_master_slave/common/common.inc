@@ -39,6 +39,33 @@ hal_i2c_config_t USE_ACQUIRE_WIRE_BUFFER() {
 #define I2C_DELAY 0
 #define I2C_ADDRESS 0x32
 
+namespace {
+
+// The stall reproduction (I2C_06): the slave masks its interrupts while the master
+// sends write transactions with a swept rest between them
+constexpr uint8_t STALL_HEADER_SIZE = 3;
+constexpr uint8_t STALL_TRANSFER_SIZE = 32;
+constexpr uint32_t STALL_TIMEOUT_MS = 200;
+constexpr uint32_t STALL_MASK_US = 1800;
+constexpr uint32_t STALL_TRAFFIC_LIMIT_MS = 5000;
+constexpr uint32_t STALL_MAX_GAP_US = 100;
+constexpr uint32_t STALL_TRANSFERS = 3000;
+constexpr uint32_t STALL_READ_TRANSFERS = 100;
+constexpr uint32_t STALL_LOOP_LIMIT_MS = 120 * 1000;
+// The stall frames: seed byte, 16-bit big-endian sequence number, padding.
+// STALL_STOP_SEQ ends the masked loop on the slave.
+constexpr uint8_t STALL_FRAME_SEED = 0xa5;
+constexpr uint8_t STALL_FRAME_PADDING = 0x5a;
+constexpr uint16_t STALL_STOP_SEQ = 0xffff;
+
+inline void stallDelayUs(uint32_t us) {
+    const uint32_t start = micros();
+    while ((micros() - start) < us) {
+    }
+}
+
+} // anonymous namespace
+
 static uint8_t I2C_Test_Tx_Buffer[TEST_I2C_BUFFER_SIZE + 1];
 static uint8_t I2C_Test_Rx_Buffer[TEST_I2C_BUFFER_SIZE + 1];
 static char MASTER_TEST_MESSAGE[TEST_I2C_BUFFER_SIZE - sizeof(uint32_t)] = {};
