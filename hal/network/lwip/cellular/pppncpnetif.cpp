@@ -187,7 +187,10 @@ void PppNcpNetif::loop(void* arg) {
                 self->celMan_->ncpClient()->connectionState() != NcpConnectionState::DISCONNECTED) {
                 self->downImpl();
             }
-            if (self->expectedNcpState_ == NcpState::OFF && self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED) {
+            // BACKOFF counts as down, or a power down can never complete during a cooldown
+            if (self->expectedNcpState_ == NcpState::OFF &&
+                    (self->celMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED ||
+                     self->celMan_->ncpClient()->connectionState() == NcpConnectionState::BACKOFF)) {
                 if_power_state_t pwrState = IF_POWER_STATE_NONE;
                 self->getPowerState(&pwrState);
                 if (pwrState == IF_POWER_STATE_UP) {
@@ -424,6 +427,14 @@ void PppNcpNetif::ncpEventHandlerCb(const NcpEvent& ev, void* ctx) {
             case NcpConnectionState::CONNECTED: {
                 self->connectStart_ = 0;
                 self->client_.notifyEvent(ppp::Client::EVENT_LOWER_UP);
+                self->notifyIdleState(false);
+                break;
+            }
+            case NcpConnectionState::BACKOFF: {
+                // The radio is off, but we still intend to connect at the next attempt
+                // Leave the LED on blinking green
+                self->client_.notifyEvent(ppp::Client::EVENT_LOWER_DOWN);
+                self->connectStart_ = 0;
                 self->notifyIdleState(false);
                 break;
             }

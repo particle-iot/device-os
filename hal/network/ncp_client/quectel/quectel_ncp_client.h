@@ -22,6 +22,7 @@
 #include "hal_platform.h"
 
 #include "network/ncp/cellular/cellular_ncp_client.h"
+#include "network/ncp/cellular/cellular_registration_backoff.h"
 #include "platform_ncp.h"
 
 #include "at_parser.h"
@@ -73,6 +74,10 @@ public:
     virtual int getImei(char* buf, size_t size) override;
     virtual int getSignalQuality(CellularSignalQuality* qual) override;
     virtual int setRegistrationTimeout(unsigned timeout) override;
+    virtual int resetRegistrationBackoff() override;
+    virtual int getRegistrationBackoffState(unsigned* stage, system_tick_t* cooldownRemaining,
+            bool* inCooldown) override;
+    virtual int setRegistrationBackoffSchedule(const CellularRegistrationBackoff::Config& conf) override;
     virtual int getTxDelayInDataChannel() override;
     virtual int enterDataMode() override;
     virtual int getMtu() override;
@@ -130,6 +135,7 @@ private:
     system_tick_t policymanSrvModeCheckTime_;
     unsigned registrationTimeout_;
     unsigned registrationInterventions_;
+    CellularRegistrationBackoff backoff_;
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
     unsigned int fwVersion_ = 0;
@@ -185,6 +191,8 @@ private:
     void resetRegistrationState();
     void checkRegistrationState();
     int interveneRegistration();
+    void registrationFailed();
+    int enterRegistrationBackoff();
     int checkRunningImsi();
     int processEventsImpl();
     void disableImpl();

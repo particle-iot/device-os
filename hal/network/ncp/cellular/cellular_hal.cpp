@@ -685,3 +685,62 @@ int cellular_is_idle(void* reserved) {
     // No lock, this has to stay readable while the client is busy
     return client->connectionState() == NcpConnectionState::IDLE ? 1 : 0;
 }
+
+static_assert((unsigned)particle::CellularRegistrationBackoff::INTERVAL_COUNT == CELLULAR_BACKOFF_INTERVAL_COUNT,
+        "The C schedule struct and the backoff class disagree about how many intervals there are");
+
+cellular_result_t cellular_registration_backoff_state(cellular_backoff_state_t* state, void* reserved) {
+    CHECK_TRUE(state, SYSTEM_ERROR_INVALID_ARGUMENT);
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    (void)reserved;
+    unsigned stage = 0;
+    system_tick_t remaining = 0;
+    bool cooling = false;
+    CHECK(client->getRegistrationBackoffState(&stage, &remaining, &cooling));
+
+    state->size = sizeof(*state);
+    state->stage = stage;
+    state->cooldown_remaining_ms = remaining;
+    state->in_cooldown = cooling ? 1 : 0;
+    return SYSTEM_ERROR_NONE;
+}
+
+cellular_result_t cellular_registration_backoff_reset(void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    (void)reserved;
+    CHECK(client->resetRegistrationBackoff());
+
+    return SYSTEM_ERROR_NONE;
+}
+
+cellular_result_t cellular_registration_backoff_set_schedule(const cellular_backoff_schedule_t* schedule, void* reserved) {
+    const auto mgr = cellularNetworkManager();
+    CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
+    const auto client = mgr->ncpClient();
+    CHECK_TRUE(client, SYSTEM_ERROR_UNKNOWN);
+
+    (void)reserved;
+    particle::CellularRegistrationBackoff::Config conf; // defaults to the compiled in schedule
+    if (schedule) {
+        CHECK_TRUE(schedule->size >= sizeof(*schedule), SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(schedule->active_window_ms > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+        CHECK_TRUE(schedule->heartbeat_ms > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+        for (unsigned i = 0; i < CELLULAR_BACKOFF_INTERVAL_COUNT; i++) {
+            CHECK_TRUE(schedule->intervals_ms[i] > 0, SYSTEM_ERROR_INVALID_ARGUMENT);
+            conf.intervals[i] = schedule->intervals_ms[i];
+        }
+        conf.activeWindow = schedule->active_window_ms;
+        conf.firstHourStages = schedule->first_stages;
+        conf.heartbeatInterval = schedule->heartbeat_ms;
+    }
+    CHECK(client->setRegistrationBackoffSchedule(conf));
+    return SYSTEM_ERROR_NONE;
+}

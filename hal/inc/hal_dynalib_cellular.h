@@ -86,6 +86,10 @@ DYNALIB_FN(38, hal_cellular, cellular_registration_timeout_set, cellular_result_
 DYNALIB_FN(39, hal_cellular, cellular_urcs, cellular_result_t(bool, void*))
 DYNALIB_FN(40, hal_cellular, cellular_send_apdu, int(const char*, size_t, char*, size_t*, void*))
 DYNALIB_FN(41, hal_cellular, cellular_is_idle, int(void*)) // UNSTABLE
+DYNALIB_FN(42, hal_cellular, cellular_registration_backoff_state, cellular_result_t(cellular_backoff_state_t*, void*))
+DYNALIB_FN(43, hal_cellular, cellular_registration_backoff_reset, cellular_result_t(void*))
+// Always exported so the system and user parts agree on the index
+DYNALIB_FN(44, hal_cellular, cellular_registration_backoff_set_schedule, cellular_result_t(const cellular_backoff_schedule_t*, void*))
 
 DYNALIB_END(hal_cellular)
 
