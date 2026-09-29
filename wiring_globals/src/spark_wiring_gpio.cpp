@@ -27,9 +27,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "spark_wiring.h"
 #include "spark_wiring_interrupts.h"
-#include "spark_wiring_usartserial.h"
 #include "spark_wiring_spi.h"
-#include "spark_wiring_i2c.h"
 #include "watchdog_hal.h"
 #include "delay_hal.h"
 #include "pinmap_hal.h"
@@ -113,33 +111,23 @@ int pinSetDriveStrength(hal_pin_t pin, DriveStrength drive)
  * being used.  Return 0 if used, otherwise return 1 if available.
  */
 bool pinAvailable(uint16_t pin) {
-  if (pin >= TOTAL_PINS) {
+  if (!hal_pin_is_valid(pin)) {
     return false;
   }
 
-  // SPI safety check
-#ifndef SPARK_WIRING_NO_SPI
-  if((pin == SCK || pin == MOSI || pin == MISO) && hal_spi_is_enabled(SPI.interface()) == true)
-  {
-    return false; // 'pin' is used
+#if HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
+  switch (hal_pin_map()[pin].pin_func) {
+    case PF_SPI:
+    case PF_I2C:
+    case PF_UART:
+      // 'pin' is owned by a peripheral
+      return false;
+    default:
+      return true;
   }
-#endif
-  // I2C safety check
-#ifndef SPARK_WIRING_NO_I2C
-  if((pin == SCL || pin == SDA) && hal_i2c_is_enabled(Wire.interface(), nullptr) == true)
-  {
-    return false; // 'pin' is used
-  }
-#endif
-#ifndef SPARK_WIRING_NO_USART_SERIAL
-  // Serial1 safety check
-  if((pin == RX || pin == TX) && hal_usart_is_enabled(Serial1.interface()) == true)
-  {
-    return false; // 'pin' is used
-  }
-#endif
-
-  return true; // 'pin' is available
+#else
+  return true;
+#endif // HAL_PLATFORM_NRF52840 || HAL_PLATFORM_RTL872X
 }
 
 inline bool is_input_mode(PinMode mode) {
