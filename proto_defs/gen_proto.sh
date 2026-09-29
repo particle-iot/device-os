@@ -51,6 +51,7 @@ gen_proto "${SHARED_DIR}/cloud/ledger.proto"
 gen_proto "${SHARED_DIR}/cloud/cloud.proto"
 gen_proto "${SHARED_DIR}/cloud/describe.proto"
 gen_proto "${SHARED_DIR}/cloud/ledger.proto"
+gen_proto "${SHARED_DIR}/cloud/esim.proto"
 
 # Compile internal definitions
 gen_proto "${INTERNAL_DIR}/network_config.proto"
