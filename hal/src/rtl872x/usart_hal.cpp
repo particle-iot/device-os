@@ -186,6 +186,8 @@ public:
             RCC_PeriphClockCmd(APBPeriph_UART0, APBPeriph_UART0_CLOCK, ENABLE);
         }
         // Configure TX/RX pins
+        hal_pin_set_function(txPin_, PF_UART);
+        hal_pin_set_function(rxPin_, PF_UART);
         if (uartInstance == UART2_DEV) {
             Pinmux_Config(hal_pin_to_rtl_pin(txPin_), PINMUX_FUNCTION_LOGUART);
             Pinmux_Config(hal_pin_to_rtl_pin(rxPin_), PINMUX_FUNCTION_LOGUART);
@@ -197,10 +199,12 @@ public:
         PAD_PullCtrl(hal_pin_to_rtl_pin(rxPin_), GPIO_PuPd_NOPULL);
         // Configure CTS/RTS pins
         if (ctsPin_ != PIN_INVALID && (conf.config & SERIAL_FLOW_CONTROL_CTS)) {
+            hal_pin_set_function(ctsPin_, PF_UART);
             Pinmux_Config(hal_pin_to_rtl_pin(ctsPin_), PINMUX_FUNCTION_UART_RTSCTS);
             PAD_PullCtrl(hal_pin_to_rtl_pin(ctsPin_), GPIO_PuPd_UP);
         }
         if (rtsPin_ != PIN_INVALID && (conf.config & SERIAL_FLOW_CONTROL_RTS)) {
+            hal_pin_set_function(rtsPin_, PF_UART);
             Pinmux_Config(hal_pin_to_rtl_pin(rtsPin_), PINMUX_FUNCTION_UART_RTSCTS);
             PAD_PullCtrl(hal_pin_to_rtl_pin(rtsPin_), GPIO_PuPd_UP);
         }

@@ -155,6 +155,8 @@ public:
             end();
         }
         // RCC_PeriphClockCmd(APBPeriph_I2C0, APBPeriph_I2C0_CLOCK, ENABLE);
+        hal_pin_set_function(sdaPin_, PF_I2C);
+        hal_pin_set_function(sclPin_, PF_I2C);
         Pinmux_Config(hal_pin_to_rtl_pin(sdaPin_), PINMUX_FUNCTION_I2C);
 	    Pinmux_Config(hal_pin_to_rtl_pin(sclPin_), PINMUX_FUNCTION_I2C);
         PAD_PullCtrl(hal_pin_to_rtl_pin(sdaPin_), GPIO_PuPd_UP);
@@ -214,6 +216,8 @@ public:
             conf.drive_strength = HAL_GPIO_DRIVE_DEFAULT;
             hal_gpio_configure(sclPin_, &conf, nullptr);
             hal_gpio_configure(sdaPin_, &conf, nullptr);
+            hal_pin_set_function(sclPin_, PF_NONE);
+            hal_pin_set_function(sdaPin_, PF_NONE);
             if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
                 InterruptDis(I2C0_IRQ_LP);
 	            InterruptUnRegister(I2C0_IRQ_LP);
