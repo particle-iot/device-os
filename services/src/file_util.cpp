@@ -25,6 +25,7 @@
 #include "nanopb_misc.h"
 #include "bytes2hexbuf.h"
 #include "str_compat.h"
+#include "random.h"
 #include "scope_guard.h"
 #include "check.h"
 
@@ -46,6 +47,11 @@ namespace {
 const size_t DUMP_BYTES_PER_LINE = 16;
 
 const size_t MAX_PATH_LEN = 255;
+
+const char TEMP_PATH_PREFIX[] = "/tmp/";
+const size_t TEMP_PATH_PREFIX_LEN = sizeof(TEMP_PATH_PREFIX) - 1;
+const size_t TEMP_PATH_SUFFIX_LEN = 6;
+static_assert(TEMP_PATH_PREFIX_LEN + TEMP_PATH_SUFFIX_LEN == TEMP_PATH_LEN);
 
 void dumpLine(const char* data, size_t size, size_t offs) {
     if (size == 0) {
@@ -342,6 +348,35 @@ int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs) {
 
     CHECK(file.close());
     return bytesWritten;
+}
+
+int createTempFile(fs::File& file, char* pathBuf, size_t pathBufSize, int flags) {
+    if (pathBufSize <= TEMP_PATH_LEN) {
+        return SYSTEM_ERROR_PATH_TOO_LONG;
+    }
+    char path[TEMP_PATH_LEN + 1] = {};
+    std::memcpy(path, TEMP_PATH_PREFIX, TEMP_PATH_PREFIX_LEN);
+
+    flags |= LFS_O_CREAT | LFS_O_EXCL;
+
+    fs::File f;
+    Random rand;
+    int tries = 0;
+    for (;;) {
+        rand.genBase32(path + TEMP_PATH_PREFIX_LEN, TEMP_PATH_SUFFIX_LEN);
+        int r = f.open(path, flags);
+        if (r < 0) {
+            if (r == SYSTEM_ERROR_FILESYSTEM_EXIST && ++tries < 5) {
+                continue;
+            }
+            return r;
+        }
+        break;
+    }
+
+    std::memcpy(pathBuf, path, TEMP_PATH_LEN + 1); // Include '\0'
+    file = std::move(f);
+    return 0;
 }
 
 } // particle
