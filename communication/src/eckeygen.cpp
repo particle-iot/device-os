@@ -12,21 +12,19 @@ int gen_ec_key(uint8_t* buffer, size_t max_length, int (*f_rng) (void *, uint8_t
 {
 	mbedtls_pk_context key;
 	memset(&key, 0, sizeof(key));
-	int error = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-	if (!error)
-		error = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(key), f_rng, p_rng );
-	if (!error) {
-		int result = mbedtls_pk_write_key_der(&key, buffer, max_length);
-		if (result<0)
-			error = result;
-		else if (result>0)
-		{
+	int result = mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
+	if (!result) {
+		result = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(key), f_rng, p_rng);
+	}
+	if (!result) {
+		result = mbedtls_pk_write_key_der(&key, buffer, max_length);
+		if (result >= 0) {
 			// the key is written to the end of the buffer - align to the start
 			memmove(buffer, buffer+max_length-result, result);
 		}
 	}
 	mbedtls_pk_free(&key);
-	return error;
+	return result;
 }
 
 size_t determine_der_length(const uint8_t* key, size_t max_len)
