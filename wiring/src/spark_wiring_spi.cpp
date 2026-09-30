@@ -317,9 +317,6 @@ void SPIClass::detachInterrupt()
 
 bool SPIClass::isEnabled()
 {
-    // XXX: pinAvailable() will call this method potentially even from
-    // interrupt context. `enabled` flag in HAL is usually just a volatile
-    // variable, so it's fine not to acquire the lock here.
     return hal_spi_is_enabled(_spi);
 }
 
