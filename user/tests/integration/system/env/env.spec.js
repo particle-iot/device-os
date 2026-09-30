@@ -2,22 +2,19 @@ suite('System level env vars');
 
 platform('gen3', 'gen4');
 
-const { createEnvVarsAssetModule } = require('binary-version-reader');
-const tempy = require('tempy');
 const _ = require('lodash');
 
 const { readFile } = require('node:fs/promises');
 
 const { waitFlashStatusEvent } = require('../../test/ota');
+const { writeEnvVarsAsset } = require('../../test/env_vars');
 
 let appBinary;
 let deviceId;
 let device;
 
 async function setEnvVarsAndFlash(vars) {
-    const assetData = await createEnvVarsAssetModule(vars);
-    const assetPath = await tempy.write(assetData, { name: 'env_vars.bin' });
-	return device.flash(assetPath);
+	return device.flash(await writeEnvVarsAsset(vars, 'env_vars.bin'));
 }
 
 before(async function() {

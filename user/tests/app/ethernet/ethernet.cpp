@@ -121,6 +121,9 @@ void loop() {
         waitFor(Particle.disconnected, 5000);
         Log.info("Network disconnect...");
         Network.disconnect();
+        // Ask for the interface by name
+        // Particle.connect() only raises the cloud flag, it will not bring the interface back up
+        Network.connect();
         Particle.connect();
         reconnect = true;
     }

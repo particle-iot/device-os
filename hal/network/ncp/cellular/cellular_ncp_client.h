@@ -22,6 +22,7 @@
 #include "ncp_client.h"
 #include "cellular_network_manager.h"
 #include "cellular_hal_cellular_global_identity.h"
+#include "cellular_registration_backoff.h"
 #include "timer_hal.h"
 #include "underlying_type.h"
 #endif // PLATFORM_ID != PLATFORM_GCC
@@ -181,6 +182,10 @@ public:
     virtual int getImei(char* buf, size_t size) = 0;
     virtual int getSignalQuality(CellularSignalQuality* qual) = 0;
     virtual int setRegistrationTimeout(unsigned timeout) = 0;
+    virtual int resetRegistrationBackoff() = 0;
+    virtual int getRegistrationBackoffState(unsigned* stage, system_tick_t* cooldownRemaining,
+            bool* inCooldown) = 0;
+    virtual int setRegistrationBackoffSchedule(const CellularRegistrationBackoff::Config& conf) = 0;
     virtual int getTxDelayInDataChannel() = 0;
     virtual int enterDataMode() = 0;
     virtual int getMtu() = 0;
