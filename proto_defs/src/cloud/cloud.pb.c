@@ -18,12 +18,6 @@ PB_BIND(particle_cloud_ServerMovedPermanentlyRequest, particle_cloud_ServerMoved
 PB_BIND(particle_cloud_ServerMovedPermanentlyResponse, particle_cloud_ServerMovedPermanentlyResponse, AUTO)
 
 
-PB_BIND(particle_cloud_ChangeDeviceKeyRequest, particle_cloud_ChangeDeviceKeyRequest, AUTO)
-
-
-PB_BIND(particle_cloud_ChangeDeviceKeyResponse, particle_cloud_ChangeDeviceKeyResponse, AUTO)
-
-
 
 
 

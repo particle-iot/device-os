@@ -6,6 +6,7 @@
 #include <pb.h>
 #include "ledger.pb.h"
 #include "esim.pb.h"
+#include "config.pb.h"
 
 #if PB_PROTO_HEADER_VERSION != 40
 #error Regenerate this file with the current version of nanopb generator.
@@ -24,7 +25,8 @@ typedef enum _particle_cloud_Request_Type {
     particle_cloud_Request_Type_ESIM_INSTALL_PROFILE = 11, 
     particle_cloud_Request_Type_ESIM_NOTIFY_PROFILE_INSTALL = 12, 
     particle_cloud_Request_Type_ESIM_DELETE_PROFILE = 13, 
-    particle_cloud_Request_Type_ESIM_SET_PROFILE_STATE = 14 
+    particle_cloud_Request_Type_ESIM_SET_PROFILE_STATE = 14, 
+    particle_cloud_Request_Type_CONFIG_CHANGE_DEVICE_KEY = 20 
 } particle_cloud_Request_Type;
 
 typedef enum _particle_cloud_Response_Result { 
@@ -38,20 +40,6 @@ typedef enum _particle_cloud_Response_Result {
 } particle_cloud_Response_Result;
 
 /* Struct definitions */
-/* *
- Request the device to change its client key used to authenticate with the server. */
-typedef struct _particle_cloud_ChangeDeviceKeyRequest { 
-    char dummy_field;
-} particle_cloud_ChangeDeviceKeyRequest;
-
-/* *
- A response for ChangeDeviceKeyRequest. */
-typedef struct _particle_cloud_ChangeDeviceKeyResponse { 
-    /* *
- The new public key. */
-    pb_callback_t pub_key; 
-} particle_cloud_ChangeDeviceKeyResponse;
-
 /* *
  A response for a ServerMovedPermanentlyRequest. */
 typedef struct _particle_cloud_ServerMovedPermanentlyResponse { 
@@ -75,6 +63,7 @@ typedef struct _particle_cloud_Request {
         particle_cloud_esim_NotifyProfileInstallRequest esim_notify_profile_install;
         particle_cloud_esim_DeleteProfileRequest esim_delete_profile;
         particle_cloud_esim_SetProfileStateRequest esim_set_profile_state;
+        particle_cloud_config_ChangeDeviceKeyRequest config_change_device_key;
     } data; 
 } particle_cloud_Request;
 
@@ -103,6 +92,7 @@ typedef struct _particle_cloud_Response {
         particle_cloud_esim_NotifyProfileInstallResponse esim_notify_profile_install;
         particle_cloud_esim_DeleteProfileResponse esim_delete_profile;
         particle_cloud_esim_SetProfileStateResponse esim_set_profile_state;
+        particle_cloud_config_ChangeDeviceKeyResponse config_change_device_key;
     } data; 
 } particle_cloud_Response;
 
@@ -130,8 +120,8 @@ typedef struct _particle_cloud_ServerMovedPermanentlyRequest {
 
 /* Helper constants for enums */
 #define _particle_cloud_Request_Type_MIN particle_cloud_Request_Type_INVALID
-#define _particle_cloud_Request_Type_MAX particle_cloud_Request_Type_ESIM_SET_PROFILE_STATE
-#define _particle_cloud_Request_Type_ARRAYSIZE ((particle_cloud_Request_Type)(particle_cloud_Request_Type_ESIM_SET_PROFILE_STATE+1))
+#define _particle_cloud_Request_Type_MAX particle_cloud_Request_Type_CONFIG_CHANGE_DEVICE_KEY
+#define _particle_cloud_Request_Type_ARRAYSIZE ((particle_cloud_Request_Type)(particle_cloud_Request_Type_CONFIG_CHANGE_DEVICE_KEY+1))
 
 #define _particle_cloud_Response_Result_MIN particle_cloud_Response_Result_OK
 #define _particle_cloud_Response_Result_MAX particle_cloud_Response_Result_LEDGER_TOO_LARGE_DATA
@@ -147,17 +137,12 @@ extern "C" {
 #define particle_cloud_Response_init_default     {0, {{NULL}, NULL}, 0, {particle_cloud_ledger_GetInfoResponse_init_default}}
 #define particle_cloud_ServerMovedPermanentlyRequest_init_default {{{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_cloud_ServerMovedPermanentlyResponse_init_default {0}
-#define particle_cloud_ChangeDeviceKeyRequest_init_default {0}
-#define particle_cloud_ChangeDeviceKeyResponse_init_default {{{NULL}, NULL}}
 #define particle_cloud_Request_init_zero         {_particle_cloud_Request_Type_MIN, 0, {particle_cloud_ledger_GetInfoRequest_init_zero}}
 #define particle_cloud_Response_init_zero        {0, {{NULL}, NULL}, 0, {particle_cloud_ledger_GetInfoResponse_init_zero}}
 #define particle_cloud_ServerMovedPermanentlyRequest_init_zero {{{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}}
 #define particle_cloud_ServerMovedPermanentlyResponse_init_zero {0}
-#define particle_cloud_ChangeDeviceKeyRequest_init_zero {0}
-#define particle_cloud_ChangeDeviceKeyResponse_init_zero {{{NULL}, NULL}}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define particle_cloud_ChangeDeviceKeyResponse_pub_key_tag 1
 #define particle_cloud_Request_type_tag          1
 #define particle_cloud_Request_ledger_get_info_tag 2
 #define particle_cloud_Request_ledger_set_data_tag 3
@@ -170,6 +155,7 @@ extern "C" {
 #define particle_cloud_Request_esim_notify_profile_install_tag 12
 #define particle_cloud_Request_esim_delete_profile_tag 13
 #define particle_cloud_Request_esim_set_profile_state_tag 14
+#define particle_cloud_Request_config_change_device_key_tag 20
 #define particle_cloud_Response_result_tag       1
 #define particle_cloud_Response_message_tag      2
 #define particle_cloud_Response_ledger_get_info_tag 3
@@ -183,6 +169,7 @@ extern "C" {
 #define particle_cloud_Response_esim_notify_profile_install_tag 12
 #define particle_cloud_Response_esim_delete_profile_tag 13
 #define particle_cloud_Response_esim_set_profile_state_tag 14
+#define particle_cloud_Response_config_change_device_key_tag 20
 #define particle_cloud_ServerMovedPermanentlyRequest_server_addr_tag 1
 #define particle_cloud_ServerMovedPermanentlyRequest_server_port_tag 2
 #define particle_cloud_ServerMovedPermanentlyRequest_server_pub_key_tag 3
@@ -201,7 +188,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_list_profiles,data.esim_list_profi
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_install_profile,data.esim_install_profile),  11) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_notify_profile_install,data.esim_notify_profile_install),  12) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_delete_profile,data.esim_delete_profile),  13) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_profile_state),  14)
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_profile_state),  14) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,config_change_device_key,data.config_change_device_key),  20)
 #define particle_cloud_Request_CALLBACK NULL
 #define particle_cloud_Request_DEFAULT NULL
 #define particle_cloud_Request_data_ledger_get_info_MSGTYPE particle_cloud_ledger_GetInfoRequest
@@ -215,6 +203,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_pr
 #define particle_cloud_Request_data_esim_notify_profile_install_MSGTYPE particle_cloud_esim_NotifyProfileInstallRequest
 #define particle_cloud_Request_data_esim_delete_profile_MSGTYPE particle_cloud_esim_DeleteProfileRequest
 #define particle_cloud_Request_data_esim_set_profile_state_MSGTYPE particle_cloud_esim_SetProfileStateRequest
+#define particle_cloud_Request_data_config_change_device_key_MSGTYPE particle_cloud_config_ChangeDeviceKeyRequest
 
 #define particle_cloud_Response_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, SINT32,   result,            1) \
@@ -229,7 +218,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_list_profiles,data.esim_list_profi
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_install_profile,data.esim_install_profile),  11) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_notify_profile_install,data.esim_notify_profile_install),  12) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_delete_profile,data.esim_delete_profile),  13) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_profile_state),  14)
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_profile_state),  14) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (data,config_change_device_key,data.config_change_device_key),  20)
 #define particle_cloud_Response_CALLBACK pb_default_field_callback
 #define particle_cloud_Response_DEFAULT NULL
 #define particle_cloud_Response_data_ledger_get_info_MSGTYPE particle_cloud_ledger_GetInfoResponse
@@ -243,6 +233,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (data,esim_set_profile_state,data.esim_set_pr
 #define particle_cloud_Response_data_esim_notify_profile_install_MSGTYPE particle_cloud_esim_NotifyProfileInstallResponse
 #define particle_cloud_Response_data_esim_delete_profile_MSGTYPE particle_cloud_esim_DeleteProfileResponse
 #define particle_cloud_Response_data_esim_set_profile_state_MSGTYPE particle_cloud_esim_SetProfileStateResponse
+#define particle_cloud_Response_data_config_change_device_key_MSGTYPE particle_cloud_config_ChangeDeviceKeyResponse
 
 #define particle_cloud_ServerMovedPermanentlyRequest_FIELDLIST(X, a) \
 X(a, CALLBACK, SINGULAR, STRING,   server_addr,       1) \
@@ -257,40 +248,24 @@ X(a, CALLBACK, SINGULAR, BYTES,    sign,              4)
 #define particle_cloud_ServerMovedPermanentlyResponse_CALLBACK NULL
 #define particle_cloud_ServerMovedPermanentlyResponse_DEFAULT NULL
 
-#define particle_cloud_ChangeDeviceKeyRequest_FIELDLIST(X, a) \
-
-#define particle_cloud_ChangeDeviceKeyRequest_CALLBACK NULL
-#define particle_cloud_ChangeDeviceKeyRequest_DEFAULT NULL
-
-#define particle_cloud_ChangeDeviceKeyResponse_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, BYTES,    pub_key,           1)
-#define particle_cloud_ChangeDeviceKeyResponse_CALLBACK pb_default_field_callback
-#define particle_cloud_ChangeDeviceKeyResponse_DEFAULT NULL
-
 extern const pb_msgdesc_t particle_cloud_Request_msg;
 extern const pb_msgdesc_t particle_cloud_Response_msg;
 extern const pb_msgdesc_t particle_cloud_ServerMovedPermanentlyRequest_msg;
 extern const pb_msgdesc_t particle_cloud_ServerMovedPermanentlyResponse_msg;
-extern const pb_msgdesc_t particle_cloud_ChangeDeviceKeyRequest_msg;
-extern const pb_msgdesc_t particle_cloud_ChangeDeviceKeyResponse_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
 #define particle_cloud_Request_fields &particle_cloud_Request_msg
 #define particle_cloud_Response_fields &particle_cloud_Response_msg
 #define particle_cloud_ServerMovedPermanentlyRequest_fields &particle_cloud_ServerMovedPermanentlyRequest_msg
 #define particle_cloud_ServerMovedPermanentlyResponse_fields &particle_cloud_ServerMovedPermanentlyResponse_msg
-#define particle_cloud_ChangeDeviceKeyRequest_fields &particle_cloud_ChangeDeviceKeyRequest_msg
-#define particle_cloud_ChangeDeviceKeyResponse_fields &particle_cloud_ChangeDeviceKeyResponse_msg
 
 /* Maximum encoded size of messages (where known) */
 /* particle_cloud_Response_size depends on runtime parameters */
 /* particle_cloud_ServerMovedPermanentlyRequest_size depends on runtime parameters */
-/* particle_cloud_ChangeDeviceKeyResponse_size depends on runtime parameters */
 #if defined(particle_cloud_ledger_GetInfoRequest_size) && defined(particle_cloud_ledger_SetDataRequest_size) && defined(particle_cloud_ledger_SubscribeRequest_size) && defined(particle_cloud_ledger_NotifyUpdateRequest_size) && defined(particle_cloud_esim_InstallProfileRequest_size) && defined(particle_cloud_esim_NotifyProfileInstallRequest_size)
 #define particle_cloud_Request_size              (2 + sizeof(union particle_cloud_Request_data_size_union))
 union particle_cloud_Request_data_size_union {char f2[(6 + particle_cloud_ledger_GetInfoRequest_size)]; char f3[(6 + particle_cloud_ledger_SetDataRequest_size)]; char f5[(6 + particle_cloud_ledger_SubscribeRequest_size)]; char f6[(6 + particle_cloud_ledger_NotifyUpdateRequest_size)]; char f11[(6 + particle_cloud_esim_InstallProfileRequest_size)]; char f12[(6 + particle_cloud_esim_NotifyProfileInstallRequest_size)]; char f0[79];};
 #endif
-#define particle_cloud_ChangeDeviceKeyRequest_size 0
 #define particle_cloud_ServerMovedPermanentlyResponse_size 0
 
 #ifdef __cplusplus
