@@ -748,7 +748,7 @@ static void init_malloc_mutex(void) {
 void __malloc_lock(struct _reent *ptr) {
     if (malloc_mutex) {
         if (xTaskGetSchedulerState() == taskSCHEDULER_SUSPENDED) {
-            if (!xSemaphoreTakeRecursive(malloc_mutex, 0)) {
+            if (HAL_PLATFORM_STRICT_HEAP_LOCK_PANIC || !xSemaphoreTakeRecursive(malloc_mutex, 0)) {
                 PANIC(HeapError, "malloc while suspended");
             }
         } else if (!xSemaphoreTakeRecursive(malloc_mutex, MALLOC_LOCK_TIMEOUT_MS)) {
