@@ -182,6 +182,20 @@ void spark_protocol_init(ProtocolFacade* protocol, const char *id,
           const SparkCallbacks &callbacks,
           const SparkDescriptor &descriptor, void* reserved=NULL);
 int spark_protocol_handshake(ProtocolFacade* protocol, void* reserved=NULL);
+
+typedef struct spark_protocol_handshake_param {
+    uint16_t size;                // sizeof(spark_protocol_handshake_param)
+    uint16_t flags;               // in: NON_BLOCKING | CONTINUE
+    uint32_t next_event_delay_ms; // out: relative delay, 0 = no wake hint
+} spark_protocol_handshake_param;
+
+PARTICLE_STATIC_ASSERT(spark_protocol_handshake_param_size, sizeof(spark_protocol_handshake_param)==8);
+
+typedef enum spark_protocol_handshake_flag {
+    SPARK_PROTOCOL_HANDSHAKE_FLAG_NON_BLOCKING = 0x01,
+    SPARK_PROTOCOL_HANDSHAKE_FLAG_CONTINUE = 0x02
+} spark_protocol_handshake_flag;
+
 bool spark_protocol_event_loop(ProtocolFacade* protocol, void* reserved=NULL);
 bool spark_protocol_is_initialized(ProtocolFacade* protocol);
 int spark_protocol_presence_announcement(ProtocolFacade* protocol, unsigned char *buf, const unsigned char *id, void* reserved=NULL);

@@ -136,6 +136,13 @@ class Protocol
 	uint8_t initialized;
 
 protected:
+	enum class HandshakeStage : uint8_t {
+		INIT,
+		ESTABLISH,
+		HELLO_WAIT
+	};
+	HandshakeStage handshake_stage;
+
 	/**
 	 * Protocol flags.
 	 */
@@ -350,6 +357,7 @@ public:
 			last_ack_handlers_update(0),
 			protocol_flags(0),
 			initialized(false),
+			handshake_stage(HandshakeStage::INIT),
 			max_binary_size(0), // Unlimited
 			ota_chunk_size(DEFAULT_OTA_CHUNK_SIZE),
 			system_version(0), // Unknown
@@ -457,8 +465,43 @@ public:
 
 	/**
 	 * Establish a secure connection and send and process the hello message.
+	 * Legacy blocking entry point.
 	 */
 	int begin();
+
+	enum HandshakeFlag : unsigned {
+		HANDSHAKE_FLAG_NON_BLOCKING = 0x01,
+		HANDSHAKE_FLAG_CONTINUE = 0x02
+	};
+
+	/**
+	 * Re-entrant handshake entry point.
+	 * @param flags  HANDSHAKE_FLAG_NON_BLOCKING and/or HANDSHAKE_FLAG_CONTINUE.
+	 *               Without NON_BLOCKING, spins on IN_PROGRESS in place (legacy).
+	 *               CONTINUE requires NON_BLOCKING and a prior in-progress attempt.
+	 * @param next_event_delay  Out-param: relative delay (ms) to the next event
+	 *       deadline, or 0 for no wake hint. Set to 0 on every terminal result.
+	 * @return NO_ERROR on completion, IN_PROGRESS when a step is incomplete,
+	 *         or an error code on failure.
+	 */
+	int begin(unsigned flags, system_tick_t* next_event_delay);
+
+	/**
+	 * Poll for HELLO delivery confirmation (DTLS path).
+	 * Default returns NO_ERROR (LightSSL uses hello_response() instead).
+	 * Override in DTLSProtocol to call channel.poll_confirmed().
+	 */
+	virtual ProtocolError poll_hello_delivered() {
+		return NO_ERROR;
+	}
+
+	/**
+	 * Returns the delay (ms) to the next handshake event deadline.
+	 * Default returns 0 (no hint). Override in DTLSProtocol.
+	 */
+	virtual system_tick_t next_handshake_event_delay() const {
+		return 0;
+	}
 
 	/**
 	 * Reset the protocol state and free all allocated resources.
@@ -623,7 +666,7 @@ public:
 		return -1;
 	}
 
-	system_tick_t millis() { return callbacks.millis(); }
+	system_tick_t millis() const { return callbacks.millis(); }
 
 	virtual int command(ProtocolCommands::Enum command, uint32_t value, const void* data)=0;
 
