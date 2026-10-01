@@ -6,7 +6,10 @@ namespace {
 
 enum class StallMode {
     OFF = 0,
-    STATUS = 1
+    STATUS = 1,
+    READ = 2,
+    RESTARTED_READ = 3,
+    STOP_READ = 4
 };
 
 constexpr uint32_t STALL_TOTAL_BYTES = (STALL_TRANSFERS + 1) * STALL_TRANSFER_SIZE;
@@ -25,7 +28,8 @@ struct StallState {
     uint32_t onRequestCount;
     uint8_t lastBadByte;
     uint32_t lastBadPos;
-    StallMode mode;
+    uint16_t replySeq;
+    volatile StallMode mode;
 } stall;
 
 // The master sends STALL_TRANSFERS numbered frames, then the stop frame.
@@ -59,7 +63,6 @@ static int random_range(int minVal, int maxVal)
 
 static void handleStallBytes(int byteCount) {
     stall.lastRxMs = millis();
-    stall.mode = StallMode::STATUS;
     const int i = byteCount;
     if (!stall.ready) {
         while (USE_WIRE.available()) {
@@ -112,12 +115,82 @@ static void writeStallStatus() {
     USE_WIRE.write((const uint8_t*)status, STALL_TRANSFER_SIZE);
 }
 
+static uint8_t stallReplySeed() {
+    switch (stall.mode) {
+        case StallMode::READ: return STALL_READ_SEED;
+        case StallMode::RESTARTED_READ: return STALL_RESTARTED_READ_SEED;
+        case StallMode::STOP_READ: return STALL_STOP_READ_SEED;
+        default: return 0;
+    }
+}
+
+static void writeStallFrame(uint16_t seq) {
+    uint8_t frame[STALL_TRANSFER_SIZE];
+    stallFrame(frame, stallReplySeed(), seq);
+    USE_WIRE.write(frame, STALL_TRANSFER_SIZE);
+}
+
+static void handleStallRequest() {
+    stall.lastRxMs = millis();
+    if (stall.mode == StallMode::READ) {
+        writeStallFrame(++stall.replySeq);
+    } else if (stall.mode == StallMode::RESTARTED_READ) {
+        writeStallFrame(stall.replySeq);
+    }
+}
+
+static void handleStallRegister() {
+    stall.lastRxMs = millis();
+    uint8_t reg[STALL_HEADER_SIZE] = {};
+    size_t n = 0;
+    while (USE_WIRE.available()) {
+        const uint8_t data = (uint8_t)USE_WIRE.read();
+        if (n < sizeof(reg)) {
+            reg[n++] = data;
+        }
+    }
+    if (n < sizeof(reg) || reg[0] != stallReplySeed()) {
+        return;
+    }
+    const uint16_t seq = stallFrameSeq(reg);
+    if (seq == STALL_STOP_SEQ) {
+        stall.stop = true;
+    } else if (stall.mode == StallMode::RESTARTED_READ) {
+        stall.replySeq = seq;
+    } else if (stall.mode == StallMode::STOP_READ) {
+        writeStallFrame(seq);
+    }
+}
+
+static void runStallLoop(StallMode mode) {
+    stall.stop = false;
+    stall.replySeq = 0;
+    stall.mode = mode;
+    uint32_t startMs = millis();
+    stall.lastRxMs = startMs;
+    while (!stall.stop) {
+        if ((millis() - stall.lastRxMs) > STALL_TRAFFIC_LIMIT_MS) {
+            break;
+        }
+        if ((millis() - startMs) > STALL_LOOP_LIMIT_MS) {
+            break;
+        }
+        ATOMIC_BLOCK() {
+            stallDelayUs(STALL_MASK_US);
+        }
+    }
+}
+
 void I2C_Slave_On_Request_Callback(void) {
     if (stall.mode == StallMode::STATUS) {
         stall.ready = true;
         stall.onRequestCount++;
         stall.lastRxMs = millis();
         writeStallStatus();
+        return;
+    }
+    if (stall.mode != StallMode::OFF) {
+        handleStallRequest();
         return;
     }
     // Random delay.
@@ -136,6 +209,10 @@ void I2C_Slave_On_Request_Callback(void) {
 void I2C_Slave_On_Receive_Callback(int byteCount) {
     if (stall.mode == StallMode::STATUS) {
         handleStallBytes(byteCount);
+        return;
+    }
+    if (stall.mode != StallMode::OFF) {
+        handleStallRegister();
         return;
     }
     if (!requested) {
@@ -208,20 +285,22 @@ test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
 
 test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
 {
-    stall.mode = StallMode::STATUS;
-    uint32_t startMs = millis();
-    stall.lastRxMs = startMs;
-    while (!stall.stop) {
-        if ((millis() - stall.lastRxMs) > STALL_TRAFFIC_LIMIT_MS) {
-            break;
-        }
-        if ((millis() - startMs) > STALL_LOOP_LIMIT_MS) {
-            break;
-        }
-        ATOMIC_BLOCK() {
-            stallDelayUs(STALL_MASK_US);
-        }
-    }
+    runStallLoop(StallMode::STATUS);
+}
+
+test(I2C_07_Master_Slave_Slave_Masked_Interrupt_Back_To_Back_Reads)
+{
+    runStallLoop(StallMode::READ);
+}
+
+test(I2C_08_Master_Slave_Slave_Masked_Interrupt_Write_Restart_Read)
+{
+    runStallLoop(StallMode::RESTARTED_READ);
+}
+
+test(I2C_09_Master_Slave_Slave_Masked_Interrupt_Write_Stop_Read_Reply_From_On_Receive)
+{
+    runStallLoop(StallMode::STOP_READ);
 }
 
 test(I2C_ZZZ_Cleanup)

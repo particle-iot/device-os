@@ -584,7 +584,6 @@ private:
         I2C_SLAVE_STARTED,
         I2C_SLAVE_RESTARTED,
         I2C_SLAVE_TX,
-        I2C_SLAVE_RX,
     };
 
     I2cClass(I2C_TypeDef* i2cDev, hal_pin_t sda, hal_pin_t scl)
@@ -652,23 +651,38 @@ private:
         return false;
     }
 
+    void slaveEndTx() {
+        if (slaveStatus_ == I2C_SLAVE_TX) {
+            txBuffer_.reset();
+        }
+    }
+
     void slaveStopDetected() {
+        slaveEndTx();
         if (slaveRxCacheLen_ > 0) {
             slaveReportRx();
         }
         slaveStatus_ = I2C_SLAVE_STOPPED;
-        txBuffer_.reset();
     }
 
     void slaveStartDetected() {
         if (slaveStatus_ == I2C_SLAVE_STOPPED) {
             slaveStatus_ = I2C_SLAVE_STARTED;
         } else {
+            slaveEndTx();
             if (slaveRxCacheLen_ > 0) {
                 slaveReportRx();
             }
             slaveStatus_ = I2C_SLAVE_RESTARTED;
         }
+    }
+
+    void slaveReadRequested() {
+        if (slaveRxCacheLen_ > 0) {
+            slaveReportRx();
+        }
+        slaveStatus_ = I2C_SLAVE_TX;
+        slaveWrite();
     }
 
     void slaveDrainRxFifo() {
@@ -708,10 +722,6 @@ private:
     }
 
     // WARNNING: critical timing section.
-    // The bus may have moved on while this interrupt was delayed: one status read can
-    // then report, for example, the stop of a transaction and the start of the next,
-    // so every set interrupt bit in the snapshot is serviced, whatever state the
-    // state machine is in.
     static void i2cSlaveIntHandler(void* context) {
         auto instance = (I2cClass*)context;
         uint32_t intStatus = I2C_GetINT(instance->i2cDev_);
@@ -728,8 +738,9 @@ private:
         if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
             I2C_ClearINT(instance->i2cDev_, BIT_IC_INTR_STAT_R_RD_REQ);
         }
-        // Drain the FIFO before the start/stop handling below, so that the bytes
-        // received before a start or a stop belong to the transfer it ends
+        if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
+            instance->txBuffer_.reset();
+        }
         if (intStatus & BIT_IC_INTR_STAT_R_RX_FULL) {
             instance->slaveDrainRxFifo();
         }
@@ -740,11 +751,7 @@ private:
             instance->slaveStartDetected();
         }
         if (intStatus & BIT_IC_INTR_STAT_R_RD_REQ) {
-            instance->slaveStatus_ = I2C_SLAVE_TX;
-            instance->slaveWrite();
-        }
-        if (intStatus & BIT_IC_INTR_STAT_R_RX_DONE) {
-            instance->txBuffer_.reset();
+            instance->slaveReadRequested();
         }
     }
 

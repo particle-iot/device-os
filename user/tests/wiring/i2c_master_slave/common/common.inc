@@ -55,6 +55,34 @@ constexpr uint32_t STALL_LOOP_LIMIT_MS = 120 * 1000;
 constexpr uint8_t STALL_FRAME_SEED = 0xa5;
 constexpr uint8_t STALL_FRAME_PADDING = 0x5a;
 constexpr uint16_t STALL_STOP_SEQ = 0xffff;
+constexpr uint8_t STALL_READ_SEED = 0xa7;
+constexpr uint8_t STALL_RESTARTED_READ_SEED = 0xa8;
+constexpr uint8_t STALL_STOP_READ_SEED = 0xa9;
+constexpr uint32_t STALL_REPLY_TRANSFERS = 100;
+constexpr uint32_t STALL_REPLY_TIMEOUT_MS = 500;
+
+inline void stallFrame(uint8_t* buf, uint8_t seed, uint16_t seq) {
+    buf[0] = seed;
+    buf[1] = (uint8_t)(seq >> 8);
+    buf[2] = (uint8_t)seq;
+    memset(buf + STALL_HEADER_SIZE, STALL_FRAME_PADDING, STALL_TRANSFER_SIZE - STALL_HEADER_SIZE);
+}
+
+inline uint16_t stallFrameSeq(const uint8_t* buf) {
+    return ((uint16_t)buf[1] << 8) | buf[2];
+}
+
+inline bool stallFrameValid(const uint8_t* buf, uint8_t seed) {
+    if (buf[0] != seed) {
+        return false;
+    }
+    for (size_t i = STALL_HEADER_SIZE; i < STALL_TRANSFER_SIZE; i++) {
+        if (buf[i] != STALL_FRAME_PADDING) {
+            return false;
+        }
+    }
+    return true;
+}
 
 inline void stallDelayUs(uint32_t us) {
     const uint32_t start = micros();

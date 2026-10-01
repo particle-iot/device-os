@@ -441,6 +441,109 @@ test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
     USE_WIRE.end();
 }
 
+static bool stallReadFrame(uint8_t* buf) {
+    memset(buf, 0, STALL_TRANSFER_SIZE);
+    (void)USE_WIRE.requestFrom(WireTransmission(I2C_ADDRESS).quantity(STALL_TRANSFER_SIZE).timeout(STALL_REPLY_TIMEOUT_MS));
+    if (USE_WIRE.available() != STALL_TRANSFER_SIZE) {
+        while (USE_WIRE.available()) {
+            USE_WIRE.read();
+        }
+        return false;
+    }
+    for (size_t i = 0; i < STALL_TRANSFER_SIZE; i++) {
+        buf[i] = (uint8_t)USE_WIRE.read();
+    }
+    return true;
+}
+
+static bool stallWriteRegister(uint8_t seed, uint16_t seq, bool stop) {
+    const uint8_t reg[STALL_HEADER_SIZE] = { seed, (uint8_t)(seq >> 8), (uint8_t)seq };
+    USE_WIRE.beginTransmission(WireTransmission(I2C_ADDRESS).timeout(STALL_REPLY_TIMEOUT_MS).stop(stop));
+    USE_WIRE.write(reg, sizeof(reg));
+    return USE_WIRE.endTransmission(stop) == 0;
+}
+
+static bool stallWriteRegisterReadFrame(uint8_t seed, uint16_t seq, bool stop, uint8_t* buf) {
+    return stallWriteRegister(seed, seq, stop) && stallReadFrame(buf);
+}
+
+test(I2C_07_Master_Slave_Slave_Masked_Interrupt_Back_To_Back_Reads)
+{
+    uint8_t buf[STALL_TRANSFER_SIZE];
+    I2C_Master_Configure(CLOCK_SPEED_100KHZ);
+
+    uint32_t readyMs = millis();
+    while (!stallReadFrame(buf) || !stallFrameValid(buf, STALL_READ_SEED)) {
+        assertTrue((millis() - readyMs) < STALL_TRAFFIC_LIMIT_MS);
+        stallDelayUs(STALL_MAX_GAP_US);
+    }
+    uint16_t seq = stallFrameSeq(buf);
+    uint32_t gapUs = 0;
+    for (uint32_t n = 0; n < STALL_REPLY_TRANSFERS; n++) {
+        seq++;
+        assertTrue(stallReadFrame(buf));
+        assertTrue(stallFrameValid(buf, STALL_READ_SEED));
+        assertEqual((uint32_t)stallFrameSeq(buf), (uint32_t)seq);
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    assertTrue(stallWriteRegister(STALL_READ_SEED, STALL_STOP_SEQ, true));
+    USE_WIRE.end();
+}
+
+test(I2C_08_Master_Slave_Slave_Masked_Interrupt_Write_Restart_Read)
+{
+    uint8_t buf[STALL_TRANSFER_SIZE];
+    I2C_Master_Configure(CLOCK_SPEED_100KHZ);
+
+    uint16_t seq = 0;
+    uint32_t readyMs = millis();
+    while (!stallWriteRegisterReadFrame(STALL_RESTARTED_READ_SEED, ++seq, false, buf) ||
+            !stallFrameValid(buf, STALL_RESTARTED_READ_SEED)) {
+        assertTrue((millis() - readyMs) < STALL_TRAFFIC_LIMIT_MS);
+        stallDelayUs(STALL_MAX_GAP_US);
+    }
+    uint32_t gapUs = 0;
+    for (uint32_t n = 0; n < STALL_REPLY_TRANSFERS; n++) {
+        seq++;
+        assertTrue(stallWriteRegisterReadFrame(STALL_RESTARTED_READ_SEED, seq, false, buf));
+        assertTrue(stallFrameValid(buf, STALL_RESTARTED_READ_SEED));
+        assertEqual((uint32_t)stallFrameSeq(buf), (uint32_t)seq);
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    assertTrue(stallWriteRegister(STALL_RESTARTED_READ_SEED, STALL_STOP_SEQ, true));
+    USE_WIRE.end();
+}
+
+test(I2C_09_Master_Slave_Slave_Masked_Interrupt_Write_Stop_Read_Reply_From_On_Receive)
+{
+    uint8_t buf[STALL_TRANSFER_SIZE];
+    I2C_Master_Configure(CLOCK_SPEED_100KHZ);
+
+    uint16_t seq = 0;
+    uint32_t readyMs = millis();
+    while (!stallWriteRegisterReadFrame(STALL_STOP_READ_SEED, ++seq, true, buf) ||
+            !stallFrameValid(buf, STALL_STOP_READ_SEED)) {
+        assertTrue((millis() - readyMs) < STALL_TRAFFIC_LIMIT_MS);
+        stallDelayUs(STALL_MAX_GAP_US);
+    }
+    uint32_t gapUs = 0;
+    for (uint32_t n = 0; n < STALL_REPLY_TRANSFERS; n++) {
+        seq++;
+        assertTrue(stallWriteRegisterReadFrame(STALL_STOP_READ_SEED, seq, true, buf));
+        assertTrue(stallFrameValid(buf, STALL_STOP_READ_SEED));
+        assertEqual((uint32_t)stallFrameSeq(buf), (uint32_t)seq);
+        stallDelayUs(gapUs);
+        gapUs = (gapUs + 1) % STALL_MAX_GAP_US;
+    }
+
+    assertTrue(stallWriteRegister(STALL_STOP_READ_SEED, STALL_STOP_SEQ, true));
+    USE_WIRE.end();
+}
+
 test(I2C_ZZZ_Cleanup)
 {
 
