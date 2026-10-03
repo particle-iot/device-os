@@ -2,6 +2,55 @@
 #include "unit-test/unit-test.h"
 #include "../common/common.inc"
 
+namespace {
+
+enum class StallMode {
+    OFF = 0,
+    STATUS = 1,
+    READ = 2,
+    RESTARTED_READ = 3,
+    STOP_READ = 4
+};
+
+constexpr uint32_t STALL_TOTAL_BYTES = (STALL_TRANSFERS + 1) * STALL_TRANSFER_SIZE;
+
+// The I2C_06 state, maintained by the wire callbacks. The slave interrupt may be
+// delayed across the stop of one transaction and the start of the next, and the bytes
+// of the two transactions then arrive in one report. The received bytes are checked
+// against the expected stream, one by one.
+struct StallState {
+    volatile uint32_t lastRxMs;
+    volatile bool stop;
+    bool ready;
+    uint32_t goodBytes;
+    uint32_t badBytes;
+    uint32_t onReceiveCount;
+    uint32_t onRequestCount;
+    uint8_t lastBadByte;
+    uint32_t lastBadPos;
+    uint16_t replySeq;
+    volatile StallMode mode;
+} stall;
+
+// The master sends STALL_TRANSFERS numbered frames, then the stop frame.
+static uint8_t stallStreamByte(size_t pos) {
+    const size_t frame = pos / STALL_TRANSFER_SIZE;
+    const size_t i = pos % STALL_TRANSFER_SIZE;
+    if (i == 0) {
+        return STALL_FRAME_SEED;
+    }
+    const uint32_t seq = (frame < STALL_TRANSFERS) ? (frame + 1) : STALL_STOP_SEQ;
+    if (i == 1) {
+        return (uint8_t)(seq >> 8);
+    }
+    if (i == 2) {
+        return (uint8_t)seq;
+    }
+    return STALL_FRAME_PADDING;
+}
+
+} // anonymous namespace
+
 static uint8_t done = 0;
 static uint32_t requestedLength = 0;
 static bool requested = false;
@@ -12,7 +61,138 @@ static int random_range(int minVal, int maxVal)
     return rand_r(&seed) % (maxVal - minVal + 1) + minVal;
 }
 
+static void handleStallBytes(int byteCount) {
+    stall.lastRxMs = millis();
+    const int i = byteCount;
+    if (!stall.ready) {
+        while (USE_WIRE.available()) {
+            USE_WIRE.read();
+        }
+        return;
+    }
+    if (i <= 0 || stall.goodBytes >= STALL_TOTAL_BYTES) {
+        if (i > 0) {
+            stall.lastBadByte = USE_WIRE.peek();
+            stall.lastBadPos = stall.goodBytes;
+        }
+        stall.badBytes += i > 0 ? i : 0;
+        return;
+    }
+    stall.onReceiveCount++;
+    for (int j = 0; j < i; j++) {
+        const uint8_t data = (uint8_t)USE_WIRE.read();
+        if (data == stallStreamByte(stall.goodBytes)) {
+            stall.goodBytes++;
+        } else {
+            stall.lastBadByte = data;
+            stall.lastBadPos = stall.goodBytes;
+            stall.badBytes++;
+        }
+    }
+    if (stall.goodBytes == STALL_TOTAL_BYTES) {
+        stall.stop = true;
+    }
+}
+
+static void writeStallStatus() {
+    char status[STALL_TRANSFER_SIZE + 1];
+    int n = snprintf(status, sizeof(status), "%lu,%lu,%lu,%lu,%lu,0x%lx",
+            (unsigned long)stall.goodBytes,
+            (unsigned long)stall.badBytes,
+            (unsigned long)stall.onReceiveCount,
+            (unsigned long)stall.onRequestCount,
+            (unsigned long)stall.lastBadPos,
+            (unsigned long)stall.lastBadByte);
+    if (n < 0) {
+        n = 0;
+    }
+    if (n > STALL_TRANSFER_SIZE) {
+        n = STALL_TRANSFER_SIZE;
+    }
+    while (n < STALL_TRANSFER_SIZE) {
+        status[n++] = ' ';
+    }
+    USE_WIRE.write((const uint8_t*)status, STALL_TRANSFER_SIZE);
+}
+
+static uint8_t stallReplySeed() {
+    switch (stall.mode) {
+        case StallMode::READ: return STALL_READ_SEED;
+        case StallMode::RESTARTED_READ: return STALL_RESTARTED_READ_SEED;
+        case StallMode::STOP_READ: return STALL_STOP_READ_SEED;
+        default: return 0;
+    }
+}
+
+static void writeStallFrame(uint16_t seq) {
+    uint8_t frame[STALL_TRANSFER_SIZE];
+    stallFrame(frame, stallReplySeed(), seq);
+    USE_WIRE.write(frame, STALL_TRANSFER_SIZE);
+}
+
+static void handleStallRequest() {
+    stall.lastRxMs = millis();
+    if (stall.mode == StallMode::READ) {
+        writeStallFrame(++stall.replySeq);
+    } else if (stall.mode == StallMode::RESTARTED_READ) {
+        writeStallFrame(stall.replySeq);
+    }
+}
+
+static void handleStallRegister() {
+    stall.lastRxMs = millis();
+    uint8_t reg[STALL_HEADER_SIZE] = {};
+    size_t n = 0;
+    while (USE_WIRE.available()) {
+        const uint8_t data = (uint8_t)USE_WIRE.read();
+        if (n < sizeof(reg)) {
+            reg[n++] = data;
+        }
+    }
+    if (n < sizeof(reg) || reg[0] != stallReplySeed()) {
+        return;
+    }
+    const uint16_t seq = stallFrameSeq(reg);
+    if (seq == STALL_STOP_SEQ) {
+        stall.stop = true;
+    } else if (stall.mode == StallMode::RESTARTED_READ) {
+        stall.replySeq = seq;
+    } else if (stall.mode == StallMode::STOP_READ) {
+        writeStallFrame(seq);
+    }
+}
+
+static void runStallLoop(StallMode mode) {
+    stall.stop = false;
+    stall.replySeq = 0;
+    stall.mode = mode;
+    uint32_t startMs = millis();
+    stall.lastRxMs = startMs;
+    while (!stall.stop) {
+        if ((millis() - stall.lastRxMs) > STALL_TRAFFIC_LIMIT_MS) {
+            break;
+        }
+        if ((millis() - startMs) > STALL_LOOP_LIMIT_MS) {
+            break;
+        }
+        ATOMIC_BLOCK() {
+            stallDelayUs(STALL_MASK_US);
+        }
+    }
+}
+
 void I2C_Slave_On_Request_Callback(void) {
+    if (stall.mode == StallMode::STATUS) {
+        stall.ready = true;
+        stall.onRequestCount++;
+        stall.lastRxMs = millis();
+        writeStallStatus();
+        return;
+    }
+    if (stall.mode != StallMode::OFF) {
+        handleStallRequest();
+        return;
+    }
     // Random delay.
     // Just to be on a safe side delay between 0 and 50ms (I2C EVENT_TIMEOUT / 2)
     delayMicroseconds(random_range(0, 50000));
@@ -26,7 +206,15 @@ void I2C_Slave_On_Request_Callback(void) {
     requested = false;
 }
 
-void I2C_Slave_On_Receive_Callback(int) {
+void I2C_Slave_On_Receive_Callback(int byteCount) {
+    if (stall.mode == StallMode::STATUS) {
+        handleStallBytes(byteCount);
+        return;
+    }
+    if (stall.mode != StallMode::OFF) {
+        handleStallRegister();
+        return;
+    }
     if (!requested) {
         requested = true;
         requestedLength = 0;
@@ -93,6 +281,26 @@ test(I2C_04_Master_Slave_Master_Variable_Length_Transfer_With_WireTransmission_A
 test(I2C_05_Master_Slave_Master_Variable_Length_Restarted_Transfer)
 {
 
+}
+
+test(I2C_06_Master_Slave_Slave_Survives_Masked_Interrupt_Storm)
+{
+    runStallLoop(StallMode::STATUS);
+}
+
+test(I2C_07_Master_Slave_Slave_Masked_Interrupt_Back_To_Back_Reads)
+{
+    runStallLoop(StallMode::READ);
+}
+
+test(I2C_08_Master_Slave_Slave_Masked_Interrupt_Write_Restart_Read)
+{
+    runStallLoop(StallMode::RESTARTED_READ);
+}
+
+test(I2C_09_Master_Slave_Slave_Masked_Interrupt_Write_Stop_Read_Reply_From_On_Receive)
+{
+    runStallLoop(StallMode::STOP_READ);
 }
 
 test(I2C_ZZZ_Cleanup)
