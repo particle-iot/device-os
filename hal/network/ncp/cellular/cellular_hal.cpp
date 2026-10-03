@@ -37,6 +37,8 @@
 #include "cellular_ncp_dev_mapping.h"
 
 #include <limits>
+#include <cctype>
+#include <cstring>
 
 #define CELLULAR_DEVICE_VERSION_V1 (1)
 const uint16_t CELLULAR_DEVICE_VERSION = CELLULAR_DEVICE_VERSION_V1;
@@ -55,6 +57,23 @@ namespace {
 
 using namespace particle;
 using namespace services;
+
+// Valid ICCIDs are 19 or 20 digits
+const size_t ICCID_MAX_LENGTH = 20;
+
+// Note: Potential trailing 'F' is already stripped by client->getIccid()
+bool isValidIccid(const char* iccid) {
+    const size_t len = strnlen(iccid, ICCID_MAX_LENGTH + 1);
+    if (len < ICCID_MAX_LENGTH - 1 || len > ICCID_MAX_LENGTH) {
+        return false;
+    }
+    for (size_t i = 0; i < len; i++) {
+        if (!isdigit((unsigned char)iccid[i])) {
+            return false;
+        }
+    }
+    return true;
+}
 
 int cachedCellularDeviceInfo(CellularDevice* info) {
     CellularDeviceCached cacheRead = {};
@@ -214,6 +233,22 @@ int cellular_fetch_ipconfig(CellularConfig* conf, void* reserved) {
     return 0;
 }
 
+namespace {
+
+int queryCellularDeviceInfo(particle::CellularNcpClient* client, CellularDevice* info) {
+    CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
+    CHECK(client->getImei(info->imei, sizeof(info->imei)));
+    if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
+        info->dev = cellular_dev_from_ncp((PlatformNCPIdentifier)client->ncpId());
+    }
+    if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
+        CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
+    }
+    return 0;
+}
+
+} // namespace
+
 int cellular_device_info(CellularDevice* info, void* reserved) {
     const auto mgr = cellularNetworkManager();
     CHECK_TRUE(mgr, SYSTEM_ERROR_UNKNOWN);
@@ -235,13 +270,15 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     CellularDeviceCached cacheRead = {};
     SystemCache::instance().get(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheRead, sizeof(cacheRead));
 
-    CHECK(client->getIccid(info->iccid, sizeof(info->iccid)));
-    CHECK(client->getImei(info->imei, sizeof(info->imei)));
-    if (info->size >= offsetof(CellularDevice, dev) + sizeof(CellularDevice::dev)) {
-        info->dev = cellular_dev_from_ncp((PlatformNCPIdentifier)client->ncpId());
+    // Fallback to cached value if modem errors or times out
+    if (queryCellularDeviceInfo(client, info) < 0) {
+        return cachedCellularDeviceInfo(info);
     }
-    if (info->size >= offsetof(CellularDevice, radiofw) + sizeof(CellularDevice::radiofw)) {
-        CHECK(client->getFirmwareVersionString(info->radiofw, sizeof(info->radiofw)));
+
+    // Fallback to cached value or null string if ICCID is not valid
+    if (!isValidIccid(info->iccid)) {
+        const bool useCached = cacheRead.version == CELLULAR_DEVICE_VERSION && isValidIccid(cacheRead.iccid);
+        strlcpy(info->iccid, useCached ? cacheRead.iccid : "", sizeof(info->iccid));
     }
 
     // Update the cached values if they dont match the last queried data. 

@@ -411,7 +411,7 @@ int QuectelNcpClient::on() {
 // Caller must hold the client lock.
 int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
     const bool recovering = (reason != ModemPowerReason::ModemOff && reason != ModemPowerReason::Unknown);
-    int r = SYSTEM_ERROR_NONE;
+    int softPowerOffResult = SYSTEM_ERROR_NONE;
 
     if (recovering) {
         LOG(WARN, "Resetting the modem due to %s", reason == ModemPowerReason::AtUnresponsive ?
@@ -422,7 +422,7 @@ int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
         ncpState(NcpState::OFF);
     } else {
         // Try using AT command to turn off the modem first.
-        r = modemSoftPowerOff();
+        softPowerOffResult = modemSoftPowerOff();
     }
 
     // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
@@ -439,10 +439,7 @@ int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
         // Disable voltage translator
         modemSetUartState(false);
 
-        if (!r) {
-            LOG(TRACE, "Soft power off modem success");
-            // WARN: We assume that the modem can turn off itself reliably.
-        } else {
+        if (softPowerOffResult != SYSTEM_ERROR_NONE) {
             // Power down using hardware
             if (modemPowerOff() != SYSTEM_ERROR_NONE) {
                 LOG(ERROR, "Failed to turn off");
@@ -1235,8 +1232,16 @@ int QuectelNcpClient::waitReady(bool powerOn) {
         // Disable voltage translator
         modemSetUartState(false);
 
-        // Hard reset the modem
-        modemHardReset(true);
+        if (ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX) {
+            // A hard reset brings this one straight back into the same stalled PPP connect, so take
+            // it down on the power pin instead and let it cold start
+            if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+                modemHardReset(true);
+            }
+        } else {
+            // Hard reset the modem
+            modemHardReset(true);
+        }
         ncpState(NcpState::OFF);
 
         return SYSTEM_ERROR_INVALID_STATE;
