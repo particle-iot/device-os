@@ -26,6 +26,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "rng_hal.h"
 
+#include "system_error.h"
+
 /* Private typedef -----------------------------------------------------------*/
 
 /* Private define ------------------------------------------------------------*/
@@ -55,4 +57,12 @@ void HAL_RNG_Configuration(void)
 uint32_t HAL_RNG_GetRandomNumber(void)
 {
     return 0;
+}
+
+int hal_rng_reseed(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_rng_entropy_read_raw(uint16_t* samples, size_t count, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

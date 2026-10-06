@@ -27,6 +27,7 @@
 #ifndef __RNG_HAL_H
 #define __RNG_HAL_H
 
+#include <stddef.h>
 #include <stdint.h>
 /* Exported types ------------------------------------------------------------*/
 
@@ -42,6 +43,27 @@ extern "C" {
 
 void HAL_RNG_Configuration(void);
 uint32_t HAL_RNG_GetRandomNumber(void);
+
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+
+#define HAL_RNG_ENTROPY_REPETITION_COUNT_CUTOFF     (81)
+#define HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_WINDOW  (1024)
+#define HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_CUTOFF  (914)
+
+/**
+ * Reseed the DRBG from the platform entropy source.
+ */
+int hal_rng_reseed(void* reserved);
+
+/**
+ * Read raw entropy source samples, bypassing the health tests, for source qualification.
+ *
+ * @param samples: filled in with raw samples
+ * @param count: number of samples to read
+ */
+int hal_rng_entropy_read_raw(uint16_t* samples, size_t count, void* reserved);
+
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 
 #ifdef __cplusplus
 }

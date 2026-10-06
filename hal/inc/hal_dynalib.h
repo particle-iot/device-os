@@ -107,6 +107,9 @@ DYNALIB_FN(BASE_IDX + 28, hal, hal_exrtc_get_watchdog_limits_deprecated, void(sy
 #define BASE_IDX2 (BASE_IDX + 25)
 #endif // PLATFORM_ID == PLATFORM_TRACKER
 
+DYNALIB_FN(BASE_IDX2 + 0, hal, hal_rng_reseed, int(void*))
+DYNALIB_FN(BASE_IDX2 + 1, hal, hal_rng_entropy_read_raw, int(uint16_t*, size_t, void*))
+
 DYNALIB_END(hal)
 
 #undef BASE_IDX
