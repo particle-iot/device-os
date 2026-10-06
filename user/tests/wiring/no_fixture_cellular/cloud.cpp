@@ -49,25 +49,12 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
 
     // Pull the rug, this should cause a socket error on recv/send
 #if HAL_PLATFORM_NCP_AT
-    // Retry once, in case we hit a rare timeout here (on EG91)
-    // Recovering the AT interface power cycles the modem, so that reconnect has to be thrown away
-    bool rugPulled = false;
-    for (int attempt = 0; attempt < 2 && !rugPulled; attempt++) {
-        if (attempt > 0) {
-            connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
-            assertTrue(Particle.connected());
-            handshakeState.reset();
-        }
-        // CFUN=0 is the same as CFUN=0,0 for R410.  Done this way because R510 errors with CFUN=0,0
-        if (RESP_OK != Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0\r\n")) {
-            continue;
-        }
-        delay(5000);
-        // Force a publish just in case
-        (void)Particle.publish("test", "test");
-        rugPulled = (RESP_OK == Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0\r\n"));
-    }
-    assertTrue(rugPulled);
+    // CFUN=0 is the same as CFUN=0,0 for R410.  Done this way because R510 errors with CFUN=0,0
+    assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0\r\n"));
+    delay(5000);
+    // Force a publish just in case
+    (void)Particle.publish("test", "test");
+    assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0\r\n"));
 #else
     CellularDevice devInfo = {};
     devInfo.size = sizeof(devInfo);

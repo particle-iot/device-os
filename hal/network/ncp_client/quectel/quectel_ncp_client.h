@@ -166,6 +166,7 @@ private:
     int initMuxer();
     int waitAtResponse(unsigned int timeout, unsigned int period = 1000);
     int waitAtResponse(AtParser& parser, unsigned int timeout, unsigned int period = 1000);
+    int recoverAtWithDataChannelBreak();
     int checkNetConfForImsi();
     int setupBands();
     int parseEfSize(unsigned int fid);
@@ -213,6 +214,8 @@ private:
     bool isQuecCatM1Device();
     /** Is this a Quectel Cat-1 device ? */
     bool isQuecCat1Device();
+    /** Is this a Quectel EG91x device ? */
+    bool isQuecEg91xDevice();
     /** Is this a Quectel Cat-NB1/Cat-NB2 device ? */
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
