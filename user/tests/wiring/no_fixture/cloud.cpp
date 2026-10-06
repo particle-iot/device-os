@@ -73,4 +73,40 @@ test(CLOUD_04_socket_errors_do_not_cause_a_full_handshake) {
     assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }
 
+test(CLOUD_05_loss_of_cloud_connection_network_disconnects_from_the_cloud_and_resumes_session) {
+    const system_tick_t NETWORK_LOSS_DISCONNECT_TIMEOUT = 60 * 1000;
+    const system_tick_t NETWORK_CONNECT_TIMEOUT = 5 * 60 * 1000;
+
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+
+    auto& network = Particle.connectionInterface();
+    assertNotEqual(Network, network);
+
+    auto evHandler = [](system_event_t event, int param, void* ctx) {
+        if (event == cloud_status) {
+            if (param == cloud_status_handshake || param == cloud_status_session_resume) {
+                if (handshakeState.handshakeType == -1) {
+                    handshakeState.handshakeType = param;
+                }
+            }
+        }
+    };
+
+    handshakeState.reset();
+    System.on(cloud_status, evHandler);
+    SCOPE_GUARD({
+        System.off(cloud_status, evHandler);
+    });
+
+    network.disconnect();
+    bool disconnected = waitFor(Particle.disconnected, NETWORK_LOSS_DISCONNECT_TIMEOUT);
+    network.connect();
+    assertTrue(disconnected);
+    assertTrue(System.waitCondition([&network]() { return network.ready(); }, NETWORK_CONNECT_TIMEOUT));
+    assertTrue(waitFor(handshakeState, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+
 #endif // HAL_PLATFORM_CLOUD_UDP

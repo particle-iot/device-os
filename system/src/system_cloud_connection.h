@@ -57,6 +57,7 @@ int system_cloud_set_keepalive(network_interface_t netif);
 sock_handle_t system_cloud_get_socket_handle();
 
 #if HAL_PLATFORM_IFAPI
+bool system_cloud_network_ready();
 int system_cloud_resolv_address(int protocol, const ServerAddress* address, sockaddr* saddrCache, addrinfo** info, CloudServerAddressType* type, bool useCachedAddrInfo, network_handle_t interface = NETWORK_INTERFACE_ALL, bool flushDnsCache = false);
 #endif // HAL_PLATFORM_IFAPI
 

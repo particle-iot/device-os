@@ -449,6 +449,10 @@ void manage_cloud_connection(bool force_events)
     else // cloud connection is wanted
     {
 #if HAL_PLATFORM_IFAPI
+        if (SPARK_CLOUD_SOCKETED && !system_cloud_network_ready()) {
+            INFO("Cloud connection network lost");
+            cloud_disconnect(0 /* flags */, CLOUD_DISCONNECT_REASON_NETWORK_DISCONNECT);
+        }
         ConnectionManager::instance()->checkCloudConnectionNetwork();
 #endif // HAL_PLATFORM_IFAPI
 

@@ -37,6 +37,8 @@ namespace {
 
 struct SystemCloudState {
     int socket = -1;
+    network_interface_t netif = NETWORK_INTERFACE_ALL;
+    int family = AF_UNSPEC;
     struct addrinfo* addr = nullptr;
     struct addrinfo* next = nullptr;
 };
@@ -281,6 +283,8 @@ int system_cloud_connect(int protocol, const ServerAddress* address, sockaddr* s
         }
 
         s_state.socket = s;
+        s_state.netif = cloudInterface;
+        s_state.family = a->ai_family;
         if (saddrCache) {
             memcpy(saddrCache, a->ai_addr, a->ai_addrlen);
         }
@@ -397,6 +401,12 @@ int system_cloud_is_connected(void* reserved)
 sock_handle_t system_cloud_get_socket_handle()
 {
     return s_state.socket;
+}
+
+bool system_cloud_network_ready()
+{
+    auto type = s_state.family == AF_INET6 ? NETWORK_READY_TYPE_IPV6 : NETWORK_READY_TYPE_IPV4;
+    return network_ready(s_state.netif, type, nullptr);
 }
 
 #endif /* HAL_USE_SOCKET_HAL_POSIX */
