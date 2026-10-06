@@ -748,8 +748,10 @@ static void init_malloc_mutex(void) {
 void __malloc_lock(struct _reent *ptr) {
     if (malloc_mutex) {
         if (xTaskGetSchedulerState() == taskSCHEDULER_SUSPENDED) {
-            if (HAL_PLATFORM_STRICT_HEAP_LOCK_PANIC || !xSemaphoreTakeRecursive(malloc_mutex, 0)) {
-                PANIC(HeapError, "malloc while suspended");
+            if (HAL_PLATFORM_STRICT_HEAP_LOCK_PANIC) {
+                PANIC(HeapError, "Strict: heap access while suspended");
+            } else if (!xSemaphoreTakeRecursive(malloc_mutex, 0)) {
+                PANIC(HeapError, "Heap access mutex failed take");
             }
         } else if (!xSemaphoreTakeRecursive(malloc_mutex, MALLOC_LOCK_TIMEOUT_MS)) {
             PANIC(HeapError, "Semaphore Lock Timeout");
