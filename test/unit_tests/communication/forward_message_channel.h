@@ -62,6 +62,11 @@ public:
 		return channel->establish();
 	}
 
+	virtual bool is_establish_in_progress() const override
+	{
+		return channel ? channel->is_establish_in_progress() : false;
+	}
+
 	virtual ProtocolError response(Message& original, Message& response, size_t required) override
 	{
 		return channel->response(original, response, required);

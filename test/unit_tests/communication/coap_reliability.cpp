@@ -273,6 +273,16 @@ void build_message_channel_mock(Mock<MessageChannel>& mock)
 	When(Method(mock,is_unreliable)).AlwaysReturn(false);
 	When(Method(mock,command)).AlwaysReturn(NO_ERROR);
 	When(Method(mock,notify_client_messages_processed)).AlwaysReturn();
+	// poll_confirmed() calls create() to get a receive buffer
+	When(Method(mock,create)).AlwaysDo([](Message& msg, size_t) {
+		static uint8_t buf[1500];
+		msg.set_buffer(buf, sizeof(buf));
+		return NO_ERROR;
+	});
+	// establish() calls reset() which calls channel::reset()
+	When(Method(mock,reset)).AlwaysReturn();
+	// establish() calls is_establish_in_progress() to check continuation
+	When(Method(mock,is_establish_in_progress)).AlwaysReturn(false);
 }
 
 SCENARIO("an unacknowledged message is resent up to MAX_TRANSMIT times, with exponentially increasing delays, after which it is removed")
@@ -879,10 +889,12 @@ SCENARIO("sending a message and re-establishing the connection clears existing m
 				REQUIRE(CoAPMessage::messages()==1);
 				Verify(Method(mock,send)).Exactly(Once);
 			}
-			AND_WHEN("the connection is re-established")
-			{
-				When(Method(mock,establish)).Return(NO_ERROR);
-				channel.establish();
+		AND_WHEN("the connection is re-established")
+		{
+			When(Method(mock,reset)).AlwaysReturn(); // establish() calls reset()
+			When(Method(mock,is_establish_in_progress)).AlwaysReturn(false); // fresh attempt
+			When(Method(mock,establish)).Return(NO_ERROR);
+			channel.establish();
 				THEN("the message store is cleared")
 				{
 					REQUIRE(channel.client_messages().from_id(0x1234)==nullptr);		// message has been sent and registered
@@ -1118,7 +1130,7 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 		{
 			When(Method(mock,send)).AlwaysReturn(NO_ERROR);
 			When(Method(mock,receive)).AlwaysDo(no_message);
-			ProtocolError error = channel.send(m);
+			ProtocolError error = channel.send_synchronous(m);
 			AND_WHEN("the request has timed out")
 			{
 				CHECK(ticks >= MAX_TRANSMIT_SPAN);
@@ -1138,7 +1150,7 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 				return NO_ERROR;
 			};
 			When(Method(mock,receive)).Do(receive_nak);
-			ProtocolError error = channel.send(m);
+			ProtocolError error = channel.send_synchronous(m);
 			THEN("a MESSAGE_RESET response is returned")
 			{
 				REQUIRE(error==MESSAGE_RESET);
@@ -1150,7 +1162,7 @@ SCENARIO("a message flagged as confirm received waits synchronously for acknowle
 		{
 			When(Method(mock,send)).AlwaysReturn(NO_ERROR);
 			When(Method(mock,receive)).Do(receive_server_ack);
-			ProtocolError error = channel.send(m);
+			ProtocolError error = channel.send_synchronous(m);
 			THEN("a success response is returned")
 			{
 				REQUIRE(error==NO_ERROR);
