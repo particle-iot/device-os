@@ -61,6 +61,9 @@
 #include "system_env.h"
 #include "firmware_update.h"
 #include "server_config.h"
+#include "device_key_manager.h"
+#include "coap_api.h"
+#include "coap_util.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -72,7 +75,10 @@
 
 #include "control/common.h" // FIXME: Move to another directory
 #include "cloud/cloud.pb.h"
+#include "cloud/config.pb.h"
 #include "nanopb_misc.h"
+
+#define PB_CLOUD(_name) particle_cloud_##_name
 
 #include <stdio.h>
 #include <stdint.h>
@@ -807,6 +813,81 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 #endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
+int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr coapReq(req);
+
+    pb_istream_t pbIn = {};
+    CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
+    PB_CLOUD(Request) pbReq = {};
+    if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
+    // TODO: Generalize this code for handling other requests
+    if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+
+    std::unique_ptr<EcpPrivateKey> privKey; // Used by the CoAP completion callbacks
+    EcpPublicKey pubKey;
+    auto& keyManager = DeviceKeyManager::instance();
+    bool ok = true;
+
+    PB_CLOUD(Response) pbResp = {};
+    int r = ([&]() -> int {
+        privKey.reset(new(std::nothrow) EcpPrivateKey());
+        if (!privKey) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(keyManager.generateKey(*privKey));
+        CHECK(privKey->getPublicKey(pubKey));
+
+        auto& pbInnerResp = pbResp.data.config_change_device_key;
+        pbInnerResp.pub_key.arg = &pubKey;
+        pbInnerResp.pub_key.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+            auto pubKey = (const EcpPublicKey*)*arg;
+            if (!pb_encode_tag_for_field(stream, field) ||
+                    !pb_encode_string(stream, (const uint8_t*)pubKey->data(), pubKey->size())) {
+                return false;
+            }
+            return true;
+        };
+        return 0;
+    })();
+    if (r < 0) {
+        pbResp = {};
+        ok = false;
+    }
+    pbResp.result = r;
+
+    CoapMessagePtr coapResp;
+    CHECK(coap_begin_response(&coapResp, ok ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST, reqId, 0 /* flags */,
+            nullptr /* reserved */));
+
+    pb_ostream_t pbOut = {};
+    CHECK(pb_ostream_from_coap_message(&pbOut, coapResp.get(), nullptr /* reserved */));
+    if (!pb_encode(&pbOut, &PB_CLOUD(Request_msg), &pbResp)) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
+
+    CHECK(coap_end_response(coapResp.get(), [](int reqId, void* arg) { // ack_cb
+        // Save the candidate key and reset the device
+        // TODO: Respect the `reset_device` flag from the request
+        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg)); // Take back ownership over the key object
+        CHECK(DeviceKeyManager::instance().setCandidateKey(*privKey));
+        LOG(INFO, "Saved candidate device key");
+        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
+        return 0;
+    }, [](int err, int req_id, void* arg) { // error_cb
+        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
+        LOG(WARN, "Discarding candidate device key due to CoAP error: %d", err);
+    }, privKey.get(), nullptr /* reserved */));
+
+    // The CoAP API now owns the response and key objects
+    coapResp.release();
+    privKey.release();
+    return 0;
+}
+
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
 const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
@@ -1223,6 +1304,11 @@ void Spark_Protocol_Init(void)
         spark_protocol_communications_handlers(sp, &handlers);
 
         registerSystemSubscriptions();
+
+        if (udp) {
+            coap_add_request_handler("r", COAP_METHOD_POST, 0 /* flags */, handleChangeDeviceKeyRequest, nullptr /* arg */,
+                    nullptr /* reserved */);
+        }
 
 #if PLATFORM_ID == PLATFORM_GCC
         bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_GCC && deviceConfig.platform_id != PLATFORM_ARGON && deviceConfig.platform_id != PLATFORM_P2);
