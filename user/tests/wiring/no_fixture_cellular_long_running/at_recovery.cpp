@@ -128,10 +128,10 @@ test(AT_RECOVERY_02_device_os_recovers_the_modem) {
         return;
     }
 
+    // The spec body reports the verdict, it never runs if this test fails
     assertEqual(0, pushMailboxMsg(String::format(
             "{\"cycles\": %u, \"atFailedAtCycle\": %u, \"lastProbe\": %d}",
             cycles, atFailedAtCycle, lastProbeResult), 30000));
-    assertEqual(0u, atFailedAtCycle);
 }
 
 #endif // HAL_PLATFORM_CELLULAR

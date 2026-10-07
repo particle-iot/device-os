@@ -58,10 +58,6 @@ namespace {
 using namespace particle;
 using namespace services;
 
-// Valid ICCIDs are 19 or 20 digits
-const size_t ICCID_MAX_LENGTH = 20;
-
-// Note: Potential trailing 'F' is already stripped by client->getIccid()
 bool isValidIccid(const char* iccid) {
     const size_t len = strnlen(iccid, ICCID_MAX_LENGTH + 1);
     if (len < ICCID_MAX_LENGTH - 1 || len > ICCID_MAX_LENGTH) {
@@ -290,7 +286,7 @@ int cellular_device_info(CellularDevice* info, void* reserved) {
     cacheWrite.dev = info->dev;
     strlcpy(cacheWrite.radiofw, info->radiofw, sizeof(cacheWrite.radiofw));
 
-    if (memcmp(&cacheRead, &cacheWrite, sizeof(CellularDeviceCached))) {
+    if (isValidIccid(cacheWrite.iccid) && memcmp(&cacheRead, &cacheWrite, sizeof(CellularDeviceCached))) {
         SystemCache::instance().set(SystemCacheKey::CELLULAR_DEVICE_INFO, (uint8_t*)&cacheWrite, sizeof(cacheWrite));    
     }
     

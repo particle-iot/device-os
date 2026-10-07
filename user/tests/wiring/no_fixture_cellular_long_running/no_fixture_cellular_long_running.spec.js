@@ -33,8 +33,10 @@ test('AT_RECOVERY_02_device_os_recovers_the_modem', async () => {
   expect(device.mailBox).to.not.be.empty;
   const msg = JSON.parse(device.mailBox[0].d);
   if (msg.atFailedAtCycle) {
-    console.log(`AT interface was unresponsive after cycle ${msg.atFailedAtCycle}, last probe ${msg.lastProbe}`);
-    return;
+    // Printed as well as thrown, a thrown error only shows up in the summary at the end of the run
+    const err = `AT interface was unresponsive after cycle ${msg.atFailedAtCycle}, last probe ${msg.lastProbe}`;
+    console.error(err);
+    throw new Error(err);
   }
   console.log(`AT interface stayed responsive across ${msg.cycles} data mode transitions`);
 });

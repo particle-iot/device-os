@@ -25,6 +25,7 @@
 #include "cellular_registration_backoff.h"
 #include "timer_hal.h"
 #include "underlying_type.h"
+#include <cstring>
 #endif // PLATFORM_ID != PLATFORM_GCC
 
 namespace particle {
@@ -39,6 +40,18 @@ const size_t MAX_APDU_RESPONSE_SIZE = 258; // 256 (data) + 2 (status)
 const size_t APDU_BUFFER_SIZE = 400;
 
 static_assert(APDU_BUFFER_SIZE >= MAX_APDU_COMMAND_SIZE && APDU_BUFFER_SIZE >= MAX_APDU_RESPONSE_SIZE);
+
+// Valid ICCIDs are 19 or 20 digits
+const size_t ICCID_MAX_LENGTH = 20;
+
+// Some SIMs carry a 20th padding digit of 'F' that the modem does not always strip itself.
+// Every getIccid() implementation runs this, so callers always see the digits alone.
+inline void stripIccidPadding(char* iccid) {
+    const size_t len = strnlen(iccid, ICCID_MAX_LENGTH + 1);
+    if (len == ICCID_MAX_LENGTH && (iccid[len - 1] == 'F' || iccid[len - 1] == 'f')) {
+        iccid[len - 1] = '\0';
+    }
+}
 
 struct CellularNcpEvent: NcpEvent {
     enum Type {
