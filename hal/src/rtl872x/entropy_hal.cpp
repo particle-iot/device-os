@@ -17,6 +17,8 @@
 
 #include "entropy_hal.h"
 
+#include "rng_hal.h"
+
 #include "adc_hal.h"
 #include "check.h"
 #include "scope_guard.h"
@@ -36,10 +38,6 @@ namespace {
 
 using namespace particle;
 
-const unsigned REPETITION_COUNT_CUTOFF = 81;
-const unsigned ADAPTIVE_PROPORTION_WINDOW = 1024;
-const unsigned ADAPTIVE_PROPORTION_CUTOFF = 914;
-
 struct AdcState {
     bool functionEnabled;
     bool clockEnabled;
@@ -53,6 +51,7 @@ struct AdcState {
     uint32_t fullLvl;
     uint32_t dmaCon;
     uint32_t delayCnt;
+    uint32_t autoCswCtrl;
 };
 
 class AdcNoiseSource {
@@ -68,7 +67,7 @@ public:
 
         memset(data, 0, size);
         for (size_t i = 0; i < sampleCount; ++i) {
-            const int sample = CHECK(readSample());
+            const int sample = CHECK(readSample()) & 1;
             CHECK(healthTest(sample));
             if (i < size * 8) {
                 data[i / 8] |= sample << (i % 8);
@@ -77,10 +76,25 @@ public:
         return SYSTEM_ERROR_NONE;
     }
 
+    int readRaw(uint16_t* samples, size_t count) {
+        CHECK_TRUE(samples && count, SYSTEM_ERROR_INVALID_ARGUMENT);
+
+        AdcLock lk;
+        setup();
+        SCOPE_GUARD({
+            restore();
+        });
+
+        for (size_t i = 0; i < count; ++i) {
+            samples[i] = CHECK(readSample());
+        }
+        return SYSTEM_ERROR_NONE;
+    }
+
 private:
     int healthTest(uint8_t sample) {
         if (sample == lastSample_) {
-            CHECK_TRUE(++repetitionCount_ < REPETITION_COUNT_CUTOFF, SYSTEM_ERROR_BAD_DATA);
+            CHECK_TRUE(++repetitionCount_ < HAL_RNG_ENTROPY_REPETITION_COUNT_CUTOFF, SYSTEM_ERROR_BAD_DATA);
         } else {
             lastSample_ = sample;
             repetitionCount_ = 1;
@@ -94,9 +108,9 @@ private:
         }
 
         if (sample == proportionSample_) {
-            CHECK_TRUE(++proportionCount_ < ADAPTIVE_PROPORTION_CUTOFF, SYSTEM_ERROR_BAD_DATA);
+            CHECK_TRUE(++proportionCount_ < HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_CUTOFF, SYSTEM_ERROR_BAD_DATA);
         }
-        if (++proportionPosition_ == ADAPTIVE_PROPORTION_WINDOW) {
+        if (++proportionPosition_ == HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_WINDOW) {
             proportionPosition_ = 0;
         }
         return SYSTEM_ERROR_NONE;
@@ -116,6 +130,7 @@ private:
         state_.fullLvl = ADC->ADC_FULL_LVL;
         state_.dmaCon = ADC->ADC_DMA_CON;
         state_.delayCnt = ADC->ADC_DELAY_CNT;
+        state_.autoCswCtrl = ADC->ADC_AUTO_CSW_CTRL;
 
         CAPTOUCH_DEV->CT_ADC_REG1X_LPAD = state_.reg1xLpad | BIT(6) | BIT(7);
         RCC_PeriphClockCmd(APBPeriph_ADC, APBPeriph_ADC_CLOCK, DISABLE);
@@ -125,7 +140,7 @@ private:
         ADC_INTClear();
         ADC_ClearFIFO();
         ADC->ADC_CLK_DIV = ADC_CLK_DIV_12;
-        ADC->ADC_CONF = 0;
+        ADC->ADC_CONF = ADC_AUTO_MODE << BIT_SHIFT_OP_MODE;
         ADC->ADC_IN_TYPE = 0;
         ADC->ADC_CHSW_LIST[0] = ADC_CH8;
         ADC->ADC_CHSW_LIST[1] = 0;
@@ -134,9 +149,11 @@ private:
         ADC->ADC_DMA_CON = 0x700;
         ADC->ADC_DELAY_CNT = 0;
         ADC_Cmd(ENABLE);
+        ADC_AutoCSwCmd(ENABLE);
     }
 
     void restore() {
+        ADC_AutoCSwCmd(DISABLE);
         ADC_Cmd(DISABLE);
         CAPTOUCH_DEV->CT_ADC_REG1X_LPAD = state_.reg1xLpad;
         ADC->ADC_INTR_CTRL = state_.intrCtrl;
@@ -149,6 +166,7 @@ private:
         ADC->ADC_FULL_LVL = state_.fullLvl;
         ADC->ADC_DMA_CON = state_.dmaCon;
         ADC->ADC_DELAY_CNT = state_.delayCnt;
+        ADC->ADC_AUTO_CSW_CTRL = state_.autoCswCtrl;
         if (state_.conf & BIT_ADC_ENABLE) {
             ADC_Cmd(ENABLE);
         }
@@ -163,15 +181,11 @@ private:
     }
 
     int readSample() {
-        ADC_SWTrigCmd(ENABLE);
-        SCOPE_GUARD({
-            ADC_SWTrigCmd(DISABLE);
-        });
         const system_tick_t start = HAL_Timer_Get_Micro_Seconds();
         while (ADC_Readable() == 0) {
             CHECK_TRUE(HAL_Timer_Get_Micro_Seconds() - start < 1000, SYSTEM_ERROR_TIMEOUT);
         }
-        return ADC_Read() & 1;
+        return ADC_Read() & BIT_MASK_DAT_GLOBAL;
     }
 
     AdcState state_ = {};
@@ -187,4 +201,9 @@ private:
 int hal_entropy_read(uint8_t* data, size_t size, size_t sampleCount) {
     AdcNoiseSource source;
     return source.read(data, size, sampleCount);
+}
+
+int hal_rng_entropy_read_raw(uint16_t* samples, size_t count, void* reserved) {
+    AdcNoiseSource source;
+    return source.readRaw(samples, count);
 }

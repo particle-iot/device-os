@@ -3,6 +3,8 @@
 #include "application.h"
 #include "unit-test/unit-test.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include "random.h"
 
@@ -36,6 +38,11 @@ const int MILLIS_MICROS_MAX_DIFF_US = 1500;
 const int MILLIS_MICROS_MAX_DIFF_US = 2000;
 #endif // PARTICLE_TEST_RUNNER
 
+const unsigned TICKS_CALL_COUNT = 10000;
+const unsigned TICKS_CALL_ROUNDS = 3;
+const unsigned TICKS_MAX_CALL_COST_NS = 50000;
+const unsigned TICKS_RESOLUTION_SAMPLES = 1000;
+
 struct TicksAtomic {
     TicksAtomic() {
         pri = __get_PRIMASK();
@@ -53,7 +60,7 @@ struct TicksAtomic {
 
 void assert_micros_millis(int duration, bool overflow = false)
 {
-    system_tick_t last_millis_64 = System.millis();
+    uint64_t last_millis_64 = System.millis();
     system_tick_t last_millis = millis();
     system_tick_t last_micros = micros();
 
@@ -129,7 +136,7 @@ void assert_micros_millis_interrupts(int duration)
         assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US);
         // at most 1ms difference between millis() and lower 32 bits of System.millis()
         diff = std::abs((int64_t)now_millis - (int64_t)(now_millis_64 & 0xffffffffull));
-        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US);
+        assertLessOrEqual(diff, MILLIS_MICROS_MAX_DIFF_US / 1000);
 
         duration -= now_millis - last_millis;
 
@@ -202,4 +209,59 @@ test(TICKS_03_millis_and_micros_monotonically_increases)
     system_tick_t start = millis();
     assert_micros_millis(TWO_MINUTES);
     assertMoreOrEqual(millis()-start, TWO_MINUTES);
+}
+
+test(TICKS_04_call_cost_is_within_tolerance)
+{
+    volatile uint64_t sink = 0;
+    uint32_t microsNs = UINT32_MAX;
+    uint32_t millisNs = UINT32_MAX;
+    uint32_t millis64Ns = UINT32_MAX;
+
+    for (unsigned round = 0; round < TICKS_CALL_ROUNDS; ++round) {
+        system_tick_t start = micros();
+        for (unsigned i = 0; i < TICKS_CALL_COUNT; ++i) {
+            sink = micros();
+        }
+        uint32_t cost = (uint64_t)(micros() - start) * 1000 / TICKS_CALL_COUNT;
+        microsNs = std::min(microsNs, cost);
+
+        start = micros();
+        for (unsigned i = 0; i < TICKS_CALL_COUNT; ++i) {
+            sink = millis();
+        }
+        cost = (uint64_t)(micros() - start) * 1000 / TICKS_CALL_COUNT;
+        millisNs = std::min(millisNs, cost);
+
+        start = micros();
+        for (unsigned i = 0; i < TICKS_CALL_COUNT; ++i) {
+            sink = System.millis();
+        }
+        cost = (uint64_t)(micros() - start) * 1000 / TICKS_CALL_COUNT;
+        millis64Ns = std::min(millis64Ns, cost);
+
+        Particle.process();
+    }
+    (void)sink;
+
+    pushMailboxMsg(String::format("%u,%u,%u", microsNs, millisNs, millis64Ns), 5000);
+
+    assertLessOrEqual(microsNs, TICKS_MAX_CALL_COST_NS);
+    assertLessOrEqual(millisNs, TICKS_MAX_CALL_COST_NS);
+    assertLessOrEqual(millis64Ns, TICKS_MAX_CALL_COST_NS);
+}
+
+test(TICKS_05_micros_resolution_is_sub_millisecond)
+{
+    unsigned subMillisecond = 0;
+    system_tick_t last = micros();
+    for (unsigned i = 0; i < TICKS_RESOLUTION_SAMPLES; ++i) {
+        system_tick_t now = micros();
+        system_tick_t delta = now - last;
+        if (delta > 0 && delta < 1000) {
+            ++subMillisecond;
+        }
+        last = now;
+    }
+    assertMore(subMillisecond, 0u);
 }

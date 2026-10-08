@@ -15,6 +15,8 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define PARTICLE_USE_UNSTABLE_API
+
 #include "application.h"
 #include "unit-test/unit-test.h"
 
@@ -27,6 +29,7 @@
 #include <unistd.h>
 #endif
 
+#include <memory>
 #include <string.h>
 
 STARTUP(System.enableFeature(FEATURE_RETAINED_MEMORY));
@@ -51,11 +54,13 @@ extern "C" uintptr_t platform_backup_ram_all_end;
 
 namespace {
 
-uint32_t* findRetainedSeed() {
-    auto p = reinterpret_cast<uint32_t*>(platform_backup_ram_all_start);
-    const auto end = reinterpret_cast<uint32_t*>(&platform_backup_ram_all_end);
-    for (; p < end; ++p) {
-        if (*p == retainedSeedMagic && reinterpret_cast<const uint8_t*>(p)[4] == retainedSeedVersion) {
+uint8_t* findRetainedSeed() {
+    auto p = reinterpret_cast<uint8_t*>(platform_backup_ram_all_start);
+    const auto end = reinterpret_cast<uint8_t*>(&platform_backup_ram_all_end);
+    for (; p + retainedSeedStructSize <= end; ++p) {
+        uint32_t magic = 0;
+        memcpy(&magic, p, sizeof(magic));
+        if (magic == retainedSeedMagic && p[4] == retainedSeedVersion) {
             return p;
         }
     }
@@ -183,20 +188,16 @@ test(RNG_04_initial_generation_2) {
 }
 
 test(RNG_05_reseed_stress) {
-    // One auto-reseed per 10001 calls: reseed_interval is 10000
-    const int cycles = 50;
-    uint32_t reference = 0;
+    const int reseeds = 64;
+    uint32_t previous = HAL_RNG_GetRandomNumber();
     int same = 0;
-    for (int cycle = 0; cycle < cycles; ++cycle) {
-        uint32_t word = 0;
-        for (int i = 0; i < 10001; ++i) {
-            word = HAL_RNG_GetRandomNumber();
-        }
-        if (cycle == 1) {
-            reference = word;
-        } else if (cycle > 1 && word == reference) {
+    for (int i = 0; i < reseeds; ++i) {
+        assertEqual(0, hal_rng_reseed(nullptr));
+        const uint32_t word = HAL_RNG_GetRandomNumber();
+        if (word == previous) {
             ++same;
         }
+        previous = word;
     }
     assertLessOrEqual(same, 1);
 }
@@ -206,7 +207,7 @@ test(RNG_06_seed_corruption_data_zeros) {
     // warm path, seeded from garbage plus the fresh ADC refresh bytes
     const auto seed = findRetainedSeed();
     assertTrue(seed != nullptr);
-    memset(reinterpret_cast<uint8_t*>(seed) + retainedSeedDataOffset, 0, 32);
+    memset(seed + retainedSeedDataOffset, 0, 32);
     assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
     System.reset();
 }
@@ -218,7 +219,7 @@ test(RNG_07_seed_corruption_data_zeros_replay) {
     // make the two streams identical
     const auto seed = findRetainedSeed();
     assertTrue(seed != nullptr);
-    memset(reinterpret_cast<uint8_t*>(seed) + retainedSeedDataOffset, 0, 32);
+    memset(seed + retainedSeedDataOffset, 0, 32);
 
     uint32_t stream[8] = {};
     for (auto& value: stream) {
@@ -263,5 +264,122 @@ test(RNG_10_seed_corruption_struct_garbage_replay) {
         }
     }
     assertLessOrEqual(same, 2);
+}
+
+test(RNG_11_entropy_source_qualification) {
+    const size_t sampleCount = 262144;
+    const size_t chunkSize = 1024;
+    const size_t codeCount = 4096;
+
+    std::unique_ptr<uint32_t[]> histogram(new (std::nothrow) uint32_t[codeCount]());
+    assertTrue((bool)histogram);
+    std::unique_ptr<uint16_t[]> chunk(new (std::nothrow) uint16_t[chunkSize]);
+    assertTrue((bool)chunk);
+
+    uint64_t sum = 0;
+    uint64_t sumSquares = 0;
+    uint32_t ones = 0;
+    uint32_t transitions[4] = {};
+    uint32_t run = 0;
+    uint32_t maxRun = 0;
+    uint32_t aptReference = 0;
+    uint32_t aptCount = 0;
+    uint32_t aptPosition = 0;
+    uint32_t aptMax = 0;
+    uint32_t errors = 0;
+    uint32_t samples = 0;
+    int last = -1;
+
+    const uint32_t startedAt = micros();
+    for (size_t done = 0; done < sampleCount; done += chunkSize) {
+        if (hal_rng_entropy_read_raw(chunk.get(), chunkSize, nullptr)) {
+            ++errors;
+            continue;
+        }
+        for (size_t i = 0; i < chunkSize; ++i) {
+            const uint32_t code = chunk[i] & (codeCount - 1);
+            ++histogram[code];
+            sum += code;
+            sumSquares += (uint64_t)code * code;
+            ++samples;
+
+            const int bit = code & 1;
+            ones += bit;
+            if (last >= 0) {
+                ++transitions[last * 2 + bit];
+                run = (bit == last) ? run + 1 : 1;
+            } else {
+                run = 1;
+            }
+            last = bit;
+            if (run > maxRun) {
+                maxRun = run;
+            }
+
+            if (aptPosition == 0) {
+                aptReference = bit;
+                aptCount = 1;
+                aptPosition = 1;
+            } else {
+                if ((uint32_t)bit == aptReference) {
+                    ++aptCount;
+                }
+                if (++aptPosition == HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_WINDOW) {
+                    if (aptCount > aptMax) {
+                        aptMax = aptCount;
+                    }
+                    aptPosition = 0;
+                }
+            }
+        }
+    }
+    const uint32_t elapsed = micros() - startedAt;
+    assertMore(samples, 0u);
+
+    uint32_t distinct = 0;
+    uint32_t topCode = 0;
+    uint32_t topCount = 0;
+    uint32_t codeMin = codeCount;
+    uint32_t codeMax = 0;
+    for (uint32_t code = 0; code < codeCount; ++code) {
+        if (!histogram[code]) {
+            continue;
+        }
+        ++distinct;
+        if (code < codeMin) {
+            codeMin = code;
+        }
+        if (code > codeMax) {
+            codeMax = code;
+        }
+        if (histogram[code] > topCount) {
+            topCount = histogram[code];
+            topCode = code;
+        }
+    }
+
+    Variant stats;
+    stats.set("samples", samples);
+    stats.set("requested", (uint32_t)sampleCount);
+    stats.set("elapsed_us", elapsed);
+    stats.set("errors", errors);
+    stats.set("ones", ones);
+    stats.set("t00", transitions[0]);
+    stats.set("t01", transitions[1]);
+    stats.set("t10", transitions[2]);
+    stats.set("t11", transitions[3]);
+    stats.set("max_run", maxRun);
+    stats.set("apt_max", aptMax);
+    stats.set("apt_window", (uint32_t)HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_WINDOW);
+    stats.set("rct_cutoff", (uint32_t)HAL_RNG_ENTROPY_REPETITION_COUNT_CUTOFF);
+    stats.set("apt_cutoff", (uint32_t)HAL_RNG_ENTROPY_ADAPTIVE_PROPORTION_CUTOFF);
+    stats.set("code_min", codeMin);
+    stats.set("code_max", codeMax);
+    stats.set("code_distinct", distinct);
+    stats.set("code_top", topCode);
+    stats.set("code_top_count", topCount);
+    stats.set("code_sum", (double)sum);
+    stats.set("code_sum_squares", (double)sumSquares);
+    assertEqual(0, pushMailboxMsg(stats.toJSON(), 20000));
 }
 #endif // HAL_PLATFORM_RTL872X

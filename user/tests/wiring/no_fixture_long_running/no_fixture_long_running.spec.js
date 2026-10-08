@@ -23,6 +23,17 @@ test('DELAY_02_accuracy_is_within_tolerance', async () => {
 test('DELAY_03_app_events_are_processed_at_expected_rate_in_threaded_mode', async () => {
 });
 
+test('TICKS_04_call_cost_is_within_tolerance', async () => {
+  expect(device.mailBox).to.not.be.empty;
+  const msg = device.mailBox[0].d.split(',');
+  console.log(`micros() call cost: ${msg[0]}ns`);
+  console.log(`millis() call cost: ${msg[1]}ns`);
+  console.log(`System.millis() call cost: ${msg[2]}ns`);
+});
+
+test('TICKS_05_micros_resolution_is_sub_millisecond', async () => {
+});
+
 test('NETWORK_01_LargePacketsDontCauseIssues_ResolveMtu', async() => {
   expect(device.mailBox).to.not.be.empty;
   const msg = JSON.parse(device.mailBox[0].d);

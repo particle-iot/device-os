@@ -17,6 +17,8 @@
 
 #include "rng_hal.h"
 
+#include "system_error.h"
+
 #include "logging.h"
 
 #include "nrf_drv_rng.h"
@@ -32,4 +34,12 @@ uint32_t HAL_RNG_GetRandomNumber() {
     uint32_t val = 0;
     nrf_drv_rng_block_rand((uint8_t*)&val, sizeof(val));
     return val;
+}
+
+int hal_rng_reseed(void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int hal_rng_entropy_read_raw(uint16_t* samples, size_t count, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
 }

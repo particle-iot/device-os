@@ -37,6 +37,7 @@ const size_t ENTROPY_SIZE = 128;
 const size_t RETAINED_SEED_SIZE = 32;
 const size_t REFRESH_SIZE = 8;
 const int ENTROPY_READ_ATTEMPTS = 3;
+const int RESEED_INTERVAL = 1000000;
 const uint32_t RETAINED_SEED_MAGIC = 0x524e4753;
 const uint8_t RETAINED_SEED_VERSION = 1;
 
@@ -45,9 +46,10 @@ struct RetainedSeed {
     uint8_t version;
     uint8_t reserved[3];
     uint8_t data[RETAINED_SEED_SIZE];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(RetainedSeed) == 40, "Invalid retained seed size");
+static_assert(alignof(RetainedSeed) == 4, "Invalid retained seed alignment");
 
 retained_system RetainedSeed retainedSeed;
 
@@ -65,7 +67,6 @@ int readEntropy(uint8_t* data, size_t size, size_t sampleCount) {
             return ret;
         }
     }
-    PANIC_WITH_EXTRA(AssertionFailure, ret, "rng: entropy read failed");
     return ret;
 }
 
@@ -76,7 +77,12 @@ int entropyPoll(void*, unsigned char* data, size_t size) {
         seedMaterialReady = false;
         return SYSTEM_ERROR_NONE;
     }
-    return readEntropy(data, size, size * 8);
+    const int ret = readEntropy(data, size, size * 8);
+    if (ret) {
+        LOG(ERROR, "rng: reseed entropy read failed: %d", ret);
+        memset(data, 0, size);
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int initDrbg() {
@@ -93,9 +99,17 @@ int initDrbg() {
     if (haveRetainedSeed) {
         memcpy(seedMaterial, retainedSeed.data, sizeof(retainedSeed.data));
         retainedSeed.magic = 0;
-        readEntropy(seedMaterial + RETAINED_SEED_SIZE, REFRESH_SIZE, REFRESH_SIZE * 8);
+        const int ret = readEntropy(seedMaterial + RETAINED_SEED_SIZE, REFRESH_SIZE, REFRESH_SIZE * 8);
+        if (ret) {
+            LOG(ERROR, "rng: entropy refresh failed: %d", ret);
+            memset(seedMaterial + RETAINED_SEED_SIZE, 0, REFRESH_SIZE);
+        }
     } else {
-        readEntropy(seedMaterial, sizeof(seedMaterial), sizeof(seedMaterial) * 8);
+        const int ret = readEntropy(seedMaterial, sizeof(seedMaterial), sizeof(seedMaterial) * 8);
+        if (ret) {
+            PANIC_WITH_EXTRA(AssertionFailure, ret, "rng: entropy read failed");
+            return ret;
+        }
     }
     seedMaterialReady = true;
 
@@ -103,6 +117,7 @@ int initDrbg() {
     mbedtls_ctr_drbg_set_entropy_len(&drbg, sizeof(seedMaterial));
     CHECK(mbedtls_ctr_drbg_set_nonce_len(&drbg, 0));
     CHECK(mbedtls_ctr_drbg_seed(&drbg, entropyPoll, nullptr, nullptr, 0));
+    mbedtls_ctr_drbg_set_reseed_interval(&drbg, RESEED_INTERVAL);
 
     retainedSeed.magic = 0;
     CHECK(mbedtls_ctr_drbg_random(&drbg, retainedSeed.data, sizeof(retainedSeed.data)));
@@ -139,18 +154,29 @@ uint32_t HAL_RNG_GetRandomNumber() {
     return randomNumber();
 }
 
+int hal_rng_reseed(void* reserved) {
+    SPARK_ASSERT(!hal_interrupt_is_isr());
+    SPARK_ASSERT(drbgReady);
+    std::lock_guard<StaticRecursiveMutex> lk(drbgMutex);
+    return mbedtls_ctr_drbg_reseed(&drbg, nullptr, 0);
+}
+
 extern "C" int __wrap_rtw_get_random_bytes(void* data, uint32_t size) {
     CHECK_TRUE(data || !size, SYSTEM_ERROR_INVALID_ARGUMENT);
+    SPARK_ASSERT(!hal_interrupt_is_isr());
+    SPARK_ASSERT(drbgReady);
+    std::lock_guard<StaticRecursiveMutex> lk(drbgMutex);
     auto p = static_cast<uint8_t*>(data);
-    while (size >= sizeof(uint32_t)) {
-        const uint32_t value = HAL_RNG_GetRandomNumber();
-        memcpy(p, &value, sizeof(value));
-        p += sizeof(value);
-        size -= sizeof(value);
-    }
-    if (size) {
-        const uint32_t value = HAL_RNG_GetRandomNumber();
-        memcpy(p, &value, size);
+    for (uint32_t left = size; left; ) {
+        const size_t n = left < MBEDTLS_CTR_DRBG_MAX_REQUEST ? left : MBEDTLS_CTR_DRBG_MAX_REQUEST;
+        const int ret = mbedtls_ctr_drbg_random(&drbg, p, n);
+        if (ret) {
+            LOG(ERROR, "rng: drbg failure: %d", ret);
+            memset(data, 0, size);
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        p += n;
+        left -= n;
     }
     return SYSTEM_ERROR_NONE;
 }
