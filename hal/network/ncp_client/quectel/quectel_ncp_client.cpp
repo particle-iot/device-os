@@ -1454,6 +1454,20 @@ int QuectelNcpClient::initReady(ModemState state) {
         set2gAttenuation3dB();
     }
 
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_GL) {
+        auto resp = parser_.sendCommand("AT+QSIMSLEEP?");
+        int simSleep = 0;
+        r = CHECK_PARSER(resp.scanf("+QSIMSLEEP: %d", &simSleep));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(resp.readResult());
+        if (simSleep == 1) {
+            LOG(TRACE, "Disable SIM card power-saving function");
+            parser_.execCommand("AT$QCSIMCFG=\"SimPowerSave\",0");
+            parser_.execCommand("AT$QCSIMSLEEP=0");
+            CHECK_PARSER(parser_.execCommand("AT+QSIMSLEEP?"));
+        }
+    }
+
     auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
     if (state != ModemState::MuxerAtChannel) {
         // Cold Boot only, Warm Boot will skip the following block...
@@ -1500,7 +1514,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
 
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-        if (isQuecCat1Device()) {
+        if (isQuecCat1Device() && ncpId() != PLATFORM_NCP_QUECTEL_EG800Q_GL) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
     }
