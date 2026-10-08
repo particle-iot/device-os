@@ -20,6 +20,7 @@
 #include "sleep_hal.h"
 #include <chrono>
 #include <memory>
+#include <new>
 #include <string.h>
 #include <stdlib.h>
 #include "system_network.h"
@@ -203,25 +204,18 @@ public:
 
     // move assignment operator
     SystemSleepConfiguration& operator=(SystemSleepConfiguration&& config) {
-        valid_ = config.valid_;
-        memcpy(&config_, &config.config_, sizeof(hal_sleep_config_t));
-        config.config_.wakeup_sources = nullptr;
+        if (this != &config) {
+            freeWakeupSources();
+            valid_ = config.valid_;
+            memcpy(&config_, &config.config_, sizeof(hal_sleep_config_t));
+            config.config_.wakeup_sources = nullptr;
+        }
         return *this;
     }
 
     // Destructor
     ~SystemSleepConfiguration() {
-        // Free memory
-        auto wakeupSource = config_.wakeup_sources;
-        while (wakeupSource) {
-            auto next = wakeupSource->next;
-#if HAL_PLATFORM_RTL872X
-            system_pool_free(wakeupSource, nullptr);
-#else
-            delete wakeupSource;
-#endif
-            wakeupSource = next;
-        }
+        freeWakeupSources();
     }
 
     const hal_sleep_config_t* halConfig() const {
@@ -270,11 +264,7 @@ public:
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_GPIO, wakeup->next);
             }
             // Otherwise, configure this pin as wakeup source.
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_gpio_t*)system_pool_alloc(sizeof(hal_wakeup_source_gpio_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_gpio_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_gpio_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
@@ -326,11 +316,7 @@ public:
                 return *this;
             }
             // Otherwise, configure RTC as wakeup source.
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_rtc_t*)system_pool_alloc(sizeof(hal_wakeup_source_rtc_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_rtc_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_rtc_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
@@ -358,11 +344,7 @@ public:
                 return *this;
             }
             // Otherwise, configure analog pin as wakeup source.
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_lpcomp_t*)system_pool_alloc(sizeof(hal_wakeup_source_lpcomp_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_lpcomp_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_lpcomp_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
@@ -395,11 +377,7 @@ public:
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_USART, wakeup->next);
             }
             // Otherwise, configure USART as wakeup source.
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_usart_t*)system_pool_alloc(sizeof(hal_wakeup_source_usart_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_usart_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_usart_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
@@ -427,16 +405,12 @@ public:
                 }
                 wakeup = wakeupSourceFeatured(HAL_WAKEUP_SOURCE_TYPE_NETWORK, wakeup->next);
             }
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_network_t*)system_pool_alloc(sizeof(hal_wakeup_source_network_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_network_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_network_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
             }
-            wakeupSource->base.size = sizeof(hal_wakeup_source_gpio_t);
+            wakeupSource->base.size = sizeof(hal_wakeup_source_network_t);
             wakeupSource->base.version = HAL_SLEEP_VERSION;
             wakeupSource->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
             wakeupSource->base.next = config_.wakeup_sources;
@@ -456,11 +430,7 @@ public:
                 return *this;
             }
             // Otherwise, configure BLE as wakeup source.
-#if HAL_PLATFORM_RTL872X
-            auto wakeupSource = (hal_wakeup_source_base_t*)system_pool_alloc(sizeof(hal_wakeup_source_base_t), nullptr);
-#else
-            auto wakeupSource = new(std::nothrow) hal_wakeup_source_base_t();
-#endif
+            auto wakeupSource = allocWakeupSource<hal_wakeup_source_base_t>();
             if (!wakeupSource) {
                 valid_ = false;
                 return *this;
@@ -476,6 +446,33 @@ public:
 #endif // HAL_PLATFORM_BLE
 
 private:
+    template<typename T>
+    static T* allocWakeupSource() {
+#if HAL_PLATFORM_RTL872X
+        auto wakeupSource = static_cast<T*>(system_pool_alloc(sizeof(T), nullptr));
+#else
+        auto wakeupSource = static_cast<T*>(::operator new(sizeof(T), std::nothrow));
+#endif
+        if (wakeupSource) {
+            memset(wakeupSource, 0, sizeof(T));
+        }
+        return wakeupSource;
+    }
+
+    void freeWakeupSources() {
+        auto wakeupSource = config_.wakeup_sources;
+        while (wakeupSource) {
+            auto next = wakeupSource->next;
+#if HAL_PLATFORM_RTL872X
+            system_pool_free(wakeupSource, nullptr);
+#else
+            ::operator delete(wakeupSource);
+#endif
+            wakeupSource = next;
+        }
+        config_.wakeup_sources = nullptr;
+    }
+
     hal_sleep_config_t config_;
     bool valid_;
 };
