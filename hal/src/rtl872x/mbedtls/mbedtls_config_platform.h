@@ -301,7 +301,8 @@
  *
  * Uncomment this macro to store the AES tables in ROM.
  */
-#define MBEDTLS_AES_ROM_TABLES
+// part1 .rodata is in PSRAM, generated tables land in .bss which is in SRAM: 3x faster AES
+//#define MBEDTLS_AES_ROM_TABLES
 
 /**
  * \def MBEDTLS_CAMELLIA_SMALL_MEMORY

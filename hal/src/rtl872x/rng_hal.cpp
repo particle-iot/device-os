@@ -163,16 +163,20 @@ int hal_rng_reseed(void* reserved) {
 
 extern "C" int __wrap_rtw_get_random_bytes(void* data, uint32_t size) {
     CHECK_TRUE(data || !size, SYSTEM_ERROR_INVALID_ARGUMENT);
+    SPARK_ASSERT(!hal_interrupt_is_isr());
+    SPARK_ASSERT(drbgReady);
+    std::lock_guard<StaticRecursiveMutex> lk(drbgMutex);
     auto p = static_cast<uint8_t*>(data);
-    while (size >= sizeof(uint32_t)) {
-        const uint32_t value = HAL_RNG_GetRandomNumber();
-        memcpy(p, &value, sizeof(value));
-        p += sizeof(value);
-        size -= sizeof(value);
-    }
-    if (size) {
-        const uint32_t value = HAL_RNG_GetRandomNumber();
-        memcpy(p, &value, size);
+    for (uint32_t left = size; left; ) {
+        const size_t n = left < MBEDTLS_CTR_DRBG_MAX_REQUEST ? left : MBEDTLS_CTR_DRBG_MAX_REQUEST;
+        const int ret = mbedtls_ctr_drbg_random(&drbg, p, n);
+        if (ret) {
+            LOG(ERROR, "rng: drbg failure: %d", ret);
+            memset(data, 0, size);
+            return SYSTEM_ERROR_UNKNOWN;
+        }
+        p += n;
+        left -= n;
     }
     return SYSTEM_ERROR_NONE;
 }
