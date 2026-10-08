@@ -118,8 +118,10 @@ function markovMinEntropy(s) {
     const L = 128;
     const logPMax = Math.max(
         lg(p0) + (L - 1) * l00,
+        lg(p0) + (L / 2) * l01 + (L / 2 - 1) * l10,
         lg(p0) + l01 + (L - 2) * l11,
         lg(p1) + l10 + (L - 2) * l00,
+        lg(p1) + (L / 2) * l10 + (L / 2 - 1) * l01,
         lg(p1) + (L - 1) * l11);
     return Math.min(-logPMax / L, 1);
 }
