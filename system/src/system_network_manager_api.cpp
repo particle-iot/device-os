@@ -62,11 +62,14 @@ namespace {
 std::atomic_bool s_forcedDisconnect(false);
 
 void networkDisconnectImpl(network_handle_t network, network_disconnect_reason reason) {
-    // TODO: Identify the interface which is actually used by the cloud connection
     if (network == NETWORK_INTERFACE_ALL) {
         cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
         SPARK_WLAN_STARTED = 0;
         s_forcedDisconnect = true;
+    } else if (network == ConnectionManager::instance()->getCloudConnectionNetwork()) {
+        // The interface used by the cloud connection is still up at this point, disconnect gracefully
+        // before bringing it down. Loss of the interface for any other reason is handled in manage_cloud_connection()
+        cloud_disconnect(CLOUD_DISCONNECT_GRACEFULLY, reason);
     }
 
     if (network != NETWORK_INTERFACE_ALL) {
