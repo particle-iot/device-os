@@ -22,6 +22,8 @@
 #include "softcrc32.h"
 #include "check.h"
 #include "storage_hal.h"
+#include "dct.h"
+#include "str_util.h"
 #include "muon_test_util.h"
 
 namespace {
@@ -140,6 +142,17 @@ test(02_clear_env) {
     System.reset();
 }
 
+#endif // HAL_PLATFORM_ENV
+
+test(02a_sync_device_public_key) {
+    uint8_t key[DCT_ALT_DEVICE_PUBLIC_KEY_SIZE] = {};
+    assertEqual(dct_read_app_data_copy(DCT_ALT_DEVICE_PUBLIC_KEY_OFFSET, key, sizeof(key)), 0);
+    char hex[sizeof(key) * 2 + 1] = {};
+    toHex(key, sizeof(key), hex, sizeof(hex));
+    assertEqual(0, pushMailboxMsg(hex, 5000));
+}
+
+#if HAL_PLATFORM_ENV
 test(03_restore_cloud_after_env_clear) {
     Particle.disconnect(CloudDisconnectOptions().clearSession(true));
     Particle.connect();

@@ -8,10 +8,16 @@ const Particle = require('particle-api-js');
 
 const { waitFlashStatusEvent, flash } = require('../test/ota');
 const { readFile } = require('fs').promises;
+const { createPublicKey } = require('crypto');
 
 let device;
 let deviceId;
 let api;
+
+function devicePublicKeyPem(hex) {
+    const der = Buffer.from(hex.replace(/^(00)+/, ''), 'hex');
+    return createPublicKey({ key: der, format: 'der', type: 'spki' }).export({ format: 'pem', type: 'spki' });
+}
 
 before(function() {
     api = new Particle({
@@ -37,6 +43,15 @@ test('01_remove_static_ip', async function () {
 test('02_clear_env', async function () {
     await unsetProductVariables(api, deviceId);
     await unsetDeviceVariables(api, deviceId);
+});
+
+test('02a_sync_device_public_key', async function () {
+    const key = devicePublicKeyPem(device.mailBox.pop().d);
+    try {
+        await api.sendPublicKey({ deviceId, key, algorithm: 'ecc' });
+    } catch (err) {
+        console.log(`Failed to provision device public key: ${err.statusCode || ''} ${err.shortErrorDescription || err.message}`);
+    }
 });
 
 test('03_restore_cloud_after_env_clear', async function () {
