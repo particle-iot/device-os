@@ -1,3 +1,55 @@
+## 6.6.0
+
+### FEATURES
+
+- [Cellular] eSIM-aware IDLE cellular state: with no enabled eSIM profile the modem stays on and reachable over AT but does not try to register [#2953](https://github.com/particle-iot/device-os/pull/2953)
+- [system] Allow reading and clearing the last panic info over USB [#2949](https://github.com/particle-iot/device-os/pull/2949)
+
+### ENHANCEMENTS
+
+- [Cellular] Registration backoff for deactivated SIMs: after the first hour of failed registration attempts, retries space out to 1/2/4 hours with the radio off [#2959](https://github.com/particle-iot/device-os/pull/2959)
+- [Gen 4] RNG: switch to mbedTLS CTR_DRBG over an ADC-based entropy source [#2950](https://github.com/particle-iot/device-os/pull/2950) [#2965](https://github.com/particle-iot/device-os/pull/2965)
+- [system] Re-send the system describe when the ICCID changes (e.g. an eSIM profile switch) [#2953](https://github.com/particle-iot/device-os/pull/2953)
+- [Gen 4] Backup RAM persists to the filesystem instead of a dedicated flash page [#2948](https://github.com/particle-iot/device-os/pull/2948)
+- [build] Parallel build support (`make -jXX`) and ccache [#2941](https://github.com/particle-iot/device-os/pull/2941)
+- [system] Non-blocking cloud handshake: the system loop keeps running while the DTLS and CoAP handshake is in progress [#2937](https://github.com/particle-iot/device-os/pull/2937)
+- [Gen 4] Enable mbedTLS restartable ECP so handshake ECC operations don't block the system loop [#2964](https://github.com/particle-iot/device-os/pull/2964)
+- [Gen 4] Speed up AES operations by moving AES tables from PSRAM into SRAM (`MBEDTLS_AES_ROM_TABLES` off) [#2965](https://github.com/particle-iot/device-os/pull/2965)
+- Generate a heap panic if heap operation would cause a deadlock due to disabled scheduler [#2944](https://github.com/particle-iot/device-os/pull/2944) [#2958](https://github.com/particle-iot/device-os/pull/2958)
+
+### BUGFIXES
+
+- [Cellular] Detect and recover from an unresponsive modem AT interface while connected, reset connection state on every `disconnect()` exit path [#2940](https://github.com/particle-iot/device-os/pull/2940)
+- [Cellular] [R510] Allow more time for the modem to answer AT after a parser error before hard resetting it [#2940](https://github.com/particle-iot/device-os/pull/2940)
+- [Cellular] `cellular_device_info()` uses the cached info without taking the NCP client lock when the modem is off [#2952](https://github.com/particle-iot/device-os/pull/2952)
+- [Cellular] [Quectel] APDU channel reliability fixes [#2953](https://github.com/particle-iot/device-os/pull/2953)
+- [M SoM] Fix power leakage in STOP/ULP sleep mode (PB12/SWD_DATA pull-ups) [#2936](https://github.com/particle-iot/device-os/pull/2936)
+- [Gen 3] usb: fix non-blocking `Serial` writes asserting on a full TX buffer and receiving with a null buffer [#2939](https://github.com/particle-iot/device-os/pull/2939)
+- [Gen 3] [Gen 4] Fix malloc deadlocks when allocating with the scheduler suspended (SPI/I2C init, `TCPServer` constructor), `__malloc_lock` trylocks the mutex before panicking [#2944](https://github.com/particle-iot/device-os/pull/2944) [#2958](https://github.com/particle-iot/device-os/pull/2958)
+- [Gen 4] backup ram: initialize the retained system area on cold boot [#2948](https://github.com/particle-iot/device-os/pull/2948)
+- [third_party] littlefs: fix truncate followed by a write tripping the pcache assert [#2947](https://github.com/particle-iot/device-os/pull/2947)
+- [third_party] mbedtls: security fixes backported from 2.22.0 [#2942](https://github.com/particle-iot/device-os/pull/2942)
+- [system] ledger: fix a HardFault on cloud disconnect during a ledger update, encode the result and error message in responses [#2957](https://github.com/particle-iot/device-os/pull/2957)
+- [system] Disconnect from the cloud when the network interface carrying the cloud connection goes down and resume the session on reconnect; `Cellular.disconnect()` / `WiFi.disconnect()` on that interface now disconnect from the cloud first [#2964](https://github.com/particle-iot/device-os/pull/2964)
+- [wiring] Fix `SystemSleepConfiguration` move assignment leaking wakeup sources (memory lost on every sleep cycle when reusing a configuration); fix network wakeup source/reason sizes and `SystemSleepResult` self-assignment [#2968](https://github.com/particle-iot/device-os/pull/2968)
+- [wiring] `pinAvailable()` no longer initializes `SPI`; pins used by SPI/I2C/UART peripherals are detected from the pin function on Gen 3 and Gen 4 [#2961](https://github.com/particle-iot/device-os/pull/2961)
+- [Gen 4] I2C: fix slave mode SCL hold and interrupt storm [#2960](https://github.com/particle-iot/device-os/pull/2960)
+- [Cellular] [Quectel] EG91: recover from an unresponsive AT interface during PPP data dial [#2962](https://github.com/particle-iot/device-os/pull/2962)
+- [Cellular] `cellular_device_info()` ignores and does not cache invalid ICCIDs, falls back to cached info if the modem query fails [#2962](https://github.com/particle-iot/device-os/pull/2962)
+- [third_party] FreeRTOS: `vEventGroupDelete()` frees memory outside the scheduler-suspended section [#2965](https://github.com/particle-iot/device-os/pull/2965)
+
+### INTERNAL
+
+- [build] Back-write the real module hash and CRC into the linked ELF files, so an ELF can be matched against the module hash a device reports [#2949](https://github.com/particle-iot/device-os/pull/2949)
+- [Gen 3] Flash space savings: disable x509 certificate parsing on LOW_FLASH_SPACE platforms, compact USB string mapping table in USB driver [#2954](https://github.com/particle-iot/device-os/pull/2954)
+- [Tracker] Stub out Wi-Fi code unused on scan-only platforms to save flash space [#2954](https://github.com/particle-iot/device-os/pull/2954)
+- [Gen 3] NFC driver can be compiled out for debugging purposes [#2953](https://github.com/particle-iot/device-os/pull/2953)
+- [ci] Faster CI builds [#2941](https://github.com/particle-iot/device-os/pull/2941)
+- [test] Env var suite fixes: drop the empty env var set OTA workaround, make sure product level env vars are cleared [#2943](https://github.com/particle-iot/device-os/pull/2943) [#2955](https://github.com/particle-iot/device-os/pull/2955)
+- [hal] `HAL_PLATFORM_STRICT_HEAP_LOCK_PANIC` debug option to panic on any heap access while the scheduler is suspended [#2963](https://github.com/particle-iot/device-os/pull/2963)
+- [ci] Don't ship test ELF files in CI release artifacts [#2956](https://github.com/particle-iot/device-os/pull/2956)
+- [test] Sync the device public key before running tests, entropy source qualification test, EG91 PPP stall and power saving test reliability [#2965](https://github.com/particle-iot/device-os/pull/2965) [#2962](https://github.com/particle-iot/device-os/pull/2962) [#2967](https://github.com/particle-iot/device-os/pull/2967)
+
 ## 6.5.0
 
 ### FEATURES

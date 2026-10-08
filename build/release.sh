@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o errexit -o pipefail -o noclobber -o nounset
 
-VERSION=${VERSION:="6.5.0"}
+VERSION=${VERSION:="6.6.0"}
 MAKE_JOBS=${MAKE_JOBS:-1}
 if [ "$MAKE_JOBS" = "nproc" ]; then
     MAKE_JOBS=$(nproc)
