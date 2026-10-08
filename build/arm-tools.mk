@@ -5,6 +5,7 @@
 # Define the compiler/tools prefix
 GCC_PREFIX ?= arm-none-eabi-
 
+include $(COMMON_BUILD)/os.mk
 include $(COMMON_BUILD)/common-tools.mk
 
 AR = $(GCC_ARM_PATH)$(GCC_PREFIX)gcc-ar
@@ -113,7 +114,12 @@ USE_LTO=1
 endif
 
 ifeq ($(USE_LTO),1)
+ifeq ($(MAKE_OS),WINDOWS)
+# mingw lto-wrapper passes an invalid -j to cygwin make with -flto=auto
+LDFLAGS += -flto -Os -fuse-linker-plugin
+else
 LDFLAGS += -flto=auto -Os -fuse-linker-plugin
+endif
 CFLAGS += -fuse-linker-plugin
 else
 # Be explicit and disable LTO
