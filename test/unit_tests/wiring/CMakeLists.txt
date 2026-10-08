@@ -46,6 +46,7 @@ add_executable( ${target_name}
   map.cpp
   variant.cpp
   buffer.cpp
+  sleep_configuration.cpp
 )
 
 # Set defines specific to target

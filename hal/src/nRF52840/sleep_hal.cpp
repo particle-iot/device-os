@@ -258,11 +258,13 @@ static int constructLpcompWakeupReason(hal_wakeup_source_base_t** wakeupReason, 
 static int constructNetworkWakeupReason(hal_wakeup_source_base_t** wakeupReason, network_interface_index index) {
     auto network = (hal_wakeup_source_network_t*)malloc(sizeof(hal_wakeup_source_network_t));
     if (network) {
-        network->base.size = sizeof(hal_wakeup_source_base_t);
+        network->base.size = sizeof(hal_wakeup_source_network_t);
         network->base.version = HAL_SLEEP_VERSION;
         network->base.type = HAL_WAKEUP_SOURCE_TYPE_NETWORK;
         network->base.next = nullptr;
         network->index = index;
+        network->flags = 0;
+        network->reserved = 0;
         *wakeupReason = reinterpret_cast<hal_wakeup_source_base_t*>(network);
     } else {
         return SYSTEM_ERROR_NO_MEMORY;

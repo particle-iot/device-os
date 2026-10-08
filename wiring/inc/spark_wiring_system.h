@@ -220,9 +220,11 @@ public:
     }
 
     SystemSleepResult& operator=(const SystemSleepResult& result) {
-        error_ = result.error_;
-        compatResult_ = result.compatResult_;
-        copyWakeupSource(result.wakeupSource_);
+        if (this != &result) {
+            error_ = result.error_;
+            compatResult_ = result.compatResult_;
+            copyWakeupSource(result.wakeupSource_);
+        }
         return *this;
     }
 
@@ -239,12 +241,14 @@ public:
     }
 
     SystemSleepResult& operator=(SystemSleepResult&& result) {
-        error_ = result.error_;
-        compatResult_ = result.compatResult_;
-        freeWakeupSourceMemory();
-        if (result.wakeupSource_) {
-            wakeupSource_ = result.wakeupSource_;
-            result.wakeupSource_ = nullptr;
+        if (this != &result) {
+            error_ = result.error_;
+            compatResult_ = result.compatResult_;
+            freeWakeupSourceMemory();
+            if (result.wakeupSource_) {
+                wakeupSource_ = result.wakeupSource_;
+                result.wakeupSource_ = nullptr;
+            }
         }
         return *this;
     }
