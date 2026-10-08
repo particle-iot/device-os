@@ -140,6 +140,7 @@ const system_tick_t QUECTEL_CGSN_TIMEOUT = 10 * 1000;
 const system_tick_t QUECTEL_CGMR_TIMEOUT = 10 * 1000;
 const system_tick_t QUECTEL_QINDCFG_TIMEOUT = 10 * 1000;
 const system_tick_t QUECTEL_CEREG_TIMEOUT = 10 * 1000;
+const system_tick_t QUECTEL_DIAL_TIMEOUT = 3 * 60 * 1000;
 
 const auto QUECTEL_CFUN_MAX_ATTEMPTS = 10;
 
@@ -151,7 +152,6 @@ const auto HW_VERSION_UNDEFINED = 0xFF;
 // V004 - 0x01 (enable hwfc)
 const auto HAL_VERSION_B5SOM_V003 = 0x00;
 
-const auto ICCID_MAX_LENGTH = 20;
 
 using LacType = decltype(CellularGlobalIdentity::location_area_code);
 using CidType = decltype(CellularGlobalIdentity::cell_id);
@@ -164,6 +164,9 @@ const int CCID_MAX_RETRY_CNT = 2;
 
 const int DATA_MODE_BREAK_ATTEMPTS = 5;
 const int PPP_ECHO_REQUEST_ATTEMPTS = 10;
+const int DIAL_ATTEMPTS = 10;
+const system_tick_t QUECTEL_DIAL_AT_PROBE_EG91_TIMEOUT = 1000;
+const system_tick_t QUECTEL_DIAL_AT_PROBE_TIMEOUT = 2000;
 const int CGDCONT_ATTEMPTS = 5;
 
 const int COPS_MAX_RETRY_CNT = 3;
@@ -411,7 +414,7 @@ int QuectelNcpClient::on() {
 // Caller must hold the client lock.
 int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
     const bool recovering = (reason != ModemPowerReason::ModemOff && reason != ModemPowerReason::Unknown);
-    int r = SYSTEM_ERROR_NONE;
+    int softPowerOffResult = SYSTEM_ERROR_NONE;
 
     if (recovering) {
         LOG(WARN, "Resetting the modem due to %s", reason == ModemPowerReason::AtUnresponsive ?
@@ -422,7 +425,7 @@ int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
         ncpState(NcpState::OFF);
     } else {
         // Try using AT command to turn off the modem first.
-        r = modemSoftPowerOff();
+        softPowerOffResult = modemSoftPowerOff();
     }
 
     // Disable ourselves/channel, so that the muxer can potentially stop faster non-gracefully
@@ -439,10 +442,7 @@ int QuectelNcpClient::configModemPowerState(ModemPowerReason reason) {
         // Disable voltage translator
         modemSetUartState(false);
 
-        if (!r) {
-            LOG(TRACE, "Soft power off modem success");
-            // WARN: We assume that the modem can turn off itself reliably.
-        } else {
+        if (softPowerOffResult != SYSTEM_ERROR_NONE) {
             // Power down using hardware
             if (modemPowerOff() != SYSTEM_ERROR_NONE) {
                 LOG(ERROR, "Failed to turn off");
@@ -672,13 +672,8 @@ int QuectelNcpClient::getIccidImpl(char* buf, size_t size) {
     CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
-    auto iccidLen = strlen(iccid);
-    // Strip padding F, as for certain SIMs Quectel's AT+CCID does not strip it on its own
-    if (iccidLen == ICCID_MAX_LENGTH && (iccid[iccidLen - 1] == 'F' || iccid[iccidLen - 1] == 'f')) {
-        iccid[iccidLen - 1] = '\0';
-        --iccidLen;
-    }
-    size_t n = std::min(iccidLen, size);
+    stripIccidPadding(iccid);
+    size_t n = std::min(strlen(iccid), size);
     memcpy(buf, iccid, n);
     if (size > 0) {
         if (n == size) {
@@ -1235,8 +1230,16 @@ int QuectelNcpClient::waitReady(bool powerOn) {
         // Disable voltage translator
         modemSetUartState(false);
 
-        // Hard reset the modem
-        modemHardReset(true);
+        if (isQuecEg91xDevice()) {
+            // A hard reset brings this one straight back into the same stalled PPP connect, so take
+            // it down on the power pin instead and let it cold start
+            if (modemPowerOff() != SYSTEM_ERROR_NONE) {
+                modemHardReset(true);
+            }
+        } else {
+            // Hard reset the modem
+            modemHardReset(true);
+        }
         ncpState(NcpState::OFF);
 
         return SYSTEM_ERROR_INVALID_STATE;
@@ -1565,6 +1568,14 @@ bool QuectelNcpClient::isQuecCat1Device() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA);
+}
+
+bool QuectelNcpClient::isQuecEg91xDevice() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG91_E ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
 }
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
@@ -2264,6 +2275,25 @@ void QuectelNcpClient::ncpPowerState(NcpPowerState state) {
     }
 }
 
+int QuectelNcpClient::recoverAtWithDataChannelBreak() {
+    exitDataModeWithDtr();
+    // +++ needs 1s of silence on either side of it. The AT probe in enterDataMode() that
+    // sent us here covers the leading second, skipAll covers the trailing one.
+    const char breakCmd[] = "+++";
+    muxerDataStream_->write(breakCmd, sizeof(breakCmd) - 1);
+    skipAll(muxerDataStream_.get(), (1000 + 100));
+
+    if (waitAtResponse(parser_, 1000, 1000) != 0) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    // The dial goes out on the data channel, so that has to be back in command mode too
+    dataParser_.reset();
+    if (waitAtResponse(dataParser_, 1000, 1000) != 0) {
+        return SYSTEM_ERROR_TIMEOUT;
+    }
+    return SYSTEM_ERROR_NONE;
+}
+
 int QuectelNcpClient::enterDataMode() {
     CHECK_TRUE(connectionState() == NcpConnectionState::CONNECTED, SYSTEM_ERROR_INVALID_STATE);
     const NcpClientLock lock(this);
@@ -2373,19 +2403,35 @@ int QuectelNcpClient::enterDataMode() {
     }
 
     if (!ok) {
-        auto resp = dataParser_.sendCommand(3 * 60 * 1000, "ATD*99***1#");
-        if (resp.hasNextLine()) {
-            memset(buf, 0, sizeof(buf));
-            CHECK(resp.readLine(buf, sizeof(buf)));
-            if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
-                return SYSTEM_ERROR_UNKNOWN;
+        for (int attempt = 0; attempt < DIAL_ATTEMPTS; attempt++) {
+            auto resp = dataParser_.sendCommand(QUECTEL_DIAL_TIMEOUT, "ATD*99***1#");
+            if (resp.hasNextLine()) {
+                memset(buf, 0, sizeof(buf));
+                CHECK(resp.readLine(buf, sizeof(buf)));
+                if (strncmp(buf, connectResponse, sizeof(connectResponse) - 1)) {
+                    return SYSTEM_ERROR_UNKNOWN;
+                }
+            } else {
+                // We've got a final response code
+                CHECK(resp.readResult());
+                // This is not a critical failure
+                ok = true;
+                return SYSTEM_ERROR_NOT_ALLOWED;
             }
-        } else {
-            // We've got a final response code
-            CHECK(resp.readResult());
-            // This is not a critical failure
-            ok = true;
-            return SYSTEM_ERROR_NOT_ALLOWED;
+
+            const bool eg91x = isQuecEg91xDevice();
+            const auto probeTimeout = eg91x
+                    ? QUECTEL_DIAL_AT_PROBE_EG91_TIMEOUT
+                    : QUECTEL_DIAL_AT_PROBE_TIMEOUT + (QUECTEL_DIAL_AT_PROBE_TIMEOUT * attempt);
+            // EG91x gets one short probe, the others retry inside the window
+            if (waitAtResponse(parser_, probeTimeout, eg91x ? probeTimeout : QUECTEL_DIAL_AT_PROBE_TIMEOUT) == 0) {
+                break;
+            }
+            // skips attempting recovery on last attempt
+            if (attempt + 1 >= DIAL_ATTEMPTS || recoverAtWithDataChannelBreak() != SYSTEM_ERROR_NONE) {
+                ready_ = false; // AT+QPOWD would just time out
+                return SYSTEM_ERROR_INVALID_STATE;
+            }
         }
     }
 

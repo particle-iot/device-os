@@ -18,12 +18,15 @@ HandshakeState handshakeState;
 
 }
 
+// Defined in cellular.cpp, which builds alongside this one
+void connect_to_cloud(system_tick_t timeout);
+
 #if HAL_PLATFORM_CLOUD_UDP
 #if HAL_PLATFORM_CELLULAR
 
 test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshake) {
-    Particle.connect();
-    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
+    assertTrue(Particle.connected());
 
     auto evHandler = [](system_event_t event, int param, void* ctx) {
         if (event == cloud_status) {
@@ -48,6 +51,7 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
 #if HAL_PLATFORM_NCP_AT
     // CFUN=0 is the same as CFUN=0,0 for R410.  Done this way because R510 errors with CFUN=0,0
     assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=0\r\n"));
+    delay(5000);
     // Force a publish just in case
     (void)Particle.publish("test", "test");
     assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+CFUN=1,0\r\n"));
@@ -60,11 +64,13 @@ test(CLOUD_05_loss_of_cellular_network_connectivity_does_not_cause_full_handshak
     // to work better.
     if (devInfo.dev == DEV_SARA_R410) {
         assertEqual((int)RESP_OK, Cellular.command(UBLOX_COPS_TIMEOUT, "AT+COPS=2,0\r\n"));
+        delay(5000);
         // Force a publish just in case
         (void)Particle.publish("test", "test");
         assertEqual((int)RESP_OK, Cellular.command(UBLOX_COPS_TIMEOUT, "AT+COPS=0,0\r\n"));
     } else {
         assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+UPSDA=0,4\r\n"));
+        delay(5000);
         // Force a publish just in case
         (void)Particle.publish("test", "test");
         assertEqual((int)RESP_OK, Cellular.command(UBLOX_CFUN_TIMEOUT, "AT+UPSDA=0,3\r\n"));

@@ -612,6 +612,7 @@ int SaraNcpClient::getIccidImpl(char* buf, size_t size) {
     CHECK_TRUE(r == 1, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
     r = CHECK_PARSER(resp.readResult());
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_AT_NOT_OK);
+    stripIccidPadding(iccid);
     size_t n = std::min(strlen(iccid), size);
     memcpy(buf, iccid, n);
     if (size > 0) {

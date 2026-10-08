@@ -12,6 +12,8 @@ constexpr system_tick_t CLOUD_DISCONNECT_TIMEOUT = 1 * 60 * 1000;
 constexpr uint32_t WAIT_FOR_LOW_POWER_ACTIVE_MS = 20000;
 constexpr uint32_t WAIT_FOR_LOW_POWER_MEAS_MS = 10000;
 constexpr uint32_t LOW_POWER_ATTEMPTS_MAX = 10; // XXX: extreme cases take up to 2.5 minutes to drop into low power mode
+constexpr system_tick_t UPSV_QUERY_TIMEOUT = 10000;
+constexpr int UPSV_QUERY_ATTEMPTS = 3;
 constexpr char skip_test_msg[] = "skip_test";
 constexpr char sleeping_msg[] = "sleeping";
 int ncpId = DEV_UNKNOWN;
@@ -47,11 +49,19 @@ void formatLowPower(char* buf, size_t size) {
     Log.info("%s", buf);
 }
 
-// Note: Wakes the modem, so only call once a measurement window has closed.
+// Note: Wakes the modem, so only call once a measurement window has closed
+//
+// Retry a few times in case modem is in low power mode and needs to be woken up
 int readUpsvMode() {
-    int mode = -1;
-    Cellular.command(upsvCallback, &mode, 10000, "AT+UPSV?");
-    return mode;
+    for (int i = 0; i < UPSV_QUERY_ATTEMPTS; i++) {
+        int mode = -1;
+        Cellular.command(upsvCallback, &mode, UPSV_QUERY_TIMEOUT, "AT+UPSV?");
+        if (mode >= 0) {
+            return mode;
+        }
+        Log.warn("AT+UPSV? attempt %d/%d went unanswered", i + 1, UPSV_QUERY_ATTEMPTS);
+    }
+    return -1;
 }
 
 } // namespace
@@ -205,6 +215,8 @@ test(POWER_SAVING_01_particle_publish_publishes_an_event_after_low_power_active)
     formatLowPower(lpMsg, sizeof(lpMsg));
     pushMailboxMsg(lpMsg, 5000);
 
+    // Make sure we are still connected and idle
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
     // Not deterministic that the modem enters low power; it is deterministic that Device OS set it.
     assertEqual(readUpsvMode(), 1);
     assertTrue(publishResult);
@@ -240,6 +252,8 @@ test(POWER_SAVING_02_register_function_and_connect_to_cloud) {
     formatLowPower(lpMsg, sizeof(lpMsg));
     pushMailboxMsg(lpMsg, 5000);
 
+    // Make sure we are still connected and idle
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
     // Not deterministic that the modem enters low power; it is deterministic that Device OS set it.
     assertEqual(readUpsvMode(), 1);
 }
