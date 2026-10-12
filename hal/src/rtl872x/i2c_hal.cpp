@@ -187,6 +187,8 @@ public:
         enableImpl(true);
 
         if (i2cInitStruct_.I2CMaster == I2C_SLAVE_MODE) {
+            slaveStatus_ = I2C_SLAVE_STOPPED;
+            slaveRxCacheLen_ = 0;
             slaveIntConfigImpl(true);
         }
 
@@ -291,7 +293,7 @@ public:
             enableImpl(false);
             state_ = HAL_I2C_STATE_DISABLED;
         }
-        i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_100KHZ) ? I2C_SS_MODE : I2C_FS_MODE);
+        i2cInitStruct_.I2CSpdMod = ((speed == CLOCK_SPEED_400KHZ) ? I2C_FS_MODE : I2C_SS_MODE );
         i2cInitStruct_.I2CClk    = ((speed == CLOCK_SPEED_100KHZ) ? 100 :
                                     (speed < CLOCK_SPEED_100KHZ && speed >= CLOCK_SPEED_10KHZ) ? CEIL_DIV(speed, 1000) : 400);
         if (enabled) {
@@ -566,25 +568,9 @@ private:
         return true;
     }
 
-    bool handleStartStop() {
-        // These bits may be both set in single ISR
-        // start | stop
-        //   0   |   1    : STOPPED
-        //   1   |   0    : RESTARTED
-        //   1   |   1    : STOPPED -> STARTED (most likely happen) or RESTARTED -> STOPPED
-        uint32_t intStatus = getIntStatusImpl();
-        if (isIntStartDetectedImpl(intStatus) || isIntStopDetectedImpl(intStatus)) {
-            clearStartDetectedIntImpl();
-            clearStopDetectedIntImpl();
-            if (isIntStartDetectedImpl(intStatus) && !isIntStopDetectedImpl(intStatus)) {
-                slaveStatus_ = I2C_SLAVE_RESTARTED;
-            } else if (isIntStartDetectedImpl(intStatus)) {
-                slaveStatus_ = I2C_SLAVE_STARTED;
-                // FIXME: It might be RESTARTED -> STOPPED
-            } else {
-                slaveStatus_ = I2C_SLAVE_STOPPED;
-            }
-            return true;
+    void slaveEndTx() {
+        if (slaveStatus_ == I2C_SLAVE_TX) {
+            txBuffer_.reset();
         }
     }
 
@@ -617,8 +603,8 @@ private:
     }
 
     void slaveDrainRxFifo() {
-        while (I2C_CheckFlagState(i2cDev_, (BIT_IC_STATUS_RFNE | BIT_IC_STATUS_RFF))) {
-            uint8_t data = (uint8_t)I2C_ReceiveData(i2cDev_);
+        while (isReadableImpl()) {
+            uint8_t data = (uint8_t)readByteImpl();
             if (slaveRxCacheLen_ < slaveRxCacheDepth_) {
                 slaveRxCache_[slaveRxCacheLen_++] = data;
             }
@@ -636,29 +622,6 @@ private:
             slaveRxCacheLen_ -= len;
             std::memmove(slaveRxCache_.get(), &slaveRxCache_[len], slaveRxCacheLen_);
         }
-    }
-
-    // Return:
-    // 1: some of the read data belongs to next session
-    // 0: all of the read data belongs the current session
-    bool slaveRead() {
-        uint16_t reportLen = 0;
-        uint32_t intStatus;
-        while (isReadableImpl()) {
-            slaveRxCache_[slaveRxCacheLen_++] = (uint8_t)readByteImpl();
-            intStatus = getIntStatusImpl();
-            if (isIntStartDetectedImpl(intStatus) || isIntStopDetectedImpl(intStatus)) {
-                reportLen = slaveRxCacheLen_;
-                // We don't clear start/stop INT flag and keep reading data that is already in FIFO.
-            }
-        }
-        if (reportLen > 0) {
-            reportLen = std::min(rxBuffer_.size(), (size_t)slaveRxCacheLen_);
-            slaveRxDone(reportLen);
-            handleStartStop();
-            return true;
-        }
-        return false;
     }
 
     void slaveWrite() {
@@ -708,60 +671,32 @@ protected:
         auto instance = (I2cClass*)context;
         uint32_t intStatus = instance->getIntStatusImpl();
 
-        switch (instance->slaveStatus_) {
-            case I2C_SLAVE_STOPPED: {
-                instance->handleStartStop();
-                break;
-            }
-            case I2C_SLAVE_STARTED:
-            case I2C_SLAVE_RESTARTED: {
-                if (instance->isIntRxFullImpl(intStatus)) {
-                    // Slave receiver
-                    if (instance->slaveStatus_ == I2C_SLAVE_STARTED) {
-                        memset(instance->slaveRxCache_.get(), 0xFF, instance->slaveRxCacheDepth_);
-                        instance->slaveRxCacheLen_ = 0;
-                    }
-                    instance->slaveStatus_ = I2C_SLAVE_RX;
-                    if (instance->slaveRead()) {
-                        break;
-                    }
-                } else if (instance->isIntReadRequestImpl(intStatus)) {
-                    // Slave transmitter
-                    instance->clearReadRequestIntImpl();
-                    instance->slaveStatus_ = I2C_SLAVE_TX;
-                    instance->slaveWrite();
-                }
-                instance->handleStartStop();
-                break;
-            }
-            case I2C_SLAVE_RX: {
-                if (instance->isIntRxFullImpl(intStatus)) {
-                    if (instance->slaveRead()) {
-                        break;
-                    }
-                }
-                if (instance->handleStartStop()) {
-                    if (instance->slaveRxCacheLen_ > 0 && instance->onReceived_) {
-                        instance->slaveRxDone(instance->slaveRxCacheLen_, true); // it will discard the data that cannot be filled
-                    }
-                }
-                break;
-            }
-            case I2C_SLAVE_TX: {
-                if (instance->isIntReadRequestImpl(intStatus)) {
-                    instance->clearReadRequestIntImpl();
-                    instance->slaveWrite();
-                }
-                if (instance->isIntRxDoneImpl(intStatus)) {
-                    instance->clearRxDoneIntImpl();
-                    instance->txBuffer_.reset();
-                }
-                if (instance->handleStartStop()) {
-                    instance->txBuffer_.reset();
-                }
-                break;
-            }
-            default: break;
+        if (instance->isIntStopDetectedImpl(intStatus)) {
+            instance->clearStopDetectedIntImpl();
+        }
+        if (instance->isIntStartDetectedImpl(intStatus)) {
+            instance->clearStartDetectedIntImpl();
+        }
+        if (instance->isIntRxDoneImpl(intStatus)) {
+            instance->clearRxDoneIntImpl();
+        }
+        if (instance->isIntReadRequestImpl(intStatus)) {
+            instance->clearReadRequestIntImpl();
+        }
+        if (instance->isIntRxDoneImpl(intStatus)) {
+            instance->txBuffer_.reset();
+        }
+        if (instance->isIntRxFullImpl(intStatus)) {
+            instance->slaveDrainRxFifo();
+        }
+        if (instance->isIntStopDetectedImpl(intStatus)) {
+            instance->slaveStopDetected();
+        }
+        if (instance->isIntStartDetectedImpl(intStatus)) {
+            instance->slaveStartDetected();
+        }
+        if (instance->isIntReadRequestImpl(intStatus)) {
+            instance->slaveReadRequested();
         }
     }
 
@@ -962,8 +897,9 @@ public:
     void initImpl() override {
         USI_I2C_Init(usiDev_, (USI_I2C_InitTypeDef*)&i2cInitStruct_);
         // Enable restart function and set RX FIFO level
+        // Note: unlike the LP I2C, we need to set the RX FIFO level to 1, see USI_I2C_StructInit() in rtl8721dhp_usi_i2c.c
+        usiDev_->RX_FIFO_CTRL = std::min(rxBuffer_.size(), (size_t)1); // FIFO depth 1
         usiDev_->I2C_CTRL |= (1 << 1);
-        usiDev_->RX_FIFO_CTRL = std::min(rxBuffer_.size(), (size_t)0); // FIFO depth 1
     }
 
     void slaveIntConfigImpl(bool en) override {
