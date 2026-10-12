@@ -763,6 +763,7 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_STOP, nullptr);
     }
     genspec->generated_key = generated;
+    genspec->had_candidate_key = false; // TODO: Ideally, this should be supported on Gen 3 too
     return 0;
 }
 
