@@ -51,6 +51,8 @@ const PinMapping pwm_pins[] = {
         PIN(D0), PIN(D1), PIN(D2), PIN(A3), PIN(A4), PIN(A5), PIN(A6), PIN(TX), PIN(RX), PIN(B2), PIN(B3), PIN(C4), PIN(C5) /* , PIN(RGBR), PIN(RGBG), PIN(RGBB) */
 #elif (PLATFORM_ID == PLATFORM_MSOM)
         PIN(D4), PIN(D5), PIN(D6), PIN(D7), PIN(D9), PIN(D10), PIN(A6), PIN(A1), PIN(A0)
+#elif (PLATFORM_ID == PLATFORM_SULU)
+        PIN(D0), PIN(D1), PIN(D4), PIN(D9), PIN(D10), PIN(D11), PIN(D12), PIN(D13), PIN(A2), PIN(A3), PIN(A4)
 #else
 #error "Unsupported platform"
 #endif
