@@ -20,8 +20,7 @@ int EcpPrivateKey::getPublicKey(EcpPublicKey& pub) const {
     if (!isValid()) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // FIXME: This is a generic class, MAX_DEVICE_PUBLIC_KEY_SIZE only makes sense for device keys
-    const auto bufSize = MAX_DEVICE_PUBLIC_KEY_SIZE;
+    const auto bufSize = MAX_DEVICE_PUBLIC_KEY_SIZE; // FIXME: This is a generic key class
     std::unique_ptr<char[]> pubData(new(std::nothrow) char[bufSize]);
     if (!pubData) {
         return SYSTEM_ERROR_NO_MEMORY;
