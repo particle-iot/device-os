@@ -109,6 +109,8 @@ constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 Vector<User_Var_Lookup_Table_t> g_cloudVars;
 Vector<User_Func_Lookup_Table_t> g_cloudFuncs;
 
+bool g_usingCandidateDeviceKey = false;
+
 inline bool isSuffix(const char* eventName, const char* prefix, const char* suffix) {
     // todo - sanity check parameters?
     return !strncmp(eventName+strlen(prefix), suffix, strlen(eventName)-strlen(prefix));
@@ -261,6 +263,10 @@ int getCloudFunctionInfo(size_t index, const char** name) {
         *name = info.userFuncKey;
     }
     return 0;
+}
+
+bool isUsingCandidateDeviceKey() {
+    return g_usingCandidateDeviceKey;
 }
 
 } // namespace particle
@@ -870,16 +876,24 @@ int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method
     }
 
     CHECK(coap_end_response(coapResp.get(), [](int reqId, void* arg) { // ack_cb
-        // Save the candidate key and reset the device
-        // TODO: Respect the `reset_device` flag from the request
         std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg)); // Take back ownership over the key object
-        CHECK(DeviceKeyManager::instance().setCandidateKey(*privKey));
-        LOG(INFO, "Saved candidate device key");
-        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
+        int r = DeviceKeyManager::instance().setCandidateKey(*privKey);
+        if (r >= 0) {
+            LOG(INFO, "Saved candidate device key");
+        } else {
+            LOG(ERROR, "Error saving candidate device key: %d", r);
+            DeviceKeyManager::instance().clearCandidateKey(); // Just in case
+        }
+        // Discard the DTLS session and reset immediately
+        // TODO: Respect the `reset_device` flag from the request
+        clearSessionData();
+        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
         return 0;
     }, [](int err, int req_id, void* arg) { // error_cb
         std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
         LOG(WARN, "Discarding candidate device key due to CoAP error: %d", err);
+        DeviceKeyManager::instance().clearCandidateKey();
     }, privKey.get(), nullptr /* reserved */));
 
     // The CoAP API now owns the response and key objects
@@ -1265,10 +1279,12 @@ void Spark_Protocol_Init(void)
         keys.core_private = private_key;
 
         // ensure the private key is read first since the public key may be derived from it.
-        private_key_generation_t genspec;
+        private_key_generation_t genspec = {};
         genspec.size = sizeof(genspec);
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
+        g_usingCandidateDeviceKey = genspec.had_candidate_key;
+
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
         uint8_t id_length = hal_get_device_id(NULL, 0);
