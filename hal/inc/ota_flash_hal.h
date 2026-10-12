@@ -266,6 +266,7 @@ typedef struct {
      */
     /*[out]*/ bool had_key;
     /*[out]*/ bool generated_key;
+    /*[out]*/ bool had_candidate_key;
 
 } private_key_generation_t;
 
