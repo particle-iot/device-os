@@ -32,6 +32,8 @@
 static const hal_pin_t pin = D1, pin2 = D8;
 #elif PLATFORM_ID == PLATFORM_TRACKERM
 static const hal_pin_t pin = A2, pin2 = D8;
+#elif PLATFORM_ID == PLATFORM_SULU
+static const hal_pin_t pin = A2, pin2 = A3;
 #else
 static const hal_pin_t pin = A0, pin2 = A1;
 #endif

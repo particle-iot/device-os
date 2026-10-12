@@ -33,6 +33,8 @@ static pin_t expectedSsPin(hal_spi_interface_t spi) {
     return (spi == HAL_SPI_INTERFACE1) ? A2 : D5;
 #elif PLATFORM_ID == PLATFORM_MSOM
     return (spi == HAL_SPI_INTERFACE1) ? D8 : D3;
+#elif PLATFORM_ID == PLATFORM_SULU
+    return (spi == HAL_SPI_INTERFACE1) ? D4 : D5;
 #else
 #error "Unknown platform!"
 #endif
@@ -53,7 +55,7 @@ static bool isSlaveModeSupported(hal_spi_interface_t spi) {
 #if HAL_PLATFORM_NRF52840
     return (spi == HAL_SPI_INTERFACE1) ? false : true;
 #elif HAL_PLATFORM_RTL872X
-    #if PLATFORM_ID == PLATFORM_MSOM
+    #if PLATFORM_ID == PLATFORM_MSOM || PLATFORM_ID == PLATFORM_SULU
     return (spi == HAL_SPI_INTERFACE1) ? true : false;
     #elif PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
     return (spi == HAL_SPI_INTERFACE1) ? false : true;
