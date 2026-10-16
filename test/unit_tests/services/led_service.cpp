@@ -200,11 +200,15 @@ private:
             };
         case LED_PATTERN_FADE:
             return [=](double t) {
+                double rampProgress; // Ramp progress in [0.0, 1.0]
                 if (t < 0.5) {
-                    return color.scaled(1.0 - t / 0.5); // Fading out
+                    rampProgress = 1.0 - t / 0.5; // Fading out
                 } else {
-                    return color.scaled((t - 0.5) / 0.5); // Fading in
+                    rampProgress = (t - 0.5) / 0.5; // Fading in
                 }
+                // Smoothstep easing, matching the integer approximation in led_service.cpp
+                const double brightness = rampProgress * rampProgress * (3.0 - 2.0 * rampProgress);
+                return color.scaled(brightness);
             };
         default:
             return Function();
