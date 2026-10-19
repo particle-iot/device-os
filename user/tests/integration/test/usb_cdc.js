@@ -44,7 +44,7 @@ async function waitFor(fn, timeoutMs, description, intervalMs = 250) {
     let lastError = null;
     for (;;) {
         try {
-            const value = fn();
+            const value = await fn();
             if (value) {
                 return value;
             }
@@ -150,6 +150,17 @@ function findDarwinPortByUsbSerial(serial) {
     return ports.length === 1 ? ports[0] : '';
 }
 
+// ioreg doesn't expose the callout device in the IOUSB plane on recent macOS releases and the
+// single-port fallback above breaks as soon as another CDC device (e.g. a debug probe) is attached,
+// so ask serialport, which reads the USB serial number from IOKit
+async function findDarwinPortBySerialPort(serial) {
+    const expected = serial.toLowerCase();
+    const ports = await SerialPort.list();
+    const port = ports.find((p) => p.serialNumber && p.serialNumber.toLowerCase() === expected);
+    // Use the callout device, same as the other lookup
+    return port ? port.path.replace('/dev/tty.', '/dev/cu.') : '';
+}
+
 class UsbCdcPort {
     constructor(deviceId) {
         this.deviceId = deviceId;
@@ -178,11 +189,15 @@ class UsbCdcPort {
 
     async resolveDevicePath(timeoutMs) {
         if (process.platform === 'darwin') {
-            return waitFor(
-                () => findDarwinPortByUsbSerial(this.deviceId),
+            console.log(`Looking for a CDC port with USB serial: ${this.deviceId}`);
+            const port = await waitFor(
+                // No single-port guess here: with another CDC device attached it could open the wrong port
+                () => findDarwinPortBySerialPort(this.deviceId),
                 timeoutMs,
                 `a CDC port for USB serial ${this.deviceId}`
             );
+            console.log(`Found CDC port ${port} for USB serial: ${this.deviceId}`);
+            return port;
         }
         if (process.platform !== 'linux') {
             throw new Error(`USB CDC integration tests are not supported on ${process.platform}`);

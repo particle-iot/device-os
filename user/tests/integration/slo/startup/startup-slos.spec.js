@@ -49,6 +49,16 @@ const THRESHOLDS = {
             setup_duration: 55
         }
     },
+    sulu: {
+        targetAppFlashSize: 29000,
+        targetFreeRam: 2924544,        // 2.8MB
+        targetTime: {
+            pre_startup: 130000,
+            pre_startup_duration: 400,
+            startup_duration: 425000,
+            setup_duration: 55
+        }
+    },
     argon: {
         targetTime: {
             pre_startup: 270000,
