@@ -39,6 +39,8 @@ void rtwCoexCleanup(int idx);
 void rtwCoexCleanupMutex(int idx);
 
 void rtwRadioReset();
+bool rtwWifiSurveyInProgress();
+bool rtwWifiAbortSurvey();
 void rtwRadioAcquire(RtwRadio r);
 void rtwRadioRelease(RtwRadio r);
 void rtwCoexStop();
