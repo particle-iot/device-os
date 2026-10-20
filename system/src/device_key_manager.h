@@ -1,3 +1,5 @@
+#pragma once
+
 #include "dct.h"
 
 #include <memory>
