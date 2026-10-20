@@ -115,6 +115,9 @@ int DeviceKeyManager::loadCandidateKey(EcpPrivateKey& key) {
     }
 
     size_t privSize = CHECK(f.size());
+    if (!privSize) {
+        return SYSTEM_ERROR_BAD_DATA;
+    }
     if (privSize > MAX_DEVICE_PRIVATE_KEY_SIZE) {
         return SYSTEM_ERROR_TOO_LARGE;
     }

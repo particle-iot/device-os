@@ -883,6 +883,7 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         return 0;
     })();
     if (r < 0) {
+        privKey.reset();
         pbResp = {};
         ok = false;
     }
@@ -900,6 +901,9 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
 
     CHECK(coap_end_response(coapResp.get(), [](int reqId, void* arg) { // ack_cb
         std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg)); // Take back ownership over the key object
+        if (!privKey) {
+            return 0;
+        }
         int r = DeviceKeyManager::instance().setCandidateKey(*privKey);
         if (r >= 0) {
             LOG(INFO, "Saved candidate device key");
@@ -915,6 +919,9 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         return 0;
     }, [](int err, int req_id, void* arg) { // error_cb
         std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
+        if (!privKey) {
+            return;
+        }
         LOG(WARN, "Discarding candidate device key due to CoAP error: %d", err);
         DeviceKeyManager::instance().clearCandidateKey();
     }, privKey.get(), nullptr /* reserved */));
