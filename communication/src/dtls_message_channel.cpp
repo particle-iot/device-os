@@ -496,15 +496,15 @@ ProtocolError DTLSMessageChannel::establish()
 		}
 		else // no session or clear
 		{
-		reset_session();
-		ProtocolError error = setup_context();
-		if (error) {
-			return error;
+			reset_session();
+			ProtocolError error = setup_context();
+			if (error) {
+				return error;
+			}
 		}
+		establish_state = EstablishState::HANDSHAKING;
+		last_wait = WaitCondition::NONE;
 	}
-	establish_state = EstablishState::HANDSHAKING;
-	last_wait = WaitCondition::NONE;
-}
 
 	const system_tick_t sliceStart = callbacks.millis();
 	while (ssl_context.state != MBEDTLS_SSL_HANDSHAKE_OVER) {
