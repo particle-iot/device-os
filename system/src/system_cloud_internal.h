@@ -235,7 +235,8 @@ int getCloudVariableInfo(size_t index, const char** name, int* type = nullptr);
 size_t cloudFunctionCount();
 int getCloudFunctionInfo(size_t index, const char** name);
 
-bool isUsingCandidateDeviceKey();
+void acceptCandidateDeviceKey();
+void clearCandidateDeviceKey();
 
 } // namespace particle
 

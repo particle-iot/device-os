@@ -265,8 +265,33 @@ int getCloudFunctionInfo(size_t index, const char** name) {
     return 0;
 }
 
-bool isUsingCandidateDeviceKey() {
-    return g_usingCandidateDeviceKey;
+void acceptCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(INFO, "Accepting candidate device key");
+    int r = DeviceKeyManager::instance().acceptCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error accepting candidate device key: %d", r);
+    }
+}
+
+void clearCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(WARN, "Clearing candidate device key");
+    int r = DeviceKeyManager::instance().clearCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error clearing candidate device key: %d", r);
+    }
+    // Reset the device to load the previously used key
+    clearSessionData(); // Just in case
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
 }
 
 } // namespace particle
@@ -884,11 +909,11 @@ int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method
             LOG(ERROR, "Error saving candidate device key: %d", r);
             DeviceKeyManager::instance().clearCandidateKey(); // Just in case
         }
-        // Discard the DTLS session and reset immediately
+        // Discard the DTLS session and reset to reload the device key
         // TODO: Respect the `reset_device` flag from the request
         clearSessionData();
         system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
-            nullptr /* reserved */);
+                nullptr /* reserved */);
         return 0;
     }, [](int err, int req_id, void* arg) { // error_cb
         std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
