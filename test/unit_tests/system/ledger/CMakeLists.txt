@@ -11,6 +11,8 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/call_once.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/proto_defs/src/cloud/cloud.pb.c
+  ${DEVICE_OS_DIR}/proto_defs/src/cloud/config.pb.c
+  ${DEVICE_OS_DIR}/proto_defs/src/cloud/esim.pb.c
   ${DEVICE_OS_DIR}/proto_defs/src/cloud/ledger.pb.c
   ${DEVICE_OS_DIR}/proto_defs/src/ledger.pb.c
   ${THIRD_PARTY_DIR}/nanopb/nanopb/pb_common.c
