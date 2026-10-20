@@ -259,7 +259,6 @@ typedef enum {
 } PrivateKeyGeneration;
 
 typedef struct {
-    /*[in]*/ size_t size;
     /*[in]*/ PrivateKeyGeneration gen;
     /**
      * Set if a key was found.
