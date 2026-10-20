@@ -127,6 +127,12 @@
         (LEDGER_DECODING_FAILED, "Ledger decoding error", -2009), \
         (LEDGER_REQUEST_FAILED, "Ledger request failed", -2010), \
         (LEDGER_INVALID_RESPONSE, "Invalid response from server", -2011), \
+        (WIFI_NETWORK_NOT_FOUND, "Wi-Fi network not found", -2100), /* -2199 ... -2100: Wi-Fi errors */ \
+        (WIFI_CONNECT_FAILED, "Wi-Fi connection failed", -2101), \
+        (WIFI_AUTHENTICATION_FAILED, "Wi-Fi authentication failed", -2102), \
+        (WIFI_ASSOCIATION_REJECTED, "Wi-Fi association rejected", -2103), \
+        (WIFI_AP_BUSY, "Wi-Fi access point is busy", -2104), \
+        (WIFI_CONNECT_TIMEOUT, "Wi-Fi connection timeout", -2105), \
         (HAL_RTC_INVALID_TIME, "RTC time is invalid", -3000), /* -3099 ... -3000: HAL errors */ \
         (ENV_NOT_FOUND, "Variable not found", -4000), /* -4099 ... -4000: Configuration errors */ \
         (ENV_INVALID_VALUE, "Invalid variable value", -4001)
