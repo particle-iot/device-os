@@ -844,16 +844,14 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 #endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
-int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
-    CoapMessagePtr coapReq(req);
-
+int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
     pb_istream_t pbIn = {};
     CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
     PB_CLOUD(Request) pbReq = {};
     if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
         return SYSTEM_ERROR_BAD_DATA;
     }
-    // TODO: Generalize this code for handling other requests
+    // TODO: Generalize this code for handling other cloud requests
     if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
@@ -896,7 +894,7 @@ int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method
 
     pb_ostream_t pbOut = {};
     CHECK(pb_ostream_from_coap_message(&pbOut, coapResp.get(), nullptr /* reserved */));
-    if (!pb_encode(&pbOut, &PB_CLOUD(Request_msg), &pbResp)) {
+    if (!pb_encode(&pbOut, &PB_CLOUD(Response_msg), &pbResp)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
 
@@ -924,6 +922,15 @@ int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method
     // The CoAP API now owns the response and key objects
     coapResp.release();
     privKey.release();
+    return 0;
+}
+
+int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr coapReq(req);
+    int r = handleChangeDeviceKeyRequest(coapReq, reqId);
+    if (r < 0) {
+        LOG(ERROR, "Error handling device key change request: %d", r);
+    }
     return 0;
 }
 

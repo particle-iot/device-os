@@ -761,18 +761,24 @@ int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* 
     }
     if (genspec->gen == PRIVATE_KEY_GENERATE_ALWAYS || (!hadKey && genspec->gen != PRIVATE_KEY_GENERATE_NEVER)) {
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_START, nullptr);
-        int error  = 1;
+        bool ok = true;
 #if HAL_PLATFORM_CLOUD_UDP
         if (udp) {
-            error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, nullptr);
+            int r = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, nullptr);
+            if (r <= 0) { // gen_ec_key() returns the key size
+                ok = false;
+            }
         }
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
         if (!udp) {
-            error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, nullptr);
+            int r = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, nullptr);
+            if (r != 0) {
+                ok = false;
+            }
         }
 #endif
-        if (!error) {
+        if (ok) {
             if (udp) {
                 dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
             } else {
