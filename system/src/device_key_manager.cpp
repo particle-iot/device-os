@@ -72,6 +72,9 @@ int DeviceKeyManager::acceptCandidateKey() {
 }
 
 int DeviceKeyManager::clearCandidateKey() {
+    if (hasCandidateKey_.has_value() && !hasCandidateKey_.value()) {
+        return 0;
+    }
     CHECK(rmrf(CANDIDATE_KEY_FILE));
     hasCandidateKey_ = false;
     return 0;
