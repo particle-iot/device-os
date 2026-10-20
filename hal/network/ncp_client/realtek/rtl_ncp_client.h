@@ -74,8 +74,11 @@ private:
     volatile NcpConnectionState connState_;
     volatile NcpPowerState pwrState_;
     volatile bool needsReset_ = false;
+    unsigned scanFailures_ = 0;
     volatile uint32_t lastLinkErr_ = 0;
     volatile uint16_t lastDisconnectReason_ = 0;
+    system_tick_t lastRadioReset_ = 0;
+    system_tick_t radioResetInterval_ = 0;
 
     void ncpState(NcpState state);
     void ncpPowerState(NcpPowerState state);
