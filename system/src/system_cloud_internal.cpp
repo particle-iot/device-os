@@ -885,6 +885,7 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
             }
             return true;
         };
+        pbResp.which_data = PB_CLOUD(Response_config_change_device_key_tag);
         return 0;
     })();
     if (r < 0) {
@@ -1324,7 +1325,6 @@ void Spark_Protocol_Init(void)
 
         // ensure the private key is read first since the public key may be derived from it.
         private_key_generation_t genspec = {};
-        genspec.size = sizeof(genspec);
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
         g_usingCandidateDeviceKey = genspec.had_candidate_key;
