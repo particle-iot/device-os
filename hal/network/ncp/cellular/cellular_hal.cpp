@@ -771,7 +771,7 @@ cellular_result_t cellular_registration_backoff_set_schedule(const cellular_back
             conf.intervals[i] = schedule->intervals_ms[i];
         }
         conf.activeWindow = schedule->active_window_ms;
-        conf.firstHourStages = schedule->first_stages;
+        conf.immediateStages = schedule->first_stages;
         conf.heartbeatInterval = schedule->heartbeat_ms;
     }
     CHECK(client->setRegistrationBackoffSchedule(conf));
