@@ -74,6 +74,8 @@ private:
     volatile NcpConnectionState connState_;
     volatile NcpPowerState pwrState_;
     volatile bool needsReset_ = false;
+    volatile uint32_t lastLinkErr_ = 0;
+    volatile uint16_t lastDisconnectReason_ = 0;
 
     void ncpState(NcpState state);
     void ncpPowerState(NcpPowerState state);
@@ -82,6 +84,7 @@ private:
     int rltkOn();
     int rltkOff();
     void parseDisconnectReason(char* buf, size_t bufLen);
+    int connectError(int rtlError) const;
 };
 
 inline void RealtekNcpClient::lock() {
