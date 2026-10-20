@@ -341,6 +341,178 @@ extern "C" void __copy_rtw_write32(void* p, uint32_t offset, uint32_t val) {
     return rtw_write32(p, offset, val);
 }
 
+namespace {
+
+// lib_wlan.a struct recv_frame: u.hdr.len, u.hdr.rx_data
+const size_t RECV_FRAME_LEN_OFFSET = 0xa0;
+const size_t RECV_FRAME_RX_DATA_OFFSET = 0xa8;
+
+const size_t WLAN_HDR_LEN = 24;
+
+// Radio Measurement action frame, offsets from the start of the 802.11 frame
+const size_t RM_ACTION_OFFSET = WLAN_HDR_LEN + 1;
+const size_t RM_ELEM_ID_OFFSET = WLAN_HDR_LEN + 5; // Category, action, dialog token, repetitions(2)
+const size_t RM_ELEM_BODY_OFFSET = RM_ELEM_ID_OFFSET + 2;
+const size_t RM_MEAS_TYPE_OFFSET = RM_ELEM_BODY_OFFSET + 2; // Measurement token, mode
+
+const uint8_t RM_ACTION_RADIO_MEAS_REQ = 0;
+const uint8_t WLAN_EID_MEASURE_REQUEST = 38;
+
+const uint8_t RM_MEAS_TYPE_CH_LOAD = 3;
+const uint8_t RM_MEAS_TYPE_NOISE_HISTO = 4;
+const uint8_t RM_MEAS_TYPE_BEACON = 5;
+
+// Measurement element body before subelements: token, mode, type + operating class, channel,
+// randomization interval(2), duration(2) [+ beacon: measurement mode, BSSID(6)]
+const size_t RM_CH_LOAD_FIXED_LEN = 3 + 6;
+const size_t RM_BEACON_FIXED_LEN = 3 + 13;
+
+const uint8_t RM_BCN_SUBELEM_SSID = 0;
+const uint8_t RM_BCN_SUBELEM_REPORTING_INFO = 1;
+const uint8_t RM_BCN_SUBELEM_REPORTING_DETAIL = 2;
+const uint8_t RM_BCN_SUBELEM_REQUEST = 10;
+const uint8_t RM_SUBELEM_REPORTING_INFO = 1;
+
+const size_t MAX_SSID_LEN = 32;
+
+// BSS Transition Management request, offsets from the start of the action frame body
+const size_t BTM_REQ_MODE_OFFSET = 3;
+const size_t BTM_FIXED_LEN = 7; // Category, action, dialog token, request mode, disassoc timer(2), validity interval
+const size_t BTM_TERMINATION_LEN = 12; // BSS termination duration subelement: id, len, TSF(8), duration(2)
+const size_t BTM_TERMINATION_TSF_OFFSET = BTM_FIXED_LEN + 2;
+const uint8_t BTM_REQ_MODE_TERMINATION = 0x08;
+const uint8_t BTM_REQ_MODE_URL = 0x10;
+const uint8_t WLAN_EID_NEIGHBOR_REPORT = 52;
+const size_t NEIGHBOR_REPORT_MIN_LEN = 13; // BSSID(6), BSSID info(4), operating class, channel, PHY type
+const size_t MAX_MGMT_FRAME_BODY_LEN = 2304;
+const size_t BTM_CANDIDATE_COPY_LEN = 16; // rtw_wnm_btm_candidates_survey() copies 16 bytes per neighbor report element
+
+bool isValidRmSubelements(const uint8_t* p, size_t len, uint8_t measType) {
+    unsigned ssidCount = 0;
+    unsigned requestCount = 0;
+    while (len > 0) {
+        if (len < 2) {
+            return false;
+        }
+        const uint8_t id = p[0];
+        const size_t subLen = p[1];
+        if (subLen + 2 > len) {
+            return false;
+        }
+        if (measType == RM_MEAS_TYPE_BEACON) {
+            if (id == RM_BCN_SUBELEM_SSID && (subLen > MAX_SSID_LEN || ++ssidCount > 1)) {
+                return false;
+            }
+            if (id == RM_BCN_SUBELEM_REQUEST && ++requestCount > 1) {
+                return false;
+            }
+            if (id == RM_BCN_SUBELEM_REPORTING_INFO && subLen < 2) {
+                return false;
+            }
+            if (id == RM_BCN_SUBELEM_REPORTING_DETAIL && subLen < 1) {
+                return false;
+            }
+        } else if (id == RM_SUBELEM_REPORTING_INFO && subLen < 2) {
+            return false;
+        }
+        p += subLen + 2;
+        len -= subLen + 2;
+    }
+    return true;
+}
+
+bool isValidRadioMeasurementRequest(const uint8_t* frame, size_t frameLen) {
+    if (frameLen < RM_MEAS_TYPE_OFFSET + 1 || frame[RM_ELEM_ID_OFFSET] != WLAN_EID_MEASURE_REQUEST) {
+        return false;
+    }
+    const size_t elemLen = frame[RM_ELEM_ID_OFFSET + 1];
+    if (RM_ELEM_BODY_OFFSET + elemLen > frameLen) {
+        return false;
+    }
+    const uint8_t measType = frame[RM_MEAS_TYPE_OFFSET];
+    size_t fixedLen = 0;
+    if (measType == RM_MEAS_TYPE_BEACON) {
+        fixedLen = RM_BEACON_FIXED_LEN;
+    } else if (measType == RM_MEAS_TYPE_CH_LOAD || measType == RM_MEAS_TYPE_NOISE_HISTO) {
+        fixedLen = RM_CH_LOAD_FIXED_LEN;
+    } else {
+        return true;
+    }
+    if (elemLen < fixedLen) {
+        return false;
+    }
+    const uint8_t* subelems = frame + RM_ELEM_BODY_OFFSET + fixedLen;
+    return isValidRmSubelements(subelems, elemLen - fixedLen, measType);
+}
+
+bool isValidBtmRequest(const uint8_t* body, size_t len) {
+    if (len < BTM_FIXED_LEN || len > MAX_MGMT_FRAME_BODY_LEN) {
+        return false;
+    }
+    const uint8_t mode = body[BTM_REQ_MODE_OFFSET];
+    size_t offs = BTM_FIXED_LEN;
+    if (mode & BTM_REQ_MODE_TERMINATION) {
+        offs += BTM_TERMINATION_LEN;
+        if (offs > len) {
+            return false;
+        }
+    }
+    if (mode & BTM_REQ_MODE_URL) {
+        if (offs >= len) {
+            return false;
+        }
+        offs += body[offs] + 1;
+        if (offs > len) {
+            return false;
+        }
+    }
+    while (offs + 2 <= len && body[offs] == WLAN_EID_NEIGHBOR_REPORT) {
+        const size_t elemLen = body[offs + 1];
+        if (elemLen < NEIGHBOR_REPORT_MIN_LEN || offs + 2 + elemLen > len) {
+            return false;
+        }
+        offs += elemLen + 2;
+    }
+    return true;
+}
+
+} // anonymous
+
+extern "C" unsigned int __real_onAction_rm(void* adapter, void* recvFrame);
+extern "C" void __real_rtw_wnm_process_btm_req(void* adapter, uint8_t* body, uint32_t len);
+
+extern "C" unsigned int __wrap_onAction_rm(void* adapter, void* recvFrame) {
+    auto p = (const uint8_t*)recvFrame;
+    const uint8_t* frame = *(const uint8_t* const*)(p + RECV_FRAME_RX_DATA_OFFSET);
+    const size_t frameLen = *(const uint32_t*)(p + RECV_FRAME_LEN_OFFSET);
+    if (!frame || frameLen < RM_ACTION_OFFSET + 2) {
+        return 0;
+    }
+    if (frame[RM_ACTION_OFFSET] == RM_ACTION_RADIO_MEAS_REQ && !isValidRadioMeasurementRequest(frame, frameLen)) {
+        LOG(WARN, "Discarding malformed radio measurement request (%u bytes)", (unsigned)frameLen);
+        return 0;
+    }
+    return __real_onAction_rm(adapter, recvFrame);
+}
+
+extern "C" void __wrap_rtw_wnm_process_btm_req(void* adapter, uint8_t* body, uint32_t len) {
+    if (!body || !isValidBtmRequest(body, len)) {
+        LOG(WARN, "Discarding malformed BSS transition request (%u bytes)", (unsigned)len);
+        return;
+    }
+    const size_t align = 4;
+    auto buf = (uint8_t*)malloc(len + align + BTM_CANDIDATE_COPY_LEN);
+    if (!buf) {
+        LOG(ERROR, "Failed to allocate BSS transition request buffer");
+        return;
+    }
+    uint8_t* aligned = buf + (align - ((uintptr_t)(buf + BTM_TERMINATION_TSF_OFFSET) % align)) % align;
+    memcpy(aligned, body, len);
+    memset(aligned + len, 0, BTM_CANDIDATE_COPY_LEN);
+    __real_rtw_wnm_process_btm_req(adapter, aligned, len);
+    free(buf);
+}
+
 extern uintptr_t link_prebootloader_wifi_fw_ram_start;
 extern uintptr_t link_prebootloader_wifi_fw_ram_end;
 
