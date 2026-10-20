@@ -70,6 +70,8 @@ void* s_coex_struct = nullptr;
 extern "C" pcoex_reveng* pcoex[4];
 
 extern "C" int rtw_coex_wifi_enable(void* priv, uint32_t state);
+extern "C" int rltk_wlan_get_is_survey(void);
+extern "C" void rtw_scan_timeout_handler(void* adapter);
 extern "C" int rtw_coex_bt_enable(void* priv, uint32_t state);
 
 extern "C" Rltk_wlan_t rltk_wlan_info[NET_IF_NUM];
@@ -158,6 +160,21 @@ void rtwCoexStop() {
     rtwCoexRunDisable(0);
     rtw_coex_wifi_enable(*(void**)rltk_wlan_info[0].dev->priv, 1);
     rtwCoexCleanupMutex(0);
+}
+
+bool rtwWifiSurveyInProgress() {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    return (radioStatus & RTW_RADIO_WIFI) && rltk_wlan_info[0].dev && rltk_wlan_get_is_survey();
+}
+
+bool rtwWifiAbortSurvey() {
+    std::lock_guard<RecursiveMutex> lk(radioMutex);
+    if (!rtwWifiSurveyInProgress()) {
+        return false;
+    }
+    LOG(WARN, "Aborting stuck site survey");
+    rtw_scan_timeout_handler(*(void**)rltk_wlan_info[0].dev->priv);
+    return true;
 }
 
 void rtwRadioReset() {
