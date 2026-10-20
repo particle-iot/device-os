@@ -1,5 +1,3 @@
-#include "application.h"
-#include "unit-test/unit-test.h"
 
 // Can keep this enabled as it won't hurt the test
 Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
@@ -23,28 +21,32 @@ Serial1LogHandler logHandler(115200, LOG_LEVEL_ALL, {
 
 #if HAL_PLATFORM_RTL872X
 
-#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
+// Only one of the SPI interfaces can be used as a slave. Remap the requested interface before selecting
+// MY_SPI, as the #if/#elif chain below is evaluated only once
 #if PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+// SPI can't be used as slave, use SPI1
+#if (USE_SPI == 0 || USE_SPI == 255)
 #undef USE_SPI
 #define USE_SPI 1
-// #error "SPI not supported as slave for p2"
+#endif
+#elif PLATFORM_ID == PLATFORM_MSOM || PLATFORM_ID == PLATFORM_SULU
+// SPI1 can't be used as slave, use SPI
+#if (USE_SPI == 1)
+#undef USE_SPI
+#define USE_SPI 0
+#endif
 #endif // PLATFORM_ID == PLATFORM_P2 || PLATFORM_ID == PLATFORM_TRACKERM
+
+#if (USE_SPI == 0 || USE_SPI == 255) // default to SPI
 #define MY_SPI SPI
 #define MY_CS SS
 #pragma message "Compiling for SPI, MY_CS set to SS"
 #elif (USE_SPI == 1)
-#if PLATFORM_ID == PLATFORM_MSOM
-#undef USE_SPI
-#define USE_SPI 0
-// #error "SPI1 not supported as slave for MSoM"
-#endif // PLATFORM_ID == PLATFORM_MSOM
 #define MY_SPI SPI1
 #define MY_CS SS1
 #pragma message "Compiling for SPI1, MY_CS set to SS1"
-#elif (USE_SPI == 2)
-#error "SPI2 not supported for p2/TrackerM/MSoM"
 #else
-#error "Not supported for p2/TrackerM/MSoM"
+#error "SPI2 not supported for RTL872x based platforms"
 #endif // (USE_SPI == 0 || USE_SPI == 255)
 
 #elif HAL_PLATFORM_NRF52840

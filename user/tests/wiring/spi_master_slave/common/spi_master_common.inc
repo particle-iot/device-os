@@ -1,5 +1,3 @@
-#include "application.h"
-#include "unit-test/unit-test.h"
 #include <functional>
 
 // Can keep this enabled as it won't hurt the test
