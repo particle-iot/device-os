@@ -276,6 +276,10 @@ void acceptCandidateDeviceKey() {
     if (r < 0) {
         LOG(ERROR, "Error accepting candidate device key: %d", r);
     }
+    // Reset the device to reload the new key from the DCT
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
 }
 
 void clearCandidateDeviceKey() {
@@ -290,8 +294,9 @@ void clearCandidateDeviceKey() {
         LOG(ERROR, "Error clearing candidate device key: %d", r);
     }
     // Reset the device to load the previously used key
-    clearSessionData(); // Just in case
-    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, 0 /* flags */, nullptr /* reserved */);
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
 }
 
 } // namespace particle
