@@ -51,6 +51,7 @@ ifneq ("$(ARM_CPU)","cortex-m23")
 # Cortex-M33 (KM4)
 # Hack of the century!
 LIBS_EXT_END += -Wl,--wrap=rtw_hal_fill_h2c_cmd -Wl,--wrap=rtw_write32 -Wl,--wrap=rtw_write16 -Wl,--wrap=rtw_write8 -Wl,--wrap=bt_coex_handle_specific_evt -Wl,--wrap=usb_hal_read_interrupts -Wl,--wrap=usb_hal_clear_interrupts
+LIBS_EXT_END += -Wl,--wrap=onAction_rm -Wl,--wrap=rtw_wnm_process_btm_req
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wlan.a
 LIBS_EXT_END += $(TARGET_AMBD_SDK_PROJECT_LIB_PATH)/lib_wps.a
 ifneq ("$(MODULE)", "user-part")
