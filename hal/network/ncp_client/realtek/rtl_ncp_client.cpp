@@ -49,7 +49,7 @@ extern "C" {
 
 #include "spark_wiring_vector.h"
 #include "rtl_system_error.h"
-#include "rtl_sdk_support.h"
+#include "rtl_radio.h"
 
 #undef IFNAMSIZ // AMBD SDK and LWIP both define this symbol...
 #include "wlan_hal.h"

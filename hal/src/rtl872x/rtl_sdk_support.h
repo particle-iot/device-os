@@ -22,13 +22,6 @@
 
 typedef void (*rtl_ipc_callback_t)(void *data, uint32_t irq_status, uint32_t channel);
 
-typedef enum {
-    RTW_RADIO_NONE = 0x00,
-    RTW_RADIO_WIFI = 0x01,
-    RTW_RADIO_BLE = 0x02,
-    RTW_RADIO_ALL = 0x03
-} RtwRadio;
-
 typedef struct __attribute__((packed)) rtl_wifi_fw_ram_alloc {
     uint16_t size;
     uint16_t reserved;
@@ -57,20 +50,6 @@ uint32_t ipc_get_message_alt(uint8_t channel);
 void ipc_table_init(void);
 void ipc_send_message(uint8_t channel, uint32_t message);
 uint32_t ipc_get_message(uint8_t channel);
-
-void rtwCoexRunDisable(int idx);
-void rtwCoexPreventCleanup(int idx);
-void rtwCoexRunEnable(int idx);
-void rtwCoexCleanup(int idx);
-void rtwCoexCleanupMutex(int idx);
-
-void rtwRadioReset();
-void rtwRadioAcquire(RtwRadio r);
-void rtwRadioRelease(RtwRadio r);
-void rtwCoexStop();
-void rtwCoexSetWifiConnectedState(bool state);
-bool rtwCoexWifiConnectedState();
-int rtwCoexSet(uint32_t coex[4], uint8_t tmda[5], bool apply);
 
 #ifdef __cplusplus
 }
