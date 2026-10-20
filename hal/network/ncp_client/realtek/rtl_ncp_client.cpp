@@ -315,6 +315,8 @@ void RealtekNcpClient::parseDisconnectReason(char* buf, size_t bufLen) {
         reason = *(uint16_t*)(buf + 6 /* skip MAC */);
     }
     uint32_t linkErr = rltk_wlan_get_link_err();
+    lastLinkErr_ |= linkErr;
+    lastDisconnectReason_ = reason;
 
     const char* msg = "";
     const char* extraMsg = "";
@@ -387,6 +389,49 @@ void RealtekNcpClient::parseDisconnectReason(char* buf, size_t bufLen) {
     LOG(WARN, "Disconnect linkError=%08x reason=%04x: %s %s %s", linkErr, reason, msg, extraMsg, reasonMsg);
 }
 
+int RealtekNcpClient::connectError(int rtlError) const {
+    if (rtlError == RTW_BUSY) {
+        return rtl_error_to_system(rtlError);
+    }
+    switch (wifi_get_last_error()) {
+    case RTW_NONE_NETWORK:
+        return SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND;
+    case RTW_WRONG_PASSWORD:
+    case RTW_4WAY_HANDSHAKE_TIMEOUT:
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    case RTW_CONNECT_FAIL:
+        break;
+    default:
+        if (rtlError == RTW_TIMEOUT) {
+            return SYSTEM_ERROR_WIFI_CONNECT_TIMEOUT;
+        }
+        if (rtlError != RTW_ERROR) {
+            return rtl_error_to_system(rtlError);
+        }
+        break;
+    }
+    const uint32_t linkErr = lastLinkErr_;
+    if (linkErr & BIT(11)) {
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    }
+    if ((linkErr & (BIT(0) | BIT(1))) && (linkErr & (BIT(18) | BIT(19)))) {
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    }
+    if (lastDisconnectReason_ == 17) {
+        return SYSTEM_ERROR_WIFI_AP_BUSY;
+    }
+    if (linkErr & (BIT(8) | BIT(9))) {
+        return SYSTEM_ERROR_WIFI_ASSOCIATION_REJECTED;
+    }
+    if (linkErr & (BIT(3) | BIT(4) | BIT(10))) {
+        return SYSTEM_ERROR_WIFI_CONNECT_TIMEOUT;
+    }
+    if (linkErr & BIT(2)) {
+        return SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND;
+    }
+    return SYSTEM_ERROR_WIFI_CONNECT_FAILED;
+}
+
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
     CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     int rtlError = RTW_ERROR;
@@ -394,6 +439,8 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         {
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+            lastLinkErr_ = 0;
+            lastDisconnectReason_ = 0;
 
             connectionState(NcpConnectionState::CONNECTING);
 
@@ -439,7 +486,7 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         HAL_Delay_Milliseconds(500);
     }
     connectionState(NcpConnectionState::DISCONNECTED);
-    return rtl_error_to_system(rtlError);
+    return connectError(rtlError);
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
