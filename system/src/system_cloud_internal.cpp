@@ -53,6 +53,7 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
+#include "check.h"
 #if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "network/ncp/cellular/ncp.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
@@ -61,6 +62,9 @@
 #include "system_env.h"
 #include "firmware_update.h"
 #include "server_config.h"
+#include "device_key_manager.h"
+#include "coap_api.h"
+#include "coap_util.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -72,7 +76,10 @@
 
 #include "control/common.h" // FIXME: Move to another directory
 #include "cloud/cloud.pb.h"
+#include "cloud/config.pb.h"
 #include "nanopb_misc.h"
+
+#define PB_CLOUD(_name) particle_cloud_##_name
 
 #include <stdio.h>
 #include <stdint.h>
@@ -102,6 +109,8 @@ constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 
 Vector<User_Var_Lookup_Table_t> g_cloudVars;
 Vector<User_Func_Lookup_Table_t> g_cloudFuncs;
+
+bool g_usingCandidateDeviceKey = false;
 
 inline bool isSuffix(const char* eventName, const char* prefix, const char* suffix) {
     // todo - sanity check parameters?
@@ -255,6 +264,40 @@ int getCloudFunctionInfo(size_t index, const char** name) {
         *name = info.userFuncKey;
     }
     return 0;
+}
+
+void acceptCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(INFO, "Accepting candidate device key");
+    int r = DeviceKeyManager::instance().acceptCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error accepting candidate device key: %d", r);
+    }
+    // Reset the device to reload the new key from the DCT
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
+}
+
+void clearCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(WARN, "Clearing candidate device key");
+    int r = DeviceKeyManager::instance().clearCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error clearing candidate device key: %d", r);
+    }
+    // Reset the device to load the previously used key
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
 }
 
 } // namespace particle
@@ -807,6 +850,112 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 #endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
+int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
+    std::unique_ptr<EcpPrivateKey> privKey; // Used in the CoAP completion callbacks
+    EcpPublicKey pubKey;
+    auto& keyManager = DeviceKeyManager::instance();
+    bool ok = true;
+
+    PB_CLOUD(Request) pbReq = {};
+    PB_CLOUD(Response) pbResp = {};
+
+    int r = ([&]() -> int {
+        // Parse the request
+        pb_istream_t pbIn = {};
+        CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
+        if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        // TODO: Generalize this code for handling other requests
+        if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        // Generate a new device key
+        privKey.reset(new(std::nothrow) EcpPrivateKey());
+        if (!privKey) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        CHECK(keyManager.generateKey(*privKey));
+        CHECK(privKey->getPublicKey(pubKey));
+
+        // Prepare a response
+        auto& pbInnerResp = pbResp.data.config_change_device_key;
+        pbInnerResp.pub_key.arg = &pubKey;
+        pbInnerResp.pub_key.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+            auto pubKey = (const EcpPublicKey*)*arg;
+            if (!pb_encode_tag_for_field(stream, field) ||
+                    !pb_encode_string(stream, (const uint8_t*)pubKey->data(), pubKey->size())) {
+                return false;
+            }
+            return true;
+        };
+        pbResp.which_data = PB_CLOUD(Response_config_change_device_key_tag);
+        return 0;
+    })();
+    if (r < 0) {
+        LOG(ERROR, "Error handling ChangeDeviceKeyRequest: %d", r);
+        privKey.reset();
+        pbResp = {};
+        ok = false;
+    }
+    pbResp.result = r;
+
+    // Encode and send the response
+    CoapMessagePtr coapResp;
+    CHECK(coap_begin_response(&coapResp, ok ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST, reqId, 0 /* flags */,
+            nullptr /* reserved */));
+
+    pb_ostream_t pbOut = {};
+    CHECK(pb_ostream_from_coap_message(&pbOut, coapResp.get(), nullptr /* reserved */));
+    if (!pb_encode(&pbOut, &PB_CLOUD(Response_msg), &pbResp)) {
+        return SYSTEM_ERROR_ENCODING_FAILED;
+    }
+
+    CHECK(coap_end_response(coapResp.get(), [](int reqId, void* arg) { // ack_cb
+        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg)); // Take back ownership over the key object
+        if (!privKey) {
+            return 0;
+        }
+        // Store the new key as a candidate device key
+        int r = DeviceKeyManager::instance().setCandidateKey(*privKey);
+        if (r >= 0) {
+            LOG(INFO, "Saved candidate device key");
+        } else {
+            LOG(ERROR, "Error saving candidate device key: %d", r);
+            DeviceKeyManager::instance().clearCandidateKey(); // Just in case
+        }
+        // Discard the DTLS session and reset to reload the device key
+        // TODO: Respect the `reset_device` flag from the request
+        clearSessionData();
+        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+                nullptr /* reserved */);
+        return 0;
+    }, [](int err, int req_id, void* arg) { // error_cb
+        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
+        if (!privKey) {
+            return;
+        }
+        LOG(WARN, "Discarding candidate device key due to CoAP error: %d", err);
+        DeviceKeyManager::instance().clearCandidateKey();
+    }, privKey.get(), nullptr /* reserved */));
+
+    // The CoAP API now owns the response and key objects
+    coapResp.release();
+    privKey.release();
+    return 0;
+}
+
+int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr coapReq(req);
+    int r = handleChangeDeviceKeyRequest(coapReq, reqId);
+    if (r < 0) {
+        LOG(ERROR, "Error handling device key change request: %d", r);
+    }
+    // Don't return any errors to the CoAP API
+    return 0;
+}
+
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
 const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
@@ -1184,10 +1333,11 @@ void Spark_Protocol_Init(void)
         keys.core_private = private_key;
 
         // ensure the private key is read first since the public key may be derived from it.
-        private_key_generation_t genspec;
-        genspec.size = sizeof(genspec);
+        private_key_generation_t genspec = {};
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
+        g_usingCandidateDeviceKey = genspec.had_candidate_key;
+
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
         uint8_t id_length = hal_get_device_id(NULL, 0);
@@ -1223,6 +1373,11 @@ void Spark_Protocol_Init(void)
         spark_protocol_communications_handlers(sp, &handlers);
 
         registerSystemSubscriptions();
+
+        if (udp) {
+            coap_add_request_handler("r", COAP_METHOD_POST, 0 /* flags */, handleChangeDeviceKeyRequest, nullptr /* arg */,
+                    nullptr /* reserved */);
+        }
 
 #if PLATFORM_ID == PLATFORM_GCC
         bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_GCC && deviceConfig.platform_id != PLATFORM_ARGON && deviceConfig.platform_id != PLATFORM_P2);
