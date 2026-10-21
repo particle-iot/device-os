@@ -177,7 +177,7 @@ TEST_CASE("DeviceKeyManager") {
             CHECK(!key.isValid());
         }
 
-        SECTION("loads a candidate key that was stored by another instance") {
+        SECTION("loads a candidate key that was saved in another session") {
             auto data = randBytes(121);
             writeFile(CANDIDATE_KEY_FILE, data);
             EcpPrivateKey key;
@@ -265,7 +265,7 @@ TEST_CASE("DeviceKeyManager") {
             CHECK(mgr.getCandidateKey(key) == SYSTEM_ERROR_CRYPTO_KEY_NOT_FOUND);
         }
 
-        SECTION("removes a candidate key that was stored by another instance") {
+        SECTION("removes a candidate key that was saved in another session") {
             writeFile(CANDIDATE_KEY_FILE, randBytes(121));
             REQUIRE(mgr.clearCandidateKey() == 0);
             CHECK(!readFile(CANDIDATE_KEY_FILE));
@@ -297,7 +297,7 @@ TEST_CASE("DeviceKeyManager") {
             CHECK(mgr.getCandidateKey(key) == SYSTEM_ERROR_CRYPTO_KEY_NOT_FOUND);
         }
 
-        SECTION("accepts a candidate key that was stored by another instance") {
+        SECTION("accepts a candidate key that was saved in another session") {
             auto data = randBytes(121);
             writeFile(CANDIDATE_KEY_FILE, data);
             REQUIRE(mgr.acceptCandidateKey() == 0);
