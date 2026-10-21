@@ -850,24 +850,27 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 }
 
 int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
-    pb_istream_t pbIn = {};
-    CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
-    PB_CLOUD(Request) pbReq = {};
-    if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
-        return SYSTEM_ERROR_BAD_DATA;
-    }
-    // TODO: Generalize this code for handling other cloud requests
-    if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
-        return SYSTEM_ERROR_NOT_SUPPORTED;
-    }
-
     std::unique_ptr<EcpPrivateKey> privKey; // Used in the CoAP completion callbacks
     EcpPublicKey pubKey;
     auto& keyManager = DeviceKeyManager::instance();
     bool ok = true;
 
+    PB_CLOUD(Request) pbReq = {};
     PB_CLOUD(Response) pbResp = {};
+
     int r = ([&]() -> int {
+        // Parse the request
+        pb_istream_t pbIn = {};
+        CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
+        if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        // TODO: Generalize this code for handling other requests
+        if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
+            return SYSTEM_ERROR_NOT_SUPPORTED;
+        }
+
+        // Generate a new device key
         privKey.reset(new(std::nothrow) EcpPrivateKey());
         if (!privKey) {
             return SYSTEM_ERROR_NO_MEMORY;
@@ -875,6 +878,7 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         CHECK(keyManager.generateKey(*privKey));
         CHECK(privKey->getPublicKey(pubKey));
 
+        // Prepare a response
         auto& pbInnerResp = pbResp.data.config_change_device_key;
         pbInnerResp.pub_key.arg = &pubKey;
         pbInnerResp.pub_key.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
@@ -889,12 +893,14 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         return 0;
     })();
     if (r < 0) {
+        LOG(ERROR, "Error handling ChangeDeviceKeyRequest: %d", r);
         privKey.reset();
         pbResp = {};
         ok = false;
     }
     pbResp.result = r;
 
+    // Encode and send the response
     CoapMessagePtr coapResp;
     CHECK(coap_begin_response(&coapResp, ok ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST, reqId, 0 /* flags */,
             nullptr /* reserved */));
@@ -910,6 +916,7 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         if (!privKey) {
             return 0;
         }
+        // Store the new key as a candidate device key
         int r = DeviceKeyManager::instance().setCandidateKey(*privKey);
         if (r >= 0) {
             LOG(INFO, "Saved candidate device key");
