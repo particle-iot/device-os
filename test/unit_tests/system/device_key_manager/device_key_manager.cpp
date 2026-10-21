@@ -49,6 +49,9 @@ namespace {
 
 const auto CANDIDATE_KEY_FILE = "/sys/new_device_key";
 
+const size_t MAX_DEVICE_PRIVATE_KEY_SIZE = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE;
+const size_t MAX_DEVICE_PUBLIC_KEY_SIZE = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE;
+
 std::mt19937& rng() {
     static std::mt19937 gen(std::random_device{}());
     return gen;

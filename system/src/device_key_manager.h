@@ -1,15 +1,10 @@
 #pragma once
 
-#include "dct.h"
-
 #include <memory>
 #include <optional>
 #include <cstddef>
 
 namespace particle::system {
-
-const size_t MAX_DEVICE_PRIVATE_KEY_SIZE = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE; // 192
-const size_t MAX_DEVICE_PUBLIC_KEY_SIZE = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE; // 128
 
 // TODO: Move to an appropriate header
 class CryptoKey {
