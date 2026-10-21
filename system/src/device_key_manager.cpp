@@ -8,11 +8,48 @@
 #include <memory>
 #include <cstring>
 
+// This is a core feature so keep it buildable (but not necessarily fully supported) on all platforms
+// including GCC/newhal
+#if (PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL) || defined(UNIT_TEST)
+#include "dct.h"
+#define HAS_DCT 1
+#else
+#define HAS_DCT 0
+#endif
+
 namespace particle::system {
 
 namespace {
 
 const auto CANDIDATE_KEY_FILE = "/sys/new_device_key";
+
+#if HAS_DCT
+
+const size_t MAX_DEVICE_PRIVATE_KEY_SIZE = DCT_ALT_DEVICE_PRIVATE_KEY_SIZE; // 192
+const size_t MAX_DEVICE_PUBLIC_KEY_SIZE = DCT_ALT_DEVICE_PUBLIC_KEY_SIZE; // 128
+
+// Saves the device key to its default storage
+int saveNewDeviceKey(const char* data, size_t size) {
+    if (size > MAX_DEVICE_PRIVATE_KEY_SIZE) {
+        return SYSTEM_ERROR_TOO_LARGE;
+    }
+    int r = dct_write_app_data(data, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, size);
+    if (r != 0) { // `r` is not a system_error_t
+        return SYSTEM_ERROR_IO;
+    }
+    return 0;
+}
+
+#else // !HAS_DCT
+
+const size_t MAX_DEVICE_PRIVATE_KEY_SIZE = 1024;
+const size_t MAX_DEVICE_PUBLIC_KEY_SIZE = 1024;
+
+int saveNewDeviceKey(const char* data, size_t size) {
+    return SYSTEM_ERROR_NOT_SUPPORTED; // TODO
+}
+
+#endif // !HAS_DCT
 
 } // namespace
 
@@ -60,12 +97,7 @@ int DeviceKeyManager::getCandidateKey(EcpPrivateKey& key) {
 int DeviceKeyManager::acceptCandidateKey() {
     EcpPrivateKey k;
     CHECK(loadCandidateKey(k));
-
-    int r = dct_write_app_data(k.data(), DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, k.size());
-    if (r != 0) {
-        return SYSTEM_ERROR_IO;
-    }
-
+    CHECK(saveNewDeviceKey(k.data(), k.size()));
     CHECK(rmrf(CANDIDATE_KEY_FILE));
     hasCandidateKey_ = false;
     return 0;
