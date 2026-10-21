@@ -265,7 +265,7 @@ void handle_cfod()
         } else {
             LOG(WARN, "Internet available, cloud not reachable");
             Spark_Error_Count = 3;
-            clearCandidateDeviceKey();
+            clearCandidateDeviceKey(); // Will reset the device if there's a candidate key
         }
     }
 
@@ -376,7 +376,7 @@ void handle_cloud_connection(bool force_events)
                     SPARK_CLOUD_CONNECTED = 1;
                     SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
                     cloud_failed_connection_attempts = 0;
-                    acceptCandidateDeviceKey();
+                    acceptCandidateDeviceKey(); // Will reset the device if there's a candidate key
                     protocol::v2::CoapChannel::instance()->open();
                     CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                     system_notify_event(cloud_status, cloud_status_connected);
