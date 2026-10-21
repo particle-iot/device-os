@@ -95,17 +95,64 @@ public:
     int getPublicKey(EcpPublicKey& pub) const;
 };
 
+/**
+ * Device key manager.
+ */
 class DeviceKeyManager {
 public:
     DeviceKeyManager() = default;
 
+    /**
+     * Store a candidate device key.
+     *
+     * The key is stored in the filesystem and will be loaded instead of the current device key next
+     * time the device boots.
+     *
+     * @param key Private key.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
     int setCandidateKey(const EcpPrivateKey& key);
+
+    /**
+     * Load the candidate device key.
+     *
+     * @param[out] key Private key.
+     * @return 0 on success, `SYSTEM_ERROR_CRYPTO_KEY_NOT_FOUND` if there's no candidate key, or
+     *         another error code defined by `system_error_t`.
+     */
     int getCandidateKey(EcpPrivateKey& key);
+
+    /**
+     * Make the candidate device key the current device key.
+     *
+     * The key is written to the DCT and removed from the filesystem.
+     *
+     * @return 0 on success, `SYSTEM_ERROR_CRYPTO_KEY_NOT_FOUND` if there's no candidate key, or
+     *         another error code defined by `system_error_t`.
+     */
     int acceptCandidateKey();
+
+    /**
+     * Remove the candidate device key.
+     *
+     * @return 0 on success or if there's no candidate key, otherwise an error code defined by
+     *         `system_error_t`.
+     */
     int clearCandidateKey();
 
+    /**
+     * Generate a new device key.
+     *
+     * @param[out] key Private key.
+     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     */
     int generateKey(EcpPrivateKey& key);
 
+    /**
+     * Get the manager instance.
+     *
+     * @return Manager instance.
+     */
     static DeviceKeyManager& instance();
 
 private:

@@ -861,7 +861,7 @@ int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    std::unique_ptr<EcpPrivateKey> privKey; // Used by the CoAP completion callbacks
+    std::unique_ptr<EcpPrivateKey> privKey; // Used in the CoAP completion callbacks
     EcpPublicKey pubKey;
     auto& keyManager = DeviceKeyManager::instance();
     bool ok = true;
@@ -944,6 +944,7 @@ int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method
     if (r < 0) {
         LOG(ERROR, "Error handling device key change request: %d", r);
     }
+    // Don't return any errors to the CoAP API
     return 0;
 }
 
