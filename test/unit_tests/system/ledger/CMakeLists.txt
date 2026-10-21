@@ -45,8 +45,8 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
   ${TEST_DIR}/communication/util/coap_message.cpp
   ${TEST_DIR}/communication/util/coap_message_channel.cpp
+  ${TEST_DIR}/system/mock/filesystem_ram.cpp
   util/coap_api_fake.cpp
-  util/filesystem_ram.cpp
   util/system_fakes.cpp
   util/ledger_pb.cpp
   ledger_manager.cpp
