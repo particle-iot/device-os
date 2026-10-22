@@ -103,6 +103,7 @@ const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_BG95_S5 = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_NAX = 921600;
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG91_EX = 921600; // version A08 or above
 const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q = 921600;
+const auto QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG916Q_GL = 921600;
 
 const auto QUECTEL_NCP_MAX_MUXER_FRAME_SIZE = 1509;
 const auto QUECTEL_NCP_KEEPALIVE_PERIOD = 5000; // milliseconds
@@ -1489,7 +1490,8 @@ int QuectelNcpClient::configurePlmn() {
             ncp_id != PLATFORM_NCP_QUECTEL_BG95_S5 &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_NAX &&
             ncp_id != PLATFORM_NCP_QUECTEL_EG91_EX &&
-            ncp_id != PLATFORM_NCP_QUECTEL_EG91_E) {
+            ncp_id != PLATFORM_NCP_QUECTEL_EG91_E &&
+            ncp_id != PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         return SYSTEM_ERROR_NONE;
     }
 
@@ -1567,7 +1569,8 @@ bool QuectelNcpClient::isQuecCat1Device() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
-            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA);
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG916Q_GL);
 }
 
 bool QuectelNcpClient::isQuecEg91xDevice() {
@@ -1623,6 +1626,8 @@ int QuectelNcpClient::getRuntimeBaudrate() {
         }
     } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
         runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG800Q;
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+        runtimeBaudrate = QUECTEL_NCP_RUNTIME_SERIAL_BAUDRATE_EG916Q_GL;
     }
     return runtimeBaudrate;
 }
@@ -1660,7 +1665,7 @@ int QuectelNcpClient::initReady(ModemState state) {
     }
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA) {
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_EU || ncpId() == PLATFORM_NCP_QUECTEL_EG800Q_NA || ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         // Disable URCs for SMS, RI and other, otherwise, the remote modem state in muxer channel will be set to 0
         CHECK_PARSER(parser_.execCommand("AT+QCFG=\"urc/ri/other\",\"off\""));
     }
@@ -1671,6 +1676,20 @@ int QuectelNcpClient::initReady(ModemState state) {
 
     if (ncpId() == PLATFORM_NCP_QUECTEL_BG95_S5) {
         set2gAttenuation3dB();
+    }
+    
+    if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+        auto resp = parser_.sendCommand("AT+QSIMSLEEP?");
+        int simSleep = 0;
+        r = CHECK_PARSER(resp.scanf("+QSIMSLEEP: %d", &simSleep));
+        CHECK_TRUE(r == 1, SYSTEM_ERROR_UNKNOWN);
+        CHECK_PARSER_OK(resp.readResult());
+        if (simSleep == 1) {
+            LOG(TRACE, "Disable SIM card power-saving function");
+            parser_.execCommand("AT$QCSIMCFG=\"SimPowerSave\",0");
+            parser_.execCommand("AT$QCSIMSLEEP=0");
+            CHECK_PARSER(parser_.execCommand("AT+QSIMSLEEP?"));
+        }
     }
 
     auto runtimeBaudrate = QUECTEL_NCP_DEFAULT_SERIAL_BAUDRATE;
@@ -1714,7 +1733,7 @@ int QuectelNcpClient::initReady(ModemState state) {
         }
 
         // Select (U)SIM card in slot 1, EG91 has two SIM card slots
-        if (isQuecCat1Device()) {
+        if (isQuecCat1Device() && ncpId() != PLATFORM_NCP_QUECTEL_EG916Q_GL) {
             CHECK_PARSER(parser_.execCommand("AT+QDSIM=0"));
         }
     }
@@ -1725,7 +1744,8 @@ int QuectelNcpClient::initReady(ModemState state) {
             ncpId() == PLATFORM_NCP_QUECTEL_BG96 ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_NAX ||
             ncpId() == PLATFORM_NCP_QUECTEL_EG91_E ||
-            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX) {
+            ncpId() == PLATFORM_NCP_QUECTEL_EG91_EX ||
+            ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
         CHECK(setupBands());
     }
 
@@ -3256,6 +3276,15 @@ int QuectelNcpClient::modemHardReset(bool powerOff) {
         hal_gpio_write(BGRST, 1);
         HAL_Delay_Milliseconds(2900);
         hal_gpio_write(BGRST, 0);
+    } else if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+        // The reset function requires the PWRKEY and RESET_N pins to work together to complete
+        hal_gpio_write(BGRST, 1);
+        HAL_Delay_Milliseconds(100);
+        hal_gpio_write(BGPWR, 1);
+        HAL_Delay_Milliseconds(200);
+        hal_gpio_write(BGRST, 0);
+        HAL_Delay_Milliseconds(575);
+        hal_gpio_write(BGPWR, 0);
     } else {
         // BG96/EG91 reset, 150ms <= reset pulse <= 460ms
         // NOTE: The BGRST pin is inverted
