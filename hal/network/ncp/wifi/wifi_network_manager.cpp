@@ -18,11 +18,14 @@
 #include "wifi_network_manager.h"
 
 #include "wifi_ncp_client.h"
+#include "network/ncp/wifi/ncp.h"
 
 #include "file_util.h"
 #include "logging.h"
 #include "scope_guard.h"
 #include "check.h"
+#include "timer_hal.h"
+#include "rng_hal.h"
 
 #include "spark_wiring_vector.h"
 
@@ -48,6 +51,25 @@ namespace {
 using namespace control::common;
 using spark::Vector;
 
+const unsigned CONNECT_IMMEDIATE_ATTEMPTS = 3;
+const unsigned CONNECT_BACKOFF_JITTER_PERCENT = 20;
+
+ConnectionBackoff::Config connectBackoffConfig(bool transient) {
+    ConnectionBackoff::Config conf;
+    conf.immediateStages = CONNECT_IMMEDIATE_ATTEMPTS;
+    conf.jitterPercent = CONNECT_BACKOFF_JITTER_PERCENT;
+    if (transient) {
+        conf.intervals[0] = 5 * 1000;
+        conf.intervals[1] = 15 * 1000;
+        conf.intervals[2] = 30 * 1000;
+    } else {
+        conf.intervals[0] = 10 * 1000;
+        conf.intervals[1] = 30 * 1000;
+        conf.intervals[2] = 60 * 1000;
+    }
+    return conf;
+}
+
 template<typename T>
 void bssidToPb(const MacAddress& bssid, T* pbBssid) {
     if (bssid != INVALID_MAC_ADDRESS) {
@@ -64,6 +86,17 @@ void bssidFromPb(MacAddress* bssid, const T& pbBssid) {
 }
 
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+bool isTransientConnectFailure(int error) {
+    switch (error) {
+    case SYSTEM_ERROR_NOT_FOUND:
+    case SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND:
+    case SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED:
+        return false;
+    default:
+        return true;
+    }
+}
 
 // TODO: Implement a couple functions to conveniently save/load a protobuf message to/from a file
 int loadConfig(Vector<WifiNetworkConfig>* networks) {
@@ -192,7 +225,26 @@ void sortByRssi(Vector<WifiScanResult>* scanResults) {
 } // unnamed
 
 WifiNetworkManager::WifiNetworkManager(WifiNcpClient* client) :
-        client_(client) {
+        client_(client),
+        connectBackoff_(connectBackoffConfig(false)),
+        connectBackoffResetPending_(false),
+        connectFailureTransient_(false) {
+}
+
+bool WifiNetworkManager::connectAllowed() {
+    applyPendingConnectBackoffReset();
+    return !connectBackoff_.inCooldown(HAL_Timer_Get_Milli_Seconds());
+}
+
+void WifiNetworkManager::resetConnectBackoff() {
+    connectBackoffResetPending_ = true;
+}
+
+void WifiNetworkManager::applyPendingConnectBackoffReset() {
+    if (connectBackoffResetPending_) {
+        connectBackoffResetPending_ = false;
+        connectBackoff_.reset();
+    }
 }
 
 WifiNetworkManager::~WifiNetworkManager() {
@@ -201,6 +253,24 @@ WifiNetworkManager::~WifiNetworkManager() {
 #if !HAL_PLATFORM_WIFI_SCAN_ONLY
 int WifiNetworkManager::connect(WifiNetworkConfig conf) {
     return client_->connect(conf.ssid(), conf.bssid(), conf.security(), conf.credentials());
+}
+
+int WifiNetworkManager::connect() {
+    applyPendingConnectBackoffReset();
+    const int r = connect(nullptr);
+    if (r < 0) {
+        const bool transient = isTransientConnectFailure(r);
+        if (transient != connectFailureTransient_) {
+            connectFailureTransient_ = transient;
+            connectBackoff_.setSchedule(connectBackoffConfig(transient));
+            connectBackoff_.reset();
+        }
+        connectBackoff_.attemptFailed(HAL_Timer_Get_Milli_Seconds(), HAL_RNG_GetRandomNumber());
+        LOG(TRACE, "Next connection attempt in %u ms (%d)", (unsigned)connectBackoff_.cooldownLength(), r);
+    } else {
+        connectBackoff_.reset();
+    }
+    return r;
 }
 
 int WifiNetworkManager::connect(const char* ssid) {
@@ -240,6 +310,7 @@ int WifiNetworkManager::connect(const char* ssid) {
         sortByRssi(&scanResults);
         // Try to connect to any known network among the discovered ones
         bool connected = false;
+        int joinError = 0;
         for (const auto& ap: scanResults) {
             if (!ssid) {
                 index = 0;
@@ -260,6 +331,9 @@ int WifiNetworkManager::connect(const char* ssid) {
                 auto tmp = *network;
                 tmp.bssid(ap.bssid());
                 r = connect(tmp);
+            }
+            if (r < 0) {
+                joinError = r;
             }
             if (r == 0) {
                 if (network->bssid() != ap.bssid()) {
@@ -282,10 +356,13 @@ int WifiNetworkManager::connect(const char* ssid) {
                         connected = true;
                         break;
                     }
+                    if (!joinError && r != SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND) {
+                        joinError = r;
+                    }
                 }
             }
             if (!connected) {
-                return SYSTEM_ERROR_NOT_FOUND;
+                return joinError ? joinError : SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND;
             }
         }
     } else if (network->bssid() == INVALID_MAC_ADDRESS) {
@@ -358,6 +435,7 @@ int WifiNetworkManager::setNetworkConfig(WifiNetworkConfig conf, WifiNetworkConf
     }
     networks[index] = std::move(conf);
     CHECK(saveConfig(networks));
+    resetConnectBackoff();
     return 0;
 }
 
@@ -397,11 +475,19 @@ void WifiNetworkManager::removeNetworkConfig(const char* ssid) {
     }
     networks.removeAt(index);
     saveConfig(networks);
+    const auto mgr = wifiNetworkManager();
+    if (mgr) {
+        mgr->resetConnectBackoff();
+    }
 }
 
 void WifiNetworkManager::clearNetworkConfig() {
     Vector<WifiNetworkConfig> networks;
     saveConfig(networks);
+    const auto mgr = wifiNetworkManager();
+    if (mgr) {
+        mgr->resetConnectBackoff();
+    }
 }
 
 bool WifiNetworkManager::hasNetworkConfig() {
@@ -416,6 +502,10 @@ bool WifiNetworkManager::hasNetworkConfig() {
 #else // HAL_PLATFORM_WIFI_SCAN_ONLY
 
 int WifiNetworkManager::connect(WifiNetworkConfig conf) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
+
+int WifiNetworkManager::connect() {
     return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 

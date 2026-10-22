@@ -86,7 +86,7 @@ extern "C" {
 #include "network/ncp/wifi/ncp.h"
 #include "network/ncp/wifi/wifi_network_manager.h"
 #include "network/ncp/wifi/wifi_ncp_client.h"
-#include "rtl_sdk_support.h"
+#include "rtl_radio.h"
 
 #include "system_env.h"
 

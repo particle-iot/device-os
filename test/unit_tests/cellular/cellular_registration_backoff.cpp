@@ -33,7 +33,7 @@ const system_tick_t WINDOW = 10 * MIN;
 // Spelled out rather than taken from the defaults, so a header edit cannot rewrite a case
 CellularRegistrationBackoff::Config productionConfig() {
     CellularRegistrationBackoff::Config c;
-    c.firstHourStages = 6;
+    c.immediateStages = 6;
     c.activeWindow = WINDOW;
     c.intervals[0] = 1 * HR;
     c.intervals[1] = 2 * HR;
@@ -317,7 +317,7 @@ TEST_CASE("The schedule survives a system tick rollover") {
 
 TEST_CASE("The schedule is configurable so the integration tests can run in minutes") {
     CellularRegistrationBackoff::Config conf;
-    conf.firstHourStages = 2;
+    conf.immediateStages = 2;
     conf.activeWindow = 10 * 1000;
     conf.intervals[0] = 60 * 1000;
     conf.intervals[1] = 120 * 1000;
@@ -361,7 +361,7 @@ TEST_CASE("The compiled in schedule is self consistent") {
     // The one case that reads the compiled in macros rather than productionConfig()
     CellularRegistrationBackoff b;
     const auto& c = b.config();
-    REQUIRE(c.firstHourStages == (unsigned)CELLULAR_BACKOFF_FIRST_STAGES);
+    REQUIRE(c.immediateStages == (unsigned)CELLULAR_BACKOFF_FIRST_STAGES);
     REQUIRE(c.activeWindow == (system_tick_t)CELLULAR_BACKOFF_ACTIVE_WINDOW);
     for (unsigned i = 0; i < CellularRegistrationBackoff::INTERVAL_COUNT; i++) {
         REQUIRE(c.intervals[i] > c.activeWindow);
@@ -372,7 +372,7 @@ TEST_CASE("The compiled in schedule is self consistent") {
     // And it actually runs: the first hour stages are free, the next one cools down
     system_tick_t t = 0;
     b.reset();
-    for (unsigned i = 0; i < c.firstHourStages; i++) {
+    for (unsigned i = 0; i < c.immediateStages; i++) {
         t += c.activeWindow;
         b.attemptFailed(t);
         REQUIRE_FALSE(b.inCooldown(t));
@@ -385,7 +385,7 @@ TEST_CASE("The compiled in schedule is self consistent") {
 
 TEST_CASE("An interval shorter than its own active window clamps to no cooldown") {
     CellularRegistrationBackoff::Config conf;
-    conf.firstHourStages = 1;
+    conf.immediateStages = 1;
     conf.activeWindow = 60 * 1000;
     conf.intervals[0] = 30 * 1000; // misconfigured, would wrap to ~49 days unclamped
     conf.intervals[1] = 30 * 1000;
@@ -443,7 +443,7 @@ TEST_CASE("setSchedule() replaces the whole schedule for an integration test") {
     CellularRegistrationBackoff b(productionConfig());
 
     CellularRegistrationBackoff::Config fast;
-    fast.firstHourStages = 1;
+    fast.immediateStages = 1;
     fast.activeWindow = 2 * MIN;
     fast.intervals[0] = 3 * MIN;
     fast.intervals[1] = 5 * MIN;
@@ -453,7 +453,7 @@ TEST_CASE("setSchedule() replaces the whole schedule for an integration test") {
 
     system_tick_t t = 0;
 
-    // One free stage, matching firstHourStages
+    // One free stage, matching immediateStages
     t += fast.activeWindow;
     b.attemptFailed(t);
     REQUIRE_FALSE(b.inCooldown(t));
@@ -578,7 +578,7 @@ TEST_CASE("Changing the schedule does not disturb a cooldown already running") {
     REQUIRE(was == 50 * MIN);
 
     CellularRegistrationBackoff::Config fast;
-    fast.firstHourStages = 1;
+    fast.immediateStages = 1;
     fast.activeWindow = 1 * MIN;
     fast.intervals[0] = 2 * MIN;
     fast.intervals[1] = 3 * MIN;
@@ -592,7 +592,7 @@ TEST_CASE("Changing the schedule does not disturb a cooldown already running") {
     t += b.cooldownRemaining(t);
     t += fast.activeWindow;
     b.attemptFailed(t);
-    REQUIRE(b.cooldownLength() == 4 * MIN - 1 * MIN); // past the new firstHourStages, so the cap
+    REQUIRE(b.cooldownLength() == 4 * MIN - 1 * MIN); // past the new immediateStages, so the cap
 }
 
 TEST_CASE("restoreStage() clamps against the schedule in force, not the one that stored it") {
@@ -600,7 +600,7 @@ TEST_CASE("restoreStage() clamps against the schedule in force, not the one that
     REQUIRE(b.maxStage() == 9);
 
     CellularRegistrationBackoff::Config fast;
-    fast.firstHourStages = 1;
+    fast.immediateStages = 1;
     fast.activeWindow = 1 * MIN;
     fast.intervals[0] = 2 * MIN;
     fast.intervals[1] = 3 * MIN;

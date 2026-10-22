@@ -2259,7 +2259,7 @@ int SaraNcpClient::setRegistrationBackoffSchedule(const CellularRegistrationBack
     registrationTimeout_ = conf.activeWindow;
     // WARN: this is our only record that the defaults were replaced
     LOG(WARN, "Registration backoff schedule overridden: window %lu s, %u free stages",
-            (unsigned long)(conf.activeWindow / 1000), conf.firstHourStages);
+            (unsigned long)(conf.activeWindow / 1000), conf.immediateStages);
     return SYSTEM_ERROR_NONE;
 }
 

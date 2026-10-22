@@ -32,6 +32,7 @@ LOG_SOURCE_CATEGORY("ncp.rltk.client");
 #include "check.h"
 
 #include <cstdlib>
+#include <algorithm>
 
 #include "wifi_conf.h"
 #include "wifi_constants.h"
@@ -49,10 +50,11 @@ extern "C" {
 
 #include "spark_wiring_vector.h"
 #include "rtl_system_error.h"
-#include "rtl_sdk_support.h"
+#include "rtl_radio.h"
 
 #undef IFNAMSIZ // AMBD SDK and LWIP both define this symbol...
 #include "wlan_hal.h"
+#include "network/ncp/wifi/ncp.h"
 #include "bt_intf.h"
 
 #include "system_env.h"
@@ -123,6 +125,14 @@ void wifi_set_country_code(void) {
 namespace particle {
 
 namespace {
+
+const system_tick_t SCAN_WAIT_TIME = SCAN_LONGEST_WAIT_TIME + 3000;
+const system_tick_t SCAN_REFUSED_MAX_TIME = 200;
+const system_tick_t SCAN_SURVEY_SETTLE_TIME = 3000;
+const unsigned SCAN_FAILURES_BEFORE_DISCONNECT = 2;
+const unsigned SCAN_FAILURES_BEFORE_RADIO_RESET = 4;
+const system_tick_t RADIO_RESET_INTERVAL_MIN = 60 * 1000;
+const system_tick_t RADIO_RESET_INTERVAL_MAX = 30 * 60 * 1000;
 
 int rtlSecurityToWifiSecurity(rtw_security_t rtlSec) {
     switch (rtlSec) {
@@ -255,6 +265,8 @@ int RealtekNcpClient::off() {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     ncpPowerState(NcpPowerState::TRANSIENT_OFF);
+    needsReset_ = false;
+    scanFailures_ = 0;
     rltkOff();
     ncpState(NcpState::OFF);
     ncpPowerState(NcpPowerState::OFF);
@@ -315,6 +327,8 @@ void RealtekNcpClient::parseDisconnectReason(char* buf, size_t bufLen) {
         reason = *(uint16_t*)(buf + 6 /* skip MAC */);
     }
     uint32_t linkErr = rltk_wlan_get_link_err();
+    lastLinkErr_ |= linkErr;
+    lastDisconnectReason_ = reason;
 
     const char* msg = "";
     const char* extraMsg = "";
@@ -387,13 +401,57 @@ void RealtekNcpClient::parseDisconnectReason(char* buf, size_t bufLen) {
     LOG(WARN, "Disconnect linkError=%08x reason=%04x: %s %s %s", linkErr, reason, msg, extraMsg, reasonMsg);
 }
 
+int RealtekNcpClient::connectError(int rtlError) const {
+    if (rtlError == RTW_BUSY) {
+        return rtl_error_to_system(rtlError);
+    }
+    switch (wifi_get_last_error()) {
+    case RTW_NONE_NETWORK:
+        return SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND;
+    case RTW_WRONG_PASSWORD:
+    case RTW_4WAY_HANDSHAKE_TIMEOUT:
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    case RTW_CONNECT_FAIL:
+        break;
+    default:
+        if (rtlError == RTW_TIMEOUT) {
+            return SYSTEM_ERROR_WIFI_CONNECT_TIMEOUT;
+        }
+        if (rtlError != RTW_ERROR) {
+            return rtl_error_to_system(rtlError);
+        }
+        break;
+    }
+    const uint32_t linkErr = lastLinkErr_;
+    if (linkErr & BIT(11)) {
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    }
+    if ((linkErr & (BIT(0) | BIT(1))) && (linkErr & (BIT(18) | BIT(19)))) {
+        return SYSTEM_ERROR_WIFI_AUTHENTICATION_FAILED;
+    }
+    if (lastDisconnectReason_ == 17) {
+        return SYSTEM_ERROR_WIFI_AP_BUSY;
+    }
+    if (linkErr & (BIT(8) | BIT(9))) {
+        return SYSTEM_ERROR_WIFI_ASSOCIATION_REJECTED;
+    }
+    if (linkErr & (BIT(3) | BIT(4) | BIT(10))) {
+        return SYSTEM_ERROR_WIFI_CONNECT_TIMEOUT;
+    }
+    if (linkErr & BIT(2)) {
+        return SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND;
+    }
+    return SYSTEM_ERROR_WIFI_CONNECT_FAILED;
+}
+
 int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSecurity sec, const WifiCredentials& cred) {
-    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     int rtlError = RTW_ERROR;
     for (int i = 0; i < 2; i++) {
         {
             const NcpClientLock lock(this);
             CHECK_TRUE(connState_ == NcpConnectionState::DISCONNECTED, SYSTEM_ERROR_INVALID_STATE);
+            lastLinkErr_ = 0;
+            lastDisconnectReason_ = 0;
 
             connectionState(NcpConnectionState::CONNECTING);
 
@@ -428,6 +486,8 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
                                         nullptr);
             }
             if (rtlError == RTW_SUCCESS) {
+                scanFailures_ = 0;
+                needsReset_ = false;
                 connectionState(NcpConnectionState::CONNECTED);
                 return rtl_error_to_system(rtlError);
             } else if (rtlError != RTW_ERROR) {
@@ -439,7 +499,7 @@ int RealtekNcpClient::connect(const char* ssid, const MacAddress& bssid, WifiSec
         HAL_Delay_Milliseconds(500);
     }
     connectionState(NcpConnectionState::DISCONNECTED);
-    return rtl_error_to_system(rtlError);
+    return connectError(rtlError);
 }
 
 int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
@@ -494,7 +554,6 @@ int RealtekNcpClient::getNetworkInfo(WifiNetworkInfo* info) {
 }
 
 int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnect) {
-    CHECK_FALSE(needsReset_, SYSTEM_ERROR_BUSY);
     CHECK_TRUE(ncpState_ == NcpState::ON, SYSTEM_ERROR_INVALID_STATE);
 
     const NcpClientLock lock(this);
@@ -507,6 +566,10 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnec
     Context ctx;
     ctx.callback = callback;
     ctx.data = data;
+    for (auto t = HAL_Timer_Get_Milli_Seconds(); rtwWifiSurveyInProgress() && HAL_Timer_Get_Milli_Seconds() - t < SCAN_SURVEY_SETTLE_TIME;) {
+        HAL_Delay_Milliseconds(50);
+    }
+    const auto start = HAL_Timer_Get_Milli_Seconds();
     int rtlError = wifi_scan_networks([](rtw_scan_handler_result_t* malloced_scan_result) -> rtw_result_t {
         Context* ctx = (Context*)malloced_scan_result->user_data;
         if (malloced_scan_result->scan_complete != RTW_TRUE) {
@@ -558,23 +621,37 @@ int RealtekNcpClient::scan(WifiScanCallback callback, void* data, bool forConnec
         LOG(WARN, "wifi_scan_networks err: %d", rtlError);
         ctx.done = true;
     }
-    for (auto start = HAL_Timer_Get_Milli_Seconds(); !ctx.done && HAL_Timer_Get_Milli_Seconds() - start <= SCAN_LONGEST_WAIT_TIME;) {
+    while (!ctx.done && HAL_Timer_Get_Milli_Seconds() - start <= SCAN_WAIT_TIME) {
         HAL_Delay_Milliseconds(100);
     }
     if (!ctx.done) {
-        LOG(ERROR, "Did not receive final scan completed indication, aborting");
-        ctx.done = true;
-        rtlError = RTW_TIMEOUT;
+        wifi_scan_networks_abort();
+        if (!ctx.done) {
+            LOG(ERROR, "Did not receive final scan completed indication, aborting");
+            rtlError = RTW_TIMEOUT;
+        }
     }
+    const auto elapsed = HAL_Timer_Get_Milli_Seconds() - start;
     for (int i = 0; i < ctx.results.size(); i++) {
         callback(ctx.results[i], data);
     }
 
-    // XXX:
-    if ((/* ignoring for now: forConnect && */ ctx.results.size() == 0) || rtlError == RTW_TIMEOUT) {
-        // Workaround for a weird state we might enter where the wifi driver
-        // is not returning any results
-        needsReset_ = true;
+    if (connState_ != NcpConnectionState::CONNECTED &&
+            (rtlError || (ctx.results.size() == 0 && elapsed < SCAN_REFUSED_MAX_TIME))) {
+        ++scanFailures_;
+        LOG(WARN, "Scan failed: error=%d results=%d time=%u ms consecutive=%u", rtlError, ctx.results.size(),
+                (unsigned)elapsed, scanFailures_);
+        if (scanFailures_ >= SCAN_FAILURES_BEFORE_DISCONNECT) {
+            wifi_disconnect();
+            rtwWifiAbortSurvey();
+        }
+        if (scanFailures_ >= SCAN_FAILURES_BEFORE_RADIO_RESET) {
+            needsReset_ = true;
+        }
+    } else {
+        LOG(TRACE, "Scan completed: error=%d results=%d time=%u ms", rtlError, ctx.results.size(), (unsigned)elapsed);
+        scanFailures_ = 0;
+        needsReset_ = false;
     }
 
     return rtl_error_to_system(rtlError);
@@ -689,10 +766,35 @@ int RealtekNcpClient::dataChannelFlowControl(bool state) {
 }
 
 void RealtekNcpClient::processEvents() {
-    if (needsReset_) {
-        rtwRadioReset();
-        needsReset_ = false;
+    if (!needsReset_) {
+        return;
     }
+    const NcpClientLock lock(this);
+    if (ncpState_ != NcpState::ON || connState_ == NcpConnectionState::CONNECTED) {
+        needsReset_ = false;
+        scanFailures_ = 0;
+        return;
+    }
+    const auto now = HAL_Timer_Get_Milli_Seconds();
+    if (lastRadioReset_ && now - lastRadioReset_ >= radioResetInterval_ + RADIO_RESET_INTERVAL_MAX) {
+        radioResetInterval_ = 0;
+    }
+    if (radioResetInterval_ && now - lastRadioReset_ < radioResetInterval_) {
+        return;
+    }
+    if (hal_ble_gap_is_connected(nullptr, nullptr) || hal_ble_gap_is_connecting(nullptr, nullptr)) {
+        return;
+    }
+    LOG(WARN, "Resetting radio after %u consecutive scan failures", scanFailures_);
+    rtwRadioReset();
+    const auto mgr = wifiNetworkManager();
+    if (mgr) {
+        mgr->resetConnectBackoff();
+    }
+    lastRadioReset_ = now;
+    radioResetInterval_ = radioResetInterval_ ? std::min(radioResetInterval_ * 2, RADIO_RESET_INTERVAL_MAX) : RADIO_RESET_INTERVAL_MIN;
+    scanFailures_ = 0;
+    needsReset_ = false;
 }
 
 int RealtekNcpClient::checkParser() {

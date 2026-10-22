@@ -22,6 +22,7 @@
 
 #include <cstdint>
 #include "enumflags.h"
+#include "network/ncp/connection_backoff.h"
 
 #include "wlan_hal_shared.h"
 
@@ -165,10 +166,18 @@ public:
     static void clearNetworkConfig();
     static bool hasNetworkConfig();
 
+    bool connectAllowed();
+    void resetConnectBackoff();
+
     WifiNcpClient* ncpClient() const;
 
 private:
     WifiNcpClient* client_;
+    ConnectionBackoff connectBackoff_;
+    volatile bool connectBackoffResetPending_;
+    bool connectFailureTransient_;
+
+    void applyPendingConnectBackoffReset();
 };
 
 inline WifiCredentials::WifiCredentials() :
@@ -337,10 +346,6 @@ inline WifiScanResult& WifiScanResult::rssi(int rssi) {
 
 inline int WifiScanResult::rssi() const {
     return rssi_;
-}
-
-inline int WifiNetworkManager::connect() {
-    return connect(nullptr);
 }
 
 inline WifiNcpClient* WifiNetworkManager::ncpClient() const {

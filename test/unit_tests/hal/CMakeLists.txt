@@ -2,6 +2,7 @@ set(target_name hal)
 
 # Create test executable
 add_executable( ${target_name}
+  connection_backoff.cpp
   inflate.cpp
   sparse_buffer.cpp
   ${DEVICE_OS_DIR}/hal/shared/inflate.cpp
@@ -20,6 +21,7 @@ target_include_directories( ${target_name}
   PRIVATE ${TEST_DIR}
   PRIVATE ${DEVICE_OS_DIR}/hal/inc
   PRIVATE ${DEVICE_OS_DIR}/hal/shared
+  PRIVATE ${DEVICE_OS_DIR}/hal
   PRIVATE ${DEVICE_OS_DIR}/hal/src/nRF52840
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc
   PRIVATE ${DEVICE_OS_DIR}/services/inc
