@@ -359,6 +359,30 @@ static void prohibit_xip(void) {
 }
 #endif // HAL_PLATFORM_PROHIBIT_XIP
 
+#if HAL_PLATFORM_NULL_POINTER_TRAP
+static void null_pointer_trap_init(void) {
+    // MBR vector table, MBR code starts at 0x104
+    const uint32_t size = 0x100;
+    const uint8_t regions = (MPU->TYPE & MPU_TYPE_DREGION_Msk) >> MPU_TYPE_DREGION_Pos;
+
+    uint8_t st = 0;
+    sd_nvic_critical_region_enter(&st);
+
+    MPU->RNR = regions - 1;
+    MPU->RBAR = 0x00000000;
+    // XN: 1, instruction fetches disabled
+    // AP: 0b000, all accesses generate a permission fault
+    MPU->RASR = MPU_RASR_XN_Msk | MPU_RASR_ENABLE_Msk | ((31 - __CLZ(size) - 1) << MPU_RASR_SIZE_Pos);
+    MPU->CTRL = MPU_CTRL_PRIVDEFENA_Msk | MPU_CTRL_ENABLE_Msk;
+    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
+
+    sd_nvic_critical_region_exit(st);
+
+    __DSB();
+    __ISB();
+}
+#endif // HAL_PLATFORM_NULL_POINTER_TRAP
+
 /*******************************************************************************
  * Function Name  : HAL_Core_Config.
  * Description    : Called in startup routine, before calling C++ constructors.
@@ -380,6 +404,10 @@ void HAL_Core_Config(void) {
 
 #if HAL_PLATFORM_PROHIBIT_XIP
     prohibit_xip();
+#endif
+
+#if HAL_PLATFORM_NULL_POINTER_TRAP
+    null_pointer_trap_init();
 #endif
 
     Set_System();
