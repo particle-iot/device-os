@@ -25,6 +25,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   cellular.cpp
   cellular_registration_backoff.cpp
+  cellular_imsi_rotation.cpp
 )
 
 # Set defines specific to target
