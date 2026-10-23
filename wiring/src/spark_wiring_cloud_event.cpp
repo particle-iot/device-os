@@ -713,13 +713,17 @@ int CloudEvent::publish() {
     NAMED_SCOPE_GUARD(rateLimiterGuard, {
         RateLimiter::instance().give(size);
     });
+    testAndSetStatus(status, Status::SENDING, 0 /* err */, false /* notify */);
     int r = send();
     if (r < 0) {
         LOG(ERROR, "Failed to send event: %d", r);
-        return setFailed(r);
+        testAndSetStatus(Status::SENDING, Status::FAILED, r, status != Status::FAILED /* notify */);
+        return error();
     }
-    setStatus(Status::SENDING);
     rateLimiterGuard.dismiss();
+    if (this->status() == Status::SENDING && d_->onStatusChange) {
+        d_->onStatusChange(*this);
+    }
     return 0;
 }
 
@@ -770,16 +774,20 @@ int CloudEvent::send() {
         CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_CONTENT_FORMAT, (unsigned)d_->contentType, nullptr /* reserved */));
     }
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
-    CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */,
+    // Keep the reference around until either the ACK or error callback is called
+    d_->addRef();
+    r = coap_end_request(msg.get(), nullptr /* resp_cb */,
             [](int reqId, void* arg) { // ack_cb
                 sendComplete(0 /* err */, reqId, arg);
                 return 0;
             },
-            sendComplete /* error_cb */, d_.get(), nullptr /* reserved */));
+            sendComplete /* error_cb */, d_.get(), nullptr /* reserved */);
+    if (r < 0) {
+        d_->release();
+        return r;
+    }
     // The system now owns the message
     msg.release();
-    // Keep the reference around until either the ACK or error callback is called
-    d_->addRef();
     d_->requestId = reqId;
     return 0;
 }
@@ -808,7 +816,7 @@ void CloudEvent::setStatus(Status status, int err) {
     testAndSetStatus(d_->status, status, err);
 }
 
-bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int err) {
+bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int err, bool notify) {
     if (!d_) {
         return false;
     }
@@ -817,7 +825,7 @@ bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int e
         return false;
     }
     d_->error = err;
-    if (d_->onStatusChange) {
+    if (notify && d_->onStatusChange) {
         d_->onStatusChange(*this);
     }
     if (newStatus == Status::INVALID) {
