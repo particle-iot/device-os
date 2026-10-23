@@ -154,3 +154,12 @@ test('20_init_new_api_subscription_is_preferred', async function() {
 
 test('21_new_api_subscription_is_preferred', async function() {
 });
+
+test('22_events_in_flight_are_completed_after_link_loss', async function() {
+});
+
+test('23_failing_to_send_an_event_does_not_cause_a_full_handshake', async function() {
+});
+
+test('24_events_are_completed_while_the_application_thread_is_busy', async function() {
+});
