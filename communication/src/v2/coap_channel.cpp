@@ -297,6 +297,7 @@ struct CoapChannel::RequestMessage: Message {
             transmitTime(0),
             transmitTimeout(0),
             transmitCount(0),
+            timeout(0),
             method() {
     }
 };
@@ -1080,6 +1081,20 @@ int CoapChannel::run() {
         return 0;
     }
 
+    // Handle response timeouts
+    auto sentReq = findRefInList(sentReqs_, [&](auto req) {
+        return now - req->transmitTime >= req->timeout;
+    });
+    if (sentReq) {
+        if (sentReq->type == MessageType::REQUEST && !sentReq->hasMore.value_or(false) && !sentReq->responseCallback) {
+            clearMessage(sentReq);
+        } else {
+            LOG(ERROR, "CoAP request timeout; request ID: %d", sentReq->id);
+            failMessage(sentReq, SYSTEM_ERROR_COAP_TIMEOUT);
+        }
+        return 0;
+    }
+
     // Handle blockwise transfer timeouts
     auto req = findRefInList(recvBlockReqs_, [&](auto req) {
         // As per RFC 7959, 2.5, a partial request body can be discarded when a period of EXCHANGE_LIFETIME
@@ -1093,8 +1108,6 @@ int CoapChannel::run() {
         return 0;
     }
 
-    // TODO: As of now, the server always replies with piggybacked responses so we don't need to
-    // handle separate response timeouts
     return 0;
 }
 
@@ -1542,6 +1555,7 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
             }
             if (!noResp) {
                 msg->state = MessageState::WAIT_RESPONSE;
+                staticPtrCast<RequestMessage>(msg)->transmitTime = millis();
                 addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
                 if (isCoapResponseCode(d.code())) {
                     CHECK(handleResponse(d));
