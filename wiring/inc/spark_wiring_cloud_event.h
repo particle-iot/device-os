@@ -622,7 +622,7 @@ private:
     int send();
     coap_payload* getValidPayload();
     void setStatus(Status status, int err = 0);
-    bool testAndSetStatus(Status expectedStatus, Status newStatus, int err = 0);
+    bool testAndSetStatus(Status expectedStatus, Status newStatus, int err = 0, bool notify = true);
 
     // Note: Make sure to log an error message when transitioning to a recoverable failed state
     int setFailed(int err) {
