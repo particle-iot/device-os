@@ -1032,15 +1032,15 @@ int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
         auto req = staticPtrCast<RequestMessage>(msg);
         auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer
         assert(resp);
+        clearMessage(resp);
         if (resp->errorCallback) {
             resp->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, resp->requestId, resp->callbackArg); // Callback passed to coap_read_response()
         }
-        clearMessage(resp);
     } else {
+        clearMessage(msg);
         if (msg->errorCallback) { // REQUEST or RESPONSE
             msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
         }
-        clearMessage(msg);
     }
     return Result::HANDLED;
 }
@@ -1381,10 +1381,10 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (r < 0) {
             LOG(ERROR, "Failed to decode message options: %d", r);
             if (resp) {
+                clearMessage(resp);
                 if (resp->errorCallback) {
                     resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
                 }
-                clearMessage(resp);
             } else {
                 failMessage(req, SYSTEM_ERROR_COAP);
             }
@@ -1397,10 +1397,10 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (blockIndex != req->blockIndex.value() || etag != req->tag) {
             auto code = d.code();
             LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
+            clearMessage(resp);
             if (resp->errorCallback) {
                 resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
             }
-            clearMessage(resp);
             return Result::HANDLED;
         }
         resp->blockIndex = blockIndex;
@@ -1538,6 +1538,23 @@ int CoapChannel::handleAck(CoapMessageDecoder& d, bool matchToken) {
         auto req = staticPtrCast<RequestMessage>(msg);
         g_coapRoundTripMSec = millis() - req->transmitTime;
     }
+    removeRefFromList(unackMsgs_, msg);
+    msg->state = MessageState::DONE;
+    if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
+        bool noResp = false;
+        if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
+            // Check if a response is needed
+            auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
+            if (opt && (opt->toUint() & 26) == 26) { // Suppress all response codes (RFC 7967, 2.1)
+                noResp = true;
+            }
+        }
+        if (!noResp) {
+            msg->state = MessageState::WAIT_RESPONSE;
+            staticPtrCast<RequestMessage>(msg)->transmitTime = millis();
+            addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
+        }
+    }
     // For a blockwise request, the ACK callback is invoked when the last message block is acknowledged
     if (msg->ackCallback && ((msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) ||
             msg->type == MessageType::RESPONSE)) {
@@ -1548,27 +1565,8 @@ int CoapChannel::handleAck(CoapMessageDecoder& d, bool matchToken) {
             return Result::HANDLED;
         }
     }
-    if (msg->state == MessageState::WAIT_ACK) {
-        removeRefFromList(unackMsgs_, msg);
-        msg->state = MessageState::DONE;
-        if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
-            bool noResp = false;
-            if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
-                // Check if a response is needed
-                auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
-                if (opt && (opt->toUint() & 26) == 26) { // Suppress all response codes (RFC 7967, 2.1)
-                    noResp = true;
-                }
-            }
-            if (!noResp) {
-                msg->state = MessageState::WAIT_RESPONSE;
-                staticPtrCast<RequestMessage>(msg)->transmitTime = millis();
-                addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
-                if (isCoapResponseCode(d.code())) {
-                    CHECK(handleResponse(d));
-                }
-            }
-        }
+    if (msg->state == MessageState::WAIT_RESPONSE && msg->sessionId == sessId_ && isCoapResponseCode(d.code())) {
+        CHECK(handleResponse(d));
     }
     return Result::HANDLED;
 }
