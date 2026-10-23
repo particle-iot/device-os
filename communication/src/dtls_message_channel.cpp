@@ -179,6 +179,7 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 			LOG(ERROR,"unknown ciphersuite with id %d", ciphersuite);
 			return ERROR;
 		}
+		context->handshake->ciphersuite_info = ciphersuiteInfo;
 
 		int err = mbedtls_ssl_derive_keys(context);
 		if (err)
