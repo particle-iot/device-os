@@ -743,7 +743,7 @@ int CoapChannel::cancelRequest(int reqId) {
             });
         }
     }
-    if (!msg) {
+    if (!msg || msg->sessionId != sessId_) {
         return 0;
     }
     clearMessage(msg);
