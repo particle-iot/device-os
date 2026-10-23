@@ -1369,6 +1369,8 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
                     resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
                 }
                 clearMessage(resp);
+            } else {
+                failMessage(req, SYSTEM_ERROR_COAP);
             }
             return Result::HANDLED;
         }
@@ -1450,6 +1452,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     // Create a message object
     resp = makeRefCountPtr<ResponseMessage>();
     if (!resp) {
+        failMessage(req, SYSTEM_ERROR_NO_MEMORY);
         return SYSTEM_ERROR_NO_MEMORY;
     }
     resp->id = ++lastMsgId_;
