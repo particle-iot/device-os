@@ -729,12 +729,12 @@ int LedgerManager::receiveResponse(CoapMessagePtr& msg, int status) {
 int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result) {
     assert(state_ == State::SYNC_TO_CLOUD && curCtx_ && curCtx_->syncDir == LEDGER_SYNC_DIRECTION_DEVICE_TO_CLOUD &&
             curCtx_->taskRunning);
+    RefCountPtr<Ledger> ledger;
     if (result == 0) {
         LOG(TRACE, "Sent ledger data: %s", curCtx_->name);
         LedgerInfo newInfo;
         auto now = CHECK(getMillisSinceEpoch());
         newInfo.lastSynced(now);
-        RefCountPtr<Ledger> ledger;
         CHECK(getLedger(ledger, curCtx_->name));
         // Make sure the ledger can't be changed while we're updating its persistently stored state
         // and sync context
@@ -751,7 +751,6 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result)
         }
         CHECK(ledger->updateInfo(newInfo));
         ledgerLock.unlock();
-        ledger->notifySynced(); // TODO: Invoke asynchronously
         // TODO: Reorder the ledger entries so that they're synchronized in a round-robin fashion
     } else {
         LOG(ERROR, "Failed to sync ledger: %s; result: %d", curCtx_->name, result);
@@ -765,6 +764,9 @@ int LedgerManager::receiveSetDataResponse(CoapMessagePtr& /* msg */, int result)
     curCtx_->taskRunning = false;
     curCtx_ = nullptr;
     state_ = State::READY;
+    if (ledger) {
+        ledger->notifySynced(); // TODO: Invoke asynchronously
+    }
     return 0;
 }
 
