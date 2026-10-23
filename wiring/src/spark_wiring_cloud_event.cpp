@@ -166,6 +166,7 @@ struct CloudEvent::Data: public RefCount {
     int requestId;
     int sendResult;
     int error;
+    Data* nextCompleted;
 
     Data() :
             status(Status::NEW),
@@ -174,7 +175,8 @@ struct CloudEvent::Data: public RefCount {
             pos(0),
             requestId(COAP_INVALID_REQUEST_ID),
             sendResult(0),
-            error(0) {
+            error(0),
+            nextCompleted(nullptr) {
     }
 };
 
@@ -189,6 +191,10 @@ struct CloudEvent::Subscription {
 };
 
 Vector<CloudEvent::Subscription> CloudEvent::s_subscriptions;
+
+CloudEvent::Data* CloudEvent::s_completedHead = nullptr;
+CloudEvent::Data* CloudEvent::s_completedTail = nullptr;
+bool CloudEvent::s_completionScheduled = false;
 
 CloudEvent::CloudEvent() :
         d_(makeRefCountPtr<Data>()) {
@@ -693,6 +699,7 @@ bool CloudEvent::canPublish(size_t size) {
 }
 
 int CloudEvent::publish() {
+    scheduleSendCompletions();
     auto status = this->status();
     if (status == Status::INVALID) {
         return error();
@@ -905,11 +912,56 @@ int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int
 
 // Called in the system thread
 void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
-    auto d = RefCountPtr<Data>::wrap(static_cast<Data*>(arg));
+    auto d = static_cast<Data*>(arg); // Takes over the reference added in send()
     d->sendResult = err;
-    // Run a callback in the application thread to update the status of the event
-    int r = application_thread_invoke([](void* arg) {
-        CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
+    scheduleSendCompletions(d);
+}
+
+void CloudEvent::scheduleSendCompletions(Data* completed) {
+    {
+        std::lock_guard lock(EventLock::instance());
+        if (completed) {
+            if (s_completedTail) {
+                s_completedTail->nextCompleted = completed;
+            } else {
+                s_completedHead = completed;
+            }
+            s_completedTail = completed;
+        }
+        if (!s_completedHead || s_completionScheduled) {
+            return;
+        }
+        s_completionScheduled = true;
+    }
+    // Update the status of the events in the application thread
+    int r = application_thread_invoke(processSendCompletions, nullptr /* data */, nullptr /* reserved */);
+    if (r != 0) {
+        // TODO: Every completion that comes after this retries the call, and each retry can block the
+        // system thread for up to 5 seconds if the application queue is still full
+        LOG(ERROR, "Failed to schedule event status update");
+        std::lock_guard lock(EventLock::instance());
+        s_completionScheduled = false;
+    }
+}
+
+// Called in the application thread
+void CloudEvent::processSendCompletions(void* /* arg */) {
+    for (;;) {
+        RefCountPtr<Data> d;
+        {
+            std::lock_guard lock(EventLock::instance());
+            if (!s_completedHead) {
+                s_completionScheduled = false;
+                return;
+            }
+            d = RefCountPtr<Data>::wrap(s_completedHead);
+            s_completedHead = d->nextCompleted;
+            if (!s_completedHead) {
+                s_completedTail = nullptr;
+            }
+            d->nextCompleted = nullptr;
+        }
+        CloudEvent event(std::move(d));
         auto newStatus = Status::SENT;
         int err = event.d_->sendResult;
         if (err < 0) {
@@ -917,15 +969,13 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
             newStatus = Status::FAILED;
         }
         size_t size = event.size();
-        if (!event.testAndSetStatus(Status::SENDING, newStatus, err)) {
-            return; // The event was cancelled
+        if (!event.testAndSetStatus(Status::SENDING, newStatus, err, false /* notify */)) {
+            continue; // The event was cancelled
         }
         RateLimiter::instance().give(size);
-    }, d.get(), nullptr /* reserved */);
-    // FIXME: application_thread_invoke() doesn't really handle errors as of now
-    if (r == 0) {
-        // Keep the reference around until the application callback is called
-        d.unwrap();
+        if (event.d_->onStatusChange) {
+            event.d_->onStatusChange(event);
+        }
     }
 }
 
