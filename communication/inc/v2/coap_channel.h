@@ -168,18 +168,20 @@ private:
     int curMsgId_; // Internal ID of the message stored in the shared buffer
     int sessId_; // Counter incremented every time a new session with the server is started
     int pendingCloseError_; // If non-zero, the channel needs to be closed
+    int pendingError_; // If non-zero, the error needs to be reported to the protocol layer
     bool openPending_; // If true, the channel needs to be reopened
 
     int handleRequest(CoapMessageDecoder& d);
     int handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus);
     int handleResponse(CoapMessageDecoder& d);
-    int handleAck(CoapMessageDecoder& d);
+    int handleAck(CoapMessageDecoder& d, bool matchToken = false);
 
     int prepareMessage(const RefCountPtr<Message>& msg, bool retransmit = false);
     int updateMessage(const RefCountPtr<Message>& msg);
     int sendMessage(RefCountPtr<Message> msg, bool retransmit = false, bool passthrough = false);
     int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);
     void clearMessage(const RefCountPtr<Message>& msg);
+    void failMessage(const RefCountPtr<Message>& msg, int error);
 
     int sendResponseAck(CoapCode code);
     int sendEmptyAck();

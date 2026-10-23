@@ -38,7 +38,7 @@ std::unique_ptr<CoapOptionEntry, CoapOptionEntry::Deleter> CoapOptionEntry::crea
         return nullptr;
     }
     new(p) CoapOptionEntry(num, size);
-    std::memcpy((char*)p + sizeof(CoapOptionEntry), data, size);
+    std::memcpy(p->data_, data, size);
     return std::unique_ptr<CoapOptionEntry, Deleter>(p);
 }
 
