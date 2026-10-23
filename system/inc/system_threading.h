@@ -106,6 +106,18 @@ os_mutex_recursive_t mutex_usb_serial();
         return result; \
     }
 
+#define SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(fn, error) \
+    if (particle::SystemThread.isStarted() && !particle::SystemThread.isCurrentThread()) { \
+        auto callable = particle::FFL([=]() { return (fn); }); \
+        auto future = particle::SystemThread.invoke_future(callable); \
+        if (!future) { \
+            return error; \
+        } \
+        auto result = future->get(); \
+        delete future; \
+        return result; \
+    }
+
 #define SYSTEM_THREAD_CURRENT() (particle::SystemThread.isCurrentThread())
 #define APPLICATION_THREAD_CURRENT() (particle::ApplicationThread.isCurrentThread())
 
@@ -115,6 +127,7 @@ os_mutex_recursive_t mutex_usb_serial();
 #define _THREAD_CONTEXT_ASYNC_TRY(thread, fn)
 #define _THREAD_CONTEXT_ASYNC_RESULT(thread, fn, result)
 #define SYSTEM_THREAD_CONTEXT_SYNC(fn)
+#define SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(fn, error)
 
 #define SYSTEM_THREAD_CURRENT() (1)
 #define APPLICATION_THREAD_CURRENT() (1)
