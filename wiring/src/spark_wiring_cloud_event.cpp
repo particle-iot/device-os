@@ -888,7 +888,6 @@ int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int
             LOG(ERROR, "Failed to handle received event: %d", r);
         }
     }, msg.get(), nullptr /* reserved */);
-    // FIXME: application_thread_invoke() doesn't really handle errors as of now
     if (r == 0) {
         // Keep the reference around until the application callback is called
         msg.release();

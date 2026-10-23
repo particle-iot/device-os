@@ -812,9 +812,12 @@ uint8_t main_thread_current(void* reserved)
 
 uint8_t application_thread_invoke(void (*callback)(void* data), void* data, void* reserved)
 {
-    // FIXME: We need a way to report an error back to caller, if asynchronous function call can't
-    // be scheduled for some reason
-    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(application_thread_invoke(callback, data, reserved), 0);
+#if PLATFORM_THREADING
+    if (ApplicationThread.isStarted() && !ApplicationThread.isCurrentThread()) {
+        auto lambda = [=]() { callback(data); };
+        return ApplicationThread.invoke_async(FFL(lambda)) ? 0 : 1;
+    }
+#endif // PLATFORM_THREADING
     callback(data);
     return 0;
 }
