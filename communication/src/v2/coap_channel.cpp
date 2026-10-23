@@ -1350,7 +1350,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (d.type() == CoapType::CON) {
             // Check the unack'd requests as this response could arrive before the ACK. In that case,
             // handleResponse() will be called recursively
-            r = CHECK(handleAck(d));
+            r = CHECK(handleAck(d, true /* matchToken */));
         }
         return r; // 0 or Result::HANDLED
     }
@@ -1520,8 +1520,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     return Result::HANDLED;
 }
 
-int CoapChannel::handleAck(CoapMessageDecoder& d) {
-    auto msg = findRefInList(unackMsgs_, [=](auto msg) {
+int CoapChannel::handleAck(CoapMessageDecoder& d, bool matchToken) {
+    CoapToken token(d.token(), d.tokenSize());
+    auto msg = findRefInList(unackMsgs_, [&](auto msg) {
+        if (matchToken) {
+            return msg->type != MessageType::RESPONSE && msg->token == token;
+        }
         return msg->coapId == d.id();
     });
     if (!msg) {

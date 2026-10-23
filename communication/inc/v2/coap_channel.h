@@ -173,7 +173,7 @@ private:
     int handleRequest(CoapMessageDecoder& d);
     int handleRequestImpl(CoapMessageDecoder& d, CoapCode& errStatus);
     int handleResponse(CoapMessageDecoder& d);
-    int handleAck(CoapMessageDecoder& d);
+    int handleAck(CoapMessageDecoder& d, bool matchToken = false);
 
     int prepareMessage(const RefCountPtr<Message>& msg, bool retransmit = false);
     int updateMessage(const RefCountPtr<Message>& msg);
