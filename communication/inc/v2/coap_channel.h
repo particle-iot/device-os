@@ -180,6 +180,7 @@ private:
     int sendMessage(RefCountPtr<Message> msg, bool retransmit = false, bool passthrough = false);
     int sendPayloadBlock(const RefCountPtr<Message>& msg, bool retransmit = false);
     void clearMessage(const RefCountPtr<Message>& msg);
+    void failMessage(const RefCountPtr<Message>& msg, int error);
 
     int sendResponseAck(CoapCode code);
     int sendEmptyAck();
