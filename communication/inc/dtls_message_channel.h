@@ -101,6 +101,7 @@ private:
 	const uint8_t* device_id;
 	bool move_session;
 	bool debug_enabled;
+	bool discard_output;
 
 	enum class EstablishState : uint8_t {
 		NONE,
@@ -138,6 +139,7 @@ private:
 	ProtocolError setup_context();
 
 	void cancel_move_session();
+	void discard_pending_output();
 
 	void reset_session();
 
@@ -155,6 +157,7 @@ private:
 			device_id(nullptr),
 			move_session(false),
 			debug_enabled(false),
+			discard_output(false),
 			establish_state(EstablishState::NONE),
 			last_wait(WaitCondition::NONE),
 			timer_start(0),
