@@ -672,6 +672,7 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 		LOG(ERROR, "mbedtls_ssl_write() failed: -0x%x", -ret);
 		if (ret == MBEDTLS_ERR_NET_SEND_FAILED) {
 			// Do not invalidate the session on network errors
+			sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 			return IO_ERROR_SOCKET_SEND_FAILED;
 		}
 		reset_session();
