@@ -1339,12 +1339,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         return r; // 0 or Result::HANDLED
     }
     assert(req->state == MessageState::WAIT_RESPONSE);
-    removeRefFromList(sentReqs_, req);
-    req->state = MessageState::DONE;
     if (d.type() == CoapType::CON) {
         // Acknowledge the response
         CHECK(sendEmptyAck());
     }
+    removeRefFromList(sentReqs_, req);
+    req->state = MessageState::DONE;
     // Check if it's a blockwise response
     auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer. If null, a response object hasn't been created yet
     CoapTag etag;
