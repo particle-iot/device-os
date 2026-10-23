@@ -1071,7 +1071,12 @@ int CoapChannel::run() {
         removeRefFromList(unackMsgs_, msg);
         msg->state = MessageState::WRITE;
         LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT);
-        CHECK(sendPayloadBlock(req, true /* retransmit */));
+        int r = sendPayloadBlock(req, true /* retransmit */);
+        if (r < 0) {
+            LOG(ERROR, "Failed to retransmit CoAP message: %d", r);
+            failMessage(req, r);
+            return r;
+        }
         return 0;
     }
 
@@ -1414,7 +1419,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             if (req->payload) {
                 req->payloadPos += COAP_BLOCK_SIZE;
                 req->transmitCount = 0;
-                CHECK(sendPayloadBlock(req));
+                int r = sendPayloadBlock(req);
+                if (r < 0) {
+                    LOG(ERROR, "Failed to send message block: %d", r);
+                    failMessage(req, r);
+                    return r;
+                }
             } else {
                 // Invoke the block handler
                 assert(req->blockCallback);
@@ -1729,6 +1739,18 @@ void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
     }
     msg->payload = nullptr;
     msg->state = MessageState::DONE;
+}
+
+void CoapChannel::failMessage(const RefCountPtr<Message>& msg, int error) {
+    RefCountPtr<Message> m = msg;
+    if (m->type == MessageType::BLOCK_REQUEST) {
+        m = staticPtrCast<RequestMessage>(msg)->blockResponse;
+        assert(m);
+    }
+    clearMessage(m);
+    if (m->errorCallback) {
+        m->errorCallback(error, m->requestId, m->callbackArg);
+    }
 }
 
 int CoapChannel::sendResponseAck(CoapCode code) {
