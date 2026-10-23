@@ -195,7 +195,7 @@ void syncCallbackSystem(ledger_instance* ledger, void* appData) {
     // Dispatch the callback to the application thread
     ledger_add_ref(ledger, nullptr);
     int r = application_thread_invoke(syncCallbackApp, ledger, nullptr);
-    if (r != 0) { // FIXME: application_thread_invoke() doesn't really handle errors as of now
+    if (r != 0) {
         ledger_release(ledger, nullptr);
     }
 }
