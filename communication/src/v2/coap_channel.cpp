@@ -1035,10 +1035,13 @@ int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
         if (resp->errorCallback) {
             resp->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, resp->requestId, resp->callbackArg); // Callback passed to coap_read_response()
         }
-    } else if (msg->errorCallback) { // REQUEST or RESPONSE
-        msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
+        clearMessage(resp);
+    } else {
+        if (msg->errorCallback) { // REQUEST or RESPONSE
+            msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
+        }
+        clearMessage(msg);
     }
-    clearMessage(msg);
     return Result::HANDLED;
 }
 
