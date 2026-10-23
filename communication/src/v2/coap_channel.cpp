@@ -383,6 +383,7 @@ CoapChannel::CoapChannel() :
         curMsgId_(0),
         sessId_(0),
         pendingCloseError_(0),
+        pendingError_(0),
         openPending_(false) {
 }
 
@@ -864,6 +865,7 @@ void CoapChannel::removeConnectionHandler(coap_connection_callback callback) {
 
 void CoapChannel::open() {
     pendingCloseError_ = 0;
+    pendingError_ = 0;
     if (state_ != State::CLOSED) {
         if (state_ == State::CLOSING) {
             // open() is being called from a connection handler
@@ -892,6 +894,7 @@ void CoapChannel::open() {
 }
 
 void CoapChannel::close(int error) {
+    pendingError_ = 0;
     if (!error) {
         error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
@@ -1046,6 +1049,11 @@ int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
 }
 
 int CoapChannel::run() {
+    if (pendingError_) {
+        int error = pendingError_;
+        pendingError_ = 0;
+        return error;
+    }
     if (state_ != State::OPEN) {
         return 0;
     }
@@ -1817,6 +1825,15 @@ int CoapChannel::handleProtocolError(ProtocolError error) {
     LOG(ERROR, "Protocol error: %d", (int)error);
     int err = toSystemError(error);
     close(err);
+    switch (error) {
+    case ProtocolError::IO_ERROR_SOCKET_SEND_FAILED:
+    case ProtocolError::INSUFFICIENT_STORAGE:
+    case ProtocolError::NO_MEMORY:
+        pendingError_ = err;
+        return err;
+    default:
+        break;
+    }
     error = protocol_->get_channel().command(Channel::CLOSE);
     if (error != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Channel CLOSE command failed: %d", (int)error);

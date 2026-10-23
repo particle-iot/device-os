@@ -168,6 +168,7 @@ private:
     int curMsgId_; // Internal ID of the message stored in the shared buffer
     int sessId_; // Counter incremented every time a new session with the server is started
     int pendingCloseError_; // If non-zero, the channel needs to be closed
+    int pendingError_; // If non-zero, the error needs to be reported to the protocol layer
     bool openPending_; // If true, the channel needs to be reopened
 
     int handleRequest(CoapMessageDecoder& d);
