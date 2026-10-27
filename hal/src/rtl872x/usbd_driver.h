@@ -77,6 +77,7 @@ public:
     virtual void unlock() override;
 
     void halReadPacketFixup(void* ptr);
+    bool ep0OutStormCheck(uint32_t doepint);
 
     static void loop(void* ctx);
 
@@ -101,6 +102,7 @@ private:
 
     void setDevReference(usb_dev_t* dev);
     void fixupReceivedData();
+    void flushRxFifoAndRearmEp0();
 
 private:
     usb_dev_t* rtlDev_ = nullptr;
@@ -147,6 +149,12 @@ private:
     volatile bool needsReset_ = false;
     volatile int config_ = 0;
     volatile unsigned int resetCount_ = 0;
+
+    // EP0 OUT completion storm (see ep0OutStormCheck()): updated by the USB task, logged by usbd_watch
+    unsigned ep0OutStormPairs_ = 0;
+    unsigned ep0OutStormFlushes_ = 0;
+    volatile unsigned ep0OutStormFlushCount_ = 0;
+    volatile unsigned ep0OutStormReattachCount_ = 0;
 };
 
 } // namespace usbd

@@ -22,6 +22,9 @@
 #include "scope_guard.h"
 #include "timer_hal.h"
 #include "rtl8721d_usb.h"
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+#include "logging.h"
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 using namespace particle::usbd;
 
@@ -88,6 +91,15 @@ const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
 
+// EP0 OUT completion storm: this many transfer complete + status phase received interrupts without a SETUP in between
+const unsigned RTL_USB_EP0_OUT_STORM_PAIRS = 16;
+// RX FIFO flushes per SETUP before falling back to a reattach
+const unsigned RTL_USB_EP0_OUT_STORM_MAX_FLUSHES = 3;
+// SDK ep0_state while receiving the data stage of a control write
+const uint8_t RTL_USB_EP0_STATE_DATA_OUT = 3;
+// SETUP packets EP0 OUT can take back to back (the host may retry a SETUP before firmware re-arms)
+const uint32_t RTL_USB_EP0_SETUP_COUNT = 3;
+
 } // anonymous
 
 extern "C" {
@@ -119,6 +131,20 @@ u32 __wrap_usb_hal_read_interrupts(void) {
 
 void __wrap_usb_hal_clear_interrupts(u32 interrupt) {
     __real_usb_hal_clear_interrupts(interrupt);
+}
+
+u32 __real_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep);
+
+// Called by the SDK's USB task, with the SDK lock held, to read an OUT endpoint's interrupt bits
+u32 __wrap_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep) {
+    const u32 val = __real_usbd_hal_read_out_ep_interrupts(pcd, ep);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (ep == 0 && RtlUsbDriver::instance()->ep0OutStormCheck(val)) {
+        // The pending bits went with the RX FIFO flush: nothing for the SDK to handle
+        return 0;
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return val;
 }
 
 // FIXME: This is a nasty workaround for the SDK USB driver
@@ -246,6 +272,8 @@ void RtlUsbDriver::loop(void* ctx) {
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (self->needsReset_ || error) {
+            self->ep0OutStormPairs_ = 0;
+            self->ep0OutStormFlushes_ = 0;
             {
                 std::lock_guard<RtlUsbDriver> lk(*self);
                 self->detach();
@@ -262,8 +290,67 @@ void RtlUsbDriver::loop(void* ctx) {
             }
         }
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        static unsigned loggedFlushes = 0;
+        static unsigned loggedReattaches = 0;
+        const unsigned flushes = self->ep0OutStormFlushCount_;
+        const unsigned reattaches = self->ep0OutStormReattachCount_;
+        if (flushes != loggedFlushes || reattaches != loggedReattaches) {
+            LOG(WARN, "EP0 OUT completion storm: RX FIFO flushed %u times, reattached %u times so far", flushes, reattaches);
+            loggedFlushes = flushes;
+            loggedReattaches = reattaches;
+        }
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+}
+
+// The core can get into a state where, after a control write completes, it keeps re-raising transfer complete +
+// status phase received on EP0 OUT (hundreds of times in a few ms) and new SETUPs never reach the stack: every
+// control request times out and CDC OUT is NAKed until the host resets the port. One such pair after a control write
+// is normal. On a burst of them without a SETUP in between, flush the RX FIFO and re-arm EP0 OUT; if the burst keeps
+// coming back, reattach. Called by the USB task with the SDK lock held; returns true if the RX FIFO was flushed.
+bool RtlUsbDriver::ep0OutStormCheck(uint32_t doepint) {
+    if (doepint & USB_OTG_DOEPINT_STUP) {
+        ep0OutStormPairs_ = 0;
+        ep0OutStormFlushes_ = 0;
+        return false;
+    }
+    const uint32_t pair = USB_OTG_DOEPINT_XFRC | USB_OTG_DOEPINT_OTEPSPR;
+    if ((doepint & pair) != pair || !rtlDev_ || rtlDev_->ep0_state == RTL_USB_EP0_STATE_DATA_OUT) {
+        return false;
+    }
+    if (++ep0OutStormPairs_ < RTL_USB_EP0_OUT_STORM_PAIRS) {
+        return false;
+    }
+    ep0OutStormPairs_ = 0;
+    if (ep0OutStormFlushes_ < RTL_USB_EP0_OUT_STORM_MAX_FLUSHES) {
+        ep0OutStormFlushes_++;
+        ep0OutStormFlushCount_++;
+        flushRxFifoAndRearmEp0();
+        return true;
+    }
+    if (!needsReset_) {
+        // Same as reset(): usbd_watch performs detach()/attach() on its next iteration. Clearing config_ keeps the bus
+        // reset at the start of the host's re-enumeration from scheduling a second reattach.
+        config_ = 0;
+        usb_hal_disable_global_interrupt();
+        needsReset_ = true;
+        ep0OutStormReattachCount_++;
+    }
+    return false;
+}
+
+// Called with the SDK lock held
+void RtlUsbDriver::flushRxFifoAndRearmEp0() {
+    // Stop the core from storing OUT data during the flush. Don't wait for GINTSTS.GOUTNAKEFF: in slave mode it is only
+    // reported once the global OUT NAK marker is popped from the RX FIFO, which only the USB task does (and it is the
+    // caller here).
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGONAK;
+    usb_hal_flush_rx_fifo();
+    // STUPCNT = 3, PKTCNT = 1, XFRSIZ = 24 (0x60080018), EPENA left clear, like usbd_hal_ep0_out_start()
+    USB_OUTEP(0)->DOEPTSIZ = (RTL_USB_EP0_SETUP_COUNT << USB_OTG_DOEPTSIZ_STUPCNT_Pos) |
+            (1UL << USB_OTG_DOEPTSIZ_PKTCNT_Pos) | (RTL_USB_EP0_SETUP_COUNT * sizeof(SetupRequest));
+    USB_OUTEP(0)->DOEPINT = 0xffff;
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGONAK;
 }
 
 int RtlUsbDriver::suspend() {
