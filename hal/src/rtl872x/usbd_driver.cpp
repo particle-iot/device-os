@@ -99,6 +99,8 @@ const unsigned RTL_USB_EP0_OUT_STORM_MAX_FLUSHES = 3;
 const uint8_t RTL_USB_EP0_STATE_DATA_OUT = 3;
 // SETUP packets EP0 OUT can take back to back (the host may retry a SETUP before firmware re-arms)
 const uint32_t RTL_USB_EP0_SETUP_COUNT = 3;
+// No SETUP reaching the stack for this long while the host keeps trying EP0 counts as a wedge
+const system_tick_t RTL_USB_SETUP_SILENCE_TIMEOUT = 3000;
 
 } // anonymous
 
@@ -290,6 +292,7 @@ void RtlUsbDriver::loop(void* ctx) {
             }
         }
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        self->setupSilenceCheck();
         static unsigned loggedFlushes = 0;
         static unsigned loggedReattaches = 0;
         const unsigned flushes = self->ep0OutStormFlushCount_;
@@ -310,6 +313,8 @@ void RtlUsbDriver::loop(void* ctx) {
 // coming back, reattach. Called by the USB task with the SDK lock held; returns true if the RX FIFO was flushed.
 bool RtlUsbDriver::ep0OutStormCheck(uint32_t doepint) {
     if (doepint & USB_OTG_DOEPINT_STUP) {
+        // SETUP phase done: the SDK hands the SETUP to the stack (also what setupSilenceCheck() watches)
+        lastSetupTick_ = HAL_Timer_Get_Milli_Seconds();
         ep0OutStormPairs_ = 0;
         ep0OutStormFlushes_ = 0;
         return false;
@@ -329,15 +334,63 @@ bool RtlUsbDriver::ep0OutStormCheck(uint32_t doepint) {
         return true;
     }
     if (!needsReset_) {
-        // Same as reset(): usbd_watch performs detach()/attach() on its next iteration. Clearing config_ keeps the bus
-        // reset at the start of the host's re-enumeration from scheduling a second reattach.
-        config_ = 0;
-        usb_hal_disable_global_interrupt();
-        needsReset_ = true;
+        requestReattach();
         ep0OutStormReattachCount_++;
     }
     return false;
 }
+
+void RtlUsbDriver::requestReattach() {
+    config_ = 0;
+    usb_hal_disable_global_interrupt();
+    needsReset_ = true;
+}
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+// Catches EP0 wedges that show up only as unanswered control requests (no storm): the host keeps sending tokens to EP0
+// and they are NAKed, the bus is alive, but no SETUP has reached the stack for RTL_USB_SETUP_SILENCE_TIMEOUT. A quiet
+// host sends no EP0 tokens, so it never triggers this. First flush the RX FIFO and re-arm EP0 OUT; if SETUPs are still
+// not coming through one timeout later, reattach. Called from usbd_watch about once a second.
+void RtlUsbDriver::setupSilenceCheck() {
+    if (!initialized_ || !rtlDev_ || config_ == 0 || needsReset_ || lastSetupTick_ == 0) {
+        return;
+    }
+    // Bus alive: the SOF frame number moved since the previous check
+    const uint32_t frame = (USB_DEVICE->DSTS & USB_OTG_DSTS_FNSOF) >> USB_OTG_DSTS_FNSOF_Pos;
+    const bool busAlive = frame != lastFrameNumber_;
+    lastFrameNumber_ = frame;
+    // EP0 tokens NAKed since the previous check. Clear (W1C) only the NAK bits.
+    const bool inNak = USB_INEP(0)->DIEPINT & USB_OTG_DIEPINT_NAK;
+    const bool outNak = USB_OUTEP(0)->DOEPINT & USB_OTG_DOEPINT_NAK;
+    if (inNak) {
+        USB_INEP(0)->DIEPINT = USB_OTG_DIEPINT_NAK;
+    }
+    if (outNak) {
+        USB_OUTEP(0)->DOEPINT = USB_OTG_DOEPINT_NAK;
+    }
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    const system_tick_t lastSetup = lastSetupTick_;
+    if (!busAlive || !(inNak || outNak) || now - lastSetup < RTL_USB_SETUP_SILENCE_TIMEOUT ||
+            now - silenceRecoveryTick_ < RTL_USB_SETUP_SILENCE_TIMEOUT) {
+        return;
+    }
+    silenceRecoveryTick_ = now;
+    if (silenceSetupTick_ != lastSetup) {
+        // First recovery for this silence
+        silenceSetupTick_ = lastSetup;
+        LOG(WARN, "No SETUP for %u ms while the host is polling EP0: flushing the RX FIFO", (unsigned)(now - lastSetup));
+        std::lock_guard<RtlUsbDriver> lk(*this);
+        void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+        usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
+        usb_os_spinlock(lock);
+        flushRxFifoAndRearmEp0();
+        usb_os_spinunlock(lock);
+    } else {
+        LOG(WARN, "No SETUP for %u ms after an RX FIFO flush: reattaching", (unsigned)(now - lastSetup));
+        requestReattach();
+    }
+}
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 // Called with the SDK lock held
 void RtlUsbDriver::flushRxFifoAndRearmEp0() {

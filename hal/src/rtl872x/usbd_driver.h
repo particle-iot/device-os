@@ -103,6 +103,8 @@ private:
     void setDevReference(usb_dev_t* dev);
     void fixupReceivedData();
     void flushRxFifoAndRearmEp0();
+    void requestReattach();
+    void setupSilenceCheck();
 
 private:
     usb_dev_t* rtlDev_ = nullptr;
@@ -155,6 +157,13 @@ private:
     unsigned ep0OutStormFlushes_ = 0;
     volatile unsigned ep0OutStormFlushCount_ = 0;
     volatile unsigned ep0OutStormReattachCount_ = 0;
+
+    // SETUP silence (see setupSilenceCheck()): lastSetupTick_ (last STUP) is updated by the USB task, the rest by
+    // usbd_watch
+    volatile system_tick_t lastSetupTick_ = 0;
+    system_tick_t silenceSetupTick_ = 0;
+    system_tick_t silenceRecoveryTick_ = 0;
+    uint32_t lastFrameNumber_ = 0;
 };
 
 } // namespace usbd
