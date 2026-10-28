@@ -579,7 +579,7 @@ int LedgerManager::receiveRequest(CoapMessagePtr& msg, int reqId) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
     int reqType = 0;
-    CHECK(getProtobufRequestType(msg.get(), reqType))
+    CHECK(getProtobufRequestType(msg.get(), reqType));
     switch (reqType) {
     case PB_CLOUD(Request_Type_LEDGER_NOTIFY_UPDATE): {
         CHECK(receiveNotifyUpdateRequest(msg, reqId));

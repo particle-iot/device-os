@@ -200,7 +200,7 @@ public:
     DecodedResponse prepare(const std::string& payload = encodePrepareRequest()) {
         prepareReqId_ = coap_.sendRequest(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, payload);
         runTimers();
-        REQUIRE(handleResult_ == 0);
+        REQUIRE(handleResult_ == CloudRequestHandler::RUNNING);
         auto resp = coap_.responseFor(prepareReqId_);
         REQUIRE(resp);
         REQUIRE(resp->status == COAP_STATUS_CHANGED);
@@ -240,17 +240,26 @@ public:
     DeviceKeyChangeRequestHandler handler_;
     int prepareReqId_ = 0;
     int finalizeReqId_ = 0;
-    int handleResult_ = 0; // Result of CloudRequestHandler::handle()
+    int handleResult_ = 0; // Result of the last CloudRequestHandler::handle() call
     std::optional<int> completeResult_; // Result reported via the completion callback
+    int completeCount_ = 0; // Number of times the completion callback was called
+    bool running_ = false; // Whether the handler is processing a request asynchronously
 
 private:
     static int requestCallback(coap_message* msg, const char* path, int method, int reqId, void* arg) {
         auto self = static_cast<HandlerFixture*>(arg);
         CoapMessagePtr req(msg);
         CloudRequestHandler& h = self->handler_;
-        self->handleResult_ = h.handle(reqId, req, self, [](int result, CloudRequestHandler* handler, void* arg) {
-            static_cast<HandlerFixture*>(arg)->completeResult_ = result;
+        int r = h.handle(reqId, req, self, [](int result, CloudRequestHandler* handler, void* arg) {
+            auto self = static_cast<HandlerFixture*>(arg);
+            self->completeResult_ = result;
+            ++self->completeCount_;
+            self->running_ = false;
         });
+        if (r == CloudRequestHandler::RUNNING) {
+            self->running_ = true;
+        }
+        self->handleResult_ = r;
         return 0;
     }
 };
@@ -276,7 +285,7 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
     auto prepResp = prepare();
     CHECK(prepResp.result == 0);
     CHECK(prepResp.keyId.size() == KEY_ID_SIZE);
-    CHECK(handler_.isRunning());
+    CHECK(running_);
     CHECK(!handler_.needResponse());
 
     SECTION("doesn't send the finalize request until the prepare response is acknowledged") {
@@ -312,7 +321,8 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         }
 
         CHECK(completeResult_ == 0);
-        CHECK(!handler_.isRunning());
+        CHECK(!running_);
+        CHECK(completeCount_ == 1);
         CHECK(g_clearSessionCount == 1);
         CHECK(g_resetCount == 1);
     }
@@ -333,7 +343,8 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         }
 
         CHECK(completeResult_ == SYSTEM_ERROR_SERVER_REQUEST_FAILED);
-        CHECK(!handler_.isRunning());
+        CHECK(!running_);
+        CHECK(completeCount_ == 1);
         CHECK(!candidateKey());
         CHECK(g_resetCount == 0);
     }
@@ -342,7 +353,8 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         coap_.failResponse(prepareReqId_, SYSTEM_ERROR_COAP_MESSAGE_RESET);
         runTimers();
         CHECK(completeResult_ == SYSTEM_ERROR_COAP_MESSAGE_RESET);
-        CHECK(!handler_.isRunning());
+        CHECK(!running_);
+        CHECK(completeCount_ == 1);
         CHECK(coap_.requests().empty());
     }
 
@@ -351,7 +363,8 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         coap_.failRequest(finalizeReqId_, SYSTEM_ERROR_COAP_MESSAGE_RESET);
         runTimers();
         CHECK(completeResult_ == SYSTEM_ERROR_COAP_MESSAGE_RESET);
-        CHECK(!handler_.isRunning());
+        CHECK(!running_);
+        CHECK(completeCount_ == 1);
         CHECK(!candidateKey());
         CHECK(g_resetCount == 0);
     }
@@ -368,7 +381,8 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         runTimers();
         REQUIRE(completeResult_);
         CHECK(*completeResult_ < 0);
-        CHECK(!handler_.isRunning());
+        CHECK(!running_);
+        CHECK(completeCount_ == 1);
         CHECK(!candidateKey());
         CHECK(g_resetCount == 0);
 
@@ -378,7 +392,7 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
             auto resp = prepare();
             CHECK(resp.keyId.size() == KEY_ID_SIZE);
             CHECK(resp.keyId != prepResp.keyId);
-            CHECK(handler_.isRunning());
+            CHECK(running_);
         }
     }
 
@@ -387,7 +401,7 @@ TEST_CASE_METHOD(HandlerFixture, "DeviceKeyChangeRequestHandler changes the devi
         runTimers();
         CHECK(handleResult_ == SYSTEM_ERROR_INVALID_STATE);
         // The ongoing key change is not affected
-        CHECK(handler_.isRunning());
+        CHECK(running_);
         auto req = ackPrepare();
         CHECK(req.keyId == prepResp.keyId);
     }

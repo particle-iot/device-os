@@ -863,7 +863,7 @@ void notifyCloudRequestComplete(int result, CloudRequestHandler* handler, CloudR
     if (completeFn) {
         completeFn(result, handler);
     }
-};
+}
 
 std::unique_ptr<DeviceKeyChangeRequestHandler> g_deviceKeyChangeHandler;
 
