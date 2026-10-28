@@ -1,5 +1,4 @@
 #include "protobuf.h"
-#include "coap_api.h"
 #include "coap_util.h"
 #include "nanopb_misc.h"
 #include "check.h"
@@ -210,7 +209,8 @@ int getProtobufResponseResult(coap_message* msg, int status, int& result) {
     int cls = COAP_CODE_CLASS(status);
     if (val == PB_CLOUD(Response_Result_OK) && cls != 2 /* Success 2.xx */) {
         // Protobuf payload (or the lack of it) indicates success but the CoAP response code doesn't
-        return SYSTEM_ERROR_INVALID_SERVER_RESPONSE;
+        LOG(WARN, "Unexpected response result %d for CoAP code %d.%02d", val, cls, (int)COAP_CODE_DETAIL(status));
+        val = PB_CLOUD(Response_Result_ERROR);
     }
     result = val;
     return 0;

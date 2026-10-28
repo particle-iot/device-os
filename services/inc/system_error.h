@@ -103,8 +103,7 @@
         (KEY_MISMATCH, "Unrecognized cryptographic key", -1802), \
         (INVALID_SIGNATURE, "Signature validation failed", -1803), \
         (DISABLED, "Functionality is disabled by configuration", -1804), \
-        (SERVER_REQUEST_FAILED, "Server request failed", -1007), \
-        (INVALID_SERVER_RESPONSE, "Invalid server response", -1008), \
+        (SERVER_REQUEST_FAILED, "Server request failed", -1805), \
         (FILESYSTEM, "Filesystem error", -1900), /* -1999 ... -1900: Filesystem errors */ \
         (FILESYSTEM_IO, "Filesystem IO error", -1901), \
         (FILESYSTEM_CORRUPT, "Filesystem corrupted", -1902), \

@@ -77,7 +77,6 @@
 
 #include "control/common.h" // FIXME: Move to another directory
 #include "cloud/cloud.pb.h"
-#include "cloud/config.pb.h"
 #include "nanopb_misc.h"
 
 #define PB_CLOUD(_name) particle_cloud_##_name
