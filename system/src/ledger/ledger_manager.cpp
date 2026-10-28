@@ -33,6 +33,7 @@ LOG_SOURCE_CATEGORY("system.ledger");
 
 #include <pb_decode.h>
 
+#include "cloud/protobuf.h"
 #include "control/common.h" // FIXME: Move Protobuf utilities to another directory
 #include "ledger.h"
 #include "ledger_manager.h"
@@ -577,25 +578,8 @@ int LedgerManager::receiveRequest(CoapMessagePtr& msg, int reqId) {
     if (state_ < State::READY) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    // Get the request type. XXX: It's assumed that the message fields are encoded in order of their
-    // field numbers, which is not guaranteed by the Protobuf spec in general
-    char buf[32] = {};
-    size_t n = CHECK(coap_peek_block(msg.get(), buf, sizeof(buf), nullptr));
-    pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t*)buf, n);
-    uint32_t reqType = 0;
-    uint32_t fieldTag = 0;
-    auto fieldType = pb_wire_type_t();
-    bool eof = false;
-    if (!pb_decode_tag(&stream, &fieldType, &fieldTag, &eof)) {
-        if (!eof) {
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-        // Request type field is missing so its value is 0
-    } else if (fieldTag == PB_CLOUD(Request_type_tag)) {
-        if (fieldType != PB_WT_VARINT || !pb_decode_varint32(&stream, &reqType)) {
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-    } // else: Request type field is missing so its value is 0
+    int reqType = 0;
+    CHECK(getProtobufRequestType(msg.get(), reqType))
     switch (reqType) {
     case PB_CLOUD(Request_Type_LEDGER_NOTIFY_UPDATE): {
         CHECK(receiveNotifyUpdateRequest(msg, reqId));

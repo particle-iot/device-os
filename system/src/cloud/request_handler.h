@@ -18,6 +18,13 @@ namespace particle::system {
 class CloudRequestHandler {
 public:
     /**
+     * Result codes returned by `handle()`.
+     */
+    enum Result {
+        RUNNING = 1 ///< The request is being handled asynchronously.
+    };
+
+    /**
      * Completion callback.
      *
      * Invoked only if the request was handled asynchronously. The handler can be destroyed in the
@@ -42,21 +49,17 @@ public:
     /**
      * Handle a request.
      *
-     * If `isRunning()` returns `false` after this method returns, the request was handled
-     * synchronously and the returned value is the result of the operation. Otherwise, the result
-     * will be reported via the completion callback.
+     * If this method returns `RUNNING`, the request will be processed asynchronously and the result
+     * will be reported via the completion callback. Otherwise, the returned value is the result of
+     * the operation.
      *
      * @param reqId Request ID.
      * @param req Request message.
      * @param arg User argument for the completion callback.
      * @param fn Completion callback.
-     * @return 0 on success, otherwise an error code defined by `system_error_t`.
+     * @return 0 or `RUNNING` on success, otherwise an error code defined by `system_error_t`.
      */
     int handle(int reqId, CoapMessagePtr& req, void* arg = nullptr, CompleteFn fn = nullptr);
-
-    bool isRunning() const {
-        return running_;
-    }
 
     bool needResponse() const {
         return needResp_;
@@ -67,13 +70,6 @@ public:
     }
 
 protected:
-    /**
-     * Additional result codes returned by `handle(CoapMessagePtr&)`.
-     */
-    enum HandleResult {
-        RUNNING = 1 ///< The request is being handled asynchronously.
-    };
-
     /**
      * Handle a request.
      *
@@ -86,7 +82,7 @@ protected:
     virtual int handle(CoapMessagePtr& req) = 0;
 
     /**
-     * Release the resources allocated for handling a request.
+     * Release the resources allocated for handling the request.
      *
      * Called when the request is handled.
      */
