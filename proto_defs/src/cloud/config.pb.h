@@ -11,22 +11,39 @@
 
 /* Struct definitions */
 /* *
- A response for ChangeDeviceKeyRequest. */
-typedef struct _particle_cloud_config_ChangeDeviceKeyResponse { 
-    /* *
- The new public key. */
-    pb_callback_t pub_key; 
-} particle_cloud_config_ChangeDeviceKeyResponse;
+ A response for `FinalizeDeviceKeyChangeRequest`. */
+typedef struct _particle_cloud_config_FinalizeDeviceKeyChangeResponse { 
+    char dummy_field;
+} particle_cloud_config_FinalizeDeviceKeyChangeResponse;
 
 /* *
- Request the device to change its client key used to authenticate with the server. */
-typedef struct _particle_cloud_config_ChangeDeviceKeyRequest { 
+ Request the device to generate a new device key. */
+typedef struct _particle_cloud_config_PrepareDeviceKeyChangeRequest { 
+    char dummy_field;
+} particle_cloud_config_PrepareDeviceKeyChangeRequest;
+
+typedef PB_BYTES_ARRAY_T(16) particle_cloud_config_FinalizeDeviceKeyChangeRequest_key_id_t;
+/* *
+ Send the new device key to the server. */
+typedef struct _particle_cloud_config_FinalizeDeviceKeyChangeRequest { 
     /* *
- If `true` (default), the device will reset immediately to load the new key. If `false`, the
- device will stay connected to the server. */
-    bool has_reset_device;
-    bool reset_device; 
-} particle_cloud_config_ChangeDeviceKeyRequest;
+ Opaque key ID. */
+    particle_cloud_config_FinalizeDeviceKeyChangeRequest_key_id_t key_id; 
+    /* *
+ New public key in DER format. */
+    pb_callback_t public_key; 
+} particle_cloud_config_FinalizeDeviceKeyChangeRequest;
+
+typedef PB_BYTES_ARRAY_T(16) particle_cloud_config_PrepareDeviceKeyChangeResponse_key_id_t;
+/* *
+ A response for `PrepareDeviceKeyChangeRequest`. */
+typedef struct _particle_cloud_config_PrepareDeviceKeyChangeResponse { 
+    /* *
+ Opaque key ID.
+
+ The actual key is sent by the device in a separate `FinalizeDeviceKeyChangeRequest`. */
+    particle_cloud_config_PrepareDeviceKeyChangeResponse_key_id_t key_id; 
+} particle_cloud_config_PrepareDeviceKeyChangeResponse;
 
 
 #ifdef __cplusplus
@@ -34,36 +51,58 @@ extern "C" {
 #endif
 
 /* Initializer values for message structs */
-#define particle_cloud_config_ChangeDeviceKeyRequest_init_default {false, 0}
-#define particle_cloud_config_ChangeDeviceKeyResponse_init_default {{{NULL}, NULL}}
-#define particle_cloud_config_ChangeDeviceKeyRequest_init_zero {false, 0}
-#define particle_cloud_config_ChangeDeviceKeyResponse_init_zero {{{NULL}, NULL}}
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_init_default {0}
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_init_default {{0, {0}}}
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_init_default {{0, {0}}, {{NULL}, NULL}}
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_init_default {0}
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_init_zero {0}
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_init_zero {{0, {0}}}
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_init_zero {{0, {0}}, {{NULL}, NULL}}
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_init_zero {0}
 
 /* Field tags (for use in manual encoding/decoding) */
-#define particle_cloud_config_ChangeDeviceKeyResponse_pub_key_tag 1
-#define particle_cloud_config_ChangeDeviceKeyRequest_reset_device_tag 1
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_key_id_tag 1
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_public_key_tag 2
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_key_id_tag 1
 
 /* Struct field encoding specification for nanopb */
-#define particle_cloud_config_ChangeDeviceKeyRequest_FIELDLIST(X, a) \
-X(a, STATIC,   OPTIONAL, BOOL,     reset_device,      1)
-#define particle_cloud_config_ChangeDeviceKeyRequest_CALLBACK NULL
-#define particle_cloud_config_ChangeDeviceKeyRequest_DEFAULT NULL
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_FIELDLIST(X, a) \
 
-#define particle_cloud_config_ChangeDeviceKeyResponse_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, BYTES,    pub_key,           1)
-#define particle_cloud_config_ChangeDeviceKeyResponse_CALLBACK pb_default_field_callback
-#define particle_cloud_config_ChangeDeviceKeyResponse_DEFAULT NULL
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_CALLBACK NULL
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_DEFAULT NULL
 
-extern const pb_msgdesc_t particle_cloud_config_ChangeDeviceKeyRequest_msg;
-extern const pb_msgdesc_t particle_cloud_config_ChangeDeviceKeyResponse_msg;
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BYTES,    key_id,            1)
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_CALLBACK NULL
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_DEFAULT NULL
+
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, BYTES,    key_id,            1) \
+X(a, CALLBACK, SINGULAR, BYTES,    public_key,        2)
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_CALLBACK pb_default_field_callback
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_DEFAULT NULL
+
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_FIELDLIST(X, a) \
+
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_CALLBACK NULL
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_DEFAULT NULL
+
+extern const pb_msgdesc_t particle_cloud_config_PrepareDeviceKeyChangeRequest_msg;
+extern const pb_msgdesc_t particle_cloud_config_PrepareDeviceKeyChangeResponse_msg;
+extern const pb_msgdesc_t particle_cloud_config_FinalizeDeviceKeyChangeRequest_msg;
+extern const pb_msgdesc_t particle_cloud_config_FinalizeDeviceKeyChangeResponse_msg;
 
 /* Defines for backwards compatibility with code written before nanopb-0.4.0 */
-#define particle_cloud_config_ChangeDeviceKeyRequest_fields &particle_cloud_config_ChangeDeviceKeyRequest_msg
-#define particle_cloud_config_ChangeDeviceKeyResponse_fields &particle_cloud_config_ChangeDeviceKeyResponse_msg
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_fields &particle_cloud_config_PrepareDeviceKeyChangeRequest_msg
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_fields &particle_cloud_config_PrepareDeviceKeyChangeResponse_msg
+#define particle_cloud_config_FinalizeDeviceKeyChangeRequest_fields &particle_cloud_config_FinalizeDeviceKeyChangeRequest_msg
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_fields &particle_cloud_config_FinalizeDeviceKeyChangeResponse_msg
 
 /* Maximum encoded size of messages (where known) */
-/* particle_cloud_config_ChangeDeviceKeyResponse_size depends on runtime parameters */
-#define particle_cloud_config_ChangeDeviceKeyRequest_size 2
+/* particle_cloud_config_FinalizeDeviceKeyChangeRequest_size depends on runtime parameters */
+#define particle_cloud_config_FinalizeDeviceKeyChangeResponse_size 0
+#define particle_cloud_config_PrepareDeviceKeyChangeRequest_size 0
+#define particle_cloud_config_PrepareDeviceKeyChangeResponse_size 18
 
 #ifdef __cplusplus
 } /* extern "C" */
