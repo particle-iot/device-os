@@ -46,8 +46,8 @@ add_executable( ${target_name}
   ${TEST_DIR}/communication/util/coap_message.cpp
   ${TEST_DIR}/communication/util/coap_message_channel.cpp
   ${TEST_DIR}/system/mock/filesystem_ram.cpp
-  util/coap_api_fake.cpp
-  util/system_fakes.cpp
+  ${TEST_DIR}/system/mock/coap_api_fake.cpp
+  ${TEST_DIR}/system/mock/system_fakes.cpp
   util/ledger_pb.cpp
   ledger_manager.cpp
   main.cpp

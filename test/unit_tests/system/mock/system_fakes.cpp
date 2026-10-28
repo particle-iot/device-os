@@ -15,9 +15,9 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-// Deterministic replacements for the clock, RTC and system timer used by the ledger code
+// Deterministic replacements for the clock, RTC and system timer used by the code under test
 
-#include "util/system_fakes.h"
+#include "system_fakes.h"
 #include "util/system_timer.h"
 
 #include "timer_hal.h"
