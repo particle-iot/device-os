@@ -35,8 +35,8 @@ int CloudRequestHandler::sendProtobufResponse(coap_status status, const PB_CLOUD
     if (!needResp_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    needResp_ = false;
     CHECK(system::sendProtobufResponse(reqId_, status, pbResp, arg, ackCb, errorCb));
+    needResp_ = false;
     return 0;
 }
 
@@ -45,8 +45,8 @@ int CloudRequestHandler::sendEmptyProtobufResponse(coap_status status, int resul
     if (!needResp_) {
         return SYSTEM_ERROR_INVALID_STATE;
     }
-    needResp_ = false;
     CHECK(system::sendEmptyProtobufResponse(reqId_, status, result, msg, arg, ackCb, errorCb));
+    needResp_ = false;
     return 0;
 }
 

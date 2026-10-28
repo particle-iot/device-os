@@ -118,15 +118,23 @@ int decodeProtobufRequest(coap_message* msg, PB_CLOUD(Request)& pbReq) {
 }
 
 int getProtobufRequestType(coap_message* msg, int& type) {
-    size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
-
     char buf[128] = {};
-    size_t bytesRead = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
+    int r = coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */);
+    if (r < 0) {
+        if (r == SYSTEM_ERROR_END_OF_STREAM) {
+            // If the request is empty, the `type` field is implicitly 0 which is not a valid
+            // request type (see cloud.proto)
+            return SYSTEM_ERROR_BAD_DATA;
+        }
+        return r;
+    }
+    size_t bytesRead = r;
+    size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
     bool hasMore = bytesRead < bytesAvail;
 
     uint32_t val = 0;
-    int r = CHECK(findVarintField(val, PB_CLOUD(Request_type_tag), buf, bytesRead, hasMore));
-    // Normally, the first few bytes of the request always contain the type field as the server
+    r = CHECK(findVarintField(val, PB_CLOUD(Request_type_tag), buf, bytesRead, hasMore));
+    // Normally, the first few bytes of the request always contain the `type` field as the server
     // seems to encode fields in the order of their tag numbers. The Protobuf spec doesn't guarantee
     // that though, hence the fallback
     if (r == FIND_FIELD_READ_MORE) {
@@ -138,7 +146,7 @@ int getProtobufRequestType(coap_message* msg, int& type) {
         r = CHECK(findVarintField(val, PB_CLOUD(Request_type_tag), buf.get(), bytesAvail, false /* hasMore */));
     }
     if (r == FIND_FIELD_NOT_FOUND) {
-        // `type` is implicitly 0 which is not a valid request type (see cloud.proto)
+        // The `type` field is implicitly 0 which is not a valid request type
         return SYSTEM_ERROR_BAD_DATA;
     }
     if (val > (unsigned)std::numeric_limits<int>::max()) {
@@ -158,8 +166,7 @@ int sendProtobufResponse(int reqId, coap_status status, const PB_CLOUD(Response)
     if (!pb_encode(&pbOut, &PB_CLOUD(Response_msg), &pbResp)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_response(coapResp.get(), nullptr /* ack_cb */, nullptr /* error_cb */, nullptr /* arg */,
-            nullptr /* reserved */));
+    CHECK(coap_end_response(coapResp.get(), ackCb, errorCb, arg, nullptr /* reserved */));
     coapResp.release(); // CoAP API now owns the message
     return 0;
 }
@@ -193,22 +200,31 @@ int decodeProtobufResponse(coap_message* msg, PB_CLOUD(Response)& pbResp) {
 }
 
 int getProtobufResponseResult(coap_message* msg, int status, int& result) {
-    size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
-
+    size_t bytesRead = 0;
     char buf[128] = {};
-    size_t bytesRead = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
-    bool hasMore = bytesRead < bytesAvail;
+    int r = coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */);
+    if (r >= 0) {
+        bytesRead = r;
+    } else if (r != SYSTEM_ERROR_END_OF_STREAM) { // Empty payload implies that `result` is 0
+        return r;
+    }
 
     int val = 0;
-    int r = CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf, bytesRead, hasMore));
-    if (r == FIND_FIELD_READ_MORE) {
-        std::unique_ptr<char[]> buf(new(std::nothrow) char[bytesAvail]);
-        if (!buf) {
-            return SYSTEM_ERROR_NO_MEMORY;
+    if (bytesRead > 0) {
+        size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
+        bool hasMore = bytesRead < bytesAvail;
+
+        int r = CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf, bytesRead, hasMore));
+        if (r == FIND_FIELD_READ_MORE) {
+            std::unique_ptr<char[]> buf(new(std::nothrow) char[bytesAvail]);
+            if (!buf) {
+                return SYSTEM_ERROR_NO_MEMORY;
+            }
+            CHECK(coap_peek_block(msg, buf.get(), bytesAvail, nullptr /* reserved */));
+            CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf.get(), bytesAvail, false /* hasMore */));
         }
-        CHECK(coap_peek_block(msg, buf.get(), bytesAvail, nullptr /* reserved */));
-        CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf.get(), bytesAvail, false /* hasMore */));
     }
+
     int cls = COAP_CODE_CLASS(status);
     if (val == PB_CLOUD(Response_Result_OK) && cls != 2 /* Success 2.xx */) {
         // Protobuf payload (or the lack of it) indicates success but the CoAP response code doesn't
