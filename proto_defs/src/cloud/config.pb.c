@@ -6,10 +6,16 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
-PB_BIND(particle_cloud_config_ChangeDeviceKeyRequest, particle_cloud_config_ChangeDeviceKeyRequest, AUTO)
+PB_BIND(particle_cloud_config_PrepareDeviceKeyChangeRequest, particle_cloud_config_PrepareDeviceKeyChangeRequest, AUTO)
 
 
-PB_BIND(particle_cloud_config_ChangeDeviceKeyResponse, particle_cloud_config_ChangeDeviceKeyResponse, AUTO)
+PB_BIND(particle_cloud_config_PrepareDeviceKeyChangeResponse, particle_cloud_config_PrepareDeviceKeyChangeResponse, AUTO)
+
+
+PB_BIND(particle_cloud_config_FinalizeDeviceKeyChangeRequest, particle_cloud_config_FinalizeDeviceKeyChangeRequest, AUTO)
+
+
+PB_BIND(particle_cloud_config_FinalizeDeviceKeyChangeResponse, particle_cloud_config_FinalizeDeviceKeyChangeResponse, AUTO)
 
 
 
