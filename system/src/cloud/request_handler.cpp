@@ -22,20 +22,20 @@ int CloudRequestHandler::handle(int reqId, CoapMessagePtr& req, void* arg, Compl
     completeArg_ = arg;
     needResp_ = true;
     int r = handle(req);
-    if (r != HandleResult::RUNNING) {
+    if (r == Result::RUNNING) {
+        running_ = true;
+    } else {
         reset();
-        return r;
     }
-    running_ = true;
-    return 0;
+    return r;
 }
 
 void CloudRequestHandler::notifyComplete(int result) {
     if (!running_ || !completeFn_) {
         return;
     }
-    running_ = false;
     reset();
+    running_ = false;
     completeFn_(result, this, completeArg_);
 }
 

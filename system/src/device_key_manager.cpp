@@ -181,7 +181,7 @@ int DeviceKeyChangeRequestHandler::handle(CoapMessagePtr& req) {
         LOG(ERROR, "Error handling PrepareDeviceKeyChangeRequest: %d", r);
         return r;
     }
-    return HandleResult::RUNNING;
+    return Result::RUNNING;
 }
 
 void DeviceKeyChangeRequestHandler::reset() {
