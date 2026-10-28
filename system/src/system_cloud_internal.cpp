@@ -857,10 +857,11 @@ int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
     CHECK(getProtobufRequestType(coapReq.get(), reqType));
 
     CloudRequestHandler* handler = nullptr;
-    void (*onComplete)(int result) = nullptr;
+    void (*onComplete)(int result, CloudRequestHandler* handler) = nullptr;
 
     switch (reqType) {
     case PB_CLOUD(Request_Type_CONFIG_PREPARE_DEVICE_KEY_CHANGE): {
+        // Store the handler globally so that multiple key change requests can't be in progress at a time
         if (!g_deviceKeyChangeHandler) {
             g_deviceKeyChangeHandler.reset(new(std::nothrow) DeviceKeyChangeRequestHandler());
             if (!g_deviceKeyChangeHandler) {
@@ -868,7 +869,7 @@ int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
             }
         }
         handler = g_deviceKeyChangeHandler.get();
-        onComplete = [](int result) {
+        onComplete = [](int result, CloudRequestHandler* handler) {
             g_deviceKeyChangeHandler.reset();
         };
         break;
@@ -876,26 +877,35 @@ int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
     default:
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
+    if (!handler) { // Sanity check
+        return SYSTEM_ERROR_INTERNAL;
+    }
 
-    CHECK(handler->handle(reqId, coapReq, (void*)onComplete, [](int result, CloudRequestHandler* handler, void* arg) {
-        auto onComplete = (void(*)(int))(arg);
-        if (onComplete) {
-            onComplete(result);
-        }
+    int result = handler->handle(reqId, coapReq, (void*)onComplete, [](int result, CloudRequestHandler* handler, void* arg) {
+        // The handler completed asynchronously
         if (handler->needResponse()) {
-            // The handler completed asynchronously and hasn't sent a response
             auto status = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
             int r = sendEmptyProtobufResponse(handler->requestId(), status, result);
             if (r < 0) {
                 LOG(ERROR, "Error sending CoAP response: %d", r);
             }
         }
-    }));
-    if (!handler->isRunning() && handler->needResponse()) {
-        // The handler completed synchronously and hasn't sent a response
-        int r = sendEmptyProtobufResponse(handler->requestId(), COAP_STATUS_CHANGED, 0 /* result */);
-        if (r < 0) {
-            LOG(ERROR, "Error sending CoAP response: %d", r);
+        auto onComplete = (void(*)(int, CloudRequestHandler*))(arg);
+        if (onComplete) {
+            onComplete(result, handler);
+        }
+    });
+    if (!handler->isRunning()) {
+        // The handler completed synchronously
+        if (handler->needResponse()) {
+            auto status = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
+            int r = sendEmptyProtobufResponse(handler->requestId(), status, result);
+            if (r < 0) {
+                LOG(ERROR, "Error sending CoAP response: %d", r);
+            }
+        }
+        if (onComplete) {
+            onComplete(result, handler);
         }
     }
     return 0;
@@ -905,6 +915,7 @@ int handleProtobufRequest(coap_message* req, const char* path, int method, int r
     CoapMessagePtr coapReq(req);
     int result = handleProtobufRequest(reqId, coapReq);
     if (result < 0) {
+        // An early error while handling the request
         int r = sendEmptyProtobufResponse(reqId, COAP_STATUS_BAD_REQUEST, result);
         if (r < 0) {
             LOG(ERROR, "Error sending CoAP response: %d", r);
