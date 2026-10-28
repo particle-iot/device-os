@@ -5,6 +5,7 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/system/src/ledger/ledger_manager.cpp
   ${DEVICE_OS_DIR}/system/src/ledger/ledger.cpp
   ${DEVICE_OS_DIR}/system/src/ledger/ledger_util.cpp
+  ${DEVICE_OS_DIR}/system/src/cloud/protobuf.cpp
   ${DEVICE_OS_DIR}/services/src/file_util.cpp
   ${DEVICE_OS_DIR}/services/src/nanopb_misc.c
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
