@@ -861,12 +861,13 @@ int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
 
     switch (reqType) {
     case PB_CLOUD(Request_Type_CONFIG_PREPARE_DEVICE_KEY_CHANGE): {
-        // Store the handler globally so that multiple key change requests can't be in progress at a time
+        // Ensure that multiple key change requests can't be in progress at a time
+        if (g_deviceKeyChangeHandler) {
+            return SYSTEM_ERROR_BUSY;
+        }
+        g_deviceKeyChangeHandler.reset(new(std::nothrow) DeviceKeyChangeRequestHandler());
         if (!g_deviceKeyChangeHandler) {
-            g_deviceKeyChangeHandler.reset(new(std::nothrow) DeviceKeyChangeRequestHandler());
-            if (!g_deviceKeyChangeHandler) {
-                return SYSTEM_ERROR_NO_MEMORY;
-            }
+            return SYSTEM_ERROR_NO_MEMORY;
         }
         handler = g_deviceKeyChangeHandler.get();
         onComplete = [](int result, CloudRequestHandler* handler) {
