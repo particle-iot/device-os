@@ -1,10 +1,15 @@
 #pragma once
 
+#include "cloud/request_handler.h"
+
 #include <memory>
 #include <optional>
 #include <cstddef>
 
 namespace particle::system {
+
+const auto CONFIG_REQUEST_URI = "g";
+const int CONFIG_REQUEST_METHOD = COAP_METHOD_POST;
 
 // TODO: Move to an appropriate header
 class CryptoKey {
@@ -154,6 +159,21 @@ private:
     std::optional<bool> hasCandidateKey_;
 
     int loadCandidateKey(EcpPrivateKey& key);
+};
+
+class DeviceKeyChangeRequestHandler: public CloudRequestHandler {
+protected:
+    int handle(CoapMessagePtr& req) override;
+    void reset() override;
+
+private:
+    EcpPrivateKey privKey_; // New device key
+    char keyId_[16]; // Opaque key ID
+
+    int handlePrepareRequest(CoapMessagePtr& req);
+    int sendFinalizeRequest();
+    int handleFinalizeResponse(int status);
+    void notifyError(int err);
 };
 
 } // namespace particle::system

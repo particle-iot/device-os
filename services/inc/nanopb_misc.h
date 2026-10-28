@@ -48,6 +48,11 @@ int pb_istream_from_file(pb_istream_t* stream, lfs_file_t* file, int size, void*
 int pb_istream_from_coap_message(pb_istream_t* stream, coap_message* msg, void* reserved);
 int pb_ostream_from_coap_message(pb_ostream_t* stream, coap_message* msg, void* reserved);
 
+/**
+ *
+ */
+int peek_cloud_request_type(coap_message* msg);
+
 #ifdef SERVICES_NO_NANOPB_LIB
 #pragma weak pb_ostream_init
 #pragma weak pb_ostream_free

@@ -1,21 +1,29 @@
+#include "cloud/protobuf.h"
 #include "device_key_manager.h"
+#include "system_cloud_internal.h"
+#include "system_mode.h"
 #include "eckeygen.h"
 #include "mbedtls_util.h"
 #include "file_util.h"
+#include "random.h"
 #include "check.h"
+
+#include <pb_encode.h>
 
 #include <algorithm>
 #include <memory>
 #include <cstring>
 
-// This is a core feature so keep it buildable (but not necessarily fully supported) on all platforms
-// including GCC/newhal
+// This is a core feature so keep it buildable on all platforms including GCC/newhal, even if not
+// fully supported
 #if (PLATFORM_ID != PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL) || defined(UNIT_TEST)
 #include "dct.h"
 #define HAS_DCT 1
 #else
 #define HAS_DCT 0
 #endif
+
+#define PB_CLOUD(_name) particle_cloud_##_name
 
 namespace particle::system {
 
@@ -165,6 +173,113 @@ int DeviceKeyManager::loadCandidateKey(EcpPrivateKey& key) {
     key = EcpPrivateKey(std::move(privData), privSize);
     hasCandidateKey_ = true;
     return 0;
+}
+
+int DeviceKeyChangeRequestHandler::handle(CoapMessagePtr& req) {
+    int r = handlePrepareRequest(req);
+    if (r < 0) {
+        LOG(ERROR, "Error handling PrepareDeviceKeyChangeRequest: %d", r);
+        return r;
+    }
+    return HandleResult::RUNNING;
+}
+
+void DeviceKeyChangeRequestHandler::reset() {
+    privKey_ = EcpPrivateKey();
+}
+
+int DeviceKeyChangeRequestHandler::handlePrepareRequest(CoapMessagePtr& req) {
+    Random::genSecure(keyId_, sizeof(keyId_));
+
+    // Reply with the key ID to the server
+    PB_CLOUD(Response) pbResp = {};
+    pbResp.which_data = PB_CLOUD(Response_config_prepare_device_key_change_tag);
+    auto& pbInnerResp = pbResp.data.config_prepare_device_key_change;
+
+    static_assert(sizeof(pbInnerResp.key_id.bytes) == sizeof(keyId_));
+    std::memcpy(pbInnerResp.key_id.bytes, keyId_, sizeof(keyId_));
+    pbInnerResp.key_id.size = sizeof(keyId_);
+
+    CHECK(sendProtobufResponse(COAP_STATUS_CHANGED, pbResp, this, [](int reqId, void* arg) { // ack_cb
+        auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);
+        int r = self->sendFinalizeRequest();
+        if (r < 0) {
+            LOG(ERROR, "Error sending FinalizeDeviceKeyChangeRequest: %d", r);
+            self->notifyComplete(r);
+        }
+        return 0;
+    }, [](int err, int reqId, void* arg) { // error_cb
+        auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);
+        LOG(ERROR, "Error sending PrepareDeviceKeyChangeResponse: %d", err);
+        self->notifyComplete(err);
+    }));
+    return 0;
+}
+
+int DeviceKeyChangeRequestHandler::sendFinalizeRequest() {
+    // Generate a new device key
+    CHECK(DeviceKeyManager::instance().generateKey(privKey_));
+    EcpPublicKey pubKey;
+    CHECK(privKey_.getPublicKey(pubKey));
+
+    // Send the public key to the server
+    PB_CLOUD(Request) pbReq = {};
+    pbReq.type = PB_CLOUD(Request_Type_CONFIG_FINALIZE_DEVICE_KEY_CHANGE);
+    pbReq.which_data = PB_CLOUD(Request_config_finalize_device_key_change_tag);
+    auto& pbInnerReq = pbReq.data.config_finalize_device_key_change;
+
+    static_assert(sizeof(pbInnerReq.key_id.bytes) == sizeof(keyId_));
+    std::memcpy(pbInnerReq.key_id.bytes, keyId_, sizeof(keyId_));
+    pbInnerReq.key_id.size = sizeof(keyId_);
+
+    pbInnerReq.public_key.arg = &pubKey;
+    pbInnerReq.public_key.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
+        auto pubKey = (const EcpPublicKey*)*arg;
+        if (!pb_encode_tag_for_field(stream, field) ||
+                !pb_encode_string(stream, (const uint8_t*)pubKey->data(), pubKey->size())) {
+            return false;
+        }
+        return true;
+    };
+
+    CHECK(sendProtobufRequest(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, pbReq, this,
+            [](coap_message* msg, int status, int reqId, void* arg) { // resp_cb
+        CoapMessagePtr coapResp(msg); // Destroy the message when it goes out of scope
+        auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);
+        int r = self->handleFinalizeResponse(status);
+        if (r < 0) {
+            LOG(ERROR, "Error handling FinalizeDeviceKeyChangeResponse: %d", r);
+            self->notifyComplete(r);
+        }
+        return 0;
+    }, nullptr /* ack_cb */, [](int err, int reqId, void* arg) { // error_cb
+        auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);
+        LOG(ERROR, "Error sending FinalizeDeviceKeyChangeRequest: %d", err);
+        self->notifyComplete(err);
+    }));
+    return 0;
+}
+
+int DeviceKeyChangeRequestHandler::handleFinalizeResponse(int status) {
+    auto cls = COAP_CODE_CLASS(status);
+    if (cls != 2) { // Success 2.xx
+        return SYSTEM_ERROR_COAP;
+    }
+    // Save the new key as a candidate key
+    int r = DeviceKeyManager::instance().setCandidateKey(privKey_);
+    if (r < 0) {
+        LOG(ERROR, "Error saving candidate device key: %d", r);
+        return r;
+    }
+
+    LOG(INFO, "Saved candidate device key");
+    notifyComplete();
+
+    // Discard the DTLS session and reset to reload the device key
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */,
+            SYSTEM_RESET_FLAG_NO_WAIT, nullptr /* reserved */);
+    return 0; // Unreachable
 }
 
 } // namespace particle::system

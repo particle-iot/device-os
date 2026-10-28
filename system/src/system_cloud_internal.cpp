@@ -65,6 +65,7 @@
 #include "device_key_manager.h"
 #include "coap_api.h"
 #include "coap_util.h"
+#include "cloud/protobuf.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -850,109 +851,67 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 #endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
-int handleChangeDeviceKeyRequest(CoapMessagePtr& coapReq, int reqId) {
-    std::unique_ptr<EcpPrivateKey> privKey; // Used in the CoAP completion callbacks
-    EcpPublicKey pubKey;
-    auto& keyManager = DeviceKeyManager::instance();
-    bool ok = true;
+std::unique_ptr<DeviceKeyChangeRequestHandler> g_deviceKeyChangeHandler;
 
-    PB_CLOUD(Request) pbReq = {};
-    PB_CLOUD(Response) pbResp = {};
+int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
+    int reqType = 0;
+    CHECK(getProtobufRequestType(coapReq.get(), reqType));
 
-    int r = ([&]() -> int {
-        // Parse the request
-        pb_istream_t pbIn = {};
-        CHECK(pb_istream_from_coap_message(&pbIn, coapReq.get(), nullptr /* reserved */));
-        if (!pb_decode(&pbIn, &PB_CLOUD(Request_msg), &pbReq)) {
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-        // TODO: Generalize this code for handling other requests
-        if (pbReq.type != PB_CLOUD(Request_Type_CONFIG_CHANGE_DEVICE_KEY)) {
-            return SYSTEM_ERROR_NOT_SUPPORTED;
-        }
+    CloudRequestHandler* handler = nullptr;
+    void (*onComplete)(int result) = nullptr;
 
-        // Generate a new device key
-        privKey.reset(new(std::nothrow) EcpPrivateKey());
-        if (!privKey) {
-            return SYSTEM_ERROR_NO_MEMORY;
-        }
-        CHECK(keyManager.generateKey(*privKey));
-        CHECK(privKey->getPublicKey(pubKey));
-
-        // Prepare a response
-        auto& pbInnerResp = pbResp.data.config_change_device_key;
-        pbInnerResp.pub_key.arg = &pubKey;
-        pbInnerResp.pub_key.funcs.encode = [](pb_ostream_t* stream, const pb_field_iter_t* field, void* const* arg) {
-            auto pubKey = (const EcpPublicKey*)*arg;
-            if (!pb_encode_tag_for_field(stream, field) ||
-                    !pb_encode_string(stream, (const uint8_t*)pubKey->data(), pubKey->size())) {
-                return false;
+    switch (reqType) {
+    case PB_CLOUD(Request_Type_CONFIG_PREPARE_DEVICE_KEY_CHANGE): {
+        if (!g_deviceKeyChangeHandler) {
+            g_deviceKeyChangeHandler.reset(new(std::nothrow) DeviceKeyChangeRequestHandler());
+            if (!g_deviceKeyChangeHandler) {
+                return SYSTEM_ERROR_NO_MEMORY;
             }
-            return true;
+        }
+        handler = g_deviceKeyChangeHandler.get();
+        onComplete = [](int result) {
+            g_deviceKeyChangeHandler.reset();
         };
-        pbResp.which_data = PB_CLOUD(Response_config_change_device_key_tag);
-        return 0;
-    })();
-    if (r < 0) {
-        LOG(ERROR, "Error handling ChangeDeviceKeyRequest: %d", r);
-        privKey.reset();
-        pbResp = {};
-        ok = false;
+        break;
     }
-    pbResp.result = r;
-
-    // Encode and send the response
-    CoapMessagePtr coapResp;
-    CHECK(coap_begin_response(&coapResp, ok ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST, reqId, 0 /* flags */,
-            nullptr /* reserved */));
-
-    pb_ostream_t pbOut = {};
-    CHECK(pb_ostream_from_coap_message(&pbOut, coapResp.get(), nullptr /* reserved */));
-    if (!pb_encode(&pbOut, &PB_CLOUD(Response_msg), &pbResp)) {
-        return SYSTEM_ERROR_ENCODING_FAILED;
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    CHECK(coap_end_response(coapResp.get(), [](int reqId, void* arg) { // ack_cb
-        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg)); // Take back ownership over the key object
-        if (!privKey) {
-            return 0;
+    CHECK(handler->handle(reqId, coapReq, (void*)onComplete, [](int result, CloudRequestHandler* handler, void* arg) {
+        auto onComplete = (void(*)(int))(arg);
+        if (onComplete) {
+            onComplete(result);
         }
-        // Store the new key as a candidate device key
-        int r = DeviceKeyManager::instance().setCandidateKey(*privKey);
-        if (r >= 0) {
-            LOG(INFO, "Saved candidate device key");
-        } else {
-            LOG(ERROR, "Error saving candidate device key: %d", r);
-            DeviceKeyManager::instance().clearCandidateKey(); // Just in case
+        if (handler->needResponse()) {
+            // The handler completed asynchronously and hasn't sent a response
+            auto status = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
+            int r = sendEmptyProtobufResponse(handler->requestId(), status, result);
+            if (r < 0) {
+                LOG(ERROR, "Error sending CoAP response: %d", r);
+            }
         }
-        // Discard the DTLS session and reset to reload the device key
-        // TODO: Respect the `reset_device` flag from the request
-        clearSessionData();
-        system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
-                nullptr /* reserved */);
-        return 0;
-    }, [](int err, int req_id, void* arg) { // error_cb
-        std::unique_ptr<EcpPrivateKey> privKey(static_cast<EcpPrivateKey*>(arg));
-        if (!privKey) {
-            return;
+    }));
+    if (!handler->isRunning() && handler->needResponse()) {
+        // The handler completed synchronously and hasn't sent a response
+        int r = sendEmptyProtobufResponse(handler->requestId(), COAP_STATUS_CHANGED, 0 /* result */);
+        if (r < 0) {
+            LOG(ERROR, "Error sending CoAP response: %d", r);
         }
-        LOG(WARN, "Discarding candidate device key due to CoAP error: %d", err);
-        DeviceKeyManager::instance().clearCandidateKey();
-    }, privKey.get(), nullptr /* reserved */));
-
-    // The CoAP API now owns the response and key objects
-    coapResp.release();
-    privKey.release();
+    }
     return 0;
 }
 
-int handleChangeDeviceKeyRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
+int handleProtobufRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
     CoapMessagePtr coapReq(req);
-    int r = handleChangeDeviceKeyRequest(coapReq, reqId);
-    if (r < 0) {
-        LOG(ERROR, "Error handling device key change request: %d", r);
+    int result = handleProtobufRequest(reqId, coapReq);
+    if (result < 0) {
+        int r = sendEmptyProtobufResponse(reqId, COAP_STATUS_BAD_REQUEST, result);
+        if (r < 0) {
+            LOG(ERROR, "Error sending CoAP response: %d", r);
+        }
     }
-    // Don't return any errors to the CoAP API
+    // Don't return the error (if any) to the CoAP API since we own the request message already
     return 0;
 }
 
@@ -1375,8 +1334,9 @@ void Spark_Protocol_Init(void)
         registerSystemSubscriptions();
 
         if (udp) {
-            coap_add_request_handler("r", COAP_METHOD_POST, 0 /* flags */, handleChangeDeviceKeyRequest, nullptr /* arg */,
-                    nullptr /* reserved */);
+            // Register a handler for generic Protobuf-encoded requests
+            coap_add_request_handler(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, 0 /* flags */, handleProtobufRequest,
+                    nullptr /* arg */, nullptr /* reserved */);
         }
 
 #if PLATFORM_ID == PLATFORM_GCC
