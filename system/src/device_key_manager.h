@@ -8,9 +8,6 @@
 
 namespace particle::system {
 
-const auto CONFIG_REQUEST_URI = "g";
-const int CONFIG_REQUEST_METHOD = COAP_METHOD_POST;
-
 // TODO: Move to an appropriate header
 class CryptoKey {
 public:
@@ -172,8 +169,7 @@ private:
 
     int handlePrepareRequest(CoapMessagePtr& req);
     int sendFinalizeRequest();
-    int handleFinalizeResponse(int status);
-    void notifyError(int err);
+    int handleFinalizeResponse(int status, CoapMessagePtr& resp);
 };
 
 } // namespace particle::system

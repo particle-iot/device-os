@@ -7,6 +7,7 @@
 
 #include <limits>
 #include <memory>
+#include <cstring>
 #include <cstdint>
 
 #define PB_CLOUD(_name) particle_cloud_##_name
@@ -86,6 +87,7 @@ int findSignedVarintField(int& val, uint32_t tag, const char* buf, size_t size, 
     if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max()) {
         return SYSTEM_ERROR_OUT_OF_RANGE;
     }
+    val = v;
     return 0;
 }
 
@@ -98,11 +100,11 @@ int sendProtobufRequest(const char* path, coap_method method, const PB_CLOUD(Req
 
     pb_ostream_t pbOut = {};
     CHECK(pb_ostream_from_coap_message(&pbOut, coapReq.get(), nullptr /* reserved */));
-    if (!pb_encode(&pbOut, &PB_CLOUD(Response_msg), &pbReq)) {
+    if (!pb_encode(&pbOut, &PB_CLOUD(Request_msg), &pbReq)) {
         return SYSTEM_ERROR_ENCODING_FAILED;
     }
-    CHECK(coap_end_request(coapReq.get(), nullptr /* resp_cb */, nullptr /* ack_cb */, nullptr /* error_cb */,
-            nullptr /* arg */, nullptr /* reserved */));
+    CHECK(coap_end_request(coapReq.get(), respCb, ackCb, errorCb, arg, nullptr /* reserved */));
+    coapReq.release(); // CoAP API now owns the message
     return 0;
 }
 
@@ -119,11 +121,11 @@ int getProtobufRequestType(coap_message* msg, int& type) {
     size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
 
     char buf[128] = {};
-    size_t n = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
-    bool hasMore = n < bytesAvail;
+    size_t bytesRead = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
+    bool hasMore = bytesRead < bytesAvail;
 
     uint32_t val = 0;
-    int r = CHECK(findVarintField(val, PB_CLOUD(Request_type_tag), buf, sizeof(buf), hasMore));
+    int r = CHECK(findVarintField(val, PB_CLOUD(Request_type_tag), buf, bytesRead, hasMore));
     // Normally, the first few bytes of the request always contain the type field as the server
     // seems to encode fields in the order of their tag numbers. The Protobuf spec doesn't guarantee
     // that though, hence the fallback
@@ -158,6 +160,7 @@ int sendProtobufResponse(int reqId, coap_status status, const PB_CLOUD(Response)
     }
     CHECK(coap_end_response(coapResp.get(), nullptr /* ack_cb */, nullptr /* error_cb */, nullptr /* arg */,
             nullptr /* reserved */));
+    coapResp.release(); // CoAP API now owns the message
     return 0;
 }
 
@@ -193,11 +196,11 @@ int getProtobufResponseResult(coap_message* msg, int status, int& result) {
     size_t bytesAvail = CHECK(coap_peek_block(msg, nullptr /* data */, COAP_BLOCK_SIZE, nullptr /* reserved */));
 
     char buf[128] = {};
-    size_t n = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
-    bool hasMore = n < bytesAvail;
+    size_t bytesRead = CHECK(coap_peek_block(msg, buf, sizeof(buf), nullptr /* reserved */));
+    bool hasMore = bytesRead < bytesAvail;
 
     int val = 0;
-    int r = CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf, sizeof(buf), hasMore));
+    int r = CHECK(findSignedVarintField(val, PB_CLOUD(Response_result_tag), buf, bytesRead, hasMore));
     if (r == FIND_FIELD_READ_MORE) {
         std::unique_ptr<char[]> buf(new(std::nothrow) char[bytesAvail]);
         if (!buf) {

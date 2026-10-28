@@ -244,9 +244,9 @@ int DeviceKeyChangeRequestHandler::sendFinalizeRequest() {
 
     CHECK(sendProtobufRequest(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, pbReq, this,
             [](coap_message* msg, int status, int reqId, void* arg) { // resp_cb
-        CoapMessagePtr coapResp(msg); // Destroy the message when it goes out of scope
+        CoapMessagePtr coapResp(msg);
         auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);
-        int r = self->handleFinalizeResponse(status);
+        int r = self->handleFinalizeResponse(status, coapResp);
         if (r < 0) {
             LOG(ERROR, "Error handling FinalizeDeviceKeyChangeResponse: %d", r);
             self->notifyComplete(r);
@@ -260,11 +260,8 @@ int DeviceKeyChangeRequestHandler::sendFinalizeRequest() {
     return 0;
 }
 
-int DeviceKeyChangeRequestHandler::handleFinalizeResponse(int status) {
-    auto cls = COAP_CODE_CLASS(status);
-    if (cls != 2) { // Success 2.xx
-        return SYSTEM_ERROR_COAP;
-    }
+int DeviceKeyChangeRequestHandler::handleFinalizeResponse(int status, CoapMessagePtr& resp) {
+    CHECK(checkProtobufResponseResult(resp.get(), status));
     // Save the new key as a candidate key
     int r = DeviceKeyManager::instance().setCandidateKey(privKey_);
     if (r < 0) {
