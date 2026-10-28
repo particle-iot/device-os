@@ -30,6 +30,15 @@ int CloudRequestHandler::handle(int reqId, CoapMessagePtr& req, void* arg, Compl
     return 0;
 }
 
+void CloudRequestHandler::notifyComplete(int result) {
+    if (!running_ || !completeFn_) {
+        return;
+    }
+    running_ = false;
+    reset();
+    completeFn_(result, this, completeArg_);
+}
+
 int CloudRequestHandler::sendProtobufResponse(coap_status status, const PB_CLOUD(Response)& pbResp, void* arg,
         coap_ack_callback ackCb, coap_error_callback errorCb) {
     if (!needResp_) {
@@ -48,15 +57,6 @@ int CloudRequestHandler::sendEmptyProtobufResponse(coap_status status, int resul
     CHECK(system::sendEmptyProtobufResponse(reqId_, status, result, msg, arg, ackCb, errorCb));
     needResp_ = false;
     return 0;
-}
-
-void CloudRequestHandler::notifyComplete(int result) {
-    if (!running_ || !completeFn_) {
-        return;
-    }
-    running_ = false;
-    reset();
-    completeFn_(result, this, completeArg_);
 }
 
 } // namespace particle::system
