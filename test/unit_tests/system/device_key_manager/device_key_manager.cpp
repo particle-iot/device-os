@@ -15,8 +15,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define CATCH_CONFIG_MAIN
-
 #include <catch2/catch.hpp>
 #include <fakeit.hpp>
 
@@ -24,7 +22,6 @@
 #include "file_util.h"
 #include "filesystem.h"
 #include "system_error.h"
-#include "coap_api.h"
 
 #include "mock/dct_hal_mock.h"
 #include "stub/dct.h"
@@ -143,29 +140,10 @@ std::string derivePublicKey(const CryptoKey& privKey) {
 
 // Fakes for the platform functions used by the code under test
 
-extern "C" uint32_t HAL_RNG_GetRandomNumber() {
-    return rng()();
-}
-
 int mbedtls_default_rng(void*, unsigned char* data, size_t size) {
     auto s = randBytes(size);
     std::memcpy(data, s.data(), size);
     return 0;
-}
-
-// Referenced by services/src/nanopb_misc.c but not used by the code under test
-extern "C" int coap_write_block(coap_message* msg, const char* data, size_t* size, coap_block_callback block_cb,
-        coap_error_callback error_cb, void* arg, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-extern "C" int coap_read_block(coap_message* msg, char* data, size_t* size, coap_block_callback block_cb,
-        coap_error_callback error_cb, void* arg, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-extern "C" int coap_peek_block(coap_message* msg, char* data, size_t size, void* reserved) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
 }
 
 TEST_CASE("DeviceKeyManager") {
