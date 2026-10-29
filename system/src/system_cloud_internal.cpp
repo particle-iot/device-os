@@ -66,6 +66,7 @@
 #include "coap_api.h"
 #include "coap_util.h"
 #include "cloud/protobuf.h"
+#include "v2/coap_channel.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -1447,6 +1448,10 @@ int Spark_Handshake(bool presence_announce)
     } else if (err != 0) {
         return spark_protocol_to_system_error(err);
     }
+
+    // Notify the v2 CoAP channel that it can send and receive messages
+    protocol::v2::CoapChannel::instance()->open();
+
     if (!session_resumed) {
         // XXX: ideally this event should be generated before we perform the handshake
         // but the current semantic of indicating after the handshake/session-resumption are done

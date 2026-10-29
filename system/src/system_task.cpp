@@ -33,7 +33,6 @@
 #include "system_network_internal.h"
 #include "system_update.h"
 #include "firmware_update.h"
-#include "v2/coap_channel.h"
 #include "spark_macros.h"
 #include "string.h"
 #include "core_hal.h"
@@ -377,7 +376,6 @@ void handle_cloud_connection(bool force_events)
                     SPARK_CLOUD_HANDSHAKE_NOTIFY_DONE = 0;
                     cloud_failed_connection_attempts = 0;
                     acceptCandidateDeviceKey(); // Will reset the device if there's a candidate key
-                    protocol::v2::CoapChannel::instance()->open();
                     CloudDiagnostics::instance()->status(CloudDiagnostics::CONNECTED);
                     system_notify_event(cloud_status, cloud_status_connected);
                     if (system_mode() == SAFE_MODE) {
