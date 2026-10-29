@@ -23,6 +23,8 @@ typedef struct pb_msgdesc_s pb_msgdesc_t;
 
 namespace particle {
 
+const size_t TEMP_PATH_LEN = 11; // strlen("/tmp/XXXXXX")
+
 class InputStream;
 
 int openFile(lfs_file_t* file, const char* path, unsigned flags = LFS_O_RDWR);
@@ -44,5 +46,7 @@ int mkdirp(const char* path);
 int clearDir(const char* path);
 
 int saveToFile(InputStream& srcStream, const char* destPath, filesystem_t* fs = fs::defaultFs());
+
+int createTempFile(fs::File& file, char* pathBuf, size_t pathBufSize, int flags = LFS_O_RDWR | LFS_O_APPEND);
 
 } // particle
