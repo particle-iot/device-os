@@ -23,6 +23,7 @@
 
 #include "network/ncp/cellular/cellular_ncp_client.h"
 #include "network/ncp/cellular/cellular_registration_backoff.h"
+#include "network/ncp/cellular/cellular_imsi_rotation.h"
 #include "platform_ncp.h"
 
 #include "at_parser.h"
@@ -137,6 +138,7 @@ private:
     unsigned registrationInterventions_;
     CellularRegistrationBackoff backoff_;
     unsigned restoredStage_ = 0;
+    CellularImsiRotation imsiRotation_;
     volatile bool inFlowControl_ = false;
     bool checkImsi_ = false;
     unsigned int fwVersion_ = 0;
@@ -171,6 +173,24 @@ private:
     int setupBands();
     int parseEfSize(unsigned int fid);
     int readAndClearEfByFid(unsigned int fid);
+    int isEfClear(unsigned int fid);
+    int clearFplmn(bool reload);
+    void clearFplmnIfDue();
+    bool forcesImsiRotation();
+    int readImsi(char* buf, size_t size);
+    enum class ImsiApplet {
+        NONE = 0,
+        CURRENT = 1,
+        NEW = 2
+    };
+    static const size_t IMSI_APPLET_HEX_SIZE = 64 + 1;
+    bool checkImsi();
+    int imsiAppletCommand(const char* apdu, char* hex);
+    int readImsiAppletStatus(ImsiApplet& applet, uint8_t& mode);
+    int forceImsiRotation();
+    void forceImsiRotationIfDue();
+    void startImsiRotationWindow();
+    void checkImsiRotation();
     int clearAllUserPlmn();
     int syncUserPlmn(const Vector<CString>& envPreferredPlmn);
     int configurePlmn();
@@ -216,6 +236,8 @@ private:
     bool isQuecCat1Device();
     /** Is this a Quectel EG91x device ? */
     bool isQuecEg91xDevice();
+    /** Is this a Quectel data only (no voice, LTE only) device ? */
+    bool isQuecDataOnlyDevice();
     /** Is this a Quectel Cat-NB1/Cat-NB2 device ? */
     bool isQuecCatNBxDevice();
     /** Is this a Quectel BG95* device ? */
