@@ -235,3 +235,7 @@ int HAL_USB_Set_State_Change_Callback(HAL_USB_State_Callback cb, void* context, 
     usb_hal_set_state_change_callback(cb, context, reserved);
     return 0;
 }
+
+int hal_usb_get_recovery_stats(hal_usb_recovery_stats* stats, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}

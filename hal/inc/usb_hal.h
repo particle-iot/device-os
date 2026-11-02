@@ -227,6 +227,28 @@ typedef enum HAL_USB_USART_Event {
 } HAL_USB_USART_Event;
 
 SECURITY_MODE_PROTECTED_FN(int, HAL_USB_USART_Wait_Event, (HAL_USB_USART_Serial serial, uint32_t events, system_tick_t timeout, void* reserved));
+
+#if !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
+
+/**
+ * USB driver recovery counters since boot.
+ */
+typedef struct hal_usb_recovery_stats {
+    uint16_t size; // sizeof(hal_usb_recovery_stats)
+    uint16_t reserved;
+    uint32_t ep0_repairs; // EP0 watchdog repairs
+    uint32_t ep0_reattaches; // EP0 watchdog reattach requests
+    uint32_t reattaches; // Detach/attach cycles done by the driver (any cause)
+} hal_usb_recovery_stats;
+
+/**
+ * Get the USB driver recovery counters.
+ *
+ * @param stats: filled in up to `stats->size` bytes; `size` is set to the number of bytes filled in
+ */
+int hal_usb_get_recovery_stats(hal_usb_recovery_stats* stats, void* reserved);
+
+#endif // !defined(PARTICLE_USER_MODULE) || defined(PARTICLE_USE_UNSTABLE_API)
 #endif
 
 #ifdef USB_HID_ENABLE

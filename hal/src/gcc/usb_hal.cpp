@@ -280,3 +280,7 @@ void HAL_USB_Set_Vendor_Request_State_Callback(HAL_USB_Vendor_Request_State_Call
 }
 
 #endif // defined(USB_VENDOR_REQUEST_ENABLE)
+
+int hal_usb_get_recovery_stats(hal_usb_recovery_stats* stats, void* reserved) {
+    return SYSTEM_ERROR_NOT_SUPPORTED;
+}
