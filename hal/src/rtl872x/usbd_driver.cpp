@@ -19,6 +19,8 @@
 #include "system_error.h"
 #include "service_debug.h"
 #include <mutex>
+#include <algorithm>
+#include <cstring>
 #include "scope_guard.h"
 #include "timer_hal.h"
 #include "rtl8721d_usb.h"
@@ -88,6 +90,12 @@ const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
 
+// EP0 watchdog: how long the host may keep waiting on EP0 without a control transfer
+// completing before EP0 is repaired, and again after a repair before the device reattaches.
+const system_tick_t RTL_USB_EP0_WATCHDOG_TIMEOUT = 3000;
+// SETUP packets EP0 OUT can take back to back (the host may retry a SETUP before firmware re-arms)
+const uint32_t RTL_USB_EP0_SETUP_COUNT = 3;
+
 } // anonymous
 
 extern "C" {
@@ -119,6 +127,29 @@ u32 __wrap_usb_hal_read_interrupts(void) {
 
 void __wrap_usb_hal_clear_interrupts(u32 interrupt) {
     __real_usb_hal_clear_interrupts(interrupt);
+}
+
+u32 __real_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep);
+u32 __real_usbd_hal_read_in_ep_interrupts(void* pcd, u8 ep);
+
+u32 __wrap_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep) {
+    const u32 val = __real_usbd_hal_read_out_ep_interrupts(pcd, ep);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (ep == 0) {
+        RtlUsbDriver::instance()->ep0TransferEvent(val & USB_OTG_DOEPINT_STUP, val & USB_OTG_DOEPINT_XFRC);
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return val;
+}
+
+u32 __wrap_usbd_hal_read_in_ep_interrupts(void* pcd, u8 ep) {
+    const u32 val = __real_usbd_hal_read_in_ep_interrupts(pcd, ep);
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (ep == 0) {
+        RtlUsbDriver::instance()->ep0TransferEvent(false, val & USB_OTG_DIEPINT_XFRC);
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return val;
 }
 
 // FIXME: This is a nasty workaround for the SDK USB driver
@@ -255,6 +286,7 @@ void RtlUsbDriver::loop(void* ctx) {
                 std::lock_guard<RtlUsbDriver> lk(*self);
                 self->attach();
             }
+            self->reattaches_++;
             if (!self->initialized_) {
                 error = true;
             } else {
@@ -262,8 +294,114 @@ void RtlUsbDriver::loop(void* ctx) {
             }
         }
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        self->ep0WatchdogCheck();
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+}
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+// Called by the USB task with the SDK lock held, for EP0's interrupt bits: a control transfer counts as completed at
+// the first transfer complete (either direction) after its SETUP phase. Transfer completes without a SETUP before them
+// (e.g. an EP0 OUT completion storm) don't count.
+void RtlUsbDriver::ep0TransferEvent(bool setup, bool complete) {
+    if (complete && ep0SetupPending_) {
+        ep0SetupPending_ = false;
+        ep0Completed_++;
+    }
+    if (setup) {
+        ep0SetupPending_ = true;
+    }
+}
+
+// EP0 watchdog. Once the host starts a control transfer, the device answers it within milliseconds whatever else the
+// bus carries: Particle requests never block at the USB level (a slow one keeps answering CHECK with PENDING), and
+// standard and class requests are answered by the USB task. So if the bus is alive and the host keeps waiting on EP0
+// (its EP0 tokens are NAKed, or a global IN or OUT NAK stays in effect) for RTL_USB_EP0_WATCHDOG_TIMEOUT without a
+// single control transfer completing, EP0 is wedged. Repair EP0 the way the SDK sets it up (RX FIFO flushed, EP0 OUT
+// re-armed, global IN and OUT NAK cleared); if control transfers still don't complete, reattach.
+void RtlUsbDriver::ep0WatchdogCheck() {
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    // Bus alive: the SOF frame number moved since the previous check
+    const uint32_t frame = (USB_DEVICE->DSTS & USB_OTG_DSTS_FNSOF) >> USB_OTG_DSTS_FNSOF_Pos;
+    const bool busAlive = frame != ep0LastFrame_;
+    ep0LastFrame_ = frame;
+    // EP0 tokens NAKed since the previous check: the host is waiting on EP0. Clear (W1C) only the NAK bits.
+    const bool inNak = USB_INEP(0)->DIEPINT & USB_OTG_DIEPINT_NAK;
+    const bool outNak = USB_OUTEP(0)->DOEPINT & USB_OTG_DOEPINT_NAK;
+    if (inNak) {
+        USB_INEP(0)->DIEPINT = USB_OTG_DIEPINT_NAK;
+    }
+    if (outNak) {
+        USB_OUTEP(0)->DOEPINT = USB_OTG_DOEPINT_NAK;
+    }
+    // A global IN or OUT NAK in effect: nothing sets one for longer than a few microseconds, so the core is NAKing every
+    // IN or OUT token. The host may not show it on EP0's NAK bits: with one control transfer outstanding, it retries
+    // its NAKed packet only every second or so
+    const bool globalNak = USB_DEVICE->DCTL & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS);
+    const unsigned completed = ep0Completed_;
+    const bool progress = completed != ep0LastCompleted_;
+    ep0LastCompleted_ = completed;
+    if (!initialized_ || !rtlDev_ || config_ == 0 || needsReset_ || progress || !busAlive ||
+            !(inNak || outNak || globalNak)) {
+        // Healthy, or nothing to judge: (re)start the wait
+        ep0WaitStart_ = now;
+        if (progress || config_ == 0) {
+            ep0Repaired_ = false;
+        }
+        return;
+    }
+    if (now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
+        return;
+    }
+    ep0WaitStart_ = now;
+    if (!ep0Repaired_) {
+        ep0Repaired_ = true;
+        LOG(WARN, "No control transfer completed for %u ms while the host waits on EP0: repairing EP0",
+                (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
+        std::lock_guard<RtlUsbDriver> lk(*this);
+        void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+        usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
+        usb_os_spinlock(lock);
+        repairEp0();
+        usb_os_spinunlock(lock);
+        ep0Repairs_++;
+    } else {
+        LOG(WARN, "No control transfer completed for %u ms after an EP0 repair: reattaching",
+                (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
+        config_ = 0;
+        usb_hal_disable_global_interrupt();
+        needsReset_ = true;
+        ep0Reattaches_++;
+    }
+}
+
+void RtlUsbDriver::repairEp0() {
+    // Nothing in the driver or the SDK sets the global IN NAK, but the core can leave it on, NAKing every IN token
+    // Clear it here
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+    // Set global OUT NAK: Stop the core from storing OUT data during the flush. 
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGONAK;
+    usb_hal_flush_rx_fifo();
+    // Arm the OUT transfer to expect up to 3 SETUP packets. 
+    // STUPCNT = 3, PKTCNT = 1, XFRSIZ = 24 (0x60080018), EPENA left clear, like usbd_hal_ep0_out_start()
+    USB_OUTEP(0)->DOEPTSIZ = (RTL_USB_EP0_SETUP_COUNT << USB_OTG_DOEPTSIZ_STUPCNT_Pos) |
+            (1UL << USB_OTG_DOEPTSIZ_PKTCNT_Pos) | (RTL_USB_EP0_SETUP_COUNT * sizeof(SetupRequest));
+    USB_OUTEP(0)->DOEPINT = 0xffff;
+    // Clear global OUT NAK
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGONAK;
+}
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+
+int RtlUsbDriver::getRecoveryStats(hal_usb_recovery_stats* stats) const {
+    hal_usb_recovery_stats s = {};
+    s.size = sizeof(s);
+    s.ep0_repairs = ep0Repairs_;
+    s.ep0_reattaches = ep0Reattaches_;
+    s.reattaches = reattaches_;
+    const size_t n = std::min<size_t>(stats->size, sizeof(s));
+    memcpy(stats, &s, n);
+    stats->size = n;
+    return 0;
 }
 
 int RtlUsbDriver::suspend() {
