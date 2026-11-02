@@ -110,6 +110,8 @@ private:
     void fixupReceivedData();
     void ep0WatchdogCheck();
     void repairEp0();
+    void abortInTransfer(void* pcd, unsigned ep);
+    void completeCancelledInTransfers();
 
 private:
     usb_dev_t* rtlDev_ = nullptr;
@@ -167,6 +169,7 @@ private:
     volatile uint32_t ep0Repairs_ = 0;
     volatile uint32_t ep0Reattaches_ = 0;
     volatile uint32_t reattaches_ = 0;
+    volatile uint32_t setupCancels_ = 0;
 
     // IN endpoints whose transfer a SETUP cancelled, for usbd_watch to complete (see cancelControlTransferOnSetup())
     volatile uint32_t cancelledInEps_ = 0;

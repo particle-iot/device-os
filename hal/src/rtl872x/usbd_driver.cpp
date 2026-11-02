@@ -96,6 +96,17 @@ const system_tick_t RTL_USB_EP0_WATCHDOG_TIMEOUT = 3000;
 // SETUP packets EP0 OUT can take back to back (the host may retry a SETUP before firmware re-arms)
 const uint32_t RTL_USB_EP0_SETUP_COUNT = 3;
 
+// Buffer the SDK reads SETUPs into (no header; from the disassembly of the SDK)
+const size_t RTL_USB_PCD_SETUP_BUF_OFFSET = 0x188;
+// SDK per-endpoint transfer records in the PCD (no header for it; from the disassembly of usbd_pcd_isr_task): IN
+// endpoint n is RTL_USB_PCD_EP_SIZE bytes at RTL_USB_PCD_IN_EP_OFFSET + n * size
+const size_t RTL_USB_PCD_IN_EP_OFFSET = 0x18;
+const size_t RTL_USB_PCD_EP_SIZE = 0x24;
+const size_t RTL_USB_PCD_EP_XFER_LEN_OFFSET = 0x14;
+const size_t RTL_USB_PCD_EP_XFER_COUNT_OFFSET = 0x18;
+// Polls of GINTSTS.GINAKEFF / DIEPINT.EPDISD when setting the global IN NAK / disabling an IN endpoint
+const unsigned RTL_USB_EP_DISABLE_POLLS = 10000;
+
 } // anonymous
 
 extern "C" {
@@ -159,6 +170,11 @@ int usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (size == sizeof(sLastUsbSetupRequest)) {
+        RtlUsbDriver::instance()->cancelControlTransferOnSetup(ptr);
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
@@ -294,6 +310,7 @@ void RtlUsbDriver::loop(void* ctx) {
             }
         }
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        self->completeCancelledInTransfers();
         self->ep0WatchdogCheck();
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
@@ -390,6 +407,69 @@ void RtlUsbDriver::repairEp0() {
     // Clear global OUT NAK
     USB_DEVICE->DCTL |= USB_OTG_DCTL_CGONAK;
 }
+
+// A new SETUP cancels any unfinished control transfer (USB 2.0 8.5.3), but the SDK doesn't cancel EP0 IN: a reply or
+// status ZLP the host abandoned stays armed or queued, goes out as the data stage of the next control read, and every
+// reply after it is one request late. EP0 shares the TX FIFO and its request queue with CDC IN, so the stale entries
+// can only be removed by flushing that FIFO, which cancels the CDC IN transfer in flight as well: its data is dropped,
+// and the class is told the transfer completed (see completeCancelledInTransfers()) so it carries on with the next.
+// Called by the USB task with the SDK lock held, before the SDK reads an 8-byte packet into ptr.
+void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
+    if (!rtlDev_ || !(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+        return;
+    }
+    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+    if (ptr != *((void**)((uint8_t*)pcd + RTL_USB_PCD_SETUP_BUF_OFFSET))) {
+        // An 8-byte data packet, not a SETUP
+        return;
+    }
+    setupCancels_++;
+    // Stop the core taking data out of the shared FIFO while the endpoints are disabled and it is flushed
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGINAK;
+    for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS && !(USB_GLOBAL->GINTSTS & USB_OTG_GINTSTS_GINAKEFF); i++) {
+    }
+    for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
+        // Control and bulk endpoints use the shared (non-periodic) FIFO
+        const uint32_t type = USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP;
+        if ((USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) && (type == 0 || type == USB_OTG_DIEPCTL_EPTYP_1)) {
+            abortInTransfer(pcd, ep);
+        }
+    }
+    usb_hal_flush_tx_fifo(0x00);
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+}
+
+// Cancel an IN transfer: disable the endpoint and mark the SDK's transfer record done, so the SDK doesn't carry on with
+// it (it re-enables the TX FIFO empty interrupt for any IN endpoint with data pending). The caller flushes the FIFO.
+// Called with the SDK lock held.
+void RtlUsbDriver::abortInTransfer(void* pcd, unsigned ep) {
+    auto in = USB_INEP(ep);
+    in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
+    for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS && !(in->DIEPINT & USB_OTG_DIEPINT_EPDISD); i++) {
+    }
+    // Handled here: not for the SDK
+    in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
+    auto sdkEp = (uint8_t*)pcd + RTL_USB_PCD_IN_EP_OFFSET + ep * RTL_USB_PCD_EP_SIZE;
+    auto len = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_LEN_OFFSET);
+    auto count = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_COUNT_OFFSET);
+    if (*count < *len) {
+        *count = *len;
+    }
+    if (ep) {
+        // The class is told the transfer completed from usbd_watch, outside the SDK lock
+        cancelledInEps_ |= 1UL << ep;
+    }
+}
+
+// Called from usbd_watch: tell the classes their IN transfers cancelled by cancelControlTransferOnSetup() completed
+void RtlUsbDriver::completeCancelledInTransfers() {
+    const uint32_t eps = __atomic_exchange_n(&cancelledInEps_, 0, __ATOMIC_SEQ_CST);
+    for (unsigned ep = 1; eps && ep < USBD_MAX_ENDPOINTS; ep++) {
+        if (eps & (1UL << ep)) {
+            epDataInCb(rtlDev_, ep);
+        }
+    }
+}
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 int RtlUsbDriver::getRecoveryStats(hal_usb_recovery_stats* stats) const {
@@ -398,6 +478,7 @@ int RtlUsbDriver::getRecoveryStats(hal_usb_recovery_stats* stats) const {
     s.ep0_repairs = ep0Repairs_;
     s.ep0_reattaches = ep0Reattaches_;
     s.reattaches = reattaches_;
+    s.setup_cancels = setupCancels_;
     const size_t n = std::min<size_t>(stats->size, sizeof(s));
     memcpy(stats, &s, n);
     stats->size = n;
