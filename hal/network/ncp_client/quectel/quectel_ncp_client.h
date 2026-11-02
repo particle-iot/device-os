@@ -178,15 +178,7 @@ private:
     void clearFplmnIfDue();
     bool forcesImsiRotation();
     int readImsi(char* buf, size_t size);
-    enum class ImsiApplet {
-        NONE = 0,
-        CURRENT = 1,
-        NEW = 2
-    };
-    static const size_t IMSI_APPLET_HEX_SIZE = 64 + 1;
     bool checkImsi();
-    int imsiAppletCommand(const char* apdu, char* hex);
-    int readImsiAppletStatus(ImsiApplet& applet, uint8_t& mode);
     int forceImsiRotation();
     void forceImsiRotationIfDue();
     void startImsiRotationWindow();
@@ -198,6 +190,7 @@ private:
     int checkSimCard();
     int getModuleFunctionality();
     int setModuleFunctionality(CellularFunctionality cfun, bool check = false);
+    int cycleModuleFunctionality();
     int getPolicymanServiceMode();
     int setPolicymanServiceMode(CellularPolicymanServiceMode mode, bool check);
     int set2gAttenuation3dB();

@@ -244,7 +244,7 @@ TEST_CASE("CellularImsiRotation applet not starting a rotation") {
         CHECK_FALSE(r.rotationDue());
     }
 
-    SECTION("abandoned, no applet or not in automatic mode, nothing more this window") {
+    SECTION("abandoned, no applet, nothing more this window") {
         r.imsiChecked(HOME, now + 60 * SEC);
         REQUIRE(r.rotationDue());
         r.rotationAbandoned();

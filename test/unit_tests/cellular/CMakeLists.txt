@@ -20,12 +20,14 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_buffer.cpp
   ${DEVICE_OS_DIR}/wiring/src/string_convert.cpp
   ${DEVICE_OS_DIR}/hal/network/ncp/cellular/network_config_db.cpp
+  ${DEVICE_OS_DIR}/hal/network/ncp_client/quectel/imsi_applet.cpp
   ${DEVICE_OS_DIR}/hal/shared/cellular_sig_perc_mapping.cpp
   ${DEVICE_OS_DIR}/hal/shared/ncp_env_var.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   cellular.cpp
   cellular_registration_backoff.cpp
   cellular_imsi_rotation.cpp
+  cellular_imsi_applet.cpp
 )
 
 # Set defines specific to target
