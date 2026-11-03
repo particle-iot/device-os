@@ -23,6 +23,7 @@
 #include "check.h"
 #include "storage_hal.h"
 #include "muon_test_util.h"
+#include "wifi_config_backup.h"
 
 namespace {
 
@@ -206,4 +207,15 @@ test(09_verify_muon_board_unconfigured) {
         return;
     }
 #endif
+}
+
+test(10_restore_wifi_config) {
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    particle::test::WifiConfigBackup suiteBackup(particle::test::WIFI_SUITE_BACKUP);
+    particle::test::WifiConfigBackup runBackup(particle::test::TEST_RUN_BACKUP);
+    assertTrue(suiteBackup.restore());
+    assertTrue(runBackup.restore());
+#else
+    skip();
+#endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
 }

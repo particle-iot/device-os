@@ -36,6 +36,10 @@ after(function() {
     device.removeAllListeners('mailbox');
 });
 
+test('00_restore_and_backup_wifi_config', async function () {
+
+});
+
 test('01_remove_static_ip', async function () {
 
 });
