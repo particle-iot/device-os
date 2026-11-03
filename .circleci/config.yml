@@ -315,7 +315,9 @@ commands:
       - run:
           name: "Install `prtcl` CLI (darwin)"
           command: |
-            brew tap particle-iot/brew && brew install prtcl jq
+            brew tap particle-iot/brew
+            brew trust particle-iot/brew
+            brew install prtcl jq
             echo ":::: done!"
   install-prtcl-windows:
     steps:
