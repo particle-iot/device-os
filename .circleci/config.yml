@@ -105,7 +105,7 @@ jobs:
           platform: << parameters.platform >>
   build-for-darwin:
     macos:
-      xcode: "26.2.0"
+      xcode: "26.6.0"
     resource_class: m4pro.medium
     parameters:
       tasks:
