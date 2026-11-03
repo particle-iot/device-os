@@ -240,6 +240,7 @@ typedef struct hal_usb_recovery_stats {
     uint32_t ep0_reattaches; // EP0 watchdog reattach requests
     uint32_t reattaches; // Detach/attach cycles done by the driver (any cause)
     uint32_t setup_cancels; // Control transfers a new SETUP cancelled while their EP0 IN reply was still armed
+    uint32_t tx_fifo_empty_storms; // TX FIFO empty interrupt storms stopped (pending bulk IN transfers cancelled)
 } hal_usb_recovery_stats;
 
 /**
