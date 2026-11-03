@@ -105,7 +105,7 @@ jobs:
           platform: << parameters.platform >>
   build-for-darwin:
     macos:
-      xcode: "26.2.0"
+      xcode: "26.6.0"
     resource_class: m4pro.medium
     parameters:
       tasks:
@@ -315,7 +315,9 @@ commands:
       - run:
           name: "Install `prtcl` CLI (darwin)"
           command: |
-            brew tap particle-iot/brew && brew install prtcl jq
+            brew tap particle-iot/brew
+            brew trust particle-iot/brew
+            brew install prtcl jq
             echo ":::: done!"
   install-prtcl-windows:
     steps:
@@ -342,11 +344,14 @@ commands:
         type: string
       platform:
         type: string
+      make_jobs:
+        type: string
+        default: "1 8"
     steps:
       - run:
           name: "Test Local Compilation Tasks"
           no_output_timeout: "20m"
-          command: ci/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>"
+          command: ci/test-build-tasks.sh ~/project "<< parameters.platform >>" "<< parameters.tasks >>" "<< parameters.make_jobs >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
   test-localcompiler-windows:
@@ -355,11 +360,14 @@ commands:
         type: string
       platform:
         type: string
+      make_jobs:
+        type: string
+        default: "1 8"
     steps:
       - run:
           name: "Test Local Compilation Tasks"
           no_output_timeout: "30m"
-          command: pwsh ci/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>"
+          command: pwsh ci/test-build-tasks.ps1 $home\project "<< parameters.platform >>" "<< parameters.tasks >>" "<< parameters.make_jobs >>"
           environment:
             PRTCL_DISABLE_AUTOUPDATE: "1"
   save-platform-to-workspace:
