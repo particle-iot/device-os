@@ -158,7 +158,7 @@ u32 __wrap_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep) {
     const u32 val = __real_usbd_hal_read_out_ep_interrupts(pcd, ep);
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (ep == 0) {
-        RtlUsbDriver::instance()->ep0TransferEvent(val & USB_OTG_DOEPINT_STUP, val & USB_OTG_DOEPINT_XFRC);
+        RtlUsbDriver::instance()->ep0TransferEvent(val & USB_OTG_DOEPINT_STUP, false, val & USB_OTG_DOEPINT_XFRC);
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     return val;
@@ -168,7 +168,7 @@ u32 __wrap_usbd_hal_read_in_ep_interrupts(void* pcd, u8 ep) {
     const u32 val = __real_usbd_hal_read_in_ep_interrupts(pcd, ep);
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     if (ep == 0) {
-        RtlUsbDriver::instance()->ep0TransferEvent(false, val & USB_OTG_DIEPINT_XFRC);
+        RtlUsbDriver::instance()->ep0TransferEvent(false, val & USB_OTG_DIEPINT_XFRC, false);
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     return val;
@@ -189,6 +189,9 @@ int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        RtlUsbDriver::instance()->ep0SetupRead(ptr);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         auto req = static_cast<SetupRequest*>(ptr);
         memcpy(&sLastUsbSetupRequest, req, sizeof(sLastUsbSetupRequest));
         if (req->bmRequestTypeRecipient == SetupRequest::RECIPIENT_INTERFACE) {
@@ -329,16 +332,33 @@ void RtlUsbDriver::loop(void* ctx) {
 }
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-// Called by the USB task with the SDK lock held, for EP0's interrupt bits: a control transfer counts as completed at
-// the first transfer complete (either direction) after its SETUP phase. Transfer completes without a SETUP before them
-// (e.g. an EP0 OUT completion storm) don't count.
-void RtlUsbDriver::ep0TransferEvent(bool setup, bool complete) {
+// Called by the USB task with the SDK lock held. A control transfer counts as completed when its status stage
+// completes: an IN transfer complete if the status stage is IN, an OUT one if it is OUT. ep0SetupRead() records the
+// direction when the SDK reads the SETUP. A SETUP packet completes an OUT transfer itself, between its read and its
+// SETUP phase done, and that one doesn't count. Transfer completes without a SETUP before them (e.g. an EP0 OUT
+// completion storm) don't count either.
+void RtlUsbDriver::ep0SetupRead(const void* ptr) {
+    if (!isSetupBuffer(ptr)) {
+        return;
+    }
+    ep0SetupRead_ = true;
+    // The status stage is IN unless the host reads data, then it is OUT
+    auto req = static_cast<const SetupRequest*>(ptr);
+    ep0NextStatusIn_ = req->wLength == 0 || !(req->bmRequestType & SetupRequest::DIRECTION_DEVICE_TO_HOST);
+}
+
+void RtlUsbDriver::ep0TransferEvent(bool setup, bool inComplete, bool outComplete) {
+    // A control transfer completes with its status stage: a completed data stage alone doesn't count. A SETUP packet
+    // completes an OUT transfer too, between its read and its SETUP phase done: that XFRC is not a status stage.
+    const bool complete = ep0StatusIn_ ? inComplete : (outComplete && !ep0SetupRead_);
     if (complete && ep0SetupPending_) {
         ep0SetupPending_ = false;
         ep0Completed_++;
     }
     if (setup) {
         ep0SetupPending_ = true;
+        ep0SetupRead_ = false;
+        ep0StatusIn_ = ep0NextStatusIn_;
     }
 }
 
@@ -426,15 +446,20 @@ void RtlUsbDriver::repairEp0() {
 // can only be removed by flushing that FIFO, which cancels the CDC IN transfer in flight as well: its data is dropped,
 // and the class is told the transfer completed (see completeCancelledInTransfers()) so it carries on with the next.
 // Called by the USB task with the SDK lock held, before the SDK reads an 8-byte packet into ptr.
+bool RtlUsbDriver::isSetupBuffer(const void* ptr) const {
+    if (!rtlDev_) {
+        return false;
+    }
+    // Otherwise an 8-byte data packet, not a SETUP
+    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
+    return ptr == *((void**)((uint8_t*)pcd + RTL_USB_PCD_SETUP_BUF_OFFSET));
+}
+
 void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
-    if (!rtlDev_ || !(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+    if (!(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) || !isSetupBuffer(ptr)) {
         return;
     }
     void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
-    if (ptr != *((void**)((uint8_t*)pcd + RTL_USB_PCD_SETUP_BUF_OFFSET))) {
-        // An 8-byte data packet, not a SETUP
-        return;
-    }
     setupCancels_++;
     // Stop the core taking data out of the shared FIFO while the endpoints are disabled and it is flushed
     USB_DEVICE->DCTL |= USB_OTG_DCTL_SGINAK;
