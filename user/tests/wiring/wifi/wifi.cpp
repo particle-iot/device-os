@@ -17,13 +17,23 @@
 
 #include "application.h"
 #include "unit-test/unit-test.h"
+#include "wifi_config_backup.h"
 #include <atomic>
 
-#if !HAL_PLATFORM_WIFI_SCAN_ONLY
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
+
+using particle::test::WifiConfigBackup;
+using particle::test::WIFI_SUITE_BACKUP;
 
 namespace {
 
-const char* const MISSING_NETWORK_PASSWORD = "particle-test";
+const char* const MISSING_NETWORK_SSID = "device-os-test-missing";
+const char* const MISSING_NETWORK_PASSPHRASE = "device-os-test-missing";
+const system_tick_t WIFI_CONNECT_TIMEOUT = 120000;
+const system_tick_t WIFI_DISCONNECT_TIMEOUT = 30000;
+const system_tick_t CLOUD_CONNECT_TIMEOUT = 180000;
+const system_tick_t AFTER_FRAME_DELAY = 10000;
+const system_tick_t RECONNECT_TIMEOUT = 150000;
 const system_tick_t BACKOFF_OBSERVATION_TIME = 180000;
 const unsigned MIN_EXPECTED_ATTEMPTS = 4;
 const unsigned MAX_EXPECTED_ATTEMPTS = 8;
@@ -81,70 +91,111 @@ private:
     std::atomic<unsigned> initialDelays_{0};
 };
 
-ConnectionLogHandler* logHandler = nullptr;
-
-String missingNetworkSsid(const char* suffix) {
-    return String::format("particle-test-missing-%s-%s", System.deviceID().substring(18).c_str(), suffix);
+ConnectionLogHandler& logHandler() {
+    static ConnectionLogHandler handler;
+    return handler;
 }
 
-bool setMissingNetworkCredentials(const char* suffix) {
-    const auto ssid = missingNetworkSsid(suffix);
-    return WiFi.setCredentials(ssid.c_str(), MISSING_NETWORK_PASSWORD, WLAN_SEC_WPA2, WLAN_CIPHER_AES);
+bool connectedAfterFrame() {
+    delay(AFTER_FRAME_DELAY);
+    return waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT) && waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT);
 }
 
 } // anonymous
 
 test(WIFI_00_prepare) {
-    if (!logHandler) {
-        logHandler = new ConnectionLogHandler();
-        assertTrue(logHandler);
-    }
     Particle.disconnect();
-    WiFi.disconnect();
-    WiFi.on();
-    assertTrue(waitFor(WiFi.isOn, 30000));
+    WifiConfigBackup backup(WIFI_SUITE_BACKUP);
+    assertTrue(backup.restore());
+    assertTrue(backup.save());
+    WiFi.off();
+    assertTrue(waitFor(WiFi.isOff, 60000));
     WiFi.clearCredentials();
     assertFalse(WiFi.hasCredentials());
-    assertTrue(setMissingNetworkCredentials("a"));
-    assertTrue(WiFi.hasCredentials());
+    WiFi.on();
+    assertTrue(waitFor(WiFi.isOn, 30000));
 }
 
-test(WIFI_01_no_coverage_connection_attempts_back_off_without_radio_reset) {
+test(WIFI_02_connect_to_cloud_through_ap) {
+    assertTrue(WiFi.hasCredentials());
+    WiFi.connect();
+    assertTrue(waitFor(WiFi.ready, WIFI_CONNECT_TIMEOUT));
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
+}
+
+test(WIFI_11_connected_after_btm_request_with_bss_termination) {
+    assertTrue(connectedAfterFrame());
+}
+
+test(WIFI_13_connected_after_btm_request_with_bad_url_length) {
+    assertTrue(connectedAfterFrame());
+}
+
+test(WIFI_15_connected_after_beacon_request) {
+    assertTrue(connectedAfterFrame());
+}
+
+test(WIFI_17_connected_after_beacon_request_with_oversized_ssid) {
+    assertTrue(connectedAfterFrame());
+}
+
+test(WIFI_21_no_coverage_connection_attempts_back_off_without_radio_reset) {
 #if Wiring_BLE == 1
     BLE.on();
     assertEqual(BLE.advertise(), (int)SYSTEM_ERROR_NONE);
     assertTrue(BLE.advertising());
 #endif // Wiring_BLE == 1
-    logHandler->reset();
-    WiFi.connect();
+    assertTrue(System.waitCondition([]() {
+        return !WiFi.ready();
+    }, WIFI_DISCONNECT_TIMEOUT));
+    logHandler().reset();
     for (auto start = millis(); millis() - start < BACKOFF_OBSERVATION_TIME;) {
         assertFalse(WiFi.ready());
 #if Wiring_BLE == 1
         assertTrue(BLE.advertising());
 #endif // Wiring_BLE == 1
-        assertEqual(logHandler->radioResets(), 0);
+        assertEqual(logHandler().radioResets(), 0);
         delay(500);
     }
-    assertMoreOrEqual(logHandler->failedAttempts(), MIN_EXPECTED_ATTEMPTS);
-    assertLessOrEqual(logHandler->failedAttempts(), MAX_EXPECTED_ATTEMPTS);
+    assertMoreOrEqual(logHandler().failedAttempts(), MIN_EXPECTED_ATTEMPTS);
+    assertLessOrEqual(logHandler().failedAttempts(), MAX_EXPECTED_ATTEMPTS);
 }
 
-test(WIFI_02_no_coverage_new_credentials_reset_backoff) {
-    const unsigned initialDelays = logHandler->initialDelays();
-    assertTrue(setMissingNetworkCredentials("b"));
+test(WIFI_22_no_coverage_new_credentials_reset_backoff) {
+    const unsigned initialDelays = logHandler().initialDelays();
+    assertTrue(WiFi.setCredentials(MISSING_NETWORK_SSID, MISSING_NETWORK_PASSPHRASE, WLAN_SEC_WPA2, WLAN_CIPHER_AES));
     assertTrue(System.waitCondition([initialDelays]() {
-        return logHandler->initialDelays() > initialDelays;
+        return logHandler().initialDelays() > initialDelays;
     }, NEW_CREDENTIALS_ATTEMPT_TIMEOUT));
-    assertEqual(logHandler->radioResets(), 0);
+    assertEqual(logHandler().radioResets(), 0);
 }
 
-test(WIFI_99_cleanup) {
-#if Wiring_BLE == 1
-    BLE.stopAdvertising();
-#endif // Wiring_BLE == 1
-    WiFi.disconnect();
-    WiFi.clearCredentials();
-    assertFalse(WiFi.hasCredentials());
+test(WIFI_24_reconnect_when_ap_returns) {
+    assertTrue(waitFor(WiFi.ready, RECONNECT_TIMEOUT));
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
+    assertEqual(logHandler().radioResets(), 0);
 }
 
-#endif // !HAL_PLATFORM_WIFI_SCAN_ONLY
+test(WIFI_97_reset) {
+    assertEqual(0, pushMailbox(MailboxEntry().type(MailboxEntry::Type::RESET_PENDING), 20000));
+    System.reset();
+}
+
+test(WIFI_98_cleanup) {
+    WifiConfigBackup backup(WIFI_SUITE_BACKUP);
+    assertTrue(backup.restore());
+}
+
+test(WIFI_99_reconnect_with_original_credentials) {
+#if !HAL_PLATFORM_CELLULAR
+    if (!WiFi.hasCredentials()) {
+        skip();
+        return;
+    }
+#endif // !HAL_PLATFORM_CELLULAR
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, CLOUD_CONNECT_TIMEOUT));
+}
+
+#endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
