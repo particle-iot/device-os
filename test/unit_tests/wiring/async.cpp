@@ -34,6 +34,16 @@ public:
 
     void reset() {
         events_.clear();
+        appThreadCurrent_ = true;
+        failInvoke_ = false;
+    }
+
+    void appThreadCurrent(bool current) {
+        appThreadCurrent_ = current;
+    }
+
+    void failInvoke(bool fail) {
+        failInvoke_ = fail;
     }
 
     static Context* instance() {
@@ -46,18 +56,25 @@ public:
         instance()->processEvents();
     }
 
-    static void invokeApplicationCallback(void (*callback)(void* data), void* data) {
-        instance()->postEvent([=]() {
+    static bool invokeApplicationCallback(void (*callback)(void* data), void* data) {
+        auto ctx = instance();
+        if (ctx->failInvoke_) {
+            return false;
+        }
+        ctx->postEvent([=]() {
             callback(data);
         });
+        return true;
     }
 
     static bool isApplicationThreadCurrent() {
-        return true; // TODO
+        return instance()->appThreadCurrent_;
     }
 
 private:
     std::deque<Event> events_;
+    bool appThreadCurrent_ = true;
+    bool failInvoke_ = false;
 };
 
 template<typename ResultT>
@@ -292,6 +309,41 @@ TEST_CASE("Future<void>") {
         p2.setError(Error::UNKNOWN);
         CHECK(error == Error::NONE);
     }
+}
+
+TEST_CASE("Future callbacks invoked outside of the application thread") {
+    using Future = ::Future<void>;
+    using Promise = ::Promise<void>;
+
+    resetContext();
+    Context::instance()->appThreadCurrent(false);
+    auto token = std::make_shared<int>();
+
+    SECTION("callback is invoked in the application thread") {
+        Promise p;
+        Future f = p.future();
+        bool called = false;
+        f.onSuccess([&called, token]() {
+            called = true;
+        });
+        p.setResult();
+        CHECK(called == false);
+        Context::processApplicationEvents();
+        CHECK(called == true);
+        CHECK(token.use_count() == 1);
+    }
+
+    SECTION("callback is freed if it can't be scheduled") {
+        Context::instance()->failInvoke(true);
+        Promise p;
+        Future f = p.future();
+        f.onSuccess([token]() {
+        });
+        p.setResult();
+        CHECK(token.use_count() == 1);
+    }
+
+    resetContext();
 }
 
 TEST_CASE("Future<int>") {

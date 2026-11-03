@@ -29,6 +29,7 @@
 #include "bootloader.h"
 #include "security_mode.h"
 #include "efuse.h"
+#include "hal_platform.h"
 
 // FIXME:
 // static const uintptr_t RTL_DEFAULT_MSP_S = 0x1007FFF0;
@@ -198,6 +199,17 @@ u32 app_mpu_nocache_init(void) {
         mpu_region_cfg(mpu_entry, &mpu_cfg);
     }
 
+#if HAL_PLATFORM_NULL_POINTER_TRAP
+    /* close 216K irom_ns and 80K drom_ns cache, 0x10140000-0x101C0000 is not mapped */
+    mpu_entry = mpu_entry_alloc();
+    mpu_cfg.region_base = 0x1010A000;
+    mpu_cfg.region_size = 0x101D4000 - 0x1010A000;
+    mpu_cfg.xn = MPU_EXEC_ALLOW;
+    mpu_cfg.ap = MPU_UN_PRIV_RW;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    mpu_region_cfg(mpu_entry, &mpu_cfg);
+#else
     /* close 216K irom_ns cache */
     mpu_entry = mpu_entry_alloc();
     mpu_cfg.region_base = 0x1010A000;
@@ -217,6 +229,7 @@ u32 app_mpu_nocache_init(void) {
     mpu_cfg.sh = MPU_NON_SHAREABLE;
     mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
     mpu_region_cfg(mpu_entry, &mpu_cfg);
+#endif // HAL_PLATFORM_NULL_POINTER_TRAP
 
     /* set 1KB retention ram no-cache */
     mpu_entry = mpu_entry_alloc();
@@ -250,6 +263,24 @@ u32 app_mpu_nocache_init(void) {
 
     return 0;
 }
+
+#if HAL_PLATFORM_NULL_POINTER_TRAP && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+static void null_pointer_trap_init(void) {
+    mpu_region_config mpu_cfg = {};
+    mpu_cfg.region_base = 0x00000000;
+    mpu_cfg.region_size = 0x1000;
+    mpu_cfg.xn = MPU_EXEC_NEVER;
+    mpu_cfg.ap = MPU_PRIV_R;
+    mpu_cfg.sh = MPU_NON_SHAREABLE;
+    mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
+    for (int i = 0; i < 2; i++) {
+        int8_t mpu_entry = mpu_entry_alloc();
+        SPARK_ASSERT(mpu_entry >= 0);
+        mpu_region_cfg(mpu_entry, &mpu_cfg);
+    }
+    SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
+}
+#endif // HAL_PLATFORM_NULL_POINTER_TRAP && MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 /**
  * @brief  Configures Main system clocks & power.
@@ -418,6 +449,9 @@ void Set_System(void)
 
     // Enable MPU and configure the nocache region
     app_mpu_nocache_init();
+#if HAL_PLATFORM_NULL_POINTER_TRAP
+    null_pointer_trap_init();
+#endif // HAL_PLATFORM_NULL_POINTER_TRAP
 
     // Enable cache
     Cache_Enable(1);

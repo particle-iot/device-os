@@ -3,10 +3,46 @@
 
 #include "application.h"
 #include "test.h"
+#include "scope_guard.h"
+#if HAL_PLATFORM_IFAPI
+#include "ifapi.h"
+#endif // HAL_PLATFORM_IFAPI
 
 #include "random.h"
 
 namespace {
+
+const size_t MAX_EVENT_DATA_IN_FLIGHT = 32 * 1024; // See spark_wiring_cloud_event.cpp
+
+struct HandshakeState {
+    volatile int handshakeType = -1;
+    bool operator()() {
+        return handshakeType != -1;
+    }
+    void reset() {
+        handshakeType = -1;
+    }
+};
+
+HandshakeState handshakeState;
+
+void handshakeEventHandler(system_event_t event, int param, void* /* ctx */) {
+    if (event == cloud_status && (param == cloud_status_handshake || param == cloud_status_session_resume) &&
+            handshakeState.handshakeType == -1) {
+        handshakeState.handshakeType = param;
+    }
+}
+
+bool waitCompleted(const Vector<CloudEvent>& events, system_tick_t timeout) {
+    return System.waitCondition([&events]() {
+        for (auto& ev: events) {
+            if (ev.isSending()) {
+                return false;
+            }
+        }
+        return true;
+    }, timeout);
+}
 
 bool checkStatus(const CloudEvent& ev, CloudEvent::Status status) {
     if (ev.status() != status) {
@@ -760,4 +796,125 @@ test(21_new_api_subscription_is_preferred) {
     assertTrue(checkStatus(ev, CloudEvent::NEW));
     delay(3000);
     assertTrue(oldEvents.isEmpty());
+}
+
+#if HAL_PLATFORM_IFAPI
+test(22_events_in_flight_are_completed_after_link_loss) {
+    const size_t EVENT_SIZE = 4 * 1024;
+    const unsigned EVENT_COUNT = 6;
+    const system_tick_t NETWORK_LOSS_DISCONNECT_TIMEOUT = 60 * 1000;
+    const system_tick_t NETWORK_CONNECT_TIMEOUT = 5 * 60 * 1000;
+    const system_tick_t COMPLETION_TIMEOUT = 60 * 1000;
+
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    auto& network = Particle.connectionInterface();
+    if_t iface = nullptr;
+    assertEqual(0, if_get_by_index((network_interface_t)network, &iface));
+
+    handshakeState.reset();
+    auto sub = System.on(cloud_status, handshakeEventHandler);
+    SCOPE_GUARD({
+        System.off(sub);
+    });
+
+    Vector<CloudEvent> events;
+    for (unsigned i = 0; i < EVENT_COUNT; ++i) {
+        CloudEvent ev;
+        ev.name("test");
+        ev.contentType(ContentType::BINARY);
+        assertTrue(writeRandomData(ev, EVENT_SIZE));
+        Particle.publish(ev);
+        assertTrue(ev.isSending());
+        assertTrue(events.append(ev));
+    }
+
+    // Bring the interface down while the events are being sent (see CLOUD_05 in wiring/no_fixture)
+    assertEqual(0, if_clear_flags(iface, IFF_UP));
+    SCOPE_GUARD({
+        if_set_flags(iface, IFF_UP);
+    });
+    bool disconnected = waitFor(Particle.disconnected, NETWORK_LOSS_DISCONNECT_TIMEOUT);
+    if_set_flags(iface, IFF_UP);
+    assertTrue(disconnected);
+    assertTrue(waitCompleted(events, COMPLETION_TIMEOUT));
+    assertTrue(CloudEvent::canPublish(MAX_EVENT_DATA_IN_FLIGHT));
+
+    assertTrue(System.waitCondition([&network]() { return network.ready(); }, NETWORK_CONNECT_TIMEOUT));
+    assertTrue(waitFor(handshakeState, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+#endif // HAL_PLATFORM_IFAPI
+
+#if HAL_PLATFORM_CLOUD_UDP
+test(23_failing_to_send_an_event_does_not_cause_a_full_handshake) {
+    const int GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID = 3;
+    const system_tick_t RECONNECT_TIMEOUT = 120 * 1000;
+
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    sock_handle_t cloudSock = (sock_handle_t)system_internal(GET_CLOUD_SOCKET_HANDLE_INTERNAL_ID, nullptr);
+    assertTrue(socket_handle_valid(cloudSock));
+
+    handshakeState.reset();
+    auto sub = System.on(cloud_status, handshakeEventHandler);
+    SCOPE_GUARD({
+        System.off(sub);
+    });
+
+    // Close the cloud socket so that sending the event fails (see CLOUD_04 in wiring/no_fixture)
+#if HAL_USE_SOCKET_HAL_POSIX
+    assertEqual(0, sock_close(cloudSock));
+#else
+    assertEqual(0, socket_close(cloudSock));
+#endif // HAL_USE_SOCKET_HAL_POSIX
+    CloudEvent ev;
+    ev.name("test");
+    ev.data("test");
+    Particle.publish(ev);
+    assertTrue(System.waitCondition([&ev]() { return !ev.isSending(); }, RECONNECT_TIMEOUT));
+
+    assertTrue(waitFor(handshakeState, RECONNECT_TIMEOUT));
+    assertEqual((int)handshakeState.handshakeType, (int)cloud_status_session_resume);
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+}
+#endif // HAL_PLATFORM_CLOUD_UDP
+
+test(24_events_are_completed_while_the_application_thread_is_busy) {
+    // Events of 1 byte use one 1KB block of the in-flight data limit each
+    const unsigned EVENT_COUNT = MAX_EVENT_DATA_IN_FLIGHT / 1024;
+    const system_tick_t APPLICATION_THREAD_BUSY_TIME = 30 * 1000;
+    const system_tick_t DISCONNECT_TIMEOUT = 60 * 1000;
+    const system_tick_t COMPLETION_TIMEOUT = 60 * 1000;
+
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
+    assertTrue(CloudEvent::canPublish(MAX_EVENT_DATA_IN_FLIGHT));
+
+    unsigned completed = 0;
+    Vector<CloudEvent> events;
+    for (unsigned i = 0; i < EVENT_COUNT; ++i) {
+        CloudEvent ev;
+        ev.name("test");
+        ev.data("x");
+        ev.onStatusChange([&completed](CloudEvent ev) {
+            if (!ev.isSending()) {
+                ++completed;
+            }
+        });
+        Particle.publish(ev);
+        assertTrue(events.append(ev));
+    }
+
+    // The application queue is not processed while the events are being completed
+    Particle.disconnect();
+    HAL_Delay_Milliseconds(APPLICATION_THREAD_BUSY_TIME);
+
+    assertTrue(waitFor(Particle.disconnected, DISCONNECT_TIMEOUT));
+    assertTrue(System.waitCondition([&completed]() { return completed == EVENT_COUNT; }, COMPLETION_TIMEOUT));
+    for (auto& ev: events) {
+        assertFalse(ev.isSending());
+    }
+    assertTrue(CloudEvent::canPublish(MAX_EVENT_DATA_IN_FLIGHT));
+
+    Particle.connect();
+    assertTrue(waitFor(Particle.connected, HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME));
 }

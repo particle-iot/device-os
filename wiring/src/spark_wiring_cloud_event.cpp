@@ -166,6 +166,7 @@ struct CloudEvent::Data: public RefCount {
     int requestId;
     int sendResult;
     int error;
+    Data* nextCompleted;
 
     Data() :
             status(Status::NEW),
@@ -174,7 +175,8 @@ struct CloudEvent::Data: public RefCount {
             pos(0),
             requestId(COAP_INVALID_REQUEST_ID),
             sendResult(0),
-            error(0) {
+            error(0),
+            nextCompleted(nullptr) {
     }
 };
 
@@ -189,6 +191,10 @@ struct CloudEvent::Subscription {
 };
 
 Vector<CloudEvent::Subscription> CloudEvent::s_subscriptions;
+
+CloudEvent::Data* CloudEvent::s_completedHead = nullptr;
+CloudEvent::Data* CloudEvent::s_completedTail = nullptr;
+bool CloudEvent::s_completionScheduled = false;
 
 CloudEvent::CloudEvent() :
         d_(makeRefCountPtr<Data>()) {
@@ -693,6 +699,7 @@ bool CloudEvent::canPublish(size_t size) {
 }
 
 int CloudEvent::publish() {
+    scheduleSendCompletions();
     auto status = this->status();
     if (status == Status::INVALID) {
         return error();
@@ -713,13 +720,17 @@ int CloudEvent::publish() {
     NAMED_SCOPE_GUARD(rateLimiterGuard, {
         RateLimiter::instance().give(size);
     });
+    testAndSetStatus(status, Status::SENDING, 0 /* err */, false /* notify */);
     int r = send();
     if (r < 0) {
         LOG(ERROR, "Failed to send event: %d", r);
-        return setFailed(r);
+        testAndSetStatus(Status::SENDING, Status::FAILED, r, status != Status::FAILED /* notify */);
+        return error();
     }
-    setStatus(Status::SENDING);
     rateLimiterGuard.dismiss();
+    if (this->status() == Status::SENDING && d_->onStatusChange) {
+        d_->onStatusChange(*this);
+    }
     return 0;
 }
 
@@ -770,16 +781,20 @@ int CloudEvent::send() {
         CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_CONTENT_FORMAT, (unsigned)d_->contentType, nullptr /* reserved */));
     }
     CHECK(coap_add_uint_option(msg.get(), COAP_OPTION_NO_RESPONSE, 26, nullptr /* reserved */)); // RFC 7967, 2.1
-    CHECK(coap_end_request(msg.get(), nullptr /* resp_cb */,
+    // Keep the reference around until either the ACK or error callback is called
+    d_->addRef();
+    r = coap_end_request(msg.get(), nullptr /* resp_cb */,
             [](int reqId, void* arg) { // ack_cb
                 sendComplete(0 /* err */, reqId, arg);
                 return 0;
             },
-            sendComplete /* error_cb */, d_.get(), nullptr /* reserved */));
+            sendComplete /* error_cb */, d_.get(), nullptr /* reserved */);
+    if (r < 0) {
+        d_->release();
+        return r;
+    }
     // The system now owns the message
     msg.release();
-    // Keep the reference around until either the ACK or error callback is called
-    d_->addRef();
     d_->requestId = reqId;
     return 0;
 }
@@ -808,7 +823,7 @@ void CloudEvent::setStatus(Status status, int err) {
     testAndSetStatus(d_->status, status, err);
 }
 
-bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int err) {
+bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int err, bool notify) {
     if (!d_) {
         return false;
     }
@@ -817,7 +832,7 @@ bool CloudEvent::testAndSetStatus(Status expectedStatus, Status newStatus, int e
         return false;
     }
     d_->error = err;
-    if (d_->onStatusChange) {
+    if (notify && d_->onStatusChange) {
         d_->onStatusChange(*this);
     }
     if (newStatus == Status::INVALID) {
@@ -888,7 +903,6 @@ int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int
             LOG(ERROR, "Failed to handle received event: %d", r);
         }
     }, msg.get(), nullptr /* reserved */);
-    // FIXME: application_thread_invoke() doesn't really handle errors as of now
     if (r == 0) {
         // Keep the reference around until the application callback is called
         msg.release();
@@ -898,11 +912,56 @@ int CloudEvent::receiveRequestSystem(coap_message* apiMsg, const char* path, int
 
 // Called in the system thread
 void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
-    auto d = RefCountPtr<Data>::wrap(static_cast<Data*>(arg));
+    auto d = static_cast<Data*>(arg); // Takes over the reference added in send()
     d->sendResult = err;
-    // Run a callback in the application thread to update the status of the event
-    int r = application_thread_invoke([](void* arg) {
-        CloudEvent event(RefCountPtr<Data>::wrap(static_cast<Data*>(arg)));
+    scheduleSendCompletions(d);
+}
+
+void CloudEvent::scheduleSendCompletions(Data* completed) {
+    {
+        std::lock_guard lock(EventLock::instance());
+        if (completed) {
+            if (s_completedTail) {
+                s_completedTail->nextCompleted = completed;
+            } else {
+                s_completedHead = completed;
+            }
+            s_completedTail = completed;
+        }
+        if (!s_completedHead || s_completionScheduled) {
+            return;
+        }
+        s_completionScheduled = true;
+    }
+    // Update the status of the events in the application thread
+    int r = application_thread_invoke(processSendCompletions, nullptr /* data */, nullptr /* reserved */);
+    if (r != 0) {
+        // TODO: Every completion that comes after this retries the call, and each retry can block the
+        // system thread for up to 5 seconds if the application queue is still full
+        LOG(ERROR, "Failed to schedule event status update");
+        std::lock_guard lock(EventLock::instance());
+        s_completionScheduled = false;
+    }
+}
+
+// Called in the application thread
+void CloudEvent::processSendCompletions(void* /* arg */) {
+    for (;;) {
+        RefCountPtr<Data> d;
+        {
+            std::lock_guard lock(EventLock::instance());
+            if (!s_completedHead) {
+                s_completionScheduled = false;
+                return;
+            }
+            d = RefCountPtr<Data>::wrap(s_completedHead);
+            s_completedHead = d->nextCompleted;
+            if (!s_completedHead) {
+                s_completedTail = nullptr;
+            }
+            d->nextCompleted = nullptr;
+        }
+        CloudEvent event(std::move(d));
         auto newStatus = Status::SENT;
         int err = event.d_->sendResult;
         if (err < 0) {
@@ -910,15 +969,13 @@ void CloudEvent::sendComplete(int err, int /* reqId */, void* arg) {
             newStatus = Status::FAILED;
         }
         size_t size = event.size();
-        if (!event.testAndSetStatus(Status::SENDING, newStatus, err)) {
-            return; // The event was cancelled
+        if (!event.testAndSetStatus(Status::SENDING, newStatus, err, false /* notify */)) {
+            continue; // The event was cancelled
         }
         RateLimiter::instance().give(size);
-    }, d.get(), nullptr /* reserved */);
-    // FIXME: application_thread_invoke() doesn't really handle errors as of now
-    if (r == 0) {
-        // Keep the reference around until the application callback is called
-        d.unwrap();
+        if (event.d_->onStatusChange) {
+            event.d_->onStatusChange(event);
+        }
     }
 }
 

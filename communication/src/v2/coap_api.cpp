@@ -78,7 +78,7 @@ int destroyMessageImpl(coap_message* apiMsg) {
 } // namespace
 
 int coap_add_connection_handler(coap_connection_callback cb, void* arg, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_add_connection_handler(cb, arg, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_add_connection_handler(cb, arg, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     CHECK(CoapChannel::instance()->addConnectionHandler(cb, arg));
     return 0;
@@ -89,7 +89,7 @@ void coap_remove_connection_handler(coap_connection_callback cb, void* reserved)
 }
 
 int coap_add_request_handler(const char* path, int method, int flags, coap_request_callback cb, void* arg, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_add_request_handler(path, method, flags, cb, arg, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_add_request_handler(path, method, flags, cb, arg, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -103,7 +103,7 @@ void coap_remove_request_handler(const char* path, int method, void* reserved) {
 }
 
 int coap_begin_request(coap_message** apiMsg, const char* path, int method, int timeout, int flags, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_begin_request(apiMsg, path, method, timeout, flags, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_begin_request(apiMsg, path, method, timeout, flags, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     if (!isValidCoapMethod(method)) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
@@ -120,7 +120,7 @@ int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_a
     // TODO: Use a mutex and a separate queue instead of the threading macros in all the CoAP API
     // functions to avoid blocking the application thread even if the operation cannot be performed
     // immediately
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_end_request(apiMsg, respCb, ackCb, errorCb, arg, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_end_request(apiMsg, respCb, ackCb, errorCb, arg, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endRequest(msg, respCb, ackCb, errorCb, arg);
@@ -132,7 +132,7 @@ int coap_end_request(coap_message* apiMsg, coap_response_callback respCb, coap_a
 }
 
 int coap_begin_response(coap_message** apiMsg, int status, int reqId, int flags, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_begin_response(apiMsg, status, reqId, flags, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_begin_response(apiMsg, status, reqId, flags, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     RefCountPtr<CoapMessage> msg;
     CHECK(CoapChannel::instance()->beginResponse(msg, status, reqId, flags));
@@ -142,7 +142,7 @@ int coap_begin_response(coap_message** apiMsg, int status, int reqId, int flags,
 }
 
 int coap_end_response(coap_message* apiMsg, coap_ack_callback ackCb, coap_error_callback errorCb, void* arg, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_end_response(apiMsg, ackCb, errorCb, arg, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_end_response(apiMsg, ackCb, errorCb, arg, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     auto msg = RefCountPtr<CoapMessage>::wrap(reinterpret_cast<CoapMessage*>(apiMsg));
     int r = CoapChannel::instance()->endResponse(msg, ackCb, errorCb, arg);
@@ -158,7 +158,7 @@ void coap_destroy_message(coap_message* apiMsg, void* reserved) {
 }
 
 int coap_cancel_request(int reqId, void* reserved) {
-    SYSTEM_THREAD_CONTEXT_SYNC(coap_cancel_request(reqId, reserved));
+    SYSTEM_THREAD_CONTEXT_SYNC_OR_ERROR(coap_cancel_request(reqId, reserved), SYSTEM_ERROR_NO_MEMORY);
 
     int r = CHECK(CoapChannel::instance()->cancelRequest(reqId));
     return r; // 0 or COAP_RESULT_CANCELLED

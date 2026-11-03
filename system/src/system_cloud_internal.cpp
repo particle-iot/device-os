@@ -25,6 +25,7 @@
 #include "spark_wiring_led.h"
 #include "spark_wiring_vector.h"
 #include "system_cloud_internal.h"
+#include "system_cloud_user_requests.h"
 #include "system_mode.h"
 #include "system_task.h"
 #include "system_threading.h"
@@ -850,92 +851,14 @@ int userVarType(const char *varKey)
     return item ? item->userVarType : -1;
 }
 
-SparkReturnType::Enum protocolVariableType(Spark_Data_TypeDef type) {
-    switch (type) {
-    case CLOUD_VAR_BOOLEAN:
-        return SparkReturnType::BOOLEAN;
-    case CLOUD_VAR_DOUBLE:
-        return SparkReturnType::DOUBLE;
-    case CLOUD_VAR_STRING:
-        return SparkReturnType::STRING;
-    default:
-        return SparkReturnType::INT;
-    }
-}
-
-size_t variableDataSize(const void* data, Spark_Data_TypeDef type) {
-    switch (type) {
-    case CLOUD_VAR_BOOLEAN:
-        return sizeof(bool);
-    case CLOUD_VAR_DOUBLE:
-        return sizeof(double);
-    case CLOUD_VAR_STRING:
-        return data ? strlen((const char*)data) : 0;
-    default:
-        return sizeof(uint32_t);
-    }
-}
-
-void getUserVarResult(int error, int type, void* data, size_t size, SparkDescriptor::GetVariableCallback callback,
-        void* context) {
-    SYSTEM_THREAD_CONTEXT_ASYNC(getUserVarResult(error, type, data, size, callback, context));
-    callback(error, type, data, size, context);
-}
-
-void getUserVarImpl(User_Var_Lookup_Table_t* item, SparkDescriptor::GetVariableCallback callback, void* context)
-{
-    APPLICATION_THREAD_CONTEXT_ASYNC(getUserVarImpl(item, callback, context));
-    size_t size = 0;
-    void* copy = nullptr;
-    NAMED_SCOPE_GUARD(copyGuard, {
-        free(copy);
-    });
-    if (item->copy) {
-        const int result = item->copy(item->userVar, &copy, &size);
-        if (result < 0) {
-            getUserVarResult(ProtocolError::NO_MEMORY, 0 /* type */, nullptr /* data */, 0 /* size */, callback, context);
-            return;
-        }
-    } else {
-        const void* data = nullptr;
-        if (item->update) {
-            data = item->update(item->userVarKey, item->userVarType, item->userVar, nullptr);
-        } else {
-            data = item->userVar;
-        }
-        size = variableDataSize(data, item->userVarType);
-        if (size > 0) {
-            copy = malloc(size);
-            if (!copy) {
-                getUserVarResult(ProtocolError::NO_MEMORY, 0, nullptr, 0, callback, context);
-                return;
-            }
-            memcpy(copy, data, size);
-        }
-    }
-    const auto type = protocolVariableType(item->userVarType); // Spark_Data_TypeDef -> SparkReturnType::Enum
-    getUserVarResult(ProtocolError::NO_ERROR, type, copy, size, callback, context);
-    copyGuard.dismiss();
-}
-
 void getUserVar(const char* varKey, SparkDescriptor::GetVariableCallback callback, void* context)
 {
     const auto item = find_var_by_key(varKey);
     if (item) {
-        getUserVarImpl(item, callback, context);
+        getUserVarValue(item, callback, context);
     } else {
         callback(ProtocolError::NOT_FOUND, 0 /* type */, nullptr /* data */, 0 /* size */, context);
     }
-}
-
-void userFuncScheduleImpl(User_Func_Lookup_Table_t* item, const char* paramString, bool freeParamString, SparkDescriptor::FunctionResultCallback callback)
-{
-    int result = item->pUserFunc(item->pUserFuncData, paramString, NULL);
-    if (freeParamString)
-        delete paramString;
-    // run the cloud return on the system thread again
-    SYSTEM_THREAD_CONTEXT_ASYNC(callback((const void*)long(result), SparkReturnType::INT));
-    callback((const void*)long(result), SparkReturnType::INT);
 }
 
 int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescriptor::FunctionResultCallback callback, void* reserved)
@@ -945,14 +868,7 @@ int userFuncSchedule(const char *funcKey, const char *paramString, SparkDescript
     if (!item)
         return -1;
 
-#if PLATFORM_THREADING
-    paramString = strdup(paramString);      // ensure we have a copy since the oriignal isn't guaranteed to be available once this function returns.
-    APPLICATION_THREAD_CONTEXT_ASYNC_RESULT(userFuncScheduleImpl(item, paramString, true, callback), 0);
-    userFuncScheduleImpl(item, paramString, true, callback);
-#else
-    userFuncScheduleImpl(item, paramString, false, callback);
-#endif
-    return 0;
+    return callUserFunction(item, paramString, callback);
 }
 
 static const char* resetReasonString(System_Reset_Reason reason)

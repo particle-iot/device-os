@@ -297,6 +297,7 @@ struct CoapChannel::RequestMessage: Message {
             transmitTime(0),
             transmitTimeout(0),
             transmitCount(0),
+            timeout(0),
             method() {
     }
 };
@@ -382,6 +383,7 @@ CoapChannel::CoapChannel() :
         curMsgId_(0),
         sessId_(0),
         pendingCloseError_(0),
+        pendingError_(0),
         openPending_(false) {
 }
 
@@ -742,7 +744,7 @@ int CoapChannel::cancelRequest(int reqId) {
             });
         }
     }
-    if (!msg) {
+    if (!msg || msg->sessionId != sessId_) {
         return 0;
     }
     clearMessage(msg);
@@ -863,6 +865,7 @@ void CoapChannel::removeConnectionHandler(coap_connection_callback callback) {
 
 void CoapChannel::open() {
     pendingCloseError_ = 0;
+    pendingError_ = 0;
     if (state_ != State::CLOSED) {
         if (state_ == State::CLOSING) {
             // open() is being called from a connection handler
@@ -891,6 +894,7 @@ void CoapChannel::open() {
 }
 
 void CoapChannel::close(int error) {
+    pendingError_ = 0;
     if (!error) {
         error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
@@ -1031,17 +1035,25 @@ int CoapChannel::handleRst(const MessageBuffer& msgBuf) {
         auto req = staticPtrCast<RequestMessage>(msg);
         auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer
         assert(resp);
+        clearMessage(resp);
         if (resp->errorCallback) {
             resp->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, resp->requestId, resp->callbackArg); // Callback passed to coap_read_response()
         }
-    } else if (msg->errorCallback) { // REQUEST or RESPONSE
-        msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
+    } else {
+        clearMessage(msg);
+        if (msg->errorCallback) { // REQUEST or RESPONSE
+            msg->errorCallback(SYSTEM_ERROR_COAP_MESSAGE_RESET, msg->requestId, msg->callbackArg); // Callback passed to coap_write_block(), coap_end_request() or coap_end_response()
+        }
     }
-    clearMessage(msg);
     return Result::HANDLED;
 }
 
 int CoapChannel::run() {
+    if (pendingError_) {
+        int error = pendingError_;
+        pendingError_ = 0;
+        return error;
+    }
     if (state_ != State::OPEN) {
         return 0;
     }
@@ -1071,7 +1083,26 @@ int CoapChannel::run() {
         removeRefFromList(unackMsgs_, msg);
         msg->state = MessageState::WRITE;
         LOG(TRACE, "Retransmitting CoAP message; ID: %d; attempt %u of %u", req->coapId, req->transmitCount, MAX_RETRANSMIT);
-        CHECK(sendPayloadBlock(req, true /* retransmit */));
+        int r = sendPayloadBlock(req, true /* retransmit */);
+        if (r < 0) {
+            LOG(ERROR, "Failed to retransmit CoAP message: %d", r);
+            failMessage(req, r);
+            return r;
+        }
+        return 0;
+    }
+
+    // Handle response timeouts
+    auto sentReq = findRefInList(sentReqs_, [&](auto req) {
+        return now - req->transmitTime >= req->timeout;
+    });
+    if (sentReq) {
+        if (sentReq->type == MessageType::REQUEST && !sentReq->hasMore.value_or(false) && !sentReq->responseCallback) {
+            clearMessage(sentReq);
+        } else {
+            LOG(ERROR, "CoAP request timeout; request ID: %d", sentReq->id);
+            failMessage(sentReq, SYSTEM_ERROR_COAP_TIMEOUT);
+        }
         return 0;
     }
 
@@ -1088,8 +1119,6 @@ int CoapChannel::run() {
         return 0;
     }
 
-    // TODO: As of now, the server always replies with piggybacked responses so we don't need to
-    // handle separate response timeouts
     return 0;
 }
 
@@ -1329,17 +1358,17 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (d.type() == CoapType::CON) {
             // Check the unack'd requests as this response could arrive before the ACK. In that case,
             // handleResponse() will be called recursively
-            r = CHECK(handleAck(d));
+            r = CHECK(handleAck(d, true /* matchToken */));
         }
         return r; // 0 or Result::HANDLED
     }
     assert(req->state == MessageState::WAIT_RESPONSE);
-    removeRefFromList(sentReqs_, req);
-    req->state = MessageState::DONE;
     if (d.type() == CoapType::CON) {
         // Acknowledge the response
         CHECK(sendEmptyAck());
     }
+    removeRefFromList(sentReqs_, req);
+    req->state = MessageState::DONE;
     // Check if it's a blockwise response
     auto resp = RefCountPtr(req->blockResponse); // blockResponse is a raw pointer. If null, a response object hasn't been created yet
     CoapTag etag;
@@ -1360,10 +1389,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (r < 0) {
             LOG(ERROR, "Failed to decode message options: %d", r);
             if (resp) {
+                clearMessage(resp);
                 if (resp->errorCallback) {
                     resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
                 }
-                clearMessage(resp);
+            } else {
+                failMessage(req, SYSTEM_ERROR_COAP);
             }
             return Result::HANDLED;
         }
@@ -1374,10 +1405,10 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
         if (blockIndex != req->blockIndex.value() || etag != req->tag) {
             auto code = d.code();
             LOG(ERROR, "Blockwise transfer failed: %d.%02d", (int)coapCodeClass(code), (int)coapCodeDetail(code));
+            clearMessage(resp);
             if (resp->errorCallback) {
                 resp->errorCallback(SYSTEM_ERROR_COAP, resp->requestId, resp->callbackArg);
             }
-            clearMessage(resp);
             return Result::HANDLED;
         }
         resp->blockIndex = blockIndex;
@@ -1414,7 +1445,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
             if (req->payload) {
                 req->payloadPos += COAP_BLOCK_SIZE;
                 req->transmitCount = 0;
-                CHECK(sendPayloadBlock(req));
+                int r = sendPayloadBlock(req);
+                if (r < 0) {
+                    LOG(ERROR, "Failed to send message block: %d", r);
+                    failMessage(req, r);
+                    return r;
+                }
             } else {
                 // Invoke the block handler
                 assert(req->blockCallback);
@@ -1440,6 +1476,7 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     // Create a message object
     resp = makeRefCountPtr<ResponseMessage>();
     if (!resp) {
+        failMessage(req, SYSTEM_ERROR_NO_MEMORY);
         return SYSTEM_ERROR_NO_MEMORY;
     }
     resp->id = ++lastMsgId_;
@@ -1491,8 +1528,12 @@ int CoapChannel::handleResponse(CoapMessageDecoder& d) {
     return Result::HANDLED;
 }
 
-int CoapChannel::handleAck(CoapMessageDecoder& d) {
-    auto msg = findRefInList(unackMsgs_, [=](auto msg) {
+int CoapChannel::handleAck(CoapMessageDecoder& d, bool matchToken) {
+    CoapToken token(d.token(), d.tokenSize());
+    auto msg = findRefInList(unackMsgs_, [&](auto msg) {
+        if (matchToken) {
+            return msg->type != MessageType::RESPONSE && msg->token == token;
+        }
         return msg->coapId == d.id();
     });
     if (!msg) {
@@ -1505,6 +1546,23 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
         auto req = staticPtrCast<RequestMessage>(msg);
         g_coapRoundTripMSec = millis() - req->transmitTime;
     }
+    removeRefFromList(unackMsgs_, msg);
+    msg->state = MessageState::DONE;
+    if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
+        bool noResp = false;
+        if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
+            // Check if a response is needed
+            auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
+            if (opt && (opt->toUint() & 26) == 26) { // Suppress all response codes (RFC 7967, 2.1)
+                noResp = true;
+            }
+        }
+        if (!noResp) {
+            msg->state = MessageState::WAIT_RESPONSE;
+            staticPtrCast<RequestMessage>(msg)->transmitTime = millis();
+            addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
+        }
+    }
     // For a blockwise request, the ACK callback is invoked when the last message block is acknowledged
     if (msg->ackCallback && ((msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) ||
             msg->type == MessageType::RESPONSE)) {
@@ -1515,26 +1573,8 @@ int CoapChannel::handleAck(CoapMessageDecoder& d) {
             return Result::HANDLED;
         }
     }
-    if (msg->state == MessageState::WAIT_ACK) {
-        removeRefFromList(unackMsgs_, msg);
-        msg->state = MessageState::DONE;
-        if (msg->type == MessageType::REQUEST || msg->type == MessageType::BLOCK_REQUEST) {
-            bool noResp = false;
-            if (msg->type == MessageType::REQUEST && !msg->hasMore.value_or(false)) {
-                // Check if a response is needed
-                auto opt = msg->options.findFirst(CoapOption::NO_RESPONSE);
-                if (opt && (opt->toUint() & 26) == 26) { // Suppress all response codes (RFC 7967, 2.1)
-                    noResp = true;
-                }
-            }
-            if (!noResp) {
-                msg->state = MessageState::WAIT_RESPONSE;
-                addRefToList(sentReqs_, staticPtrCast<RequestMessage>(msg));
-                if (isCoapResponseCode(d.code())) {
-                    CHECK(handleResponse(d));
-                }
-            }
-        }
+    if (msg->state == MessageState::WAIT_RESPONSE && msg->sessionId == sessId_ && isCoapResponseCode(d.code())) {
+        CHECK(handleResponse(d));
     }
     return Result::HANDLED;
 }
@@ -1731,6 +1771,18 @@ void CoapChannel::clearMessage(const RefCountPtr<Message>& msg) {
     msg->state = MessageState::DONE;
 }
 
+void CoapChannel::failMessage(const RefCountPtr<Message>& msg, int error) {
+    RefCountPtr<Message> m = msg;
+    if (m->type == MessageType::BLOCK_REQUEST) {
+        m = staticPtrCast<RequestMessage>(msg)->blockResponse;
+        assert(m);
+    }
+    clearMessage(m);
+    if (m->errorCallback) {
+        m->errorCallback(error, m->requestId, m->callbackArg);
+    }
+}
+
 int CoapChannel::sendResponseAck(CoapCode code) {
     CHECK(protocol::sendResponseAck(protocol_->get_channel(), msgBuf_, code));
     return 0;
@@ -1773,6 +1825,15 @@ int CoapChannel::handleProtocolError(ProtocolError error) {
     LOG(ERROR, "Protocol error: %d", (int)error);
     int err = toSystemError(error);
     close(err);
+    switch (error) {
+    case ProtocolError::IO_ERROR_SOCKET_SEND_FAILED:
+    case ProtocolError::INSUFFICIENT_STORAGE:
+    case ProtocolError::NO_MEMORY:
+        pendingError_ = err;
+        return err;
+    default:
+        break;
+    }
     error = protocol_->get_channel().command(Channel::CLOSE);
     if (error != ProtocolError::NO_ERROR) {
         LOG(ERROR, "Channel CLOSE command failed: %d", (int)error);
