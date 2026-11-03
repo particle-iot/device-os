@@ -6,6 +6,7 @@ include_directories(
   ${DEVICE_OS_DIR}/hal/shared/
   ${DEVICE_OS_DIR}/services/inc/
   ${DEVICE_OS_DIR}/wiring/inc/
+  ${DEVICE_OS_DIR}/hal
   ${DEVICE_OS_DIR}/hal/network
   ${DEVICE_OS_DIR}/hal/src/gcc
 )

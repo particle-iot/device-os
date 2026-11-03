@@ -202,7 +202,8 @@ void Esp32NcpNetif::loop(void* arg) {
             }
             if (self->expectedConnectionState_ == NcpConnectionState::CONNECTED &&
                 self->wifiMan_->ncpClient()->connectionState() == NcpConnectionState::DISCONNECTED &&
-                self->wifiMan_->ncpClient()->ncpState() == NcpState::ON) {
+                self->wifiMan_->ncpClient()->ncpState() == NcpState::ON &&
+                self->wifiMan_->connectAllowed()) {
                 self->upImpl();
             }
 
@@ -247,6 +248,7 @@ int Esp32NcpNetif::getCurrentProfile(spark::Vector<char>* profile) const {
 }
 
 int Esp32NcpNetif::up() {
+    wifiMan_->resetConnectBackoff();
     // FIXME:
     // The following separate sequential atomic operations do not make the whole change atomic.
     // We may end up in an inconsistent state. Same to wherever the changes being made.

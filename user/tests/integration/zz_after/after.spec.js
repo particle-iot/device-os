@@ -54,6 +54,9 @@ test('08_unconfigure_muon_board', async function () {
 test('09_verify_muon_board_unconfigured', async function () {
 });
 
+test('10_restore_wifi_config', async function () {
+});
+
 after(function() {
     // console.log('after js runs');
 });
