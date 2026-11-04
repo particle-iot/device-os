@@ -358,46 +358,75 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertTrue(contains);
 }
 
-#if 0 // FIXME
-static int atCallback(int type, const char* buf, int len, int* lines) {
-    if (len && type == TYPE_UNKNOWN)
-        (*lines)++;
+namespace {
+
+// The modem echoes the whole line, so this is a long reply that every modem sends. It spans several
+// UART FIFOs and mux frames, and is still well inside every modem's command line limit
+const size_t LONG_COMMAND_SIZE = 480;
+const unsigned LONG_COMMAND_COUNT = 20;
+// Long enough for the modem to overrun the UART RX FIFO several times over at any baud rate we use
+const unsigned IRQ_MASKED_US = 3000;
+
+volatile bool sMaskingIrqs = false;
+
+int ifcCallback(int type, const char* buf, int len, bool* hwFlowControl) {
+    if (strstr(buf, "+IFC: 2,2")) {
+        *hwFlowControl = true;
+    }
     return WAIT;
 }
+
+} // namespace
+
 test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
-    if (cellular_modem_type() == DEV_QUECTEL_BG96 ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_E ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_NA ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_EX) {
-        Serial.println("TODO: find a command with long response on Quectel NCP");
-        skip();
-        return;
-    }
-    // R510 does not support AT+CLAC
-    if (cellular_modem_type() == DEV_SARA_R510) {
-        Serial.println("TODO: find a command with long response on SARA-R510");
+    // Some modems run without flow control on purpose, e.g. older SARA-R410 firmware
+    bool hwFlowControl = false;
+    assertEqual((int)RESP_OK, Cellular.command(ifcCallback, &hwFlowControl, 10000, "AT+IFC?\r\n"));
+    if (!hwFlowControl) {
         skip();
         return;
     }
 
-    // TODO: Add back this test when SARA R410 supports HW Flow Control?
-    if (cellular_modem_type() == DEV_SARA_R410) {
-        Serial.println("TODO: Add back this test when SARA R410 supports HW Flow Control?");
-        skip();
-        return;
+    // Not a real command, the modem echoes it back and answers ERROR
+    char cmd[LONG_COMMAND_SIZE + 1] = "AT+PFLOWCONTROL=\"";
+    size_t n = strlen(cmd);
+    for (; n < LONG_COMMAND_SIZE - 1; n++) {
+        cmd[n] = "0123456789ABCDEF"[n % 16];
     }
-    // https://github.com/spark/firmware/issues/1138
-    int lines = 0;
-    int ret = -99999;
-    // Disconnected from the Cloud so we are not dealing with any other command responses
-    Particle.disconnect();
-    waitFor(Particle.disconnected, 30000);
+    cmd[n++] = '"';
+    cmd[n] = '\0';
 
-    while ((ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n")) == WAIT);
-    assertEqual(ret, (int)RESP_OK);
-    assertMoreOrEqual(lines, 200);
+    // Masking interrupts stops the UART RX interrupt, the same as a busy system would. Only RTS can
+    // then stop the modem before the FIFO overruns, and a lost byte leaves the parser waiting for
+    // the echo until the command times out
+    sMaskingIrqs = true;
+    Thread masker("irq_masker", []() {
+        while (sMaskingIrqs) {
+            ATOMIC_BLOCK() {
+                delayMicroseconds(IRQ_MASKED_US);
+            }
+            delay(2);
+        }
+    });
+
+    // Each command takes well under 100 ms, so a short timeout and stopping at the first failure keep
+    // a failing run quick. Lost bytes can also take down the mux, which only makes later commands slower
+    unsigned i = 0;
+    int r = RESP_OK;
+    for (; i < LONG_COMMAND_COUNT; i++) {
+        r = Cellular.command(2000, "%s\r\n", cmd);
+        if (r != RESP_ERROR && r != RESP_OK) {
+            break;
+        }
+    }
+    sMaskingIrqs = false;
+    masker.join();
+
+    if (i < LONG_COMMAND_COUNT) {
+        Log.error("Long command %u of %u failed with %d", i + 1, LONG_COMMAND_COUNT, r);
+    }
+    assertEqual(i, LONG_COMMAND_COUNT);
 }
-#endif // FIXME
 
 test(MDM_03_restore_cloud_connection) {
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
