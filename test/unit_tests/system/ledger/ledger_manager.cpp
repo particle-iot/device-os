@@ -18,8 +18,8 @@
 #include "ledger/ledger.h"
 #include "ledger/ledger_manager.h"
 
-#include "util/coap_api_fake.h"
-#include "util/system_fakes.h"
+#include "system/mock/coap_api_fake.h"
+#include "system/mock/system_fakes.h"
 #include "util/ledger_pb.h"
 
 #include "cloud/cloud.pb.h"

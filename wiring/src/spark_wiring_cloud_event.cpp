@@ -756,6 +756,11 @@ void CloudEvent::unsubscribeAll() {
 }
 
 int CloudEvent::send() {
+    // TODO: The CoAP channel may be open for system messages but not yet for application messages.
+    // Introduce a flag to distinguish between the two at the API level
+    if (!spark_cloud_flag_connected()) {
+        return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
+    }
     char uriPath[COAP_MAX_URI_PATH_LENGTH];
     int r = std::snprintf(uriPath, sizeof(uriPath), "E/%s", (const char*)d_->name);
     if (r < 0 || (size_t)r >= sizeof(uriPath)) {

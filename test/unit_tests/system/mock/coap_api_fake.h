@@ -79,6 +79,8 @@ public:
     int sendRequest(const char* uri, int method, const std::string& payload);
     // Response sent by the device to a request sent via sendRequest(), or null
     const Sent* responseFor(int reqId) const;
+    // Acknowledge a response sent by the device
+    void ackResponse(int reqId);
     // Fail a response sent by the device
     void failResponse(int reqId, int error);
 
