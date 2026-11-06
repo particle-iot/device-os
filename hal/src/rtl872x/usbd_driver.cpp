@@ -275,7 +275,18 @@ int RtlUsbDriver::detach() {
     usbd_unregister_class();
     usbd_deinit();
     resetCount_ = 0;
+    cancelledInEps_ = 0;
+    txFifoEmptyMasked_ = false;
+    ep0Repaired_ = false;
     return 0;
+}
+
+bool RtlUsbDriver::reattach() {
+    std::lock_guard<RtlUsbDriver> lk(*this);
+    detach();
+    attach();
+    reattaches_++;
+    return initialized_;
 }
 
 void RtlUsbDriver::reset() {
@@ -293,55 +304,35 @@ void RtlUsbDriver::requestReattach() {
 
 void RtlUsbDriver::loop(void* ctx) {
     auto self = static_cast<RtlUsbDriver*>(ctx);
-    constexpr auto period = 1000;
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    bool error = false;
-#else
+    constexpr auto RTL_USB_WATCH_PERIOD = 1000;
     static bool error = false;
-    static system_tick_t last = HAL_Timer_Get_Milli_Seconds();
-#endif
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     while (true) {
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!self->initialized_ && !error) {
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-            HAL_Delay_Milliseconds(period / 10);
+            HAL_Delay_Milliseconds(RTL_USB_WATCH_PERIOD / 10);
             continue;
-#else
-            return;
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         }
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        HAL_Delay_Milliseconds(period);
-#else
-    if (HAL_Timer_Get_Milli_Seconds() - last >= period) {
-        last = HAL_Timer_Get_Milli_Seconds();
-    } else {
-        return;
-    }
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+        HAL_Delay_Milliseconds(RTL_USB_WATCH_PERIOD);
         if (self->needsReset_ || error) {
-            {
-                std::lock_guard<RtlUsbDriver> lk(*self);
-                self->detach();
-            }
-            self->needsReset_ = false;
-            {
-                std::lock_guard<RtlUsbDriver> lk(*self);
-                self->attach();
-            }
-            self->reattaches_++;
-            if (!self->initialized_) {
-                error = true;
-            } else {
-                error = false;
-            }
+            error = !self->reattach();
         }
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        self->completeCancelledInTransfers();
-        self->txFifoEmptyRearm();
-        self->ep0WatchdogCheck();
+        std::lock_guard<RtlUsbDriver> lk(*self);
+        if (self->initialized_) {
+            self->completeCancelledInTransfers();
+            self->txFifoEmptyRearm();
+            self->ep0WatchdogCheck();
+        }
+    }
+#else
+    // Polled from DFU_Check_Reset() in the bootloader's main loop, not run in a dedicated thread.
+    static system_tick_t last = HAL_Timer_Get_Milli_Seconds();
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    if ((self->initialized_ || error) && now - last >= RTL_USB_WATCH_PERIOD) {
+        last = now;
+        if (self->needsReset_ || error) {
+            error = !self->reattach();
+        }
     }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 }

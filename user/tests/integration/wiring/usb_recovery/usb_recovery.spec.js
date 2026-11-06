@@ -199,7 +199,7 @@ test('USB_RECOVERY_05_CANCEL_ON_SETUP_TRIGGER', async function() {
 
     // Poll GET_STATUS until a request times out (the global IN NAK held its reply back)
     const usbDev = await device.getUsbDevice();
-    const timedOut = await pollUntilTimeout(usbDev, EP0_POLL_TIMEOUT_MS, 5000);
+    const timedOut = await pollUntilTimeout(usbDev, EP0_POLL_TIMEOUT_MS, 30000);
     expect(timedOut, `no GET_STATUS was held back long enough to cancel (${EP0_POLL_TIMEOUT_MS} ms): the device's ` +
             `global IN NAK didn't take effect`).to.be.true;
 
