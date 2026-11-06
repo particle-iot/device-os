@@ -115,6 +115,7 @@ private:
     void completeCancelledInTransfers();
     void txFifoEmptyRearm();
     void requestReattach();
+    bool reattach();
 
     void* pcd() const {
         return rtlDev_->pcd;
