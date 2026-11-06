@@ -1,3 +1,11 @@
+## 6.6.1-rc.1
+
+### FEATURES
+- [Cellular] Support the EG916Q-GL modem [#2970](https://github.com/particle-iot/device-os/pull/2970) [#2975](https://github.com/particle-iot/device-os/pull/2975)
+
+### INTERNAL
+- [ci] test-build-system: test prtcl builds with -j1 and -jN; bump buildscripts/buildtools; bump firmware buildpack builder [#2973](https://github.com/particle-iot/device-os/pull/2973)
+
 ## 6.6.0
 
 ### FEATURES
