@@ -111,9 +111,14 @@ private:
     bool isSetupBuffer(const void* ptr) const;
     void ep0WatchdogCheck();
     void repairEp0();
-    void abortInTransfer(void* pcd, unsigned ep);
+    void abortInTransfer(unsigned ep);
     void completeCancelledInTransfers();
     void txFifoEmptyRearm();
+    void requestReattach();
+
+    void* pcd() const {
+        return rtlDev_->pcd;
+    }
 
 private:
     usb_dev_t* rtlDev_ = nullptr;
