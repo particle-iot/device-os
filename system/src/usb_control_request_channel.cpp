@@ -567,6 +567,12 @@ void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
         activeReqs_ = req->next;
     }
     --activeReqCount_;
+    // A cancelled request may still be referenced as the one whose reply is being sent (e.g. CHECK of a
+    // request without reply data that the host abandoned, followed by RESET). Don't let the next
+    // TX_COMPLETED finish it a second time
+    if (curReq_ == req) {
+        curReq_ = nullptr;
+    }
     // Free request data
     if (req->state == RequestState::ALLOC_PENDING || req->state == RequestState::PENDING) { // ALLOC_PENDING, PENDING
         // Mark this request as completed to make the system thread free the request data
