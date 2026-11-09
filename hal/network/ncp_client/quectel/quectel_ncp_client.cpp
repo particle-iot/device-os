@@ -1717,6 +1717,12 @@ int QuectelNcpClient::initReady(ModemState state) {
         // Check that the modem is responsive at the new baudrate
         skipAll(serial_.get(), 1000);
         CHECK(waitAtResponse(10000));
+        if (ncpId() == PLATFORM_NCP_QUECTEL_EG916Q_GL) {
+            // Workaround for hw-flow control not working in cmux mode bug
+            // A0.303 and A0.304 drop IFC=2,2 on AT+IPR. Setting it again only works if it changes, and it
+            // has to be one line since the modem stops driving CTS after IFC=0,0. Fixed in A0.306
+            CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0;+IFC=2,2"));
+        }
 
         CHECK(selectSimCard());
 
