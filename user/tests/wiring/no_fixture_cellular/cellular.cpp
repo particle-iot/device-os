@@ -358,50 +358,198 @@ test(MDM_01_socket_writes_with_length_more_than_1023_work_correctly) {
     assertTrue(contains);
 }
 
-#if 0 // FIXME
-static int atCallback(int type, const char* buf, int len, int* lines) {
-    if (len && type == TYPE_UNKNOWN)
-        (*lines)++;
+namespace {
+
+// The modem echoes the line back, so this gets a long reply from every modem
+const size_t LONG_COMMAND_SIZE = 480;
+const unsigned LONG_COMMAND_COUNT = 20;
+
+// Lets the modem finish anything it was already sending
+const system_tick_t RTS_SETTLE_MS = 3000;
+// Short enough that the mux keepalive doesn't time out
+const system_tick_t RTS_HOLD_MS = 10000;
+const system_tick_t RTS_REPLY_MS = 10000;
+
+// PIN_INVALID where we don't know the pin
+pin_t cellularRtsPin() {
+#if PLATFORM_ID == PLATFORM_B5SOM || PLATFORM_ID == PLATFORM_TRACKER
+    return RTS1;
+#elif PLATFORM_ID == PLATFORM_MSOM
+    return RTS2;
+#else
+    return PIN_INVALID;
+#endif
+}
+
+// These ignore RTS once CMUX is running (seen on the BG96 and BG95-M5)
+bool ignoresRtsWithMux(int modemType) {
+    switch (modemType) {
+    case DEV_QUECTEL_BG96:
+    case DEV_QUECTEL_BG95_M1:
+    case DEV_QUECTEL_BG95_MF:
+    case DEV_QUECTEL_BG95_M6:
+    case DEV_QUECTEL_BG95_M5:
+    case DEV_QUECTEL_BG95_S5:
+        return true;
+    default:
+        return false;
+    }
+}
+
+int ifcCallback(int type, const char* buf, int len, bool* hwFlowControl) {
+    if (strstr(buf, "+IFC: 2,2")) {
+        *hwFlowControl = true;
+    }
     return WAIT;
 }
-test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
-    if (cellular_modem_type() == DEV_QUECTEL_BG96 ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_E ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_NA ||
-            cellular_modem_type() == DEV_QUECTEL_EG91_EX) {
-        Serial.println("TODO: find a command with long response on Quectel NCP");
-        skip();
-        return;
+
+int iprCallback(int type, const char* buf, int len, unsigned* baud) {
+    sscanf(buf, "\r\n+IPR: %u", baud);
+    return WAIT;
+}
+
+// Returns how many commands got a reply, stopping at the first one that didn't
+unsigned sendLongCommands(const char* cmd, const char* what) {
+    unsigned i = 0;
+    int r = RESP_OK;
+    for (; i < LONG_COMMAND_COUNT; i++) {
+        r = Cellular.command(10000, "%s\r\n", cmd);
+        if (r != RESP_ERROR && r != RESP_OK) {
+            break;
+        }
     }
-    // R510 does not support AT+CLAC
-    if (cellular_modem_type() == DEV_SARA_R510) {
-        Serial.println("TODO: find a command with long response on SARA-R510");
-        skip();
-        return;
+    if (i < LONG_COMMAND_COUNT) {
+        Log.error("%s: long command %u of %u %s (%d)", what, i + 1, LONG_COMMAND_COUNT,
+                r == WAIT ? "timed out" : "failed", r);
+    }
+    return i;
+}
+
+// Counts the lines the AT parser receives
+class AtLineCounter: public LogHandler {
+public:
+    AtLineCounter() :
+            LogHandler(LOG_LEVEL_NONE, { { "ncp.at", LOG_LEVEL_ALL } }) {
+        LogManager::instance()->addHandler(this);
     }
 
-    // TODO: Add back this test when SARA R410 supports HW Flow Control?
-    if (cellular_modem_type() == DEV_SARA_R410) {
-        Serial.println("TODO: Add back this test when SARA R410 supports HW Flow Control?");
+    ~AtLineCounter() {
+        LogManager::instance()->removeHandler(this);
+    }
+
+    unsigned lines() const {
+        return lines_;
+    }
+
+    // For the error log
+    const char* firstLine() const {
+        return firstLine_;
+    }
+
+protected:
+    void logMessage(const char* msg, LogLevel level, const char* category, const LogAttributes& attr) override {
+        if (strncmp(msg, "< ", 2) != 0) {
+            return;
+        }
+        if (lines_++ == 0) {
+            strlcpy(firstLine_, msg + 2, sizeof(firstLine_));
+        }
+    }
+
+private:
+    volatile unsigned lines_ = 0;
+    char firstLine_[64] = {};
+};
+
+struct HeldCommand {
+    const char* cmd;
+    volatile int result;
+    volatile bool returned;
+};
+
+} // namespace
+
+test(MDM_02_at_commands_with_long_response_are_correctly_parsed_and_flow_controlled) {
+    // Some modems run without flow control on purpose, e.g. older SARA-R410 firmware
+    bool hwFlowControl = false;
+    assertEqual((int)RESP_OK, Cellular.command(ifcCallback, &hwFlowControl, 10000, "AT+IFC?\r\n"));
+    const pin_t rts = cellularRtsPin();
+    if (!hwFlowControl || rts == PIN_INVALID || ignoresRtsWithMux(cellular_modem_type())) {
         skip();
         return;
     }
-    // https://github.com/spark/firmware/issues/1138
-    int lines = 0;
-    int ret = -99999;
-    // Disconnected from the Cloud so we are not dealing with any other command responses
+    unsigned baud = 0;
+    assertEqual((int)RESP_OK, Cellular.command(iprCallback, &baud, 10000, "AT+IPR?\r\n"));
+    assertMore(baud, 0u);
+
+    // Not a real command, the modem echoes it back and answers ERROR
+    char cmd[LONG_COMMAND_SIZE + 1] = "AT+PFLOWCONTROL=\"";
+    size_t n = strlen(cmd);
+    for (; n < LONG_COMMAND_SIZE - 1; n++) {
+        cmd[n] = "0123456789ABCDEF"[n % 16];
+    }
+    cmd[n++] = '"';
+    cmd[n] = '\0';
+
+    // A failure here isn't about flow control
+    assertEqual(sendLongCommands(cmd, "Baseline"), LONG_COMMAND_COUNT);
+
+    // Keep cloud traffic out of the way while RTS is held
     Particle.disconnect();
     waitFor(Particle.disconnected, 30000);
 
-    while ((ret = Cellular.command(atCallback, &lines, 10000, "AT+CLAC\r\n")) == WAIT);
-    assertEqual(ret, (int)RESP_OK);
-    assertMoreOrEqual(lines, 200);
+    // Hold RTS from a GPIO. The UART keeps receiving, so anything the modem sends still shows up
+    hal_usart_begin_config(HAL_PLATFORM_CELLULAR_SERIAL, baud, SERIAL_8N1 | SERIAL_FLOW_CONTROL_CTS, nullptr);
+    pinMode(rts, OUTPUT);
+    digitalWrite(rts, HIGH);
+    SCOPE_GUARD({
+        hal_usart_begin_config(HAL_PLATFORM_CELLULAR_SERIAL, baud, SERIAL_8N1 | SERIAL_FLOW_CONTROL_RTS_CTS, nullptr);
+    });
+    delay(RTS_SETTLE_MS);
+
+    AtLineCounter counter;
+    HeldCommand held = { cmd, RESP_OK, false };
+    Thread sender("held_cmd", [](void* arg) {
+        auto h = (HeldCommand*)arg;
+        h->result = Cellular.command(RTS_HOLD_MS + RTS_REPLY_MS + 10000, "%s\r\n", h->cmd);
+        h->returned = true;
+    }, &held);
+
+    delay(RTS_HOLD_MS);
+    const unsigned linesWhileHeld = counter.lines();
+    const bool returnedWhileHeld = held.returned;
+    if (linesWhileHeld > 0 || returnedWhileHeld) {
+        Log.error("Modem sent %u lines with RTS held off, first: %s", linesWhileHeld, counter.firstLine());
+    }
+
+    digitalWrite(rts, LOW);
+    for (const auto start = millis(); !held.returned && millis() - start < RTS_REPLY_MS;) {
+        delay(10);
+    }
+    const bool returnedAfterRelease = held.returned;
+    const int result = held.result;
+    const unsigned linesAfter = counter.lines();
+    if (!returnedAfterRelease && linesAfter == 0) {
+        Log.error("No reply after RTS was released");
+    } else if (!returnedAfterRelease || result != RESP_ERROR) {
+        Log.error("Reply did not match (%d) after %u lines, first: %s", result, linesAfter,
+                counter.firstLine());
+    }
+    sender.join();
+
+    // Separate so the report shows which one failed
+    assertEqual(linesWhileHeld, 0u);
+    assertFalse(returnedWhileHeld);
+    assertTrue(returnedAfterRelease);
+    assertEqual(result, (int)RESP_ERROR);
+    // Proves the counter was working
+    assertMore(linesAfter, 0u);
 }
-#endif // FIXME
 
 test(MDM_03_restore_cloud_connection) {
     connect_to_cloud(HAL_PLATFORM_MAX_CLOUD_CONNECT_TIME);
 }
+
 
 namespace {
 const system_tick_t CELLULAR_LOCK_HOLD_MS = 10000;
