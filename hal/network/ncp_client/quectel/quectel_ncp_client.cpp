@@ -1722,6 +1722,7 @@ int QuectelNcpClient::initReady(ModemState state) {
             // A0.303 and A0.304 drop IFC=2,2 on AT+IPR. Setting it again only works if it changes, and it
             // has to be one line since the modem stops driving CTS after IFC=0,0. Fixed in A0.306
             CHECK_PARSER_OK(parser_.execCommand("AT+IFC=0,0;+IFC=2,2"));
+            CHECK(waitAtResponse(10000));
         }
 
         CHECK(selectSimCard());
