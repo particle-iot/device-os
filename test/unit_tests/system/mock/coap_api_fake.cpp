@@ -29,8 +29,8 @@
 #include <stdexcept>
 #include <cstring>
 
-// The cloud side of the ledger tests: the "cloud" exchanges real CoAP messages with the real
-// v2 CoAP channel. CoapFake keeps its recording/injection API. All messages are assumed to fit
+// The cloud side of the tests: the "cloud" exchanges real CoAP messages with the real v2 CoAP
+// channel. CoapFake keeps its recording/injection API. All messages are assumed to fit
 // in a single CoAP block.
 
 namespace particle::test {
@@ -227,6 +227,19 @@ void CoapFake::failResponse(int reqId, int error) {
     sendToDevice(rst);
 }
 
+void CoapFake::ackResponse(int reqId) {
+    drain();
+    auto resp = responseFor(reqId);
+    if (!resp) {
+        throw std::runtime_error("Unknown request ID");
+    }
+    CoapMessage ack;
+    ack.type(protocol::CoapType::ACK);
+    ack.code(protocol::CoapCode::EMPTY);
+    ack.id(resp->msg.id());
+    sendToDevice(ack);
+}
+
 void CoapFake::clearLog() {
     requests_.clear();
     responses_.clear();
@@ -242,7 +255,14 @@ void CoapFake::drain() {
             sent.reqId = ++lastReqId_;
             sent.isResponse = false;
             sent.method = msg.code();
-            sent.uri = "L";
+            if (msg.hasOption(protocol::CoapOption::URI_PATH)) {
+                for (auto& opt: msg.options(protocol::CoapOption::URI_PATH)) {
+                    if (!sent.uri.empty()) {
+                        sent.uri += '/';
+                    }
+                    sent.uri += opt.toString();
+                }
+            }
             requests_.push_back(std::move(sent));
         } else if (protocol::isCoapResponse(msg.type(), msg.code()) && msg.hasToken()) {
             // The channel copies the token of the original request to the response

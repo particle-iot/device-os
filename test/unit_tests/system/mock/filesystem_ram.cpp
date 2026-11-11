@@ -19,6 +19,7 @@
 
 #include "filesystem.h"
 #include "system_error.h"
+#include "check.h"
 
 #include <vector>
 #include <cstring>
@@ -121,26 +122,156 @@ void lfs_crc(uint32_t* __restrict__ crc, const void* buffer, size_t size) {
 
 namespace particle::fs {
 
-// fs::File is referenced by services/src/file_util.cpp but not used by the ledger code
+// Copied from hal/shared/filesystem.cpp
+
 struct File::Data {
+    lfs_file_t file;
+    filesystem_t* fs;
+
+    explicit Data(filesystem_t* fs) :
+            file(),
+            fs(fs) {
+    }
 };
 
 File::File() {
 }
 
+File::File(File&& file) :
+        d_(std::move(file.d_)) {
+}
+
 File::~File() {
+    close();
 }
 
 int File::open(const char* path, int flags, filesystem_t* fs) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
-}
-
-int File::close() {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM; // filesystem_get_instance() failed
+    }
+    CHECK(close());
+    std::unique_ptr<Data> d(new(std::nothrow) Data(fs));
+    if (!d) {
+        return SYSTEM_ERROR_NO_MEMORY;
+    }
+    CHECK_FS(lfs_file_open(&d->fs->instance, &d->file, path, flags));
+    d_ = std::move(d);
     return 0;
 }
 
+int File::close() {
+    if (!d_) {
+        return 0;
+    }
+    CHECK_FS(lfs_file_close(&d_->fs->instance, &d_->file));
+    d_.reset();
+    return 0;
+}
+
+int File::read(void* buf, lfs_size_t size) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_read(&d_->fs->instance, &d_->file, buf, size));
+}
+
 int File::write(const void* buf, lfs_size_t size) {
-    return SYSTEM_ERROR_NOT_SUPPORTED;
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_write(&d_->fs->instance, &d_->file, buf, size));
+}
+
+int File::tell() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_tell(&d_->fs->instance, &d_->file));
+}
+
+int File::seek(lfs_soff_t offs, int whence) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_seek(&d_->fs->instance, &d_->file, offs, whence));
+}
+
+int File::size() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_size(&d_->fs->instance, &d_->file));
+}
+
+int File::truncate(lfs_off_t size) {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_truncate(&d_->fs->instance, &d_->file, size));
+}
+
+int File::sync() {
+    if (!d_) {
+        return SYSTEM_ERROR_FILE_NOT_OPEN;
+    }
+    return CHECK_FS(lfs_file_sync(&d_->fs->instance, &d_->file));
+}
+
+lfs_file_t* File::handle() {
+    if (!d_) {
+        return nullptr;
+    }
+    return &d_->file;
+}
+
+filesystem_t* File::fs() const {
+    if (!d_) {
+        return nullptr;
+    }
+    return d_->fs;
+}
+
+File& File::operator=(File&& file) {
+    close();
+    d_ = std::move(file.d_);
+    return *this;
+}
+
+int mount(filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(filesystem_mount(fs));
+    return 0;
+}
+
+int unmount(filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    CHECK(filesystem_unmount(fs));
+    return 0;
+}
+
+int remove(const char* path, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_remove(&fs->instance, path));
+}
+
+int rename(const char* oldPath, const char* newPath, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_rename(&fs->instance, oldPath, newPath));
+}
+
+int stat(const char* path, lfs_info* info, filesystem_t* fs) {
+    if (!fs) {
+        return SYSTEM_ERROR_FILESYSTEM;
+    }
+    return CHECK_FS(lfs_stat(&fs->instance, path, info));
 }
 
 } // namespace particle::fs

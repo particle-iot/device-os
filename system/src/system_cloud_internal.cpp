@@ -53,6 +53,7 @@
 #include "system_network_internal.h"
 #include "str_util.h"
 #include "scope_guard.h"
+#include "check.h"
 #if HAL_PLATFORM_MUXER_MAY_NEED_DELAY_IN_TX
 #include "network/ncp/cellular/ncp.h"
 #include "network/ncp/cellular/cellular_ncp_client.h"
@@ -61,6 +62,11 @@
 #include "system_env.h"
 #include "firmware_update.h"
 #include "server_config.h"
+#include "device_key_manager.h"
+#include "coap_api.h"
+#include "coap_util.h"
+#include "cloud/protobuf.h"
+#include "v2/coap_channel.h"
 
 #if HAL_PLATFORM_ASSETS
 #include "asset_manager.h"
@@ -73,6 +79,8 @@
 #include "control/common.h" // FIXME: Move to another directory
 #include "cloud/cloud.pb.h"
 #include "nanopb_misc.h"
+
+#define PB_CLOUD(_name) particle_cloud_##_name
 
 #include <stdio.h>
 #include <stdint.h>
@@ -102,6 +110,8 @@ constexpr const char UPDATES_PENDING_EVENT[] = "pending";
 
 Vector<User_Var_Lookup_Table_t> g_cloudVars;
 Vector<User_Func_Lookup_Table_t> g_cloudFuncs;
+
+bool g_usingCandidateDeviceKey = false;
 
 inline bool isSuffix(const char* eventName, const char* prefix, const char* suffix) {
     // todo - sanity check parameters?
@@ -255,6 +265,40 @@ int getCloudFunctionInfo(size_t index, const char** name) {
         *name = info.userFuncKey;
     }
     return 0;
+}
+
+void acceptCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(INFO, "Accepting candidate device key");
+    int r = DeviceKeyManager::instance().acceptCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error accepting candidate device key: %d", r);
+    }
+    // Reset the device to reload the new key from the DCT
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
+}
+
+void clearCandidateDeviceKey() {
+    if (!g_usingCandidateDeviceKey) {
+        return;
+    }
+    g_usingCandidateDeviceKey = false;
+
+    LOG(WARN, "Clearing candidate device key");
+    int r = DeviceKeyManager::instance().clearCandidateKey();
+    if (r < 0) {
+        LOG(ERROR, "Error clearing candidate device key: %d", r);
+    }
+    // Reset the device to load the previously used key
+    clearSessionData();
+    system_reset(SYSTEM_RESET_MODE_NORMAL, RESET_REASON_CONFIG_UPDATE, 0 /* value */, SYSTEM_RESET_FLAG_NO_WAIT,
+            nullptr /* reserved */);
 }
 
 } // namespace particle
@@ -807,6 +851,79 @@ void handleServerMovedRequest(const char* reqData, size_t reqSize, ServerMovedRe
 #endif // PLATFORM_ID == PLATFORM_GCC && PLATFORM_ID != PLATFORM_NEWHAL
 }
 
+typedef void (CloudRequestCompleteFn)(int result, CloudRequestHandler* handler);
+
+void notifyCloudRequestComplete(int result, CloudRequestHandler* handler, CloudRequestCompleteFn* completeFn) {
+    if (handler->needResponse()) {
+        auto status = (result == 0) ? COAP_STATUS_CHANGED : COAP_STATUS_BAD_REQUEST;
+        int r = sendEmptyProtobufResponse(handler->requestId(), status, result);
+        if (r < 0) {
+            LOG(ERROR, "Error sending cloud response: %d", r);
+        }
+    }
+    if (completeFn) {
+        completeFn(result, handler);
+    }
+}
+
+std::unique_ptr<DeviceKeyChangeRequestHandler> g_deviceKeyChangeHandler;
+
+int handleProtobufRequest(int reqId, CoapMessagePtr& coapReq) {
+    int reqType = 0;
+    CHECK(getProtobufRequestType(coapReq.get(), reqType));
+
+    CloudRequestHandler* handler = nullptr;
+    CloudRequestCompleteFn* onComplete = nullptr;
+
+    switch (reqType) {
+    case PB_CLOUD(Request_Type_CONFIG_PREPARE_DEVICE_KEY_CHANGE): {
+        // Ensure that multiple key change requests can't be in progress at a time
+        if (g_deviceKeyChangeHandler) {
+            return SYSTEM_ERROR_BUSY;
+        }
+        g_deviceKeyChangeHandler.reset(new(std::nothrow) DeviceKeyChangeRequestHandler());
+        if (!g_deviceKeyChangeHandler) {
+            return SYSTEM_ERROR_NO_MEMORY;
+        }
+        handler = g_deviceKeyChangeHandler.get();
+        onComplete = [](int result, CloudRequestHandler* handler) {
+            g_deviceKeyChangeHandler.reset();
+        };
+        break;
+    }
+    default:
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    if (!handler) { // Sanity check
+        return SYSTEM_ERROR_INTERNAL;
+    }
+
+    int result = handler->handle(reqId, coapReq, (void*)onComplete, [](int result, CloudRequestHandler* handler, void* arg) {
+        // The handler completed asynchronously
+        auto onComplete = (CloudRequestCompleteFn*)(arg);
+        notifyCloudRequestComplete(result, handler, onComplete);
+    });
+    if (result != CloudRequestHandler::RUNNING) {
+        // The handler completed synchronously
+        notifyCloudRequestComplete(result, handler, onComplete);
+    }
+    return 0;
+}
+
+int handleProtobufRequest(coap_message* req, const char* path, int method, int reqId, void* arg) {
+    CoapMessagePtr coapReq(req);
+    int result = handleProtobufRequest(reqId, coapReq);
+    if (result < 0) {
+        // An early error while handling the request
+        int r = sendEmptyProtobufResponse(reqId, COAP_STATUS_BAD_REQUEST, result);
+        if (r < 0) {
+            LOG(ERROR, "Error sending cloud response: %d", r);
+        }
+    }
+    // Don't return the error (if any) to the CoAP API since we own the request message already
+    return 0;
+}
+
 #if HAL_PLATFORM_COMPRESSED_OTA
 // Minimum bootloader version required to support compressed/combined OTA updates
 const uint16_t COMPRESSED_OTA_MIN_BOOTLOADER_VERSION = 1000; // 2.0.0
@@ -1184,10 +1301,11 @@ void Spark_Protocol_Init(void)
         keys.core_private = private_key;
 
         // ensure the private key is read first since the public key may be derived from it.
-        private_key_generation_t genspec;
-        genspec.size = sizeof(genspec);
+        private_key_generation_t genspec = {};
         genspec.gen = PRIVATE_KEY_GENERATE_MISSING;
         HAL_FLASH_Read_CorePrivateKey(private_key, &genspec);
+        g_usingCandidateDeviceKey = genspec.had_candidate_key;
+
         HAL_FLASH_Read_ServerPublicKey(pubkey);
 
         uint8_t id_length = hal_get_device_id(NULL, 0);
@@ -1223,6 +1341,12 @@ void Spark_Protocol_Init(void)
         spark_protocol_communications_handlers(sp, &handlers);
 
         registerSystemSubscriptions();
+
+        if (udp) {
+            // Register a handler for generic Protobuf-encoded requests
+            coap_add_request_handler(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, 0 /* flags */, handleProtobufRequest,
+                    nullptr /* arg */, nullptr /* reserved */);
+        }
 
 #if PLATFORM_ID == PLATFORM_GCC
         bool isCellular = (udp && deviceConfig.platform_id != PLATFORM_GCC && deviceConfig.platform_id != PLATFORM_ARGON && deviceConfig.platform_id != PLATFORM_P2);
@@ -1324,6 +1448,10 @@ int Spark_Handshake(bool presence_announce)
     } else if (err != 0) {
         return spark_protocol_to_system_error(err);
     }
+
+    // Notify the v2 CoAP channel that it can send and receive messages
+    protocol::v2::CoapChannel::instance()->open();
+
     if (!session_resumed) {
         // XXX: ideally this event should be generated before we perform the handshake
         // but the current semantic of indicating after the handshake/session-resumption are done
