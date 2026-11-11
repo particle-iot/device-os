@@ -117,6 +117,7 @@ DYNALIB_FN_WRAP(BASE_IDX6 + 0, hal_usb, HAL_USB_USART_Send_Buffer, protected, in
 DYNALIB_FN_WRAP(BASE_IDX6 + 1, hal_usb, HAL_USB_USART_Receive_Buffer, protected, int32_t(HAL_USB_USART_Serial, void*, size_t))
 DYNALIB_FN_WRAP(BASE_IDX6 + 2, hal_usb, HAL_USB_USART_Peek_Buffer, protected, int32_t(HAL_USB_USART_Serial, void*, size_t))
 DYNALIB_FN_WRAP(BASE_IDX6 + 3, hal_usb, HAL_USB_USART_Wait_Event, protected, int(HAL_USB_USART_Serial, uint32_t, system_tick_t, void*))
+DYNALIB_FN(BASE_IDX6 + 4, hal_usb, hal_usb_get_recovery_stats, int(hal_usb_recovery_stats*, void*)) // UNSTABLE
 #endif
 
 DYNALIB_END(hal_usb)
