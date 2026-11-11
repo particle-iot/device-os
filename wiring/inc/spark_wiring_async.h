@@ -173,7 +173,9 @@ protected:
         } else {
             // Bind all arguments and wrap resulting function into a pointer
             auto callbackPtr = new std::function<void()>(std::bind(callback, std::forward<ArgsT>(args)...));
-            ContextT::invokeApplicationCallback(futureCallbackWrapper, callbackPtr);
+            if (!ContextT::invokeApplicationCallback(futureCallbackWrapper, callbackPtr)) {
+                delete callbackPtr;
+            }
         }
     }
 };

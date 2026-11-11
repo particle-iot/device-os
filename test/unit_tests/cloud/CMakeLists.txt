@@ -3,7 +3,9 @@ set(target_name cloud)
 # Create test executable
 add_executable( ${target_name}
   ${DEVICE_OS_DIR}/system/src/system_publish_vitals.cpp
+  ${DEVICE_OS_DIR}/system/src/system_cloud_user_requests.cpp
   publish_vitals.cpp
+  user_requests.cpp
 )
 
 # Set defines specific to target
@@ -19,6 +21,7 @@ target_compile_options( ${target_name}
 # Set include path specific to target
 target_include_directories( ${target_name}
   PRIVATE ${DEVICE_OS_DIR}/communication/inc/
+  PRIVATE ${DEVICE_OS_DIR}/dynalib/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/inc/
   PRIVATE ${DEVICE_OS_DIR}/hal/shared/
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc/

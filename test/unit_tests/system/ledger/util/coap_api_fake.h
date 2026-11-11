@@ -72,6 +72,8 @@ public:
 
     // Complete a request sent by the device with a response
     void respond(int reqId, int status, const std::string& payload = std::string());
+    // Complete a request sent by the device with an empty ACK
+    void acknowledge(int reqId);
     // Fail a request sent by the device
     void failRequest(int reqId, int error);
 

@@ -171,6 +171,22 @@ void CoapFake::respond(int reqId, int status, const std::string& payload) {
     sendToDevice(resp);
 }
 
+void CoapFake::acknowledge(int reqId) {
+    drain();
+    auto it = std::find_if(requests_.begin(), requests_.end(), [reqId](const Sent& s) {
+        return s.reqId == reqId && !s.completed;
+    });
+    if (it == requests_.end()) {
+        throw std::runtime_error("Unknown request ID");
+    }
+    it->completed = true;
+    CoapMessage ack;
+    ack.type(protocol::CoapType::ACK);
+    ack.code(protocol::CoapCode::EMPTY);
+    ack.id(it->msg.id());
+    sendToDevice(ack);
+}
+
 void CoapFake::failRequest(int reqId, int error) {
     drain();
     auto it = std::find_if(requests_.begin(), requests_.end(), [reqId](const Sent& s) {

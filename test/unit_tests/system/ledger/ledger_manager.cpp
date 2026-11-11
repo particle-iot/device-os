@@ -43,9 +43,15 @@ const int GET_DATA = particle_cloud_Request_Type_LEDGER_GET_DATA;
 const int SUBSCRIBE = particle_cloud_Request_Type_LEDGER_SUBSCRIBE;
 
 int g_syncCount = 0;
+bool g_disconnectInSyncCallback = false;
 
 void syncCallback(ledger_instance* /* ledger */, void* /* appData */) {
     ++g_syncCount;
+    if (g_disconnectInSyncCallback) {
+        // Emulates an application callback that runs synchronously with SYSTEM_THREAD(DISABLED) and
+        // causes the connection to be closed, e.g. by publishing an event while the link is down
+        CoapFake::instance().disconnect();
+    }
 }
 
 // LedgerManager is a singleton that is initialized only once, so every test leaves it disconnected
@@ -56,6 +62,7 @@ public:
             coap_(CoapFake::instance()),
             mgr_(LedgerManager::instance()) {
         g_syncCount = 0;
+        g_disconnectInSyncCallback = false;
     }
 
     ~LedgerFixture() {
@@ -177,6 +184,14 @@ TEST_CASE_METHOD(LedgerFixture, "LedgerManager synchronizes a device-to-cloud le
         CHECK_FALSE(ledger->info().syncPending());
         CHECK(ledger->info().lastSynced() > 0);
         CHECK(requestCount() == count + 1);
+    }
+
+    SECTION("the sync callback can close the connection") {
+        g_disconnectInSyncCallback = true;
+        respond(COAP_STATUS_CHANGED, encodeResponse(particle_cloud_Response_Result_OK));
+        CHECK(g_syncCount == 1);
+        CHECK_FALSE(ledger->info().syncPending());
+        CHECK_FALSE(coap_.isConnected());
     }
 
     SECTION("a server error causes a retry with an exponential backoff") {

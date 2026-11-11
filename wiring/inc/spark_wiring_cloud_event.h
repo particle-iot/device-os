@@ -617,12 +617,16 @@ private:
 
     static Vector<Subscription> s_subscriptions;
 
+    static Data* s_completedHead;
+    static Data* s_completedTail;
+    static bool s_completionScheduled;
+
     explicit CloudEvent(RefCountPtr<Data> data);
 
     int send();
     coap_payload* getValidPayload();
     void setStatus(Status status, int err = 0);
-    bool testAndSetStatus(Status expectedStatus, Status newStatus, int err = 0);
+    bool testAndSetStatus(Status expectedStatus, Status newStatus, int err = 0, bool notify = true);
 
     // Note: Make sure to log an error message when transitioning to a recoverable failed state
     int setFailed(int err) {
@@ -648,6 +652,8 @@ private:
     static int receiveRequestSystem(coap_message* msg, const char* path, int method, int reqId, void* arg);
 
     static void sendComplete(int err, int reqId, void* arg);
+    static void scheduleSendCompletions(Data* completed = nullptr);
+    static void processSendCompletions(void* arg);
 
     friend class ::CloudClass;
 };
