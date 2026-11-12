@@ -74,6 +74,18 @@ TEST_CASE("ConnectionBackoff without an active window") {
         CHECK(b.cooldownLength() == 10 * SEC);
     }
 
+    SECTION("setSchedule keeps the current stage") {
+        ConnectionBackoff b(attemptConfig(0));
+        b.attemptFailed(0);
+        b.attemptFailed(10 * SEC);
+        auto c = attemptConfig(0);
+        c.intervals[2] = 600 * SEC;
+        b.setSchedule(c);
+        CHECK(b.stage() == 3);
+        b.attemptFailed(70 * SEC);
+        CHECK(b.cooldownLength() == 600 * SEC);
+    }
+
     SECTION("handles tick counter wraparound") {
         ConnectionBackoff b(attemptConfig(0));
         const system_tick_t now = 0xffffffff - 5 * SEC;

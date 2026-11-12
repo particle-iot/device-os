@@ -71,11 +71,12 @@ public:
         if (!matchesConfig()) {
             const bool wasOn = !WiFi.isOff();
             WiFi.off();
-            if (!System.waitCondition([]() { return WiFi.isOff(); }, detail::WIFI_OFF_TIMEOUT) || !writeConfig()) {
-                return false;
-            }
+            const bool ok = System.waitCondition([]() { return WiFi.isOff(); }, detail::WIFI_OFF_TIMEOUT) && writeConfig();
             if (wasOn) {
                 WiFi.on();
+            }
+            if (!ok) {
+                return false;
             }
         }
         discard();

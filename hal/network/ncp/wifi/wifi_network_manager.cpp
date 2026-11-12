@@ -263,7 +263,6 @@ int WifiNetworkManager::connect() {
         if (transient != connectFailureTransient_) {
             connectFailureTransient_ = transient;
             connectBackoff_.setSchedule(connectBackoffConfig(transient));
-            connectBackoff_.reset();
         }
         connectBackoff_.attemptFailed(HAL_Timer_Get_Milli_Seconds(), HAL_RNG_GetRandomNumber());
         LOG(TRACE, "Next connection attempt in %u ms (%d)", (unsigned)connectBackoff_.cooldownLength(), r);
@@ -332,7 +331,7 @@ int WifiNetworkManager::connect(const char* ssid) {
                 tmp.bssid(ap.bssid());
                 r = connect(tmp);
             }
-            if (r < 0) {
+            if (r < 0 && !joinError && r != SYSTEM_ERROR_WIFI_NETWORK_NOT_FOUND) {
                 joinError = r;
             }
             if (r == 0) {
