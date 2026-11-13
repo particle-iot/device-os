@@ -25,6 +25,7 @@
 #include "dct.h"
 #include "str_util.h"
 #include "muon_test_util.h"
+#include "wifi_config_backup.h"
 
 namespace {
 
@@ -121,6 +122,18 @@ void completeFirmwareUpdate(bool expectSafeMode = false) {
 }
 
 } // namespace
+
+test(00_restore_and_backup_wifi_config) {
+#if HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
+    particle::test::WifiConfigBackup suiteBackup(particle::test::WIFI_SUITE_BACKUP);
+    particle::test::WifiConfigBackup runBackup(particle::test::TEST_RUN_BACKUP);
+    assertTrue(suiteBackup.restore());
+    assertTrue(runBackup.restore());
+    assertTrue(runBackup.save());
+#else
+    skip();
+#endif // HAL_PLATFORM_WIFI && !HAL_PLATFORM_WIFI_SCAN_ONLY
+}
 
 test(01_remove_static_ip) {
     // Easiest way to erase all NETWORK_CONFIG settings, and default to dynamic IP
