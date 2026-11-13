@@ -27,6 +27,10 @@ stashBins(){
 	fi
 }
 
+verifyBins(){
+	NODE_PATH="${stashDir}/tools/node_modules" node "${deviceOSPath}/ci/verify-module-bins.js" "$1"
+}
+
 # check args and prompt if missing
 if [ $# -lt 1 ]; then
 	echo ":::: Error: Missing script arguments!"
@@ -45,6 +49,12 @@ fi
 if ! hasCmd jq; then
 	echo ':::: Your system does not have the `jq` command'
 	echo ':::: To install, see: https://stedolan.github.io/jq/download/'
+	exit 1
+fi
+
+if ! hasCmd node || ! hasCmd npm; then
+	echo ':::: Your system does not have `node` and `npm`'
+	echo ':::: To install, see: https://nodejs.org/en/download'
 	exit 1
 fi
 
@@ -98,6 +108,8 @@ echo ":::: Running compile tasks with --jobs: ${jobsList[@]}"
 stashDir="$(mktemp -d)"
 trap 'rm -rf "${stashDir}"' EXIT
 
+npm install --no-save --no-audit --no-fund --loglevel=error --prefix "${stashDir}/tools" binary-version-reader@4.2.0
+
 # install toolchain and run specified tasks
 prtcl toolchain:install ${deviceOSSource} --quiet
 
@@ -126,6 +138,7 @@ for platform in "${platforms[@]}"; do
 			echo ":::: Running compile:${task} for ${platform} with --jobs ${jobs}"
 			prtcl project:compile ${tinkerPath} --toolchain ${deviceOSSource} --platform ${platform} --task $task --jobs $jobs --quiet
 			stashBins "${outDir}/${i}"
+			verifyBins "${outDir}/${i}"
 
 			if [ $i -gt 0 ] && ! diff -rq "${outDir}/0" "${outDir}/${i}"; then
 				echo ":::: Error: compile:${task} for ${platform} with --jobs ${jobs} produced different binaries than with --jobs ${jobsList[0]}"
