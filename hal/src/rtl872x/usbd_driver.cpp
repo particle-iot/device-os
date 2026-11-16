@@ -89,6 +89,7 @@ const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
 
 const system_tick_t RTL_USB_EP0_WATCHDOG_TIMEOUT = 3000;
+const unsigned RTL_USB_EP0_STUCK_REPLY_SETUPS = 3;
 const system_tick_t RTL_USB_TX_FIFO_EMPTY_STORM_TIMEOUT = 10;
 
 // Buffer the SDK reads SETUPs into (no header; from the disassembly of the SDK)
@@ -272,6 +273,7 @@ int RtlUsbDriver::detach() {
     usbd_deinit();
     resetCount_ = 0;
     cancelledInEps_ = 0;
+    ep0CancelStreak_ = 0;
     txFifoEmptyIdle_ = false;
     txFifoEmptyMasked_ = false;
     return 0;
@@ -348,8 +350,7 @@ void RtlUsbDriver::watch() {
         LOG(WARN, "Global NAK stuck, cleared");
     }
     if (ep0Wedged) {
-        LOG(WARN, "No SETUP reached the stack for %u ms while the host waits on EP0, reattaching",
-                (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
+        LOG(WARN, "EP0 not progressing for %u ms, reattaching", (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
     }
 }
 
@@ -373,11 +374,13 @@ bool RtlUsbDriver::ep0WatchdogCheck() {
     const unsigned setups = ep0Setups_;
     const bool progress = setups != ep0LastSetups_;
     ep0LastSetups_ = setups;
-    if (config_ == 0 || needsReset_ || progress || !nak) {
+    const bool replyStuck = ep0CancelStreak_ >= RTL_USB_EP0_STUCK_REPLY_SETUPS &&
+            now - ep0CancelStreakStart_ >= RTL_USB_EP0_WATCHDOG_TIMEOUT;
+    if (config_ == 0 || needsReset_ || (!replyStuck && (progress || !nak))) {
         ep0WaitStart_ = now;
         return false;
     }
-    if (now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
+    if (!replyStuck && now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
         return false;
     }
     requestReattach();
@@ -399,9 +402,17 @@ bool RtlUsbDriver::isSetupBuffer(const void* ptr) const {
 }
 
 void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
-    if ((USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) && isSetupBuffer(ptr)) {
-        cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
+    if (!isSetupBuffer(ptr)) {
+        return;
     }
+    if (!(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+        ep0CancelStreak_ = 0;
+        return;
+    }
+    if (ep0CancelStreak_++ == 0) {
+        ep0CancelStreakStart_ = HAL_Timer_Get_Milli_Seconds();
+    }
+    cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
 }
 
 bool RtlUsbDriver::txFifoEmptyStormCheck() {

@@ -166,6 +166,8 @@ private:
     volatile unsigned ep0Setups_ = 0;
     unsigned ep0LastSetups_ = 0;
     system_tick_t ep0WaitStart_ = 0;
+    unsigned ep0CancelStreak_ = 0;
+    system_tick_t ep0CancelStreakStart_ = 0;
     volatile uint32_t cancelledInEps_ = 0;
     bool txFifoEmptyIdle_ = false;
     system_tick_t txFifoEmptyStart_ = 0;
