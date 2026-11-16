@@ -354,8 +354,12 @@ void RtlUsbDriver::watch() {
 }
 
 bool RtlUsbDriver::clearGlobalNak() {
-    if (!(USB_DEVICE->DCTL & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
+    const uint32_t dctl = USB_DEVICE->DCTL;
+    if (!(dctl & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
         return false;
+    }
+    if (dctl & USB_OTG_DCTL_GINSTS) {
+        cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
     }
     USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK | USB_OTG_DCTL_CGONAK;
     return true;
