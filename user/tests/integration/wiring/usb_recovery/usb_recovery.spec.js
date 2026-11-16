@@ -6,21 +6,9 @@ timeout(3 * 60 * 1000);
 const { UsbCdcPort } = require('../../test/usb_cdc');
 const path = require('path');
 
-// The runner's particle-usb: set DEBUG_USB to log its requests (INIT/SEND/CHECK/RECV) with timestamps
-const particleUsb = require(require.resolve('particle-usb', { paths: [path.dirname(require.main.filename)] }));
-const DEBUG_USB = false;
-
 const EP0_POLL_TIMEOUT_MS = 250;
 
-const USB_RECOVERY_TRIGGER = "USB_RECOVERY_TRIGGER";
-const USB_RECOVERY_REPAIR_REATTACH = "USB_RECOVERY_REPAIR_REATTACH";
-const USB_RECOVERY_REPAIR = "USB_RECOVERY_REPAIR";
-const USB_RECOVERY_SETUP_CANCEL = "USB_RECOVERY_SETUP_CANCEL";
-const USB_RECOVERY_HOST_LINUX = "USB_RECOVERY_HOST_LINUX";
-const USB_RECOVERY_HOST_OTHER = "USB_RECOVERY_HOST_OTHER";
-
 let device = null;
-let deviceId = null;
 let cdc = null;
 
 function sleep(ms) {
@@ -129,18 +117,6 @@ before(function() {
         throw new Error('No device assigned to this test');
     }
     cdc = new UsbCdcPort(device.id);
-    deviceId = this.particle.devices[0].id;
-
-    if (DEBUG_USB) {
-        particleUsb.config({
-            log: {
-                trace: (...args) => console.log(new Date().toISOString(), '[usb trace]', ...args),
-                info: (...args) => console.log(new Date().toISOString(), '[usb info]', ...args),
-                warn: (...args) => console.log(new Date().toISOString(), '[usb warn]', ...args),
-                error: (...args) => console.log(new Date().toISOString(), '[usb error]', ...args)
-            }
-        });
-    }
 });
 
 after(async function() {
@@ -149,54 +125,15 @@ after(async function() {
     }
 });
 
-test('USB_RECOVERY_00_SETUP', async function() {
-    // Device sets up trigger cloud event subscription
-    
-    // Only Linux strands the CDC IN transfer when the port closes mid-write: the TX storm tests skip on other hosts
-    await this.particle.publishEvent({
-        name: `${deviceId}/${USB_RECOVERY_TRIGGER}`,
-        data: process.platform === 'linux' ? USB_RECOVERY_HOST_LINUX : USB_RECOVERY_HOST_OTHER,
-        auth: this.particle.apiClient.token
-    });
+test('USB_RECOVERY_01_EP0_WATCHDOG_REATTACH', async function() {
+    // The runner's polling of the device test is the host traffic the watchdog needs
 });
 
-test('USB_RECOVERY_01_WATCHDOG_REPAIR_AND_REATTACH_TRIGGER', async function() {
-    // Send EP0 SETUP mask trigger to stop EP0 OUT control requests and trigger device recovery
-    await this.particle.publishEvent({
-        name: `${deviceId}/${USB_RECOVERY_TRIGGER}`,
-        data: USB_RECOVERY_REPAIR_REATTACH,
-        auth: this.particle.apiClient.token
-    });
+test('USB_RECOVERY_02_GLOBAL_NAK_CLEARED', async function() {
+    // Device does validation
 });
 
-test('USB_RECOVERY_02_WATCHDOG_REPAIR_AND_REATTACH_CHECK', async function() {
-    // Test runner polls device via EP0 control requests, which will be ignored and
-    // trigger the on device recovery. The device will check its stats to verify
-    // the fix worked or not.
-});
-
-test('USB_RECOVERY_03_WATCHDOG_REPAIR_ALONE_TRIGGER', async function() {
-    // Send global out NAK trigger to stop EP0 OUT control requests (along with all others)
-    // and trigger device recovery
-    await this.particle.publishEvent({
-        name: `${deviceId}/${USB_RECOVERY_TRIGGER}`,
-        data: USB_RECOVERY_REPAIR,
-        auth: this.particle.apiClient.token
-    });
-});
-
-test('USB_RECOVERY_04_WATCHDOG_REPAIR_ALONE_CHECK', async function() {
-    // Device does validation 
-});
-
-test('USB_RECOVERY_05_CANCEL_ON_SETUP_TRIGGER', async function() {
-    // Device will start NAKing
-    await this.particle.publishEvent({
-        name: `${deviceId}/${USB_RECOVERY_TRIGGER}`,
-        data: USB_RECOVERY_SETUP_CANCEL,
-        auth: this.particle.apiClient.token
-    });
-
+test('USB_RECOVERY_03_CANCEL_ON_SETUP_TRIGGER', async function() {
     // Poll GET_STATUS until a request times out (the global IN NAK held its reply back)
     const usbDev = await device.getUsbDevice();
     const timedOut = await pollUntilTimeout(usbDev, EP0_POLL_TIMEOUT_MS, 30000);
@@ -213,15 +150,19 @@ test('USB_RECOVERY_05_CANCEL_ON_SETUP_TRIGGER', async function() {
     expect(data[1]).to.equal(0x01); // bDescriptorType: device
 });
 
-test('USB_RECOVERY_06_CANCEL_ON_SETUP_CHECK', async function() {
+test('USB_RECOVERY_04_CANCEL_ON_SETUP_CHECK', async function() {
     // Device validates
 });
 
-test('USB_RECOVERY_07_CDC_TX_STORM_START', async function() {
+test('USB_RECOVERY_05_CDC_TX_STORM_START', async function() {
     // Device starts CDC TX thread
 });
 
-test('USB_RECOVERY_08_CDC_TX_STORM_TRIGGER', async function() {
+test('USB_RECOVERY_06_CDC_TX_STORM_TRIGGER', async function() {
+    // Only Linux strands the CDC IN transfer when the port isn't read
+    if (process.platform !== 'linux') {
+        return;
+    }
     // The host holds the CDC port open and writes to it without reading the device's
     // output. Each write reopens the device's TX side after its CDC TX timeout closed it. No control requests here, so
     // the EP0 watchdog has nothing to act on. The device measures its own starvation
@@ -282,6 +223,6 @@ test('USB_RECOVERY_08_CDC_TX_STORM_TRIGGER', async function() {
             `${lastErr ? ` (last error: ${lastErr.message})` : ''}`).to.be.true;
 });
 
-test('USB_RECOVERY_09_CDC_TX_STORM_CHECK', async function() {
-    // Device validates: the guard fired, and the device's heartbeat kept running while the port was unread
+test('USB_RECOVERY_07_CDC_TX_STORM_CHECK', async function() {
+    // Device validates: the device's heartbeat kept running while the port was unread
 });

@@ -29,7 +29,6 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "call_once.h"
-#include "check.h"
 
 using namespace particle::usbd;
 
@@ -314,11 +313,6 @@ int32_t HAL_USB_USART_LineCoding_BitRate_Handler(void (*handler)(uint32_t bitRat
         handler(lineCoding.dwDTERate);
     });
     return 0;
-}
-
-int hal_usb_get_recovery_stats(hal_usb_recovery_stats* stats, void* reserved) {
-    CHECK_TRUE(stats, SYSTEM_ERROR_INVALID_ARGUMENT);
-    return RtlUsbDriver::instance()->getRecoveryStats(stats);
 }
 
 HAL_USB_State HAL_USB_Get_State(void* reserved) {

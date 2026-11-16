@@ -567,9 +567,6 @@ void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
         activeReqs_ = req->next;
     }
     --activeReqCount_;
-    // A cancelled request may still be referenced as the one whose reply is being sent (e.g. CHECK of a
-    // request without reply data that the host abandoned, followed by RESET). Don't let the next
-    // TX_COMPLETED finish it a second time
     if (curReq_ == req) {
         curReq_ = nullptr;
     }
@@ -699,7 +696,6 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
             // Set a result code that will be passed to the request completion handler
             req->result = SYSTEM_ERROR_NONE;
             channel->finishActiveRequest(req);
-            channel->curReq_ = nullptr;
         }
         break;
     }

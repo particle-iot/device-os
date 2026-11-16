@@ -18,7 +18,6 @@
 #pragma once
 
 #include "usbd_device.h"
-#include "usb_hal.h"
 #include "module_info.h"
 #include "system_tick_hal.h"
 
@@ -83,10 +82,8 @@ public:
     static void loop(void* ctx);
 
     void reset();
-    void ep0SetupRead(const void* ptr);
-    void ep0TransferEvent(bool setup, bool inComplete, bool outComplete);
+    void setupStage(usb_dev_t* dev);
     void cancelControlTransferOnSetup(void* ptr);
-    int getRecoveryStats(hal_usb_recovery_stats* stats) const;
     bool txFifoEmptyStormCheck();
 
 private:
@@ -108,14 +105,13 @@ private:
 
     void setDevReference(usb_dev_t* dev);
     void fixupReceivedData();
-    bool isSetupBuffer(const void* ptr) const;
-    void ep0WatchdogCheck();
-    void repairEp0();
-    void abortInTransfer(unsigned ep);
-    void completeCancelledInTransfers();
-    void txFifoEmptyRearm();
     void requestReattach();
     bool reattach();
+    void watch();
+    bool clearGlobalNak();
+    bool ep0WatchdogCheck();
+    bool isSetupBuffer(const void* ptr) const;
+    uint32_t stopInTransfers(uint32_t eps);
 
     void* pcd() const {
         return rtlDev_->pcd;
@@ -167,28 +163,12 @@ private:
     volatile int config_ = 0;
     volatile unsigned int resetCount_ = 0;
 
-    bool ep0SetupPending_ = false;
-    // Direction of the status stage of the SETUP just read / of the control transfer in progress
-    bool ep0NextStatusIn_ = true;
-    bool ep0StatusIn_ = true;
-    // A SETUP was read and its SETUP phase done is still to come
-    bool ep0SetupRead_ = false;
-    volatile unsigned ep0Completed_ = 0;
-    unsigned ep0LastCompleted_ = 0;
-    uint32_t ep0LastFrame_ = 0;
+    volatile unsigned ep0Setups_ = 0;
+    unsigned ep0LastSetups_ = 0;
     system_tick_t ep0WaitStart_ = 0;
-    bool ep0Repaired_ = false;
-    // Recovery counters since boot (see hal_usb_get_recovery_stats())
-    volatile uint32_t ep0Repairs_ = 0;
-    volatile uint32_t ep0Reattaches_ = 0;
-    volatile uint32_t reattaches_ = 0;
-    volatile uint32_t setupCancels_ = 0;
-    volatile uint32_t txFifoEmptyStorms_ = 0;
-
-    // IN endpoints whose transfer a SETUP cancelled, for usbd_watch to complete (see cancelControlTransferOnSetup())
     volatile uint32_t cancelledInEps_ = 0;
-    // TX FIFO empty storm (see txFifoEmptyStormCheck()): updated by the USB task, re-armed by usbd_watch
-    unsigned txFifoEmptyPasses_ = 0;
+    bool txFifoEmptyIdle_ = false;
+    system_tick_t txFifoEmptyStart_ = 0;
     volatile bool txFifoEmptyMasked_ = false;
 };
 

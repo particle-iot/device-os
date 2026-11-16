@@ -88,11 +88,8 @@ const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
 
-// EP0 watchdog: how long the host may keep waiting on EP0 without a control transfer
-// completing before EP0 is repaired, and again after a repair before the device reattaches.
 const system_tick_t RTL_USB_EP0_WATCHDOG_TIMEOUT = 3000;
-// SETUP packets EP0 OUT can take back to back (the host may retry a SETUP before firmware re-arms)
-const uint32_t RTL_USB_EP0_SETUP_COUNT = 3;
+const system_tick_t RTL_USB_TX_FIFO_EMPTY_STORM_TIMEOUT = 10;
 
 // Buffer the SDK reads SETUPs into (no header; from the disassembly of the SDK)
 const size_t RTL_USB_PCD_SETUP_BUF_OFFSET = 0x188;
@@ -104,9 +101,6 @@ const size_t RTL_USB_PCD_EP_XFER_LEN_OFFSET = 0x14;
 const size_t RTL_USB_PCD_EP_XFER_COUNT_OFFSET = 0x18;
 // Polls of GINTSTS.GINAKEFF / DIEPINT.EPDISD when setting the global IN NAK / disabling an IN endpoint
 const unsigned RTL_USB_EP_DISABLE_POLLS = 10000;
-// Back-to-back TX FIFO empty interrupts with nothing written that count as a storm. The handler loops at about 100k
-// passes per second, so this is about 10 ms: longer than a host normally takes to poll a pending IN endpoint.
-const unsigned RTL_USB_TX_FIFO_EMPTY_STORM_PASSES = 1000;
 // Non-periodic transmit request queue depth (GHWCFG2.NPTXQDEPTH)
 const uint32_t RTL_USB_NPTX_QUEUE_DEPTH = 8;
 
@@ -128,6 +122,25 @@ public:
 private:
     usb_spinlock_t* lock_;
 };
+
+bool waitForBits(volatile u32* reg, u32 bits) {
+    for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS; i++) {
+        if (*reg & bits) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool nonPeriodicTxFifoEmpty() {
+    const uint32_t empty = (RTL_USB_NPTX_QUEUE_DEPTH << USB_OTG_GNPTXSTS_NPTQXSAV_Pos) | (USB_GLOBAL->GNPTXFSIZ >> 16);
+    return (USB_GLOBAL->GNPTXSTS & (USB_OTG_GNPTXSTS_NPTQXSAV | USB_OTG_GNPTXSTS_NPTXFSAV)) == empty;
+}
+
+bool isNonPeriodicInEndpoint(unsigned ep) {
+    const uint32_t type = USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP;
+    return type == 0 || type == USB_OTG_DIEPCTL_EPTYP_1;
+}
 
 } // anonymous
 
@@ -168,27 +181,13 @@ void __wrap_usb_hal_clear_interrupts(u32 interrupt) {
     __real_usb_hal_clear_interrupts(interrupt);
 }
 
-u32 __real_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep);
-u32 __real_usbd_hal_read_in_ep_interrupts(void* pcd, u8 ep);
+u8 __real_usbd_core_setup_stage(usb_dev_t* dev, u8* setup);
 
-u32 __wrap_usbd_hal_read_out_ep_interrupts(void* pcd, u8 ep) {
-    const u32 val = __real_usbd_hal_read_out_ep_interrupts(pcd, ep);
+u8 __wrap_usbd_core_setup_stage(usb_dev_t* dev, u8* setup) {
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (ep == 0) {
-        RtlUsbDriver::instance()->ep0TransferEvent(val & USB_OTG_DOEPINT_STUP, false, val & USB_OTG_DOEPINT_XFRC);
-    }
+    RtlUsbDriver::instance()->setupStage(dev);
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    return val;
-}
-
-u32 __wrap_usbd_hal_read_in_ep_interrupts(void* pcd, u8 ep) {
-    const u32 val = __real_usbd_hal_read_in_ep_interrupts(pcd, ep);
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if (ep == 0) {
-        RtlUsbDriver::instance()->ep0TransferEvent(false, val & USB_OTG_DIEPINT_XFRC, false);
-    }
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    return val;
+    return __real_usbd_core_setup_stage(dev, setup);
 }
 
 // FIXME: This is a nasty workaround for the SDK USB driver
@@ -206,9 +205,6 @@ int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        RtlUsbDriver::instance()->ep0SetupRead(ptr);
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         auto req = static_cast<SetupRequest*>(ptr);
         memcpy(&sLastUsbSetupRequest, req, sizeof(sLastUsbSetupRequest));
         if (req->bmRequestTypeRecipient == SetupRequest::RECIPIENT_INTERFACE) {
@@ -276,8 +272,8 @@ int RtlUsbDriver::detach() {
     usbd_deinit();
     resetCount_ = 0;
     cancelledInEps_ = 0;
+    txFifoEmptyIdle_ = false;
     txFifoEmptyMasked_ = false;
-    ep0Repaired_ = false;
     return 0;
 }
 
@@ -285,7 +281,6 @@ bool RtlUsbDriver::reattach() {
     std::lock_guard<RtlUsbDriver> lk(*this);
     detach();
     attach();
-    reattaches_++;
     return initialized_;
 }
 
@@ -317,12 +312,7 @@ void RtlUsbDriver::loop(void* ctx) {
         if (self->needsReset_ || error) {
             error = !self->reattach();
         }
-        std::lock_guard<RtlUsbDriver> lk(*self);
-        if (self->initialized_) {
-            self->completeCancelledInTransfers();
-            self->txFifoEmptyRearm();
-            self->ep0WatchdogCheck();
-        }
+        self->watch();
     }
 #else
     // Polled from DFU_Check_Reset() in the bootloader's main loop, not run in a dedicated thread.
@@ -338,235 +328,140 @@ void RtlUsbDriver::loop(void* ctx) {
 }
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-// Called by the USB task with the SDK lock held. A control transfer counts as completed when its status stage
-// completes: an IN transfer complete if the status stage is IN, an OUT one if it is OUT. ep0SetupRead() records the
-// direction when the SDK reads the SETUP. A SETUP packet completes an OUT transfer itself, between its read and its
-// SETUP phase done, and that one doesn't count. Transfer completes without a SETUP before them (e.g. an EP0 OUT
-// completion storm) don't count either.
-void RtlUsbDriver::ep0SetupRead(const void* ptr) {
-    if (!isSetupBuffer(ptr)) {
-        return;
-    }
-    ep0SetupRead_ = true;
-    // The status stage is IN unless the host reads data, then it is OUT
-    auto req = static_cast<const SetupRequest*>(ptr);
-    ep0NextStatusIn_ = req->wLength == 0 || !(req->bmRequestType & SetupRequest::DIRECTION_DEVICE_TO_HOST);
-}
-
-void RtlUsbDriver::ep0TransferEvent(bool setup, bool inComplete, bool outComplete) {
-    // A control transfer completes with its status stage: a completed data stage alone doesn't count. A SETUP packet
-    // completes an OUT transfer too, between its read and its SETUP phase done: that XFRC is not a status stage.
-    const bool complete = ep0StatusIn_ ? inComplete : (outComplete && !ep0SetupRead_);
-    if (complete && ep0SetupPending_) {
-        ep0SetupPending_ = false;
-        ep0Completed_++;
-    }
-    if (setup) {
-        ep0SetupPending_ = true;
-        ep0SetupRead_ = false;
-        ep0StatusIn_ = ep0NextStatusIn_;
-    }
-}
-
-// EP0 watchdog. Once the host starts a control transfer, the device answers it within milliseconds whatever else the
-// bus carries: Particle requests never block at the USB level (a slow one keeps answering CHECK with PENDING), and
-// standard and class requests are answered by the USB task. So if the bus is alive and the host keeps waiting on EP0
-// (its EP0 tokens are NAKed, or a global IN or OUT NAK stays in effect) for RTL_USB_EP0_WATCHDOG_TIMEOUT without a
-// single control transfer completing, EP0 is wedged. Repair EP0 the way the SDK sets it up (RX FIFO flushed, EP0 OUT
-// re-armed, global IN and OUT NAK cleared); if control transfers still don't complete, reattach.
-void RtlUsbDriver::ep0WatchdogCheck() {
-    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
-    // Bus alive: the SOF frame number moved since the previous check
-    const uint32_t frame = (USB_DEVICE->DSTS & USB_OTG_DSTS_FNSOF) >> USB_OTG_DSTS_FNSOF_Pos;
-    const bool busAlive = frame != ep0LastFrame_;
-    ep0LastFrame_ = frame;
-    // EP0 tokens NAKed since the previous check: the host is waiting on EP0. Clear (W1C) only the NAK bits.
-    const bool inNak = USB_INEP(0)->DIEPINT & USB_OTG_DIEPINT_NAK;
-    const bool outNak = USB_OUTEP(0)->DOEPINT & USB_OTG_DOEPINT_NAK;
-    if (inNak) {
-        USB_INEP(0)->DIEPINT = USB_OTG_DIEPINT_NAK;
-    }
-    if (outNak) {
-        USB_OUTEP(0)->DOEPINT = USB_OTG_DOEPINT_NAK;
-    }
-    // A global IN or OUT NAK in effect: nothing sets one for longer than a few microseconds, so the core is NAKing every
-    // IN or OUT token. The host may not show it on EP0's NAK bits: with one control transfer outstanding, it retries
-    // its NAKed packet only every second or so
-    const bool globalNak = USB_DEVICE->DCTL & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS);
-    const unsigned completed = ep0Completed_;
-    const bool progress = completed != ep0LastCompleted_;
-    ep0LastCompleted_ = completed;
-    if (!initialized_ || !rtlDev_ || config_ == 0 || needsReset_ || progress || !busAlive ||
-            !(inNak || outNak || globalNak)) {
-        // Healthy, or nothing to judge: (re)start the wait
-        ep0WaitStart_ = now;
-        if (progress || config_ == 0) {
-            ep0Repaired_ = false;
-        }
-        return;
-    }
-    if (now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
-        return;
-    }
-    ep0WaitStart_ = now;
-    if (!ep0Repaired_) {
-        ep0Repaired_ = true;
-        LOG(WARN, "No control transfer completed for %u ms while the host waits on EP0: repairing EP0",
-                (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
+void RtlUsbDriver::watch() {
+    bool nakCleared = false;
+    bool ep0Wedged = false;
+    {
         std::lock_guard<RtlUsbDriver> lk(*this);
+        if (!initialized_ || !rtlDev_) {
+            return;
+        }
         SdkLock sdk(pcd());
-        repairEp0();
-        ep0Repairs_++;
-    } else {
-        LOG(WARN, "No control transfer completed for %u ms after an EP0 repair: reattaching",
+        nakCleared = clearGlobalNak();
+        if (txFifoEmptyMasked_) {
+            txFifoEmptyMasked_ = false;
+            USB_GLOBAL->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+        }
+        ep0Wedged = ep0WatchdogCheck();
+    }
+    if (nakCleared) {
+        LOG(WARN, "Global NAK stuck, cleared");
+    }
+    if (ep0Wedged) {
+        LOG(WARN, "No SETUP reached the stack for %u ms while the host waits on EP0, reattaching",
                 (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
-        requestReattach();
-        ep0Reattaches_++;
     }
 }
 
-void RtlUsbDriver::repairEp0() {
-    // Nothing in the driver or the SDK sets the global IN NAK, but the core can leave it on, NAKing every IN token
-    // Clear it here
-    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
-    // Set global OUT NAK: Stop the core from storing OUT data during the flush. 
-    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGONAK;
-    usb_hal_flush_rx_fifo();
-    // Arm the OUT transfer to expect up to 3 SETUP packets. 
-    // STUPCNT = 3, PKTCNT = 1, XFRSIZ = 24 (0x60080018), EPENA left clear, like usbd_hal_ep0_out_start()
-    USB_OUTEP(0)->DOEPTSIZ = (RTL_USB_EP0_SETUP_COUNT << USB_OTG_DOEPTSIZ_STUPCNT_Pos) |
-            (1UL << USB_OTG_DOEPTSIZ_PKTCNT_Pos) | (RTL_USB_EP0_SETUP_COUNT * sizeof(SetupRequest));
-    USB_OUTEP(0)->DOEPINT = 0xffff;
-    // Clear global OUT NAK
-    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGONAK;
-}
-
-// A new SETUP cancels any unfinished control transfer (USB 2.0 8.5.3), but the SDK doesn't cancel EP0 IN: a reply or
-// status ZLP the host abandoned stays armed or queued, goes out as the data stage of the next control read, and every
-// reply after it is one request late. EP0 shares the TX FIFO and its request queue with CDC IN, so the stale entries
-// can only be removed by flushing that FIFO, which cancels the CDC IN transfer in flight as well: its data is dropped,
-// and the class is told the transfer completed (see completeCancelledInTransfers()) so it carries on with the next.
-// Called by the USB task with the SDK lock held, before the SDK reads an 8-byte packet into ptr.
-bool RtlUsbDriver::isSetupBuffer(const void* ptr) const {
-    if (!rtlDev_) {
+bool RtlUsbDriver::clearGlobalNak() {
+    if (!(USB_DEVICE->DCTL & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
         return false;
     }
-    // Otherwise an 8-byte data packet, not a SETUP
-    return ptr == *((void**)((uint8_t*)pcd() + RTL_USB_PCD_SETUP_BUF_OFFSET));
-}
-
-void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
-    if (!(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) || !isSetupBuffer(ptr)) {
-        return;
-    }
-    setupCancels_++;
-    // Stop the core taking data out of the shared FIFO while the endpoints are disabled and it is flushed
-    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGINAK;
-    for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS && !(USB_GLOBAL->GINTSTS & USB_OTG_GINTSTS_GINAKEFF); i++) {
-    }
-    for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
-        // Control and bulk endpoints use the shared (non-periodic) FIFO
-        const uint32_t type = USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP;
-        if ((USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) && (type == 0 || type == USB_OTG_DIEPCTL_EPTYP_1)) {
-            abortInTransfer(ep);
-        }
-    }
-    usb_hal_flush_tx_fifo(0x00);
-    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
-}
-
-// Cancel an IN transfer: disable the endpoint and mark the SDK's transfer record done, so the SDK doesn't carry on with
-// it (it re-enables the TX FIFO empty interrupt for any IN endpoint with data pending). The caller flushes the FIFO.
-// Called with the SDK lock held.
-void RtlUsbDriver::abortInTransfer(unsigned ep) {
-    auto in = USB_INEP(ep);
-    if (in->DIEPCTL & USB_OTG_DIEPCTL_EPENA) {
-        in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
-        for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS && !(in->DIEPINT & USB_OTG_DIEPINT_EPDISD); i++) {
-        }
-        // Handled here: not for the SDK
-        in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
-    }
-    auto sdkEp = (uint8_t*)pcd() + RTL_USB_PCD_IN_EP_OFFSET + ep * RTL_USB_PCD_EP_SIZE;
-    auto len = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_LEN_OFFSET);
-    auto count = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_COUNT_OFFSET);
-    if (*count < *len) {
-        *count = *len;
-    }
-    if (ep) {
-        // The class is told the transfer completed from usbd_watch, outside the SDK lock
-        cancelledInEps_ |= 1UL << ep;
-    }
-}
-
-// Called from usbd_watch: tell the classes their IN transfers cancelled by cancelControlTransferOnSetup() completed
-void RtlUsbDriver::completeCancelledInTransfers() {
-    const uint32_t eps = __atomic_exchange_n(&cancelledInEps_, 0, __ATOMIC_SEQ_CST);
-    for (unsigned ep = 1; eps && ep < USBD_MAX_ENDPOINTS; ep++) {
-        if (eps & (1UL << ep)) {
-            epDataInCb(rtlDev_, ep);
-        }
-    }
-}
-
-// The SDK's TX FIFO empty handler writes data only for endpoints the host has sent IN tokens to, but re-enables the
-// interrupt for any IN endpoint with data pending. When the host stops polling CDC IN with a transfer pending (it
-// stopped reading, or closed the port while the app was writing), the interrupt fires again at once, forever: the USB
-// task takes the CPU and the system thread starves (control requests never complete). On a burst of these with the TX
-// FIFO and request queue empty and no EP0 reply pending, cancel the pending bulk IN transfers (see abortInTransfer())
-// and mask the interrupt as a safety net; usbd_watch re-enables it about a second later, and the SDK does when it
-// starts an IN transfer. Called by the USB task, with or without the SDK lock held; returns true if it masked the
-// interrupt.
-bool RtlUsbDriver::txFifoEmptyStormCheck() {
-    const uint32_t empty = (RTL_USB_NPTX_QUEUE_DEPTH << USB_OTG_GNPTXSTS_NPTQXSAV_Pos) | (USB_GLOBAL->GNPTXFSIZ >> 16);
-    if ((USB_GLOBAL->GNPTXSTS & (USB_OTG_GNPTXSTS_NPTQXSAV | USB_OTG_GNPTXSTS_NPTXFSAV)) != empty ||
-            (USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
-        txFifoEmptyPasses_ = 0;
-        return false;
-    }
-    if (++txFifoEmptyPasses_ < RTL_USB_TX_FIFO_EMPTY_STORM_PASSES) {
-        return false;
-    }
-    txFifoEmptyPasses_ = 0;
-    // Cancel the pending bulk IN transfers the host isn't collecting now, rather than at the CDC TX timeout (2.5 s):
-    // until then the stale transfer keeps the USB task busy and the system thread starves
-    if (rtlDev_) {
-        for (unsigned ep = 1; ep < USBD_MAX_ENDPOINTS; ep++) {
-            if ((USB_INEP(ep)->DIEPCTL & (USB_OTG_DIEPCTL_EPENA | USB_OTG_DIEPCTL_EPTYP)) ==
-                    (USB_OTG_DIEPCTL_EPENA | USB_OTG_DIEPCTL_EPTYP_1)) {
-                abortInTransfer(ep);
-            }
-        }
-    }
-    txFifoEmptyStorms_++;
-    USB_GLOBAL->GINTMSK &= ~USB_OTG_GINTMSK_NPTXFEM;
-    txFifoEmptyMasked_ = true;
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK | USB_OTG_DCTL_CGONAK;
     return true;
 }
 
-void RtlUsbDriver::txFifoEmptyRearm() {
-    if (!txFifoEmptyMasked_ || !rtlDev_) {
-        return;
+bool RtlUsbDriver::ep0WatchdogCheck() {
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    const bool nak = (USB_INEP(0)->DIEPINT & USB_OTG_DIEPINT_NAK) || (USB_OUTEP(0)->DOEPINT & USB_OTG_DOEPINT_NAK);
+    USB_INEP(0)->DIEPINT = USB_OTG_DIEPINT_NAK;
+    USB_OUTEP(0)->DOEPINT = USB_OTG_DOEPINT_NAK;
+    const unsigned setups = ep0Setups_;
+    const bool progress = setups != ep0LastSetups_;
+    ep0LastSetups_ = setups;
+    if (config_ == 0 || needsReset_ || progress || !nak) {
+        ep0WaitStart_ = now;
+        return false;
     }
-    std::lock_guard<RtlUsbDriver> lk(*this);
-    SdkLock sdk(pcd());
-    txFifoEmptyMasked_ = false;
-    USB_GLOBAL->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+    if (now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
+        return false;
+    }
+    requestReattach();
+    return true;
+}
+
+void RtlUsbDriver::setupStage(usb_dev_t* dev) {
+    ep0Setups_++;
+    const uint32_t eps = __atomic_exchange_n(&cancelledInEps_, 0, __ATOMIC_SEQ_CST);
+    for (unsigned ep = 1; eps && ep < USBD_MAX_ENDPOINTS; ep++) {
+        if (eps & (1UL << ep)) {
+            epDataInCb(dev, ep);
+        }
+    }
+}
+
+bool RtlUsbDriver::isSetupBuffer(const void* ptr) const {
+    return rtlDev_ && ptr == *((void**)((uint8_t*)pcd() + RTL_USB_PCD_SETUP_BUF_OFFSET));
+}
+
+void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
+    if ((USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA) && isSetupBuffer(ptr)) {
+        cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
+    }
+}
+
+bool RtlUsbDriver::txFifoEmptyStormCheck() {
+    if (!nonPeriodicTxFifoEmpty() || (USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+        txFifoEmptyIdle_ = false;
+        return false;
+    }
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    if (!txFifoEmptyIdle_) {
+        txFifoEmptyIdle_ = true;
+        txFifoEmptyStart_ = now;
+        return false;
+    }
+    if (now - txFifoEmptyStart_ < RTL_USB_TX_FIFO_EMPTY_STORM_TIMEOUT) {
+        return false;
+    }
+    txFifoEmptyIdle_ = false;
+    txFifoEmptyMasked_ = true;
+    USB_GLOBAL->GINTMSK &= ~USB_OTG_GINTMSK_NPTXFEM;
+    return true;
 }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
-int RtlUsbDriver::getRecoveryStats(hal_usb_recovery_stats* stats) const {
-    hal_usb_recovery_stats s = {};
-    s.size = sizeof(s);
-    s.ep0_repairs = ep0Repairs_;
-    s.ep0_reattaches = ep0Reattaches_;
-    s.reattaches = reattaches_;
-    s.setup_cancels = setupCancels_;
-    s.tx_fifo_empty_storms = txFifoEmptyStorms_;
-    const size_t n = std::min<size_t>(stats->size, sizeof(s));
-    memcpy(stats, &s, n);
-    stats->size = n;
-    return 0;
+uint32_t RtlUsbDriver::stopInTransfers(uint32_t eps) {
+    const bool flush = !nonPeriodicTxFifoEmpty();
+    if (flush) {
+        for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
+            if (isNonPeriodicInEndpoint(ep)) {
+                eps |= 1UL << ep;
+            }
+        }
+    }
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGINAK;
+    if (!waitForBits(&USB_GLOBAL->GINTSTS, USB_OTG_GINTSTS_GINAKEFF)) {
+        USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+        return 0;
+    }
+    uint32_t stopped = 0;
+    for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
+        if (!(eps & (1UL << ep))) {
+            continue;
+        }
+        auto in = USB_INEP(ep);
+        const bool enabled = in->DIEPCTL & USB_OTG_DIEPCTL_EPENA;
+        if (enabled) {
+            in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
+            waitForBits(&in->DIEPINT, USB_OTG_DIEPINT_EPDISD);
+            in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
+        }
+        auto sdkEp = (uint8_t*)pcd() + RTL_USB_PCD_IN_EP_OFFSET + ep * RTL_USB_PCD_EP_SIZE;
+        auto len = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_LEN_OFFSET);
+        auto count = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_COUNT_OFFSET);
+        if (*count < *len) {
+            *count = *len;
+            if (enabled) {
+                stopped |= 1UL << ep;
+            }
+        }
+    }
+    if (flush) {
+        usb_hal_flush_tx_fifo(0);
+    }
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+    return stopped;
 }
 
 int RtlUsbDriver::suspend() {
@@ -617,20 +512,11 @@ int RtlUsbDriver::closeEndpoint(unsigned ep) {
 int RtlUsbDriver::flushEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
     std::lock_guard<RtlUsbDriver> lk(*this);
-    SdkLock sdk(pcd());
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    if ((ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) && (ep & 0x7f)) {
-        // CDC TX timeout: the host stopped reading. Flushing alone leaves the endpoint enabled and the SDK's transfer
-        // pending, which keeps the TX FIFO empty interrupt firing (see txFifoEmptyStormCheck()).
-        abortInTransfer(ep & 0x7f);
+    if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
+        SdkLock sdk(pcd());
+        stopInTransfers(1UL << (ep & 0x7f));
     }
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    auto r = usb_hal_flush_tx_fifo(ep & 0x7f);
-    // FIXME: USB stack may get into a weird state with EP0 endpoint.
-    // Additionally flushing RX fifo seems to resolve the issue.
-    usb_hal_flush_tx_fifo(0x00);
-    usb_hal_flush_rx_fifo();
-    return CHECK_RTL_USB_TO_SYSTEM(r);
+    return 0;
 }
 
 int RtlUsbDriver::stallEndpoint(unsigned ep) {
