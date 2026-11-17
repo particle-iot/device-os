@@ -6,6 +6,10 @@ timeout(3 * 60 * 1000);
 const { UsbCdcPort } = require('../../test/usb_cdc');
 const path = require('path');
 
+// The runner's particle-usb: set DEBUG_USB to log its requests (INIT/SEND/CHECK/RECV) with timestamps
+const particleUsb = require(require.resolve('particle-usb', { paths: [path.dirname(require.main.filename)] }));
+const DEBUG_USB = false;
+
 const EP0_POLL_TIMEOUT_MS = 250;
 
 let device = null;
@@ -117,6 +121,17 @@ before(function() {
         throw new Error('No device assigned to this test');
     }
     cdc = new UsbCdcPort(device.id);
+
+    if (DEBUG_USB) {
+        particleUsb.config({
+            log: {
+                trace: (...args) => console.log(new Date().toISOString(), '[usb trace]', ...args),
+                info: (...args) => console.log(new Date().toISOString(), '[usb info]', ...args),
+                warn: (...args) => console.log(new Date().toISOString(), '[usb warn]', ...args),
+                error: (...args) => console.log(new Date().toISOString(), '[usb error]', ...args)
+            }
+        });
+    }
 });
 
 after(async function() {
@@ -130,19 +145,20 @@ test('USB_RECOVERY_01_EP0_WATCHDOG_REATTACH', async function() {
 });
 
 test('USB_RECOVERY_02_GLOBAL_NAK_CLEARED', async function() {
+    // The runner's polling of the device test is the host traffic the watchdog needs
     // Device does validation
 });
 
-test('USB_RECOVERY_03_CANCEL_ON_SETUP_TRIGGER', async function() {
+test('USB_RECOVERY_03_CANCEL_ON_SETUP', async function() {
     // Poll GET_STATUS until a request times out (the global IN NAK held its reply back)
     const usbDev = await device.getUsbDevice();
     const timedOut = await pollUntilTimeout(usbDev, EP0_POLL_TIMEOUT_MS, 30000);
     expect(timedOut, `no GET_STATUS was held back long enough to cancel (${EP0_POLL_TIMEOUT_MS} ms): the device's ` +
             `global IN NAK didn't take effect`).to.be.true;
 
-    // When we time out, wait 2 seconds for devices global NAK timer to expire
+    // When we time out, wait for devices global NAK timer to expire
     await sleep(2000);
-    
+
     // Then try a different control request (GET_DESCRIPTOR) it should *not* return GET_STATUS data
     const data = await getDescriptor(usbDev);
     expect(data.length).to.equal(18);
@@ -150,26 +166,22 @@ test('USB_RECOVERY_03_CANCEL_ON_SETUP_TRIGGER', async function() {
     expect(data[1]).to.equal(0x01); // bDescriptorType: device
 });
 
-test('USB_RECOVERY_04_CANCEL_ON_SETUP_CHECK', async function() {
-    // Device validates
-});
-
-test('USB_RECOVERY_05_CDC_TX_STORM_START', async function() {
+test('USB_RECOVERY_04_CDC_TX_STORM_START', async function() {
     // Device starts CDC TX thread
 });
 
-test('USB_RECOVERY_06_CDC_TX_STORM_TRIGGER', async function() {
+test('USB_RECOVERY_05_CDC_TX_STORM_TRIGGER', async function() {
     // Only Linux strands the CDC IN transfer when the port isn't read
     if (process.platform !== 'linux') {
         return;
     }
     // The host holds the CDC port open and writes to it without reading the device's
-    // output. Each write reopens the device's TX side after its CDC TX timeout closed it. No control requests here, so
-    // the EP0 watchdog has nothing to act on. The device measures its own starvation
+    // output. Each write reopens the device's TX side after its CDC TX timeout closed it.
+    // The device measures its own starvation
     const UNREAD_MS = 15000;
     const WRITE_INTERVAL_MS = 10;
     const WRITE_TIMEOUT_MS = 2000; // If the device hits this timeout, it is starved
-    const RECOVERY_MS = 15000; // Longer than a watchdog repair + reattach + re-enumeration
+    const RECOVERY_MS = 15000; // Longer than a watchdog reattach + re-enumeration
     const line = Buffer.from('x'.repeat(63) + '\n');
 
     await cdc.open();
@@ -200,7 +212,11 @@ test('USB_RECOVERY_06_CDC_TX_STORM_TRIGGER', async function() {
     expect(stalledAfterMs, `the device stopped accepting CDC data after ${writes} writes (${stalledAfterMs} ms into ` +
             `the hold): its threads were starved while the host held the port unread`).to.be.null;
 
-    // The device must answer again once the host lets go
+    // The device must answer again once the host lets go. The device will have a CDC IN packet in its
+    // TX fifo. The host sends a control request (the particle echo vendor command) and the device
+    // enqueues the EP0 IN response to the same TX FIFO. However, the device will NAK all the EP0 IN
+    // polls since the EP3 CDC packet is at the top of the FIFO. The EP0 watchdog will catch and
+    // recover this situation while we are polling systemEcho().
     const deadline = Date.now() + RECOVERY_MS;
     let answered = false;
     let lastErr = null;
@@ -223,6 +239,8 @@ test('USB_RECOVERY_06_CDC_TX_STORM_TRIGGER', async function() {
             `${lastErr ? ` (last error: ${lastErr.message})` : ''}`).to.be.true;
 });
 
-test('USB_RECOVERY_07_CDC_TX_STORM_CHECK', async function() {
+test('USB_RECOVERY_06_CDC_TX_STORM_CHECK', async function() {
     // Device validates: the device's heartbeat kept running while the port was unread
+    const msg = device.mailBox.shift();
+    console.log(`heartbeat max gap: ${msg ? msg.d : '(none)'} ms`);
 });

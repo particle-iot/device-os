@@ -34,7 +34,7 @@ const system_tick_t HEARTBEAT_PERIOD_MS = 10;
 // Longest a thread at that priority may go without running while the host holds the CDC port unread. The guard stops a
 // storm within about 10 ms (and again each time it re-arms, about once a second); without it the storm starves these
 // threads for as long as the port stays unread
-const system_tick_t MAX_HEARTBEAT_GAP_MS = 1000;
+const system_tick_t MAX_HEARTBEAT_GAP_MS = 250;
 Thread* g_heartbeatThread = nullptr;
 volatile bool g_runHeartbeat = false;
 volatile system_tick_t g_heartbeatMaxGap = 0;
@@ -51,25 +51,28 @@ bool setupPhaseUnmasked() {
     return (*TEST_USB_DOEPMSK & TEST_USB_DOEPMSK_STUPM) != 0;
 }
 
-void setGlobalOutNak() {
-    // The core NAKs every OUT packet, including the status stage of the host's control reads, so no control transfer
-    // completes. Nothing in the stack clears it but usbd_watch.
+const system_tick_t WATCH_PERIOD_MS = 1000; // RtlUsbDriver::loop()
+const system_tick_t GLOBAL_IN_NAK_HOLD_MS = 500; // Longer than the host's 250 ms cancel, shorter than WATCH_PERIOD_MS
+system_tick_t g_watchPass = 0;
+
+// RtlUsbDriver::watch() clears a global OUT NAK on its next pass: returns when that pass ran
+system_tick_t syncWithWatch() {
     *TEST_USB_DCTL |= TEST_USB_DCTL_SGONAK;
+    waitFor([] { return !(*TEST_USB_DCTL & TEST_USB_DCTL_GONSTS); }, 2 * WATCH_PERIOD_MS);
+    return millis();
 }
 
-const system_tick_t GLOBAL_IN_NAK_HOLD_MS = 1000;
-
 void holdGlobalInNak() {
-    // The core NAKs every IN token, so the replies the USB task arms on EP0 IN don't go out: a host control read with a
-    // short timeout gives up and leaves its reply armed. Once the NAK is cleared, nothing collects the reply until the
-    // host's next SETUP, which must cancel it (RtlUsbDriver::cancelControlTransferOnSetup()) rather than let it go out
-    // as the data stage of the next control read. usbd_watch clears a global NAK it sees, so keep setting it.
-    delay(RUNNER_SETTLE_MS);
-    const auto start = millis();
-    while (millis() - start < GLOBAL_IN_NAK_HOLD_MS) {
-        *TEST_USB_DCTL |= TEST_USB_DCTL_SGINAK;
-        delay(1);
+    // The core NAKs every IN token, so the reply armed on EP0 IN doesn't go out: the host's control read gives up and
+    // leaves it armed. Held between two watch() passes so watch() doesn't flush it: only the host's next SETUP can cancel
+    // it (RtlUsbDriver::cancelControlTransferOnSetup()) rather than let it go out as the next control read's data stage.
+    system_tick_t start = g_watchPass;
+    while (start - g_watchPass < RUNNER_SETTLE_MS) {
+        start += WATCH_PERIOD_MS;
     }
+    delay(start + 100 - millis());
+    *TEST_USB_DCTL |= TEST_USB_DCTL_SGINAK;
+    delay(GLOBAL_IN_NAK_HOLD_MS);
     *TEST_USB_DCTL |= TEST_USB_DCTL_CGINAK;
 }
 
@@ -124,29 +127,32 @@ test(USB_RECOVERY_01_EP0_WATCHDOG_REATTACH) {
 }
 
 test(USB_RECOVERY_02_GLOBAL_NAK_CLEARED) {
-    setGlobalOutNak();
+    // The core NAKs every OUT packet, including the status stage of the host's control reads, so no control transfer
+    // completes. Nothing in the stack clears it but RtlUsbDriver::watch().
+    *TEST_USB_DCTL |= TEST_USB_DCTL_SGONAK;
     assertTrue(waitFor([] { return !(*TEST_USB_DCTL & TEST_USB_DCTL_GONSTS); }, 3000));
+    // Test global IN NAK
     *TEST_USB_DCTL |= TEST_USB_DCTL_SGINAK;
     assertTrue(waitFor([] { return !(*TEST_USB_DCTL & TEST_USB_DCTL_GINSTS); }, 3000));
 }
 
-test(USB_RECOVERY_03_CANCEL_ON_SETUP_TRIGGER) {
+test(USB_RECOVERY_03_CANCEL_ON_SETUP) {
+    g_watchPass = syncWithWatch();
     g_injectThread = new Thread("inject", holdGlobalInNak, OS_THREAD_PRIORITY_DEFAULT);
     assertTrue(g_injectThread);
 }
 
-test(USB_RECOVERY_04_CANCEL_ON_SETUP_CHECK) {
-    g_injectThread->join();
-    delete g_injectThread;
-    g_injectThread = nullptr;
-    assertFalse(*TEST_USB_DCTL & TEST_USB_DCTL_GINSTS);
-}
-
-test(USB_RECOVERY_05_CDC_TX_STORM_START) {
+test(USB_RECOVERY_04_CDC_TX_STORM_START) {
+    // Test 03's inject thread ends during that test's host side
+    if (g_injectThread) {
+        g_injectThread->join();
+        delete g_injectThread;
+        g_injectThread = nullptr;
+    }
     // Start a thread to continually TX CDC data IN to the host
     // The host will hold the CDC port open and keep writing to it without reading it, which on linux hosts strands a CDC
     // IN transfer and triggers the devices TX FIFO empty interrupt storm. Each CDC OUT packet
-    // reopens the device TX side after the CDC TX timeout closed it, so the app keeps writing. 
+    // reopens the device TX side after the CDC TX timeout closed it, so the app keeps writing.
     // Without the TX storm fix in the driver, the USB task starves the rest of the system for as long as the host holds the port
     g_runCdcTxThread = true;
     g_cdcTxThread = new Thread("cdc_tx", cdcTxThread, OS_THREAD_PRIORITY_DEFAULT);
@@ -157,11 +163,11 @@ test(USB_RECOVERY_05_CDC_TX_STORM_START) {
     g_heartbeatThread = new Thread("heartbeat", heartbeatThread, OS_THREAD_PRIORITY_DEFAULT);
 }
 
-test(USB_RECOVERY_06_CDC_TX_STORM_TRIGGER) {
+test(USB_RECOVERY_05_CDC_TX_STORM_TRIGGER) {
     // Host will trigger the storm while the cdc and heartbeat threads run
 }
 
-test(USB_RECOVERY_07_CDC_TX_STORM_CHECK) {
+test(USB_RECOVERY_06_CDC_TX_STORM_CHECK) {
     // Join the threads
     g_runCdcTxThread = false;
     if (g_cdcTxThread) {
@@ -178,6 +184,7 @@ test(USB_RECOVERY_07_CDC_TX_STORM_CHECK) {
 
     // Threads at the system thread's priority kept running while the host held the port unread
     const system_tick_t heartbeatMaxGap = g_heartbeatMaxGap;
+    assertEqual(0, pushMailboxMsg(String(heartbeatMaxGap).c_str(), 5000));
     assertLessOrEqual(heartbeatMaxGap, MAX_HEARTBEAT_GAP_MS);
 }
 
