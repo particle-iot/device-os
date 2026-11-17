@@ -17,6 +17,7 @@
 
 #include "Particle.h"
 #include "unit-test/unit-test.h"
+#include "scope_guard.h"
 
 #if Wiring_BLE == 1
 
@@ -982,6 +983,162 @@ test(BLE_18_other_ble_operations_while_indefinite_scanning) {
     assertMore(data.retval, 0);
     assertMoreOrEqual(end - start, m - start);
     assertLessOrEqual(end - start, (m - start) + 2000);
+}
+
+namespace {
+
+const uint16_t SCAN_INTERVAL = 8000; // 5 s in 0.625 ms units
+const uint16_t SCAN_WINDOW = 8000; // 5 s in 0.625 ms units
+const uint16_t SCAN_TIMEOUT_INDEFINITE = 0;
+const uint16_t SCAN_TIMEOUT = 100; // 1 s in 10 ms units
+const int SCAN_DEINIT_ITERATIONS = 10;
+const system_tick_t SCAN_START_TIMEOUT = 5000;
+const system_tick_t SCAN_RUN_TIME = 100;
+const system_tick_t SCAN_RESULT_TIMEOUT = 10000;
+const system_tick_t SCAN_STOP_TIMEOUT = 10000;
+const system_tick_t SCAN_CALLBACK_HOLD_TIME = 1000;
+
+BleScanParams indefiniteScanParams() {
+    BleScanParams params = {};
+    params.size = sizeof(BleScanParams);
+    params.timeout = SCAN_TIMEOUT_INDEFINITE;
+    params.interval = SCAN_INTERVAL;
+    params.window = SCAN_WINDOW;
+    params.active = true; // Send scan request
+    params.filter_policy = BLE_SCAN_FP_ACCEPT_ALL;
+    return params;
+}
+
+} // anonymous
+
+test(BLE_19_indefinite_scan_interrupted_by_stack_deinit) {
+    BleScanParams params = indefiniteScanParams();
+
+    struct BleScanData {
+        volatile bool done;
+        int retval;
+        size_t results;
+    };
+
+    for (int i = 0; i < SCAN_DEINIT_ITERATIONS; i++) {
+        BLE.on();
+        assertEqual(0, BLE.setScanParameters(&params));
+
+        BleScanData data = {};
+        Thread* t = new Thread("test", [](void* param) -> os_thread_return_t {
+            auto data = (BleScanData*)param;
+            data->retval = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+                auto data = (BleScanData*)context;
+                data->results++;
+            }, param);
+            data->done = true;
+        }, (void*)&data);
+        assertTrue(t);
+        SCOPE_GUARD({
+            if (t) {
+                BLE.stopScanning();
+                t->join();
+                delete t;
+            }
+        });
+        assertTrue(waitFor(BLE.scanning, SCAN_START_TIMEOUT));
+        delay(SCAN_RUN_TIME);
+
+        assertEqual(0, BLE.off());
+        assertTrue(System.waitCondition([&data]() { return data.done; }, SCAN_STOP_TIMEOUT));
+        t->join();
+        delete t;
+        t = nullptr;
+        assertMoreOrEqual(data.retval, 0);
+    }
+
+    BLE.on();
+    params.timeout = SCAN_TIMEOUT;
+    assertEqual(0, BLE.setScanParameters(&params));
+    BleScanData data = {};
+    assertMoreOrEqual(BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+        auto data = (BleScanData*)context;
+        data->results++;
+    }, &data), 0);
+}
+
+test(BLE_20_scan_stopped_inside_scan_callback_while_stopped_externally) {
+    BleScanParams params = indefiniteScanParams();
+
+    struct BleScanData {
+        volatile bool inCallback;
+        volatile bool callbackRunning;
+        volatile bool lateCallback;
+        volatile bool scanDone;
+        volatile bool stopDone;
+        bool off;
+        int scanRetval;
+        int stopRetval;
+    };
+    static BleScanData data;
+
+    for (bool off: {false, true}) {
+        BLE.on();
+        assertEqual(0, BLE.setScanParameters(&params));
+        memset(&data, 0, sizeof(data));
+        data.off = off;
+
+        Thread* scanner = nullptr;
+        Thread* stopper = nullptr;
+        SCOPE_GUARD({
+            if (scanner && !stopper) {
+                BLE.stopScanning();
+                scanner->join();
+                delete scanner;
+            }
+        });
+        scanner = new Thread("scan", [](void* param) -> os_thread_return_t {
+            auto data = (BleScanData*)param;
+            data->scanRetval = BLE.scan(+[](const BleScanResult *result, void *context) -> void {
+                auto data = (BleScanData*)context;
+                if (data->scanDone || data->stopDone) {
+                    data->lateCallback = true;
+                    return;
+                }
+                if (data->inCallback) {
+                    return;
+                }
+                data->inCallback = true;
+                data->callbackRunning = true;
+                delay(SCAN_CALLBACK_HOLD_TIME);
+                BLE.stopScanning();
+                data->callbackRunning = false;
+            }, param);
+            if (data->callbackRunning) {
+                data->lateCallback = true;
+            }
+            data->scanDone = true;
+        }, (void*)&data);
+        assertTrue(scanner);
+        assertTrue(System.waitCondition([]() { return data.inCallback; }, SCAN_RESULT_TIMEOUT));
+
+        stopper = new Thread("stop", [](void* param) -> os_thread_return_t {
+            auto data = (BleScanData*)param;
+            data->stopRetval = data->off ? BLE.off() : BLE.stopScanning();
+            if (!data->off && data->callbackRunning) {
+                data->lateCallback = true;
+            }
+            data->stopDone = true;
+        }, (void*)&data);
+        assertTrue(stopper);
+        assertTrue(System.waitCondition([]() { return data.scanDone && data.stopDone; }, SCAN_STOP_TIMEOUT));
+
+        scanner->join();
+        stopper->join();
+        delete scanner;
+        delete stopper;
+        scanner = nullptr;
+        stopper = nullptr;
+        assertEqual(0, data.stopRetval);
+        assertMoreOrEqual(data.scanRetval, 0);
+        assertFalse((bool)data.lateCallback);
+        assertFalse(BLE.scanning());
+    }
 }
 
 #endif // #if Wiring_BLE == 1
