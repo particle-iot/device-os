@@ -1737,14 +1737,13 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 }
 
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
-    bool resetStack = false;
     os_semaphore_t sem = nullptr;
     SCOPE_GUARD({
         if (sem) {
             {
                 BleLock scanLk;
                 if (scanSemaphore_ == sem) {
-                    stopScanning(resetStack);
+                    stopScanning();
                 }
             }
             {
@@ -1777,9 +1776,8 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
         RtlGapDevState s;
         le_get_gap_param(GAP_PARAM_DEV_STATE, &s.state);
         LOG(TRACE, "Failed to start scanning scan state=%d", s.state.gap_scan_state);
-        // The stack state is messed up, we need to reset the stack.
-        isScanning_ = false;
-        resetStack = true;
+        // The stack state may be messed up, stop scanning unless it's idle, stopScanning() resets the stack if that fails.
+        isScanning_ = s.state.gap_scan_state != GAP_SCAN_STATE_IDLE;
         return SYSTEM_ERROR_TIMEOUT;
     }
     // We unlock BLE lock here though so that other BLE APIs are accessible while we are performing a scan.
