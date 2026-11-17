@@ -404,7 +404,7 @@ public:
     int setScanParams(const hal_ble_scan_params_t* params);
     int getScanParams(hal_ble_scan_params_t* params) const;
     int startScanning(hal_ble_on_scan_result_cb_t callback, void* context);
-    int stopScanning(bool resetStack = false);
+    int stopScanning(bool resetStack = false, bool resetOnFailure = true);
 
     int setPpcp(const hal_ble_conn_params_t* ppcp);
     int getPpcp(hal_ble_conn_params_t* ppcp) const;
@@ -1149,7 +1149,6 @@ int BleGap::init() {
     if (!cmdThread_) {
         CHECK_TRUE(os_thread_create(&cmdThread_, "bleCommandThread", BLE_CMD_THREAD_PRIORITY, bleCommandThread, this, BLE_CMD_THREAD_STACK_SIZE) == 0, SYSTEM_ERROR_INTERNAL);
     }
-    CHECK_TRUE(os_semaphore_create(&scanSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&stateSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&connectSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
     CHECK_TRUE(os_semaphore_create(&disconnectSemaphore_, 1, 0) == 0, SYSTEM_ERROR_INTERNAL);
@@ -1299,7 +1298,7 @@ int BleGap::stop(bool restore) {
         }
 
         if (isScanning_) {
-            stopScanning();
+            stopScanning(false /* resetStack */, false /* resetOnFailure */);
             WRAP_BLE_EVT_LOCK(le_scan_stop()); // Just in case
         }
 
@@ -1319,10 +1318,6 @@ int BleGap::stop(bool restore) {
     initialized_ = false;
     btStackStarted_ = false;
 
-    if (scanSemaphore_) {
-        os_semaphore_destroy(scanSemaphore_);
-        scanSemaphore_ = nullptr;
-    }
     if (stateSemaphore_) {
         os_semaphore_destroy(stateSemaphore_);
         stateSemaphore_ = nullptr;
@@ -1380,7 +1375,7 @@ int BleGap::getDeviceName(char* deviceName, size_t len) const {
 
 int BleGap::setDeviceAddress(const hal_ble_addr_t* address) {
     CHECK_FALSE(isAdvertising(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK_FALSE(scanning(), SYSTEM_ERROR_INVALID_STATE);
+    CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
     CHECK_FALSE(address && addressEqual(*address, addr_), SYSTEM_ERROR_NONE);
     // RTL872x doesn't support changing the the public address.
     // But to be compatible with existing BLE platforms, it should accept nulllptr.
@@ -1713,7 +1708,7 @@ void BleGap::onAttMtuExchangeTimerExpired(os_timer_t timer) {
 }
 
 bool BleGap::scanning() {
-    return isScanning_;
+    return isScanning_ && notifyScanResult_;
 }
 
 int BleGap::setScanParams(const hal_ble_scan_params_t* params) {
@@ -1742,24 +1737,40 @@ int BleGap::getScanParams(hal_ble_scan_params_t* params) const {
 }
 
 int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
+    bool resetStack = false;
+    os_semaphore_t sem = nullptr;
+    SCOPE_GUARD({
+        if (sem) {
+            {
+                BleLock scanLk;
+                if (scanSemaphore_ == sem) {
+                    stopScanning(resetStack);
+                }
+            }
+            {
+                std::lock_guard<StaticRecursiveMutex> evtLk(sBleEventMutex);
+                if (scanSemaphore_ == sem) {
+                    scanSemaphore_ = nullptr;
+                }
+            }
+            os_semaphore_destroy(sem);
+        }
+    });
     BleLock lk;
 
     CHECK(start());
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
-    bool resetStack = false;
-
-    NAMED_SCOPE_GUARD(sg, {
-        stopScanning(resetStack);
-    });
+    CHECK_TRUE(os_semaphore_create(&sem, 1, 0) == 0, SYSTEM_ERROR_NO_MEMORY);
     scanResultCallback_ = callback;
     context_ = context;
-
-    // Just in case
-    os_semaphore_take(scanSemaphore_, 0, false);
+    {
+        std::lock_guard<StaticRecursiveMutex> evtLk(sBleEventMutex);
+        notifyScanResult_ = true;
+        scanSemaphore_ = sem;
+    }
 
     CHECK_RTL(WRAP_BLE_EVT_LOCK(le_scan_start()));
     isScanning_ = true;
-    notifyScanResult_ = true;
     // GAP_SCAN_STATE_SCANNING may be propagated immediately following the GAP_SCAN_STATE_START
     // IMPORTANT: have to poll here, for some reason we may not get notified
     if (waitState(BleGapDevState().scan(GAP_SCAN_STATE_SCANNING), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
@@ -1776,25 +1787,29 @@ int BleGap::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     lk.unlock();
     // To be consistent with Gen3, the scan proceedure is blocked for now,
     // so we can simply wait for the semaphore to be given without introducing a dedicated timer.
-    os_semaphore_take(scanSemaphore_, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
+    os_semaphore_take(sem, (scanParams_.timeout == BLE_SCAN_TIMEOUT_UNLIMITED) ? CONCURRENT_WAIT_FOREVER : (scanParams_.timeout * 10), false);
     return SYSTEM_ERROR_NONE;
 }
 
-int BleGap::stopScanning(bool resetStack) {
-    BleLock lk;
-    notifyScanResult_ = false;
-    if (!isScanning_) {
-        return SYSTEM_ERROR_NONE;
-    }
-
+int BleGap::stopScanning(bool resetStack, bool resetOnFailure) {
     if (BleEventDispatcher::getInstance().isThreadCurrent()) {
         // Can't stop scanning properly from event processing thread
         // Unblock the caller of scan() and perform stopScanning()
         // in there.
         // XXX: It's not safe to call le_scan_stop() especially
         // from inside the ble scan result callback! 
-        os_semaphore_give(scanSemaphore_, false);
+        std::lock_guard<StaticRecursiveMutex> evtLk(sBleEventMutex);
+        notifyScanResult_ = false;
+        if (scanSemaphore_) {
+            os_semaphore_give(scanSemaphore_, false);
+        }
         return 0;
+    }
+
+    BleLock lk;
+    notifyScanResult_ = false;
+    if (!isScanning_) {
+        return SYSTEM_ERROR_NONE;
     }
 
     const int LE_SCAN_STOP_RETRIES = 1;
@@ -1802,7 +1817,15 @@ int BleGap::stopScanning(bool resetStack) {
         // This has seen failing a number of times at least
         // with btgap logging enabled. Retry a few times just in case,
         // otherwise the next scan operation fails with invalid state.
-        auto r = WRAP_BLE_EVT_LOCK(le_scan_stop());
+        T_GAP_CAUSE r;
+        {
+            std::lock_guard<StaticRecursiveMutex> evtLk(sBleEventMutex);
+            r = le_scan_stop();
+            // Just in case
+            if (scanSemaphore_) {
+                os_semaphore_give(scanSemaphore_, false);
+            }
+        }
         if (r == GAP_CAUSE_SUCCESS) {
             // IMPORTANT: have to poll here, for some reason we may not get notified
             if (!waitState(BleGapDevState().scan(GAP_SCAN_STATE_IDLE), BLE_STATE_DEFAULT_TIMEOUT, true /* forcePoll */)) {
@@ -1813,7 +1836,7 @@ int BleGap::stopScanning(bool resetStack) {
         HAL_Delay_Milliseconds(10);
     }
 
-    if (isScanning_) {
+    if (isScanning_ && resetOnFailure) {
         // Verified that if the scan state is GAP_SCAN_STATE_STOP, instead of GAP_SCAN_STATE_IDLE,
         // the next scan operation will fail with invalid state.
         RtlGapDevState s;
@@ -1833,9 +1856,6 @@ int BleGap::stopScanning(bool resetStack) {
     } else {
         clearPendingResult();
     }
-
-    // Just in case
-    os_semaphore_give(scanSemaphore_, false);
 
     return SYSTEM_ERROR_NONE;
 }
@@ -3901,7 +3921,6 @@ int hal_ble_gap_start_scan(hal_ble_on_scan_result_cb_t callback, void* context, 
 }
 
 bool hal_ble_gap_is_scanning(void* reserved) {
-    BleLock lk;
     CHECK_TRUE(BleGap::getInstance().initialized(), false);
     return BleGap::getInstance().scanning();
 }
