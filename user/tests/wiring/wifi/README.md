@@ -7,6 +7,15 @@ so the device stays connected to the cloud through it) and tests against it:
   beacon request with an oversized SSID. The device has to stay connected after each one.
 - Connection backoff: AP off -> 4-8 attempts in 3 min, no radio reset, BLE keeps advertising. New
   credentials reset the backoff. AP back on -> reconnects.
+- RX stress, Gen 4 only, for the Gen 4 Wi-Fi RX stall (the device stopped receiving until reset,
+  scans found no APs). Every external flash read reprograms the MPU, and the ROM code turns the whole
+  MPU off while it does that. An interrupt in that window let the Wi-Fi threads access the RX
+  descriptor ring through the cache, and the driver ended up with stale descriptor tags. The device
+  reads flash nonstop from a low priority thread, with BLE advertising and scanning and the SRAM heap
+  taken so `lib_wlan` allocates in PSRAM. The runner sends it 500 pps unicast and 300 pps broadcast
+  UDP through the AP for 3 min, broadcast at 1 Mbps basic rates. The device has to keep receiving, no
+  gaps over 15 s, and has to see both flash reads and broadcasts. A failure reports how far into the
+  run reception stopped, whether it came back and how many APs a scan finds.
 - The original credentials are restored at the end, the device has to get back to the cloud with
   them.
 
@@ -43,7 +52,9 @@ connected to a network is never picked, disconnect it first: `nmcli device disco
 
 E.g. a box with ethernet and an unused Wi-Fi radio within range of the device. Same requirements on
 that machine, plus ssh key auth without a prompt. A missing tool or radio fails the suite instead of
-skipping it.
+skipping it. For the RX stress test the runner sends the flood to that machine (the address ssh
+connects to, IPv4 only) on UDP ports 50100 and 50101, and it forwards them to the device, unicast and
+broadcast, so those ports have to be reachable from the runner, firewall on that machine included.
 
 ```
 DEVICE_OS_TEST_RUNNER_WIFI_AP_HOST=user@host device-os-test run -v p2 wiring/wifi
@@ -87,6 +98,9 @@ The AP runs in the test container, a service on the host moves the radio into it
 ## Options
 
 - `DEVICE_OS_TEST_RUNNER_WIFI_AP_INTERFACE` picks the radio explicitly.
+- The AP leaves the TX power to the driver. The RX stress test sets a fixed 5 dBm for its run with
+  `iw dev <radio> set txpower fixed` and puts it back to `auto` after, also when the suite fails.
+  Some drivers don't report it back (mt7921e always shows 3.00 dBm).
 - `DEVICE_OS_TEST_RUNNER_WIFI_AP_COUNTRY` sets the country code. Without it the AP runs in whatever
   regulatory domain the machine is in (channel 6 is allowed everywhere). With it, hostapd switches
   the machine's regulatory domain and leaves it there.
@@ -114,12 +128,12 @@ package back.
 
 ## Passwordless sudo
 
-The suite calls `sudo -n` for `hostapd`, `hostapd_cli`, `dnsmasq`, `ip`, `iptables`, `sysctl`,
-`kill`, `rm`, plus `nmcli` and `firewall-cmd` when they are installed. On the machine that runs the
+The suite calls `sudo -n` for `hostapd`, `hostapd_cli`, `dnsmasq`, `ip`, `iptables`, `iw`,
+`sysctl`, `kill`, `rm`, plus `nmcli` and `firewall-cmd` when they are installed. On the machine that runs the
 AP (local or remote), after installing the packages, run as the user the suite uses:
 
 ```sh
-tools="true hostapd hostapd_cli dnsmasq ip iptables sysctl kill rm nmcli firewall-cmd"
+tools="true hostapd hostapd_cli dnsmasq ip iptables iw sysctl kill rm nmcli firewall-cmd"
 cmds=$(for t in $tools; do
   for d in $(echo "$PATH:/usr/local/sbin:/usr/sbin:/sbin" | tr : ' '); do
     [ -x "$d/$t" ] && { echo "$d/$t"; break; }
@@ -132,7 +146,7 @@ sudo visudo -cf /tmp/device-os-wifi-ap && sudo install -m 440 /tmp/device-os-wif
 Which gives something like:
 
 ```
-tester ALL=(root) NOPASSWD: /usr/bin/true,/usr/sbin/hostapd,/usr/sbin/hostapd_cli,/usr/sbin/dnsmasq,/usr/bin/ip,/usr/sbin/iptables,/usr/sbin/sysctl,/usr/bin/kill,/usr/bin/rm
+tester ALL=(root) NOPASSWD: /usr/bin/true,/usr/sbin/hostapd,/usr/sbin/hostapd_cli,/usr/sbin/dnsmasq,/usr/bin/ip,/usr/sbin/iptables,/usr/bin/iw,/usr/sbin/sysctl,/usr/bin/kill,/usr/bin/rm
 ```
 
 `rm`, `kill` and `ip` as root without a password is as good as root. Use a dedicated test machine

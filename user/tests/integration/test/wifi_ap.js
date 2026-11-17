@@ -3,6 +3,7 @@
 const { execFile, execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
+const net = require('net');
 const os = require('os');
 const path = require('path');
 
@@ -15,6 +16,7 @@ const START_TIMEOUT = 30000;
 const STOP_TIMEOUT = 5000;
 const COMMAND_TIMEOUT = 30000;
 const POLL_INTERVAL = 1000;
+const MBM_PER_DBM = 100;
 const SSH_CONNECT_TIMEOUT = 10;
 const RULE_COMMENT = 'device-os-test-wifi-ap';
 const SSID_PREFIX = 'device-os-test-';
@@ -151,6 +153,10 @@ class LocalHost {
     exists(file) {
         return fs.existsSync(file);
     }
+
+    async sshAddress() {
+        return null;
+    }
 }
 
 class SshHost {
@@ -224,6 +230,14 @@ class SshHost {
 
     exists(file) {
         return this.runSync('test', ['-e', file]).code === 0;
+    }
+
+    async sshAddress() {
+        const address = (await check(this, 'sh', ['-c', 'echo $SSH_CONNECTION'])).trim().split(' ')[2];
+        if (!address) {
+            throw new Error(`Unknown address of ${this._destination}`);
+        }
+        return address;
     }
 
     _sshArgs(file, args, sudo) {
@@ -375,7 +389,7 @@ async function purgeStale(host, tools, sudo) {
             await host.run(tools.kill, [pid], { sudo });
         }
     }
-    for (const [table, chain] of [['nat', 'POSTROUTING'], ['filter', 'FORWARD']]) {
+    for (const [table, chain] of [['nat', 'PREROUTING'], ['nat', 'POSTROUTING'], ['filter', 'FORWARD']]) {
         const r = await host.run(tools.iptables, ['-t', table, '-S', chain], { sudo });
         for (const line of r.stdout.split('\n')) {
             if (line.startsWith(`-A ${chain} `) && line.includes(`--comment ${RULE_COMMENT}`)) {
@@ -385,7 +399,7 @@ async function purgeStale(host, tools, sudo) {
     }
 }
 
-function hostapdConfig({ ifname, ctrlDir, ssid, passphrase, channel, country }) {
+function hostapdConfig({ ifname, ctrlDir, ssid, passphrase, channel, country, basicRates }) {
     return [
         `interface=${ifname}`,
         'driver=nl80211',
@@ -395,6 +409,7 @@ function hostapdConfig({ ifname, ctrlDir, ssid, passphrase, channel, country }) 
         ...(country ? [`country_code=${country}`, 'ieee80211d=1'] : []),
         'hw_mode=g',
         `channel=${channel}`,
+        ...(basicRates ? [`basic_rates=${basicRates}`] : []),
         'ieee80211n=1',
         'wmm_enabled=1',
         'wpa=2',
@@ -451,10 +466,13 @@ class WifiAp {
         this._sudo = sudo;
         this._claim = claim;
         this._strict = strict;
+        this._txPower = null;
+        this._txPowerFixed = false;
         this._dir = null;
         this._prefix = null;
         this._rules = [];
         this._ipForward = null;
+        this._sysctls = [];
         this._nmcli = null;
         this._nmRadio = null;
         this._firewallCmd = null;
@@ -464,8 +482,9 @@ class WifiAp {
     }
 
     async start({ ssid = SSID_PREFIX + crypto.randomBytes(4).toString('hex'), passphrase = crypto.randomBytes(16).toString('hex'),
-            channel = 6 } = {}) {
+            channel = 6, basicRates = null, txPower = null } = {}) {
         this._dir = await this._host.mkdtemp();
+        this._txPower = txPower;
         this._prefix = await this._freeSubnet();
         await this._unmanage();
         await this._sh('ip', ['addr', 'flush', 'dev', this._ifname]);
@@ -475,7 +494,8 @@ class WifiAp {
             ssid,
             passphrase,
             channel,
-            country: process.env.DEVICE_OS_TEST_RUNNER_WIFI_AP_COUNTRY
+            country: process.env.DEVICE_OS_TEST_RUNNER_WIFI_AP_COUNTRY,
+            basicRates
         }));
         try {
             await this._sh('hostapd', ['-B', '-P', this._path('hostapd.pid'), '-f', this._path('hostapd.log'),
@@ -484,6 +504,7 @@ class WifiAp {
         } catch (e) {
             throw new Error(`${e.message}\n${this._host.readText(this._path('hostapd.log'))}`);
         }
+        await this._setTxPower();
         await this._ensureAddress();
         await this._sh('dnsmasq', [
             '--conf-file=/dev/null',
@@ -512,6 +533,7 @@ class WifiAp {
     async enable() {
         await this._command('ENABLE');
         await this._waitEnabled();
+        await this._setTxPower();
         await this._ensureAddress();
     }
 
@@ -531,6 +553,65 @@ class WifiAp {
             }
             await delay(POLL_INTERVAL);
         }
+    }
+
+    async stationAddress(sta) {
+        for (const line of this._host.readText(this._path('dnsmasq.leases')).split('\n')) {
+            const [, mac, ip] = line.trim().split(/\s+/);
+            if (mac && mac.toLowerCase() === sta.toLowerCase()) {
+                return ip;
+            }
+        }
+        throw new Error(`No DHCP lease for ${sta}`);
+    }
+
+    async forwardUdp(sta, port) {
+        const ip = await this.stationAddress(sta);
+        const address = await this._host.sshAddress();
+        if (!address) {
+            return { address: ip, port };
+        }
+        if (!net.isIPv4(address)) {
+            throw new Error(`${this._host.name} is reached at ${address}, forwarding UDP to the device needs IPv4`);
+        }
+        const comment = ['-m', 'comment', '--comment', RULE_COMMENT];
+        await this._addRules([
+            ['nat', 'PREROUTING', '!', '-i', this._ifname, '-d', address, '-p', 'udp', '--dport', String(port), ...comment,
+                '-j', 'DNAT', '--to-destination', `${ip}:${port}`],
+            ['filter', 'FORWARD', '-o', this._ifname, '-d', ip, '-p', 'udp', '--dport', String(port), ...comment, '-j', 'ACCEPT']
+        ]);
+        return { address, port };
+    }
+
+    async forwardUdpBroadcast(port) {
+        const broadcast = `${this._prefix}.255`;
+        const address = await this._host.sshAddress();
+        if (!address) {
+            return { address: broadcast, port, broadcast: true };
+        }
+        if (!net.isIPv4(address)) {
+            throw new Error(`${this._host.name} is reached at ${address}, forwarding UDP to the device needs IPv4`);
+        }
+        for (const name of ['all', this._uplink]) {
+            const value = this._host.readText(`/proc/sys/net/ipv4/conf/${name}/bc_forwarding`);
+            if (value !== '1') {
+                const key = `net.ipv4.conf.${name}.bc_forwarding`;
+                await this._sh('sysctl', ['-qw', `${key}=1`]);
+                this._sysctls.push({ key, value: value || '0' });
+            }
+        }
+        const comment = ['-m', 'comment', '--comment', RULE_COMMENT];
+        await this._addRules([
+            ['nat', 'PREROUTING', '!', '-i', this._ifname, '-d', address, '-p', 'udp', '--dport', String(port), ...comment,
+                '-j', 'DNAT', '--to-destination', `${broadcast}:${port}`],
+            ['filter', 'FORWARD', '-o', this._ifname, '-d', broadcast, '-p', 'udp', '--dport', String(port), ...comment, '-j', 'ACCEPT']
+        ]);
+        return { address, port, broadcast: false };
+    }
+
+    async setTxPower(dbm = null) {
+        this._txPower = dbm;
+        await this._setTxPower();
     }
 
     async bssid() {
@@ -571,6 +652,10 @@ class WifiAp {
                 errors.push(`${path.basename(file)} ${args.join(' ')}: ${(r.stderr || r.stdout).trim()}`);
             }
         };
+        if (this._txPowerFixed) {
+            sh(this._tools.iw, ['dev', this._ifname, 'set', 'txpower', 'auto']);
+            this._txPowerFixed = false;
+        }
         if (this._dir) {
             this._stop('dnsmasq.pid', sh);
             this._stop('hostapd.pid', sh);
@@ -583,6 +668,10 @@ class WifiAp {
             sh(this._tools.sysctl, ['-qw', `net.ipv4.ip_forward=${this._ipForward}`]);
             this._ipForward = null;
         }
+        for (const { key, value } of this._sysctls.reverse()) {
+            sh(this._tools.sysctl, ['-qw', `${key}=${value}`]);
+        }
+        this._sysctls = [];
         if (this._firewallCmd) {
             sh(this._firewallCmd, ['--zone=trusted', `--remove-interface=${this._ifname}`]);
             this._firewallCmd = null;
@@ -628,6 +717,25 @@ class WifiAp {
         }
     }
 
+    async _setTxPower() {
+        if (this._txPower === null && !this._txPowerFixed) {
+            return;
+        }
+        const setting = this._txPower === null ? ['auto'] : ['fixed', String(this._txPower * MBM_PER_DBM)];
+        try {
+            await this._sh('iw', ['dev', this._ifname, 'set', 'txpower', ...setting]);
+            this._txPowerFixed = this._txPower !== null;
+        } catch (e) {
+            if (this._strict) {
+                throw e;
+            }
+            console.log(`Wi-Fi AP TX power not set: ${e.message}`);
+        }
+        const m = /txpower ([\d.]+) dBm/.exec(await check(this._host, this._tools.iw, ['dev', this._ifname, 'info']));
+        const requested = this._txPower === null ? 'auto' : `${this._txPower} dBm`;
+        console.log(`Wi-Fi AP TX power set to ${requested}, driver reports ${m ? m[1] : 'nothing'} dBm`);
+    }
+
     async _waitEnabled() {
         const deadline = Date.now() + START_TIMEOUT;
         for (;;) {
@@ -645,7 +753,7 @@ class WifiAp {
     async _ensureAddress() {
         const addrs = await this._sh('ip', ['-4', 'addr', 'show', 'dev', this._ifname]);
         if (!addrs.includes(`inet ${this._gateway}/`)) {
-            await this._sh('ip', ['addr', 'add', `${this._gateway}/24`, 'dev', this._ifname]);
+            await this._sh('ip', ['addr', 'add', `${this._gateway}/24`, 'brd', '+', 'dev', this._ifname]);
         }
         await this._sh('ip', ['link', 'set', this._ifname, 'up']);
     }
@@ -702,20 +810,23 @@ class WifiAp {
             this._ipForward = ipForward || '0';
         }
         const comment = ['-m', 'comment', '--comment', RULE_COMMENT];
-        const rules = [
+        await this._addRules([
             ['nat', 'POSTROUTING', '-s', `${this._prefix}.0/24`, '-o', this._uplink, ...comment, '-j', 'MASQUERADE'],
             ['filter', 'FORWARD', '-i', this._ifname, '-o', this._uplink, ...comment, '-j', 'ACCEPT'],
             ['filter', 'FORWARD', '-i', this._uplink, '-o', this._ifname, '-m', 'conntrack', '--ctstate', 'RELATED,ESTABLISHED',
                 ...comment, '-j', 'ACCEPT']
-        ];
-        for (const [table, chain, ...args] of rules) {
-            await this._sh('iptables', ['-t', table, '-I', chain, ...args]);
-            this._rules.push({ table, chain, args });
-        }
+        ]);
         const firewallCmd = this._tools['firewall-cmd'];
         if (firewallCmd && (await this._host.run(firewallCmd, ['--state'], { sudo: this._sudo })).code === 0) {
             await check(this._host, firewallCmd, ['--zone=trusted', `--change-interface=${this._ifname}`], { sudo: this._sudo });
             this._firewallCmd = firewallCmd;
+        }
+    }
+
+    async _addRules(rules) {
+        for (const [table, chain, ...args] of rules) {
+            await this._sh('iptables', ['-t', table, '-I', chain, ...args]);
+            this._rules.push({ table, chain, args });
         }
     }
 
