@@ -40,14 +40,15 @@ namespace particle { namespace protocol {
 namespace {
 
 enum HelloFlag {
-	HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 0x01,
-	HELLO_FLAG_DIAGNOSTICS_SUPPORT = 0x02,
-	HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 0x04,
+	HELLO_FLAG_OTA_UPGRADE_SUCCESSFUL = 0x0001,
+	HELLO_FLAG_DIAGNOSTICS_SUPPORT = 0x0002,
+	HELLO_FLAG_IMMEDIATE_UPDATES_SUPPORT = 0x0004,
 	// Flag 0x08 is reserved to indicate support for the HandshakeComplete message
-	HELLO_FLAG_GOODBYE_SUPPORT = 0x10,
-	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x20,
-	HELLO_FLAG_COMPRESSED_OTA = 0x40,
-	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x80
+	HELLO_FLAG_GOODBYE_SUPPORT = 0x0010,
+	HELLO_FLAG_DEVICE_INITIATED_DESCRIBE = 0x0020,
+	HELLO_FLAG_COMPRESSED_OTA = 0x0040,
+	HELLO_FLAG_OTA_PROTOCOL_V3 = 0x0080,
+	HELLO_FLAG_USING_CANDIDATE_KEY = 0x0100
 };
 
 struct ServerMovedContext {
@@ -674,6 +675,9 @@ ProtocolError Protocol::hello(bool was_ota_upgrade_successful)
 #if HAL_PLATFORM_OTA_PROTOCOL_V3
 	flags |= HELLO_FLAG_OTA_PROTOCOL_V3;
 #endif
+	if (protocol_flags & ProtocolFlag::USING_CANDIDATE_KEY) {
+		flags |= HELLO_FLAG_USING_CANDIDATE_KEY;
+	}
 	size_t len = build_hello(message, flags);
 	message.set_length(len);
 	message.set_confirm_received(true); // Send synchronously

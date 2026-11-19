@@ -1229,6 +1229,9 @@ void Spark_Protocol_Init(void)
         hal_get_device_id(id, id_length);
         spark_protocol_init(sp, (const char*) id, keys, callbacks, descriptor);
 
+        spark_protocol_set_connection_property(sp, protocol::Connection::USING_CANDIDATE_KEY, g_usingCandidateDeviceKey,
+                nullptr /* data */, nullptr /* reserved */);
+
         // Enable device-initiated describe messages
         spark_protocol_set_connection_property(sp, protocol::Connection::ENABLE_DEVICE_INITIATED_DESCRIBE, 0, nullptr, nullptr);
 
