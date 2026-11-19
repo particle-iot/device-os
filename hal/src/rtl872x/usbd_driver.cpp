@@ -138,10 +138,26 @@ bool nonPeriodicTxFifoEmpty() {
     return (USB_GLOBAL->GNPTXSTS & (USB_OTG_GNPTXSTS_NPTQXSAV | USB_OTG_GNPTXSTS_NPTXFSAV)) == empty;
 }
 
-bool isNonPeriodicInEndpoint(unsigned ep) {
-    const uint32_t type = USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP;
-    return type == 0 || type == USB_OTG_DIEPCTL_EPTYP_1;
+// Every IN endpoint but isochronous ones shares TX FIFO 0 (usbd_hal_get_tx_fifo_num())
+bool usesSharedTxFifo(unsigned ep) {
+    return (USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP) != USB_OTG_DIEPCTL_EPTYP_0;
 }
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+// No IN endpoint other than EP0 is armed and the shared request queue is empty or has EP0's entry on top: clearing a
+// global IN NAK can't send one endpoint's data for another
+bool onlyEp0InPending() {
+    for (unsigned ep = 1; ep < USBD_MAX_ENDPOINTS; ep++) {
+        if (usesSharedTxFifo(ep) && (USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+            return false;
+        }
+    }
+    const uint32_t sts = USB_GLOBAL->GNPTXSTS;
+    const uint32_t free = (sts & USB_OTG_GNPTXSTS_NPTQXSAV) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
+    const uint32_t topEp = (sts & USB_OTG_GNPTXSTS_NPTXQTOP) >> (USB_OTG_GNPTXSTS_NPTXQTOP_Pos + 3);
+    return free == RTL_USB_NPTX_QUEUE_DEPTH || topEp == 0;
+}
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 } // anonymous
 
@@ -338,13 +354,16 @@ void RtlUsbDriver::watch() {
         if (!initialized_ || !rtlDev_) {
             return;
         }
-        SdkLock sdk(pcd());
-        nakCleared = clearGlobalNak();
-        if (txFifoEmptyMasked_) {
-            txFifoEmptyMasked_ = false;
-            USB_GLOBAL->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+        {
+            SdkLock sdk(pcd());
+            nakCleared = clearGlobalNak();
+            if (txFifoEmptyMasked_) {
+                txFifoEmptyMasked_ = false;
+                USB_GLOBAL->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+            }
+            ep0Wedged = ep0WatchdogCheck();
         }
-        ep0Wedged = ep0WatchdogCheck();
+        completeCancelledInTransfers(rtlDev_);
     }
     if (nakCleared) {
         LOG(WARN, "Global NAK stuck, cleared");
@@ -359,8 +378,8 @@ bool RtlUsbDriver::clearGlobalNak() {
     if (!(dctl & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
         return false;
     }
-    if (dctl & USB_OTG_DCTL_GINSTS) {
-        cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
+    if ((dctl & USB_OTG_DCTL_GINSTS) && !onlyEp0InPending()) {
+        __atomic_fetch_or(&cancelledInEps_, stopInTransfers(1UL << 0) & ~(1UL << 0), __ATOMIC_SEQ_CST);
     }
     USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK | USB_OTG_DCTL_CGONAK;
     return true;
@@ -389,6 +408,10 @@ bool RtlUsbDriver::ep0WatchdogCheck() {
 
 void RtlUsbDriver::setupStage(usb_dev_t* dev) {
     ep0Setups_++;
+    completeCancelledInTransfers(dev);
+}
+
+void RtlUsbDriver::completeCancelledInTransfers(usb_dev_t* dev) {
     const uint32_t eps = __atomic_exchange_n(&cancelledInEps_, 0, __ATOMIC_SEQ_CST);
     for (unsigned ep = 1; eps && ep < USBD_MAX_ENDPOINTS; ep++) {
         if (eps & (1UL << ep)) {
@@ -412,7 +435,7 @@ void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
     if (ep0CancelStreak_++ == 0) {
         ep0CancelStreakStart_ = HAL_Timer_Get_Milli_Seconds();
     }
-    cancelledInEps_ |= stopInTransfers(1UL << 0) & ~(1UL << 0);
+    __atomic_fetch_or(&cancelledInEps_, stopInTransfers(1UL << 0) & ~(1UL << 0), __ATOMIC_SEQ_CST);
 }
 
 bool RtlUsbDriver::txFifoEmptyStormCheck() {
@@ -440,7 +463,7 @@ uint32_t RtlUsbDriver::stopInTransfers(uint32_t eps) {
     const bool flush = !nonPeriodicTxFifoEmpty();
     if (flush) {
         for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
-            if (isNonPeriodicInEndpoint(ep)) {
+            if (usesSharedTxFifo(ep)) {
                 eps |= 1UL << ep;
             }
         }
@@ -451,31 +474,34 @@ uint32_t RtlUsbDriver::stopInTransfers(uint32_t eps) {
         return 0;
     }
     uint32_t stopped = 0;
+    bool failed = false;
     for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
-        if (!(eps & (1UL << ep))) {
+        auto in = USB_INEP(ep);
+        // A disabled endpoint's SDK record may belong to a transfer usbd_pcd_ep_transmit() is just starting
+        if (!(eps & (1UL << ep)) || !(in->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
             continue;
         }
-        auto in = USB_INEP(ep);
-        const bool enabled = in->DIEPCTL & USB_OTG_DIEPCTL_EPENA;
-        if (enabled) {
-            in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
-            waitForBits(&in->DIEPINT, USB_OTG_DIEPINT_EPDISD);
-            in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
+        in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
+        if (!waitForBits(&in->DIEPINT, USB_OTG_DIEPINT_EPDISD)) {
+            failed = true;
         }
+        in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
         auto sdkEp = (uint8_t*)pcd() + RTL_USB_PCD_IN_EP_OFFSET + ep * RTL_USB_PCD_EP_SIZE;
         auto len = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_LEN_OFFSET);
         auto count = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_COUNT_OFFSET);
-        if (*count < *len) {
-            *count = *len;
-            if (enabled) {
-                stopped |= 1UL << ep;
-            }
+        *count = *len;
+        if (!(in->DIEPINT & USB_OTG_DIEPINT_XFRC)) {
+            stopped |= 1UL << ep;
         }
     }
-    if (flush) {
-        usb_hal_flush_tx_fifo(0);
+    if (flush && usb_hal_flush_tx_fifo(0) != 0) {
+        failed = true;
     }
     USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+    if (failed) {
+        // FIFO and request queue state unknown
+        requestReattach();
+    }
     return stopped;
 }
 
@@ -529,7 +555,9 @@ int RtlUsbDriver::flushEndpoint(unsigned ep) {
     std::lock_guard<RtlUsbDriver> lk(*this);
     if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
         SdkLock sdk(pcd());
-        stopInTransfers(1UL << (ep & 0x7f));
+        // The caller abandons its own transfer; report only other endpoints the shared FIFO flush stopped
+        const uint32_t self = 1UL << (ep & 0x7f);
+        __atomic_fetch_or(&cancelledInEps_, stopInTransfers(self) & ~(self | 1UL), __ATOMIC_SEQ_CST);
     }
     return 0;
 }

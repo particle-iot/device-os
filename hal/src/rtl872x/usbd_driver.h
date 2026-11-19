@@ -112,6 +112,7 @@ private:
     bool ep0WatchdogCheck();
     bool isSetupBuffer(const void* ptr) const;
     uint32_t stopInTransfers(uint32_t eps);
+    void completeCancelledInTransfers(usb_dev_t* dev);
 
     void* pcd() const {
         return rtlDev_->pcd;

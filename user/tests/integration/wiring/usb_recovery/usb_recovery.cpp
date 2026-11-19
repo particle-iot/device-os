@@ -51,28 +51,20 @@ bool setupPhaseUnmasked() {
     return (*TEST_USB_DOEPMSK & TEST_USB_DOEPMSK_STUPM) != 0;
 }
 
-const system_tick_t WATCH_PERIOD_MS = 1000; // RtlUsbDriver::loop()
-const system_tick_t GLOBAL_IN_NAK_HOLD_MS = 500; // Longer than the host's 250 ms cancel, shorter than WATCH_PERIOD_MS
-system_tick_t g_watchPass = 0;
-
-// RtlUsbDriver::watch() clears a global OUT NAK on its next pass: returns when that pass ran
-system_tick_t syncWithWatch() {
-    *TEST_USB_DCTL |= TEST_USB_DCTL_SGONAK;
-    waitFor([] { return !(*TEST_USB_DCTL & TEST_USB_DCTL_GONSTS); }, 2 * WATCH_PERIOD_MS);
-    return millis();
-}
+// Longer than the host's 250 ms cancel
+const system_tick_t GLOBAL_IN_NAK_HOLD_MS = 1000;
 
 void holdGlobalInNak() {
     // The core NAKs every IN token, so the reply armed on EP0 IN doesn't go out: the host's control read gives up and
-    // leaves it armed. Held between two watch() passes so watch() doesn't flush it: only the host's next SETUP can cancel
-    // it (RtlUsbDriver::cancelControlTransferOnSetup()) rather than let it go out as the next control read's data stage.
-    system_tick_t start = g_watchPass;
-    while (start - g_watchPass < RUNNER_SETTLE_MS) {
-        start += WATCH_PERIOD_MS;
+    // leaves it armed. Only the host's next SETUP can cancel it (RtlUsbDriver::cancelControlTransferOnSetup()) rather than
+    // let it go out as the next control read's data stage. RtlUsbDriver::watch() clears a global NAK it sees (without
+    // stopping EP0 when only EP0 is pending), so keep setting it.
+    delay(RUNNER_SETTLE_MS);
+    const auto start = millis();
+    while (millis() - start < GLOBAL_IN_NAK_HOLD_MS) {
+        *TEST_USB_DCTL |= TEST_USB_DCTL_SGINAK;
+        delay(1);
     }
-    delay(start + 100 - millis());
-    *TEST_USB_DCTL |= TEST_USB_DCTL_SGINAK;
-    delay(GLOBAL_IN_NAK_HOLD_MS);
     *TEST_USB_DCTL |= TEST_USB_DCTL_CGINAK;
 }
 
@@ -137,7 +129,6 @@ test(USB_RECOVERY_02_GLOBAL_NAK_CLEARED) {
 }
 
 test(USB_RECOVERY_03_CANCEL_ON_SETUP) {
-    g_watchPass = syncWithWatch();
     g_injectThread = new Thread("inject", holdGlobalInNak, OS_THREAD_PRIORITY_DEFAULT);
     assertTrue(g_injectThread);
 }
