@@ -154,7 +154,8 @@ enum Enum
     MAX_TRANSMIT_MESSAGE_SIZE = 7, ///< Maximum size of of outgoing CoAP message (set).
     MAX_EVENT_DATA_SIZE = 8, ///< Maximum size of event data (get).
     MAX_VARIABLE_VALUE_SIZE = 9, ///< Maximum size of a variable value (get).
-    MAX_FUNCTION_ARGUMENT_SIZE = 10 ///< Maximum size of a function call argument (get).
+    MAX_FUNCTION_ARGUMENT_SIZE = 10, ///< Maximum size of a function call argument (get).
+    USING_CANDIDATE_KEY = 11 ///< Notify the server that the device is using a candidate client key (set).
 };
 
 }

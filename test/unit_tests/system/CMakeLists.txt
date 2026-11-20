@@ -93,3 +93,4 @@ catch_discover_tests( ${target_name}
 )
 
 add_subdirectory(ledger)
+add_subdirectory(device_key_manager)

@@ -43,9 +43,9 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/communication/src/communication_diagnostic.cpp
   ${TEST_DIR}/communication/util/coap_message.cpp
   ${TEST_DIR}/communication/util/coap_message_channel.cpp
-  ${TEST_DIR}/system/ledger/util/coap_api_fake.cpp
-  ${TEST_DIR}/system/ledger/util/filesystem_ram.cpp
-  ${TEST_DIR}/system/ledger/util/system_fakes.cpp
+  ${TEST_DIR}/system/mock/coap_api_fake.cpp
+  ${TEST_DIR}/system/mock/filesystem_ram.cpp
+  ${TEST_DIR}/system/mock/system_fakes.cpp
   cloud_event.cpp
   main.cpp
 )
@@ -72,7 +72,7 @@ target_compile_options( ${target_name}
 # NOTE: The include order follows the ledger tests (see system/ledger/CMakeLists.txt)
 target_include_directories( ${target_name}
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-  PRIVATE ${TEST_DIR}/system/ledger
+  PRIVATE ${TEST_DIR}/system
   PRIVATE ${THIRD_PARTY_DIR}/littlefs/littlefs
   PRIVATE ${TEST_DIR}/stub
   PRIVATE ${DEVICE_OS_DIR}/hal/src/gcc/littlefs

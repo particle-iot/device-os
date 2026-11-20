@@ -5,12 +5,15 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/system/src/ledger/ledger_manager.cpp
   ${DEVICE_OS_DIR}/system/src/ledger/ledger.cpp
   ${DEVICE_OS_DIR}/system/src/ledger/ledger_util.cpp
+  ${DEVICE_OS_DIR}/system/src/cloud/protobuf.cpp
   ${DEVICE_OS_DIR}/services/src/file_util.cpp
   ${DEVICE_OS_DIR}/services/src/nanopb_misc.c
   ${DEVICE_OS_DIR}/services/src/system_error.cpp
   ${DEVICE_OS_DIR}/services/src/call_once.cpp
   ${DEVICE_OS_DIR}/services/src/jsmn.c
   ${DEVICE_OS_DIR}/proto_defs/src/cloud/cloud.pb.c
+  ${DEVICE_OS_DIR}/proto_defs/src/cloud/config.pb.c
+  ${DEVICE_OS_DIR}/proto_defs/src/cloud/esim.pb.c
   ${DEVICE_OS_DIR}/proto_defs/src/cloud/ledger.pb.c
   ${DEVICE_OS_DIR}/proto_defs/src/ledger.pb.c
   ${THIRD_PARTY_DIR}/nanopb/nanopb/pb_common.c
@@ -43,9 +46,9 @@ add_executable( ${target_name}
   ${DEVICE_OS_DIR}/wiring/src/spark_wiring_json.cpp
   ${TEST_DIR}/communication/util/coap_message.cpp
   ${TEST_DIR}/communication/util/coap_message_channel.cpp
-  util/coap_api_fake.cpp
-  util/filesystem_ram.cpp
-  util/system_fakes.cpp
+  ${TEST_DIR}/system/mock/filesystem_ram.cpp
+  ${TEST_DIR}/system/mock/coap_api_fake.cpp
+  ${TEST_DIR}/system/mock/system_fakes.cpp
   util/ledger_pb.cpp
   ledger_manager.cpp
   main.cpp

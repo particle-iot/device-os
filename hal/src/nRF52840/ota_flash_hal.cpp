@@ -50,6 +50,7 @@ LOG_SOURCE_CATEGORY("hal.ota")
 #include "platform_radio_stack.h"
 #include "check.h"
 #include "security_mode.h"
+#include "../../../system/src/device_key_manager.h" // FIXME
 
 extern volatile uint8_t SPARK_FLASH_UPDATE;
 
@@ -732,37 +733,66 @@ void HAL_FLASH_Read_ServerPublicKey(uint8_t *keyBuffer)
 
 int HAL_FLASH_Read_CorePrivateKey(uint8_t *keyBuffer, private_key_generation_t* genspec)
 {
-    bool generated = false;
+    bool hadKey = false;
+    bool hadCandidateKey = false;
+    bool generatedKey = false;
     bool udp = HAL_Feature_Get(FEATURE_CLOUD_UDP);
-    if (udp)
-        copy_dct(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
-    else
+    if (udp) {
+        // Check if there's a candidate key
+        system::EcpPrivateKey key;
+        auto& keyManager = system::DeviceKeyManager::instance();
+        int r = keyManager.getCandidateKey(key);
+        if (r >= 0) {
+            std::memcpy(keyBuffer, key.data(), key.size()); // XXX: keyBuffer is surely large enough :(
+            hadKey = true;
+            hadCandidateKey = true;
+        } else {
+            if (r != SYSTEM_ERROR_CRYPTO_KEY_NOT_FOUND) {
+                LOG(ERROR, "Error reading candidate device key");
+                keyManager.clearCandidateKey();
+            }
+            copy_dct(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
+        }
+    } else {
         copy_dct(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-    genspec->had_key = (*keyBuffer!=0xFF); // uninitialized
-    if (genspec->gen==PRIVATE_KEY_GENERATE_ALWAYS || (!genspec->had_key && genspec->gen!=PRIVATE_KEY_GENERATE_NEVER)) {
+    }
+    if (!hadKey) {
+        hadKey = (*keyBuffer != 0xff); // uninitialized
+    }
+    if (genspec->gen == PRIVATE_KEY_GENERATE_ALWAYS || (!hadKey && genspec->gen != PRIVATE_KEY_GENERATE_NEVER)) {
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_START, nullptr);
-        int error  = 1;
+        bool ok = true;
 #if HAL_PLATFORM_CLOUD_UDP
-        if (udp)
-        		error = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, NULL);
+        if (udp) {
+            int r = gen_ec_key(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE, key_gen_random_block, nullptr);
+            if (r <= 0) { // gen_ec_key() returns the key size
+                ok = false;
+            }
+        }
 #endif
 #if HAL_PLATFORM_CLOUD_TCP
-		if (!udp)
-			error = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, NULL);
+        if (!udp) {
+            int r = gen_rsa_key(keyBuffer, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH, key_gen_random, nullptr);
+            if (r != 0) {
+                ok = false;
+            }
+        }
 #endif
-        if (!error) 
-        {
-            if (udp)
+        if (ok) {
+            if (udp) {
                 dct_write_app_data(keyBuffer, DCT_ALT_DEVICE_PRIVATE_KEY_OFFSET, DCT_ALT_DEVICE_PRIVATE_KEY_SIZE);
-            else
+            } else {
                 dct_write_app_data(keyBuffer, DCT_DEVICE_PRIVATE_KEY_OFFSET, EXTERNAL_FLASH_CORE_PRIVATE_KEY_LENGTH);
-			// refetch and rewrite public key to ensure it is valid
-			fetch_device_public_key_ex();
-            generated = true;
+            }
+            // refetch and rewrite public key to ensure it is valid
+            fetch_device_public_key_ex();
+            generatedKey = true;
         }
         hal_notify_event(HAL_EVENT_GENERATE_DEVICE_KEY, HAL_EVENT_FLAG_STOP, nullptr);
     }
-    genspec->generated_key = generated;
+    genspec->had_key = hadKey;
+    genspec->had_candidate_key = hadCandidateKey;
+    genspec->generated_key = generatedKey;
     return 0;
 }
 

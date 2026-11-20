@@ -250,6 +250,10 @@ int spark_protocol_set_connection_property(ProtocolFacade* protocol, unsigned pr
         protocol->set_max_transmit_message_size(value);
         return 0;
     }
+    case Connection::USING_CANDIDATE_KEY: {
+        protocol->using_candidate_key(value);
+        return 0;
+    }
     default:
         return ProtocolError::NOT_IMPLEMENTED;
     }

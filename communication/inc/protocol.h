@@ -163,7 +163,12 @@ protected:
 		/**
 		 * Support for compressed/combined OTA updates.
 		 */
-		COMPRESSED_OTA = 0x10
+		COMPRESSED_OTA = 0x10,
+		/**
+		 * Notify the server that the device is using a candidate client key that has not yet been
+		 * stored in the permanent key storage.
+		 */
+		USING_CANDIDATE_KEY = 0x20
 	};
 
 	/**
@@ -405,6 +410,14 @@ public:
 			protocol_flags |= ProtocolFlag::COMPRESSED_OTA;
 		} else {
 			protocol_flags &= ~ProtocolFlag::COMPRESSED_OTA;
+		}
+	}
+
+	void using_candidate_key(bool enabled) {
+		if (enabled) {
+			protocol_flags |= ProtocolFlag::USING_CANDIDATE_KEY;
+		} else {
+			protocol_flags &= ~ProtocolFlag::USING_CANDIDATE_KEY;
 		}
 	}
 

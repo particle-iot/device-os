@@ -1004,4 +1004,147 @@ TEST_CASE("v2 CoAP channel reports an error for a blockwise response once", "[co
     }
 }
 
+namespace {
+
+struct ConnectionContext {
+    int openCount = 0;
+    int closeCount = 0;
+    int requestResult = 0; // Result of beginRequest() called from the handler
+    bool sendRequest = false; // Send a request when notified that the connection is open
+    bool closeChannel = false; // Close the channel before sending a request
+};
+
+int connectionCallback(int error, int status, void* arg) {
+    auto ctx = static_cast<ConnectionContext*>(arg);
+    if (status == COAP_CONNECTION_OPEN) {
+        ++ctx->openCount;
+        auto channel = v2::CoapChannel::instance();
+        if (ctx->closeChannel) {
+            channel->close();
+        }
+        if (ctx->sendRequest) {
+            RefCountPtr<v2::CoapMessage> msg;
+            ctx->requestResult = channel->beginRequest(msg, "L", COAP_METHOD_POST, 0 /* timeout */, 0 /* flags */);
+            if (ctx->requestResult >= 0) {
+                int r = channel->endRequest(std::move(msg), nullptr /* resp_cb */, nullptr /* ack_cb */,
+                        nullptr /* error_cb */, nullptr /* arg */);
+                if (r < 0) {
+                    ctx->requestResult = r;
+                }
+            }
+        }
+    } else if (status == COAP_CONNECTION_CLOSED) {
+        ++ctx->closeCount;
+    }
+    return 0;
+}
+
+int beginAndEndRequest(v2::CoapChannel* channel, int flags, CallbackContext* ctx) {
+    RefCountPtr<v2::CoapMessage> msg;
+    int reqId = channel->beginRequest(msg, "L", COAP_METHOD_POST, 0 /* timeout */, flags);
+    if (reqId < 0) {
+        return reqId;
+    }
+    int r = channel->endRequest(std::move(msg), nullptr /* resp_cb */, ackCallback, errorCallback, ctx);
+    if (r < 0) {
+        return r;
+    }
+    return reqId;
+}
+
+} // namespace
+
+TEST_CASE("v2 CoAP channel half-open state", "[coap]") {
+    ConnectionContext connCtx;
+    CallbackContext ctx;
+    CoapChannelFixture fixture;
+    auto channel = fixture.channel();
+    REQUIRE(channel->addConnectionHandler(connectionCallback, &connCtx) == 0);
+    // The message channel is shared between the tests
+    while (fixture.hasMessages()) {
+        fixture.receiveMessage();
+    }
+
+    SECTION("only system requests can be sent after ready()") {
+        channel->ready();
+        CHECK(beginAndEndRequest(channel, 0 /* flags */, &ctx) == SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
+        CHECK(!fixture.hasMessages());
+        CHECK(beginAndEndRequest(channel, COAP_MESSAGE_SYSTEM, &ctx) > 0);
+        REQUIRE(fixture.hasMessages());
+        const auto req = fixture.receiveMessage();
+        CHECK(req.type() == CoapType::CON);
+        CHECK(req.code() == (unsigned)CoapCode::POST);
+        CHECK(connCtx.openCount == 0);
+    }
+
+    SECTION("responses to received requests can be sent after ready()") {
+        fixture.setLedgerLikeRequestHandler(&ctx);
+        channel->ready();
+        REQUIRE(fixture.sendServerRequest() >= 0);
+        REQUIRE(fixture.hasMessages());
+        const auto ack = fixture.receiveMessage();
+        CHECK(ack.type() == CoapType::ACK);
+        REQUIRE(fixture.hasMessages());
+        const auto resp = fixture.receiveMessage();
+        CHECK(resp.type() == CoapType::CON);
+        CHECK(resp.code() == (unsigned)CoapCode::CHANGED);
+    }
+
+    SECTION("open() after ready() notifies the connection handlers and allows all requests") {
+        channel->ready();
+        const int sysReqId = beginAndEndRequest(channel, COAP_MESSAGE_SYSTEM, &ctx);
+        REQUIRE(sysReqId > 0);
+        const auto sysReq = fixture.receiveMessage();
+        fixture.open();
+        CHECK(connCtx.openCount == 1);
+        CHECK(beginAndEndRequest(channel, 0 /* flags */, &ctx) > 0);
+        CHECK(fixture.hasMessages());
+        // The system request sent before the channel was fully open is still tracked
+        fixture.sendAck(sysReq.id());
+        CHECK(ctx.ackCount == 1);
+        CHECK(ctx.ackReqId == sysReqId);
+        CHECK(ctx.errorCount == 0);
+    }
+
+    SECTION("close() after ready() cancels system requests without notifying the connection handlers") {
+        channel->ready();
+        const int reqId = beginAndEndRequest(channel, COAP_MESSAGE_SYSTEM, &ctx);
+        REQUIRE(reqId > 0);
+        fixture.receiveMessage();
+        fixture.dropConnection();
+        CHECK(ctx.errorCount == 1);
+        CHECK(ctx.errorResult == SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
+        CHECK(ctx.errorReqId == reqId);
+        CHECK(connCtx.openCount == 0);
+        CHECK(connCtx.closeCount == 0);
+        // The channel can be opened again
+        fixture.open();
+        CHECK(connCtx.openCount == 1);
+        CHECK(beginAndEndRequest(channel, 0 /* flags */, &ctx) > 0);
+    }
+
+    SECTION("a connection handler can send a request when notified that the channel is open") {
+        connCtx.sendRequest = true;
+        fixture.open();
+        CHECK(connCtx.openCount == 1);
+        CHECK(connCtx.requestResult > 0);
+        REQUIRE(fixture.hasMessages());
+        const auto req = fixture.receiveMessage();
+        CHECK(req.code() == (unsigned)CoapCode::POST);
+    }
+
+    SECTION("requests can't be sent after a connection handler closed the channel") {
+        connCtx.sendRequest = true;
+        connCtx.closeChannel = true;
+        fixture.open();
+        CHECK(connCtx.openCount == 1);
+        CHECK(connCtx.requestResult == SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
+        CHECK(!fixture.hasMessages());
+        CHECK(connCtx.closeCount == 1); // The deferred close() notified the handler
+        CHECK(beginAndEndRequest(channel, COAP_MESSAGE_SYSTEM, &ctx) == SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
+    }
+
+    channel->removeConnectionHandler(connectionCallback);
+}
+
 } // namespace particle::protocol::test

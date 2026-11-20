@@ -404,7 +404,7 @@ int CoapChannel::beginRequest(RefCountPtr<CoapMessage>& coapMsg, const char* pat
     if (timeout < 0) {
         return SYSTEM_ERROR_INVALID_ARGUMENT;
     }
-    if (state_ != State::OPEN) {
+    if (!isOpen(flags)) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     auto req = makeRefCountPtr<RequestMessage>();
@@ -461,7 +461,8 @@ int CoapChannel::endRequest(RefCountPtr<CoapMessage> coapMsg, coap_response_call
 }
 
 int CoapChannel::beginResponse(RefCountPtr<CoapMessage>& coapMsg, int status, int reqId, int flags) {
-    if (state_ != State::OPEN) {
+    // Responses to received requests can be sent as long as the channel is at least half-open
+    if (!isOpen(COAP_MESSAGE_SYSTEM)) {
         return SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     auto req = findRefInList(recvReqs_, [=](auto req) {
@@ -863,10 +864,19 @@ void CoapChannel::removeConnectionHandler(coap_connection_callback callback) {
     }
 }
 
+int CoapChannel::ready() {
+    if (state_ != State::CLOSED) {
+        return SYSTEM_ERROR_INVALID_STATE;
+    }
+    pendingCloseError_ = 0;
+    state_ = State::READY;
+    return 0;
+}
+
 void CoapChannel::open() {
     pendingCloseError_ = 0;
     pendingError_ = 0;
-    if (state_ != State::CLOSED) {
+    if (state_ != State::CLOSED && state_ != State::READY) {
         if (state_ == State::CLOSING) {
             // open() is being called from a connection handler
             openPending_ = true;
@@ -899,13 +909,14 @@ void CoapChannel::close(int error) {
         error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED;
     }
     openPending_ = false;
-    if (state_ != State::OPEN) {
+    if (state_ != State::OPEN && state_ != State::READY) {
         if (state_ == State::OPENING) {
             // close() is being called from a connection handler
             pendingCloseError_ = error;
         }
         return;
     }
+    bool wasOpen = (state_ == State::OPEN);
     state_ = State::CLOSING;
     // Generate a new session ID to prevent the user code from messing up with the messages during
     // the cleanup
@@ -956,7 +967,9 @@ void CoapChannel::close(int error) {
     recvBlockReqs_ = nullptr;
     // Invoke connection handlers
     forEachInList(connHandlers_, [=](auto h) {
-        if (!h->openFailed) {
+        // The connection handlers are only notified about the closure if they were notified that
+        // the channel is open
+        if (wasOpen && !h->openFailed) {
             assert(h->callback);
             int r = h->callback(error, COAP_CONNECTION_CLOSED, h->callbackArg);
             if (r < 0) {
@@ -1054,7 +1067,8 @@ int CoapChannel::run() {
         pendingError_ = 0;
         return error;
     }
-    if (state_ != State::OPEN) {
+    // Retransmissions and timeouts are handled as long as the channel is at least half-open
+    if (!isOpen(COAP_MESSAGE_SYSTEM)) {
         return 0;
     }
     // Handle retransmission timeouts for requests with a payload object. Timeouts for other
@@ -1129,7 +1143,8 @@ CoapChannel* CoapChannel::instance() {
 
 int CoapChannel::handleRequest(CoapMessageDecoder& d) {
     assert(d.type() == CoapType::CON); // TODO: Support non-confirmable requests
-
+    // TODO: Ideally, incoming requests for non-system handlers should be delayed until the channel
+    // is fully open
     CoapCode errStatus = CoapCode(); // No error
     int result = handleRequestImpl(d, errStatus);
     if (result < 0) {
@@ -1844,6 +1859,17 @@ int CoapChannel::handleProtocolError(ProtocolError error) {
 void CoapChannel::releaseMessageBuffer() {
     msgBuf_.clear();
     curMsgId_ = 0;
+}
+
+bool CoapChannel::isOpen(int flags) const {
+    if (pendingCloseError_) {
+        // close() was called from a connection handler
+        return false;
+    }
+    if (flags & COAP_MESSAGE_SYSTEM) {
+        return state_ == State::READY || state_ == State::OPENING || state_ == State::OPEN;
+    }
+    return state_ == State::OPENING || state_ == State::OPEN;
 }
 
 system_tick_t CoapChannel::millis() const {
