@@ -569,6 +569,10 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 {
 	if (type==SparkCallbacks::PERSIST_SESSION)
 	{
+		if (g_usingCandidateDeviceKey) {
+			// Don't persist the session while a candidate device key is in use
+			return 0;
+		}
 		static_assert(sizeof(SessionPersistOpaque::connection)>=sizeof(g_system_cloud_session_data),"connection space in session is not large enough");
 
 		// save the current connection to the persisted session
@@ -584,6 +588,10 @@ int Spark_Save(const void* buffer, size_t length, uint8_t type, void* reserved)
 
 int Spark_Restore(void* buffer, size_t max_length, uint8_t type, void* reserved)
 {
+	if (type == SparkCallbacks::PERSIST_SESSION && g_usingCandidateDeviceKey) {
+		// Force a full handshake while a candidate device key is in use
+		return 0;
+	}
 	size_t length = 0;
 	int error = HAL_System_Backup_Restore(0, buffer, max_length, &length, nullptr);
 	if (error)
