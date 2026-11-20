@@ -106,6 +106,10 @@ public:
 
     // Methods called by the system
 
+    // Called when the session with the cloud is established. Allows sending system messages
+    int ready();
+    // Called when the cloud connection is fully established. Allows sending all messages and notifies
+    // the connection handlers
     void open();
     void close(int error = SYSTEM_ERROR_COAP_CONNECTION_CLOSED);
 
@@ -123,6 +127,7 @@ private:
     // Channel state
     enum class State {
         CLOSED,
+        READY,
         OPENING,
         OPEN,
         CLOSING
@@ -193,6 +198,9 @@ private:
     int handleProtocolError(ProtocolError error);
 
     void releaseMessageBuffer();
+
+    // Returns true a message with the specified flags (see `coap_message_flag`) can be sent
+    bool isOpen(int flags) const;
 
     system_tick_t millis() const;
 };

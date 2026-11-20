@@ -242,7 +242,7 @@ int DeviceKeyChangeRequestHandler::sendFinalizeRequest() {
         return true;
     };
 
-    CHECK(sendProtobufRequest(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, pbReq, this,
+    CHECK(sendProtobufRequest(PROTOBUF_REQUEST_URI, PROTOBUF_REQUEST_METHOD, pbReq, COAP_MESSAGE_SYSTEM, this,
             [](coap_message* msg, int status, int reqId, void* arg) { // resp_cb
         CoapMessagePtr coapResp(msg);
         auto self = static_cast<DeviceKeyChangeRequestHandler*>(arg);

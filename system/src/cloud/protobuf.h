@@ -22,14 +22,16 @@ const auto PROTOBUF_REQUEST_METHOD = COAP_METHOD_POST;
  * @param path URI path.
  * @param status CoAP method code.
  * @param req Request data.
+ * @param flags Flags defined by the `coap_message_flag` enum.
  * @param arg User argument passed to the `respCb`, `ackCb` and `errorCb` callbacks. Can be `nullptr`.
  * @param respCb Callback invoked when a response for the request is received. Can be `nullptr`.
  * @param ackCb Callback invoked when the request is acknowledged by the server. Can be `nullptr`.
  * @param errorCb Callback invoked if an error occurs while sending the request. Can be `nullptr`.
  * @return 0 on success, otherwise an error code defined by `system_error_t`.
  */
-int sendProtobufRequest(const char* path, coap_method method, const particle_cloud_Request& req, void* arg = nullptr,
-        coap_response_callback respCb = nullptr, coap_ack_callback ackCb = nullptr, coap_error_callback errorCb = nullptr);
+int sendProtobufRequest(const char* path, coap_method method, const particle_cloud_Request& req, int flags = 0,
+        void* arg = nullptr, coap_response_callback respCb = nullptr, coap_ack_callback ackCb = nullptr,
+        coap_error_callback errorCb = nullptr);
 
 /**
  * Decode a `particle.cloud.Request` (see `cloud.proto`).

@@ -223,7 +223,14 @@ typedef enum coap_message_flag {
      * Store the entire payload data of the message prior to notifying the user that an incoming
      * message has been received.
      */
-    COAP_MESSAGE_FULL = 0x01
+    COAP_MESSAGE_FULL = 0x01,
+    /**
+     * The message is a system message.
+     *
+     * A system request can be sent as soon as the session with the server is established, before
+     * the cloud connection is fully set up. Intended for use by Device OS itself.
+     */
+    COAP_MESSAGE_SYSTEM = 0x02
 } coap_message_flag;
 
 /**
@@ -240,6 +247,8 @@ extern "C" {
 
 /**
  * Register a connection handler.
+ *
+ * Requests can be sent from the handler when it's notified that the connection is open.
  *
  * @param cb Handler callback.
  * @param arg User argument to pass to the callback.
@@ -292,6 +301,7 @@ void coap_remove_request_handler(const char* path, int method, void* reserved);
  * @param timeout Request timeout in milliseconds. If 0, the default timeout is used.
  * @param flags Flags defined by the `coap_message_flag` enum. Supported flags:
  *        - `COAP_MESSAGE_FULL`.
+ *        - `COAP_MESSAGE_SYSTEM`.
  * @param reserved Reserved argument. Must be set to `NULL`.
  * @return ID of the request on success, otherwise an error code defined by the `system_error_t` enum.
  */

@@ -1368,8 +1368,8 @@ int Spark_Handshake(bool presence_announce)
         return spark_protocol_to_system_error(err);
     }
 
-    // Notify the v2 CoAP channel that it can send and receive messages
-    protocol::v2::CoapChannel::instance()->open();
+    // Notify the v2 CoAP channel that it can send and receive system messages
+    protocol::v2::CoapChannel::instance()->ready();
 
     if (!session_resumed) {
         // XXX: ideally this event should be generated before we perform the handshake

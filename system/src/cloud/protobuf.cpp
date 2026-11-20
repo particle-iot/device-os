@@ -93,10 +93,10 @@ int findSignedVarintField(int& val, uint32_t tag, const char* buf, size_t size, 
 
 } // namespace
 
-int sendProtobufRequest(const char* path, coap_method method, const PB_CLOUD(Request)& pbReq, void* arg,
+int sendProtobufRequest(const char* path, coap_method method, const PB_CLOUD(Request)& pbReq, int flags, void* arg,
         coap_response_callback respCb, coap_ack_callback ackCb, coap_error_callback errorCb) {
     CoapMessagePtr coapReq;
-    CHECK(coap_begin_request(&coapReq, path, method, 0 /* timeout */, 0 /* flags */, nullptr /* reserved */));
+    CHECK(coap_begin_request(&coapReq, path, method, 0 /* timeout */, flags, nullptr /* reserved */));
 
     pb_ostream_t pbOut = {};
     CHECK(pb_ostream_from_coap_message(&pbOut, coapReq.get(), nullptr /* reserved */));
