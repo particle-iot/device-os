@@ -18,7 +18,7 @@
 #include "spark_wiring_cloud_event.h"
 #include "spark_wiring_cloud.h"
 
-#include "util/coap_api_fake.h"
+#include "mock/coap_api_fake.h"
 
 #include "system_task.h"
 #include "concurrent_hal.h"
