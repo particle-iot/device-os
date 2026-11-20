@@ -41,6 +41,8 @@ for PLATFORM in $CI_RELEASE_PLATFORMS; do
     cp package*.json $TEST_DIR/$PLATFORM/ || true
     popd
     ls -laR $RELEASE_OUTPUT
+    NODE_PATH=/firmware/user/tests/integration/node_modules node /firmware/ci/verify-module-bins.js "$RELEASE_OUTPUT/$RELEASE_REF/$PLATFORM"
+    testcase "0 PLATFORM=\"$PLATFORM\" verify-module-bins.js"
     ./release-publish.sh --release-directory $RELEASE_OUTPUT
     bash /firmware/ci/module-size.sh "$PLATFORM" "$RELEASE_OUTPUT/$RELEASE_REF/$PLATFORM" system-part1 /firmware
     ls -laR $RELEASE_OUTPUT

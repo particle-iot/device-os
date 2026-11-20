@@ -215,14 +215,18 @@ endif
 		dd bs=1 if=$@.pre_crc of=$@.crc_legacy_updated skip=$$(($(call get_symbol_address,$<,link_module_info_crc_legacy_start) - $(call get_symbol_address,$<,link_module_start))) count=$(CRC_LEN) $(VERBOSE_REDIRECT) && \
 		$(OBJCOPY) $< --update-section '.module_info_crc_legacy=$@.crc_legacy_updated'; \
 	fi
-	$(VERBOSE)if [ -s $@.pre_crc ]; then \
+	$(VERBOSE)if [ -s $@.pre_crc ] && $(OBJDUMP) -h $< -j '.module_info_suffix' >/dev/null 2>&1; then \
 	eval `$(READELF) -W -s $< | $(AWK) '\
+		{ sub(/\r$$/, "") } \
 		$$8 == "link_module_start" { print "mod_start=0x" $$2 } \
 		$$8 == "link_module_info_suffix_start" { print "suffix_start=0x" $$2 } \
 		$$8 == "link_module_info_suffix_end" { print "suffix_end=0x" $$2 } \
 		$$8 == "link_module_info_crc_start" { print "crc_start=0x" $$2 } \
 		$$8 == "link_module_info_crc_end" { print "crc_end=0x" $$2 }'`; \
-	if [ -n "$$mod_start" ] && [ -n "$$suffix_start" ] && [ -n "$$suffix_end" ] && [ -n "$$crc_start" ] && [ -n "$$crc_end" ]; then \
+	if [ -z "$$mod_start" ] || [ -z "$$suffix_start" ] || [ -z "$$suffix_end" ] || [ -z "$$crc_start" ] || [ -z "$$crc_end" ]; then \
+	echo "Error: module info linker symbols not found in $<, cannot compute the SHA-256 and CRC of $@" >&2; \
+	exit 1; \
+	fi; \
 	sha_offset=$$(($$suffix_end - $$mod_start - $(SHA_256_LEN) - $(SUFFIX_SIZE_FIELD_LEN))) && \
 	crc_offset=$$(($$crc_start - $$mod_start)) && \
 	suffix_size=$$(($$suffix_end - $$suffix_start)) && \
@@ -237,8 +241,8 @@ endif
 	$(OBJCOPY) $< --dump-section '.module_info_suffix=$@.suffix_updated' && \
 	dd bs=1 if=$@.pre_crc of=$@.suffix_updated skip=$$sha_offset seek=$$(($$suffix_size - $(SHA_256_LEN) - $(SUFFIX_SIZE_FIELD_LEN))) count=$(SHA_256_LEN) conv=notrunc $(VERBOSE_REDIRECT) && \
 	dd bs=1 if=$@.pre_crc of=$@.crc_updated skip=$$crc_offset count=$(CRC_LEN) $(VERBOSE_REDIRECT) && \
-	$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix_updated' --update-section '.module_info_crc=$@.crc_updated'; \
-	fi; \
+	$(OBJCOPY) $< --update-section '.module_info_suffix=$@.suffix_updated' --update-section '.module_info_crc=$@.crc_updated' || \
+	{ echo "Error: failed to compute the SHA-256 and CRC of $@" >&2; exit 1; }; \
 	fi
 	$(VERBOSE)[ ! -f $@ ] || rm $@
 	$(VERBOSE)mv $@.pre_crc $@

@@ -51,6 +51,11 @@ function stashBins($dest){
 	}
 }
 
+function verifyBins($dir){
+	$env:NODE_PATH = Join-Path $stashDir 'tools\node_modules'
+	run node (Join-Path $deviceOSPath 'ci\verify-module-bins.js') $dir
+}
+
 function hashBins($dir){
 	$base = (Resolve-Path $dir).Path
 	$hashes = @{}
@@ -136,6 +141,8 @@ echo ":::: Running compile tasks with --jobs: $($jobs)"
 
 $stashDir = Join-Path ([System.IO.Path]::GetTempPath()) ("test-build-tasks-" + [guid]::NewGuid())
 
+run npm install --no-save --no-audit --no-fund --loglevel=error --prefix (Join-Path $stashDir 'tools') binary-version-reader@4.2.0
+
 # install toolchain and run specified tasks
 run prtcl toolchain:install $deviceOSSource --quiet
 
@@ -164,6 +171,7 @@ try {
 				echo ":::: Running compile:$($task) for $($platform) with --jobs $($jobCount)"
 				run prtcl project:compile $tinkerPath --toolchain $deviceOSSource --platform $platform --task $task --jobs $jobCount --quiet
 				stashBins (Join-Path $outDir "$i")
+				verifyBins (Join-Path $outDir "$i")
 
 				if ($i -gt 0 -and !(compareBins (Join-Path $outDir '0') (Join-Path $outDir "$i"))){
 					throw "compile:$($task) for $($platform) with --jobs $($jobCount) produced different binaries than with --jobs $($jobs[0])"
