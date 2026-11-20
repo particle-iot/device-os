@@ -22,6 +22,7 @@ LOG_SOURCE_CATEGORY("ncp.client");
 #include "quectel_ncp_client.h"
 
 #include "esim_profiles.h"
+#include "imsi_applet.h"
 
 #include "at_command.h"
 #include "at_response.h"
@@ -180,6 +181,12 @@ const system_tick_t APDU_COMMAND_TIMEOUT = 60 * 1000;
 const system_tick_t APDU_PROBE_TIMEOUT = 20 * 1000;
 const system_tick_t APDU_POST_CLOSE_SETTLE = 250;
 const system_tick_t SIM_POST_CFUN_SETTLE = 3000; // Can be exited early by "+QUSIM: 1" URC
+
+// SIM elementary files, AT+CRSM takes the file ID in decimal
+const unsigned EF_FPLMN = 0x6f7b; // Forbidden PLMN list
+const unsigned EF_LOCI = 0x6f7e; // CS (GSM) location info
+const unsigned EF_PSLOCI = 0x6f73; // PS (GPRS) location info
+const unsigned EF_EPSLOCI = 0x6fe3; // EPS (LTE) location info
 
 
 } // anonymous
@@ -387,6 +394,7 @@ int QuectelNcpClient::initParser(Stream* stream) {
         const auto self = (QuectelNcpClient*)data;
         self->checkImsi_ = true;
         self->simSettleUntil_ = 0;
+        self->imsiRotation_.simRefreshed();
         return SYSTEM_ERROR_NONE;
     }, this));
     return SYSTEM_ERROR_NONE;
@@ -754,8 +762,7 @@ int QuectelNcpClient::esimSyncSimIccid(const char* expected) {
     } else {
         LOG_DEBUG(INFO, "Modem reports ICCID %s, cycling CFUN to load enabled profile %s", iccid, expected);
     }
-    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, true /* check */));
-    CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, false /* check */));
+    CHECK(cycleModuleFunctionality());
     r = getIccidImpl(iccid, sizeof(iccid));
     if (r < 0 || strcmp(iccid, expected)) {
         LOG_DEBUG(WARN, "Modem still reports ICCID %s after a CFUN cycle", iccid);
@@ -774,7 +781,7 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
     auto retCfun = CHECK_PARSER(respCfun.scanf("+CFUN: %d", &cfunVal));
     CHECK_PARSER_OK(respCfun.readResult());
     if (retCfun == 1 && cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=4,0"));
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::AIRPLANE, false /* check */));
     }
 
     auto res = getIccidImpl(buf, size);
@@ -782,7 +789,7 @@ int QuectelNcpClient::getIccid(char* buf, size_t size) {
     // Modify CFUN back to 0 if it was changed previously,
     // as CFUN:0 is needed to prevent long reg problems on certain SIMs
     if (cfunVal == 0) {
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::MINIMUM, false /* check */));
     }
 
     return res;
@@ -1086,9 +1093,11 @@ int QuectelNcpClient::resetRegistrationBackoff() {
     const NcpClientLock lock(this);
     backoff_.reset();
     cellularBackoffSetRetainedStage(0);
+    restoredStage_ = 0;
     if (connState_ == NcpConnectionState::BACKOFF) {
         // Power cycle out of BACKOFF so a window starts now
         LOG(INFO, "Registration backoff reset, starting stage 1");
+        imsiRotation_.registrationRestarted();
         CHECK(configModemPowerState(ModemPowerReason::RegTimeout));
     }
     return SYSTEM_ERROR_NONE;
@@ -1397,6 +1406,45 @@ int QuectelNcpClient::readAndClearEfByFid(unsigned int fid) {
     return SYSTEM_ERROR_NONE;
 }
 
+// 1 if every byte of the EF is 0xFF, 0 if not
+int QuectelNcpClient::isEfClear(unsigned int fid) {
+    int efSize = parseEfSize(fid);
+    CHECK(efSize);
+
+    char hexBuf[128 + 1] = {};
+    int sw1, sw2;
+    auto resp = parser_.sendCommand("AT+CRSM=176,%u,0,0,%d", fid, efSize);
+    int r = CHECK_PARSER(resp.scanf("+CRSM: %d,%d,\"%128[0-9A-Fa-f]\"", &sw1, &sw2, hexBuf));
+    CHECK_PARSER_OK(resp.readResult());
+    CHECK_TRUE(r == 3 && sw1 == 144, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+
+    return strspn(hexBuf, "Ff") == strlen(hexBuf);
+}
+
+int QuectelNcpClient::clearFplmn(bool reload) {
+    apduWaitForSettle();
+    if (CHECK(isEfClear(EF_FPLMN))) {
+        return SYSTEM_ERROR_NONE;
+    }
+    LOG(INFO, "Clearing FPLMN%s", reload ? "" : " before the modem goes down");
+    int r = 0;
+    if (isQuecDataOnlyDevice()) {
+        // Writing EF_FPLMN with CSIM fails on the EG800Q, this clears the SIM and the modem's NVM copy together
+        CHECK_PARSER_OK(parser_.execCommand("AT$QCRMFPLMN=0"));
+    } else {
+        r = readAndClearEfByFid(EF_FPLMN);
+    }
+
+    if (!reload) {
+        return r;
+    }
+
+    // The modem keeps its own copy of the list. A COPS toggle leaves that in place and it went on
+    // rejecting every PLMN with cause 11 for 12 minutes, so cycle through CFUN 0 to reload it from the SIM
+    CHECK(cycleModuleFunctionality());
+    return r;
+}
+
 int QuectelNcpClient::syncUserPlmn(const Vector<CString>& envPreferredPlmn) {
     Vector<unsigned int> cpolIdxs;
     Vector<CString> cpolPlmns;
@@ -1466,10 +1514,10 @@ int QuectelNcpClient::syncUserPlmn(const Vector<CString>& envPreferredPlmn) {
             CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=2,2")); // detach
 
             // Clear RPLMN tables so last registered PLMN is not tried again first, will try UPLMN table (AT+CPOL)
-            readAndClearEfByFid(28542); // CS  (GSM) location info (EF_LOCI, 6F7E)
-            readAndClearEfByFid(28531); // PS (GPRS) location info (EF_PSLOCI, 6F73)
-            readAndClearEfByFid(28643); // EPS (LTE) location info (EF_EPSLOCI, 6FE3)
-            readAndClearEfByFid(28539); // Forbidden PLMN list (EF_FPLMN, 6F7B)
+            readAndClearEfByFid(EF_LOCI);
+            readAndClearEfByFid(EF_PSLOCI);
+            readAndClearEfByFid(EF_EPSLOCI);
+            readAndClearEfByFid(EF_FPLMN);
 
             CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2")); // re-selection
         }
@@ -1535,8 +1583,7 @@ int QuectelNcpClient::selectSimCard() {
         // There was an error initializing the SIM
         // We've seen issues on uBlox-based devices, as a precation, we'll cycle
         // the modem here through minimal/full functional state.
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
-        CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
+        CHECK(cycleModuleFunctionality());
     }
     return simState;
 }
@@ -1579,6 +1626,13 @@ bool QuectelNcpClient::isQuecEg91xDevice() {
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NA ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_EX ||
             ncp_id == PLATFORM_NCP_QUECTEL_EG91_NAX);
+}
+
+bool QuectelNcpClient::isQuecDataOnlyDevice() {
+    int ncp_id = ncpId();
+    return (ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_EU ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG800Q_NA ||
+            ncp_id == PLATFORM_NCP_QUECTEL_EG916Q_GL);
 }
 
 bool QuectelNcpClient::isQuecCatNBxDevice() {
@@ -1982,10 +2036,20 @@ int QuectelNcpClient::setModuleFunctionality(CellularFunctionality cfun, bool ch
     if (cfun != CellularFunctionality::MINIMUM &&
             (prev < 0 || prev == (int)CellularFunctionality::MINIMUM)) {
         simSettleUntil_ = millis() + SIM_POST_CFUN_SETTLE;
+        apduWaitForSettle();
     }
 
     // AtResponse::Result!
     return r;
+}
+
+int QuectelNcpClient::cycleModuleFunctionality() {
+    // Either write can stall for its whole timeout, so always try to get back to CFUN=1
+    setModuleFunctionality(CellularFunctionality::MINIMUM, false /* check */);
+    if (setModuleFunctionality(CellularFunctionality::FULL, false /* check */) != AtResponse::OK) {
+        CHECK_PARSER_OK(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
+    }
+    return SYSTEM_ERROR_NONE;
 }
 
 int QuectelNcpClient::getPolicymanServiceMode() {
@@ -2145,8 +2209,8 @@ int QuectelNcpClient::registerNet() {
     r = CHECK_PARSER(setModuleFunctionality(CellularFunctionality::FULL, true /* check */));
     CHECK_TRUE(r == AtResponse::OK, SYSTEM_ERROR_UNKNOWN);
 
-
     resetRegistrationState();
+    startImsiRotationWindow();
 
     if (isQuec2g3gEnabled()) {
         // Register GSM, GPRS network registration and location URCs
@@ -2840,6 +2904,7 @@ void QuectelNcpClient::resetRegistrationState() {
     regCheckTime_ = regStartTime_;
     policymanSrvModeCheckTime_ = regStartTime_;
     registrationInterventions_ = 0;
+    imsiRotation_.windowStarted();
 }
 
 void QuectelNcpClient::checkRegistrationState() {
@@ -2865,24 +2930,27 @@ int QuectelNcpClient::interveneRegistration() {
 
     // Intervention to speed up registration or recover in case of failure
     if (isQuecCat1Device()) {
+        const bool csdMatches = isQuecDataOnlyDevice() || csd_.status() == eps_.status();
         if (eps_.sticky() && eps_.duration() >= timeout) {
-            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csd_.status() == eps_.status()) {
+            if (eps_.status() == CellularRegistrationStatus::NOT_REGISTERING && csdMatches) {
                 LOG(TRACE, "Sticky not registering state for %lu s, PLMN reselection", eps_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
                 CHECK_PARSER(parser_.execCommand(QUECTEL_COPS_TIMEOUT, "AT+COPS=0,2"));
-                CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",0,1")); // LTE AUTO (0)
+                if (!isQuecDataOnlyDevice()) {
+                    int desiredNwScanMode = isQuec2g3gEnabled() ? 0 : 3; // 0: AUTO, 3: LTE-ONLY
+                    CHECK_PARSER(parser_.execCommand("AT+QCFG=\"nwscanmode\",%d,1", desiredNwScanMode));
+                }
                 return 0;
-            } else if (eps_.status() == CellularRegistrationStatus::DENIED && csd_.status() == eps_.status()) {
+            } else if (eps_.status() == CellularRegistrationStatus::DENIED && csdMatches) {
                 LOG(TRACE, "Sticky denied state for %lu s, RF reset", eps_.duration() / 1000);
                 csd_.reset();
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK(cycleModuleFunctionality());
                 return 0;
             }
         }
@@ -2895,8 +2963,7 @@ int QuectelNcpClient::interveneRegistration() {
                 psd_.reset();
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK(cycleModuleFunctionality());
                 return 0;
             }
         }
@@ -2935,8 +3002,7 @@ int QuectelNcpClient::interveneRegistration() {
                 LOG(TRACE, "Sticky EPS denied state for %lu s, RF reset", eps_.duration() / 1000);
                 eps_.reset();
                 registrationInterventions_++;
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=0,0"));
-                CHECK_PARSER_OK(parser_.execCommand(QUECTEL_CFUN_SET_TIMEOUT, "AT+CFUN=1,0"));
+                CHECK(cycleModuleFunctionality());
             }
         }
     }
@@ -2954,8 +3020,123 @@ int QuectelNcpClient::checkRunningImsi() {
     return 0;
 }
 
-// An active window ended without registering
+void QuectelNcpClient::clearFplmnIfDue() {
+    if (!imsiRotation_.fplmnClearDue()) {
+        return;
+    }
+    imsiRotation_.fplmnCleared();
+    const int r = clearFplmn(true /* reload */);
+    if (r < 0) {
+        LOG(WARN, "Failed to clear FPLMN: %d", r);
+    }
+}
+
+// Kore Super SIM only
+bool QuectelNcpClient::forcesImsiRotation() {
+    return netConf_.netProv() == CellularNetworkProvider::TWILIO;
+}
+
+int QuectelNcpClient::readImsi(char* buf, size_t size) {
+    const auto logEnabled = parser_.config().logEnabled();
+    parser_.logEnabled(false);
+    SCOPE_GUARD({ parser_.logEnabled(logEnabled); });
+
+    auto resp = parser_.sendCommand("AT+CIMI");
+    int n = 0;
+    if (resp.hasNextLine()) {
+        n = CHECK_PARSER(resp.readLine(buf, size));
+    }
+    const int r = CHECK_PARSER(resp.readResult());
+    CHECK_TRUE(r == AtResponse::OK && n > 0, SYSTEM_ERROR_AT_RESPONSE_UNEXPECTED);
+    return n;
+}
+
+bool QuectelNcpClient::checkImsi() {
+    const system_tick_t now = millis();
+    char imsi[CellularImsiRotation::IMSI_SIZE] = {};
+    const int r = readImsi(imsi, sizeof(imsi));
+    const bool changed = imsiRotation_.imsiChecked(r > 0 ? imsi : nullptr, now);
+    if (changed) {
+        LOG(INFO, "IMSI changed to %s", imsi);
+    }
+    return changed;
+}
+
+// Returns:
+// 0 if the command was sent
+// SYSTEM_ERROR_NOT_SUPPORTED if there is no applet
+int QuectelNcpClient::forceImsiRotation() {
+    const auto sendApduFn = [](void* ctx, const char* cmd, size_t cmdSize, char* resp,
+            size_t& respSize) -> int {
+        // autoClose off: the applet commands go on the basic channel, there is no channel to look after
+        return static_cast<QuectelNcpClient*>(ctx)->sendApduImpl(cmd, cmdSize, resp, respSize,
+                false /* autoClose */, true /* checkState */, APDU_COMMAND_TIMEOUT);
+    };
+    kore::ImsiApplet applet = kore::ImsiApplet::NONE;
+    bool automatic = false;
+    CHECK(kore::readImsiAppletStatus(sendApduFn, this, applet, automatic));
+    if (applet == kore::ImsiApplet::NONE) {
+        return SYSTEM_ERROR_NOT_SUPPORTED;
+    }
+    if (!automatic) {
+        // We don't support a locked or default IMSI, so this is a mistake. Put it back and carry on.
+        LOG(WARN, "IMSI applet not in automatic mode, setting it");
+        CHECK(kore::setImsiAppletAutomatic(sendApduFn, this, applet));
+    }
+
+    LOG(INFO, "IMSI %s unchanged, forcing rotation (attempt %u/%u, %s applet)",
+            imsiRotation_.imsi()[0] ? imsiRotation_.imsi() : "unknown",
+            imsiRotation_.rotationAttempts() + 1, (unsigned)CELLULAR_IMSI_ROTATION_ATTEMPTS,
+            applet == kore::ImsiApplet::CURRENT ? "current" : "new");
+    return kore::forceImsiRotation(sendApduFn, this, applet);
+}
+
+void QuectelNcpClient::forceImsiRotationIfDue() {
+    if (!imsiRotation_.rotationDue()) {
+        return;
+    }
+    const int r = forceImsiRotation();
+    if (r == SYSTEM_ERROR_NOT_SUPPORTED) {
+        imsiRotation_.rotationAbandoned();
+        return;
+    }
+    if (r < 0) {
+        LOG(WARN, "Failed to force IMSI rotation: %d", r);
+    }
+    imsiRotation_.rotationForced();
+}
+
+void QuectelNcpClient::startImsiRotationWindow() {
+    if (!forcesImsiRotation()) {
+        return;
+    }
+    clearFplmnIfDue();
+    // checkImsi after potential FPLMN cleared at start which will CFUN toggle
+    checkImsi();
+    forceImsiRotationIfDue();
+}
+
+void QuectelNcpClient::checkImsiRotation() {
+    if (!forcesImsiRotation() || connState_ != NcpConnectionState::CONNECTING) {
+        return;
+    }
+    if (!imsiRotation_.imsiCheckDue(millis())) {
+        return;
+    }
+    checkImsi();
+    forceImsiRotationIfDue();
+}
+
 void QuectelNcpClient::registrationFailed() {
+    imsiRotation_.registrationTimedOut();
+    // Clear it while the modem is still up, so it comes back reading an empty list and the next
+    // window skips the CFUN cycle. That window still checks, in case this did not stick.
+    if (forcesImsiRotation()) {
+        const int r = clearFplmn(false /* reload */);
+        if (r < 0) {
+            LOG(WARN, "Failed to clear FPLMN: %d", r);
+        }
+    }
     const system_tick_t now = millis();
     backoff_.attemptFailed(now);
     cellularBackoffSetRetainedStage(backoff_.retainedStage());
@@ -3044,6 +3225,7 @@ int QuectelNcpClient::processEventsImpl() {
     checkRegistrationState();
     interveneRegistration();
     checkRunningImsi();
+    checkImsiRotation();
     configurePlmn(); // ignore errors
 
     // Must stay above the connState_ != CONNECTING early return below, the point is to run while CONNECTED

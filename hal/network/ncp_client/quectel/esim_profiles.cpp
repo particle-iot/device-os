@@ -80,48 +80,6 @@ inline uint8_t gpCla(int channel) {
     return (channel <= 3) ? (channel | 0x80) : (((channel - 4) & 0x0f) | 0xc0);
 }
 
-class Apdu {
-public:
-    Apdu(SendApduFn send, void* ctx) :
-            send_(send),
-            ctx_(ctx),
-            sw_(0) {
-    }
-
-    // Sends one command and leaves the response data (without the status bytes) in resp, with its
-    // size in respSize. The status word is available via sw().
-    int sendCmd(const char* cmd, size_t cmdSize, char* resp, size_t& respSize) {
-        size_t size = respSize;
-        int r = send_(ctx_, cmd, cmdSize, resp, size);
-        if (r < 0) {
-            return r;
-        }
-        if (size < 2) {
-            return SYSTEM_ERROR_BAD_DATA;
-        }
-        sw_ = (((unsigned char)resp[size - 2]) << 8) | (unsigned char)resp[size - 1];
-        respSize = size - 2;
-        return 0;
-    }
-
-    unsigned sw() const {
-        return sw_;
-    }
-
-    unsigned sw1() const {
-        return sw_ >> 8;
-    }
-
-    unsigned sw2() const {
-        return sw_ & 0xff;
-    }
-
-private:
-    SendApduFn send_;
-    void* ctx_;
-    unsigned sw_;
-};
-
 // Minimal BER-TLV reader. Only handles what GetProfilesInfo actually returns.
 class TlvReader {
 public:
@@ -250,9 +208,8 @@ int getProfilesInfo(Apdu& apdu, int channel, char* resp, size_t respSize, size_t
             LOG(WARN, "eSIM profile response does not fit in %u bytes", (unsigned)respSize);
             return SYSTEM_ERROR_TOO_LARGE;
         }
-        const char get[] = { (char)gpCla(channel), (char)0xc0, 0x00, 0x00, (char)apdu.sw2() };
         size_t size = respSize - used;
-        CHECK(apdu.sendCmd(get, sizeof(get), resp + used, size));
+        CHECK(apdu.getResponse(gpCla(channel), resp + used, size));
         if (apdu.sw1() != 0x90 && apdu.sw1() != 0x61) {
             LOG_DEBUG(TRACE, "GET RESPONSE returned 0x%04x", apdu.sw());
             return SYSTEM_ERROR_BAD_DATA;

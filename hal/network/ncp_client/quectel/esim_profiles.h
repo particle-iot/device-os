@@ -25,14 +25,11 @@
 
 #include <cstddef>
 
+#include "apdu.h"
+
 namespace particle {
 
 namespace esim {
-
-// Sends a single APDU and returns 0 on success, negative on error. respSize is in/out: the size of
-// resp on the way in, and the number of bytes written (data plus the two status bytes) on the way
-// out.
-typedef int (*SendApduFn)(void* ctx, const char* cmd, size_t cmdSize, char* resp, size_t& respSize);
 
 // Returns 1 if the eUICC has at least one enabled profile, 0 if every profile is disabled or there
 // are none at all, and a negative error code if we could not find out. Callers must treat an error
