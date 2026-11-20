@@ -271,6 +271,72 @@ test(EXFLASH_05_rtl872x_validate_mode_after_hibernate_sleep_and_read_write) {
     assertEqual((uint32_t)SPIC->baudr, (uint32_t)1);
 }
 
+namespace {
+
+const system_tick_t MPU_CHECK_DURATION = 10000;
+const system_tick_t MPU_CHECK_SAMPLE_INTERVAL = 1;
+
+struct MpuCheck {
+    hal_storage_id storage;
+    uintptr_t addr;
+    std::atomic_bool exit{false};
+    std::atomic<unsigned> reads{0};
+    std::atomic<unsigned> samples{0};
+    std::atomic<unsigned> mpuDisabled{0};
+};
+
+} // anonymous
+
+test(EXFLASH_06_rtl872x_threads_preempting_flash_reads_run_with_mpu_enabled) {
+    auto [storage, addr] = getOtaStorage();
+    MpuCheck check;
+    check.storage = storage;
+    check.addr = addr;
+    assertNotEqual(check.addr, (uintptr_t)0);
+
+    Thread* reader = nullptr;
+    Thread* observer = nullptr;
+    SCOPE_GUARD({
+        check.exit = true;
+        for (auto t: {observer, reader}) {
+            if (t) {
+                t->join();
+                delete t;
+            }
+        }
+    });
+
+    reader = new Thread("reader", [](void* param) -> os_thread_return_t {
+        auto& check = *static_cast<MpuCheck*>(param);
+        uint32_t word = 0;
+        while (!check.exit) {
+            if (hal_storage_read(check.storage, check.addr, (uint8_t*)&word, sizeof(word)) == (int)sizeof(word)) {
+                ++check.reads;
+            }
+        }
+    }, &check, OS_THREAD_PRIORITY_DEFAULT);
+    assertTrue(reader);
+
+    observer = new Thread("observer", [](void* param) -> os_thread_return_t {
+        auto& check = *static_cast<MpuCheck*>(param);
+        while (!check.exit) {
+            if (!(MPU->CTRL & MPU_CTRL_ENABLE_Msk)) {
+                ++check.mpuDisabled;
+            }
+            ++check.samples;
+            delay(MPU_CHECK_SAMPLE_INTERVAL);
+        }
+    }, &check, OS_THREAD_PRIORITY_CRITICAL);
+    assertTrue(observer);
+
+    delay(MPU_CHECK_DURATION);
+    check.exit = true;
+
+    assertMore((unsigned)check.reads, 0u);
+    assertMore((unsigned)check.samples, 0u);
+    assertEqual((unsigned)check.mpuDisabled, 0u);
+}
+
 #endif // HAL_PLATFORM_RTL872X
 
 test(EXFLASH_03_aligned_and_unaligned_writes_from_internal_flash_work) {
