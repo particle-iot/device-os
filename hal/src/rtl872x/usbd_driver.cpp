@@ -144,18 +144,12 @@ bool usesSharedTxFifo(unsigned ep) {
 }
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-// No IN endpoint other than EP0 is armed and the shared request queue is empty or has EP0's entry on top: clearing a
-// global IN NAK can't send one endpoint's data for another
-bool onlyEp0InPending() {
-    for (unsigned ep = 1; ep < USBD_MAX_ENDPOINTS; ep++) {
-        if (usesSharedTxFifo(ep) && (USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
-            return false;
-        }
-    }
+// Another endpoint's packet is on top of the shared request queue
+bool otherEpOnTopOfTxQueue() {
     const uint32_t sts = USB_GLOBAL->GNPTXSTS;
     const uint32_t free = (sts & USB_OTG_GNPTXSTS_NPTQXSAV) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
     const uint32_t topEp = (sts & USB_OTG_GNPTXSTS_NPTXQTOP) >> (USB_OTG_GNPTXSTS_NPTXQTOP_Pos + 3);
-    return free == RTL_USB_NPTX_QUEUE_DEPTH || topEp == 0;
+    return free != RTL_USB_NPTX_QUEUE_DEPTH && topEp != 0;
 }
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
@@ -378,7 +372,7 @@ bool RtlUsbDriver::clearGlobalNak() {
     if (!(dctl & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
         return false;
     }
-    if ((dctl & USB_OTG_DCTL_GINSTS) && !onlyEp0InPending()) {
+    if ((dctl & USB_OTG_DCTL_GINSTS) && otherEpOnTopOfTxQueue()) {
         __atomic_fetch_or(&cancelledInEps_, stopInTransfers(1UL << 0) & ~(1UL << 0), __ATOMIC_SEQ_CST);
     }
     USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK | USB_OTG_DCTL_CGONAK;

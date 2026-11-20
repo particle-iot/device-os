@@ -58,7 +58,7 @@ void holdGlobalInNak() {
     // The core NAKs every IN token, so the reply armed on EP0 IN doesn't go out: the host's control read gives up and
     // leaves it armed. Only the host's next SETUP can cancel it (RtlUsbDriver::cancelControlTransferOnSetup()) rather than
     // let it go out as the next control read's data stage. RtlUsbDriver::watch() clears a global NAK it sees (without
-    // stopping EP0 when only EP0 is pending), so keep setting it.
+    // stopping EP0 unless another endpoint's packet is on top of the queue), so keep setting it.
     delay(RUNNER_SETTLE_MS);
     const auto start = millis();
     while (millis() - start < GLOBAL_IN_NAK_HOLD_MS) {
