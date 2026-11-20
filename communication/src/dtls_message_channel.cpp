@@ -179,6 +179,7 @@ SessionPersist::RestoreStatus SessionPersist::restore(mbedtls_ssl_context* conte
 			LOG(ERROR,"unknown ciphersuite with id %d", ciphersuite);
 			return ERROR;
 		}
+		context->handshake->ciphersuite_info = ciphersuiteInfo;
 
 		int err = mbedtls_ssl_derive_keys(context);
 		if (err)
@@ -326,6 +327,9 @@ inline int DTLSMessageChannel::recv(uint8_t* data, size_t len)
 
 int DTLSMessageChannel::sendCallback(void *ctx, const unsigned char *buf, size_t len ) {
 	DTLSMessageChannel* channel = (DTLSMessageChannel*)ctx;
+	if (channel->discard_output) {
+		return len;
+	}
 	int count = channel->send(buf, len);
 	if (count == 0) {
 		return MBEDTLS_ERR_SSL_WANT_WRITE;
@@ -586,6 +590,9 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 	if (ret < 0) {
 		if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE) {
 			ret = 0;
+		} else if (ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
+			discard_pending_output();
+			ret = 0;
 		} else {
 			LOG(ERROR, "mbedtls_ssl_read() failed: -0x%x", -ret);
 			switch (ret) {
@@ -593,6 +600,7 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 			// so we need to handle both MBEDTLS_ERR_NET_SEND_FAILED and MBEDTLS_ERR_NET_RECV_FAILED here
 			case MBEDTLS_ERR_NET_SEND_FAILED:
 			case MBEDTLS_ERR_NET_RECV_FAILED:
+				discard_pending_output();
 				// Do not invalidate the session on network errors
 				return IO_ERROR_SOCKET_RECV_FAILED;
 			case MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY:
@@ -614,6 +622,16 @@ ProtocolError DTLSMessageChannel::receive(Message& message)
 		}
 	}
 	return NO_ERROR;
+}
+
+void DTLSMessageChannel::discard_pending_output()
+{
+	discard_output = true;
+	int ret = mbedtls_ssl_flush_output(&ssl_context);
+	discard_output = false;
+	if (ret != 0) {
+		LOG(ERROR, "mbedtls_ssl_flush_output() failed: -0x%x", -ret);
+	}
 }
 
 /**
@@ -648,10 +666,14 @@ ProtocolError DTLSMessageChannel::send(Message& message)
 	}
 
 	int ret = mbedtls_ssl_write(&ssl_context, message.buf(), message.length());
+	if (ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_NET_SEND_FAILED) {
+		discard_pending_output();
+	}
 	if (ret < 0 && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
 		LOG(ERROR, "mbedtls_ssl_write() failed: -0x%x", -ret);
 		if (ret == MBEDTLS_ERR_NET_SEND_FAILED) {
 			// Do not invalidate the session on network errors
+			sessionPersist.update(&ssl_context, callbacks.save, coap_state ? *coap_state : 0);
 			return IO_ERROR_SOCKET_SEND_FAILED;
 		}
 		reset_session();
