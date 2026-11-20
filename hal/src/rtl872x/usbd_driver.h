@@ -19,6 +19,7 @@
 
 #include "usbd_device.h"
 #include "module_info.h"
+#include "system_tick_hal.h"
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 #include "spark_wiring_thread.h"
@@ -81,6 +82,9 @@ public:
     static void loop(void* ctx);
 
     void reset();
+    void setupStage(usb_dev_t* dev);
+    void cancelControlTransferOnSetup(void* ptr);
+    bool txFifoEmptyStormCheck();
 
 private:
     RtlUsbDriver();
@@ -101,6 +105,18 @@ private:
 
     void setDevReference(usb_dev_t* dev);
     void fixupReceivedData();
+    void requestReattach();
+    bool reattach();
+    void watch();
+    bool clearGlobalNak();
+    bool ep0WatchdogCheck();
+    bool isSetupBuffer(const void* ptr) const;
+    uint32_t stopInTransfers(uint32_t eps);
+    void completeCancelledInTransfers(usb_dev_t* dev);
+
+    void* pcd() const {
+        return rtlDev_->pcd;
+    }
 
 private:
     usb_dev_t* rtlDev_ = nullptr;
@@ -147,6 +163,16 @@ private:
     volatile bool needsReset_ = false;
     volatile int config_ = 0;
     volatile unsigned int resetCount_ = 0;
+
+    volatile unsigned ep0Setups_ = 0;
+    unsigned ep0LastSetups_ = 0;
+    system_tick_t ep0WaitStart_ = 0;
+    unsigned ep0CancelStreak_ = 0;
+    system_tick_t ep0CancelStreakStart_ = 0;
+    volatile uint32_t cancelledInEps_ = 0;
+    bool txFifoEmptyIdle_ = false;
+    system_tick_t txFifoEmptyStart_ = 0;
+    volatile bool txFifoEmptyMasked_ = false;
 };
 
 } // namespace usbd

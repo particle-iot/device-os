@@ -19,6 +19,8 @@
 #include "system_error.h"
 #include "service_debug.h"
 #include <mutex>
+#include <algorithm>
+#include <cstring>
 #include "scope_guard.h"
 #include "timer_hal.h"
 #include "rtl8721d_usb.h"
@@ -81,12 +83,75 @@ uint8_t endpointTypeToRtl(EndpointType type) {
     return 0;
 }
 
-// FIXME: it should be fine to directly use rtlDev_->pcd or &usbd_pcd, but for now keeping things as-is to keep
-// changes to a minimum
-const size_t RTL_USB_DEV_PCD_OFFSET = offsetof(usb_dev_t, pcd);
+// The SDK's lock in the PCD (no header for it)
 const size_t RTL_USB_PCD_SPINLOCK_OFFSET = 0x180;
 
 const unsigned int RTL_USB_RESET_COUNT_THRESHOLD = 100;
+
+const system_tick_t RTL_USB_EP0_WATCHDOG_TIMEOUT = 3000;
+const unsigned RTL_USB_EP0_STUCK_REPLY_SETUPS = 3;
+const system_tick_t RTL_USB_TX_FIFO_EMPTY_STORM_TIMEOUT = 10;
+
+// Buffer the SDK reads SETUPs into (no header; from the disassembly of the SDK)
+const size_t RTL_USB_PCD_SETUP_BUF_OFFSET = 0x188;
+// SDK per-endpoint transfer records in the PCD (no header for it; from the disassembly of usbd_pcd_isr_task): IN
+// endpoint n is RTL_USB_PCD_EP_SIZE bytes at RTL_USB_PCD_IN_EP_OFFSET + n * size
+const size_t RTL_USB_PCD_IN_EP_OFFSET = 0x18;
+const size_t RTL_USB_PCD_EP_SIZE = 0x24;
+const size_t RTL_USB_PCD_EP_XFER_LEN_OFFSET = 0x14;
+const size_t RTL_USB_PCD_EP_XFER_COUNT_OFFSET = 0x18;
+// Polls of GINTSTS.GINAKEFF / DIEPINT.EPDISD when setting the global IN NAK / disabling an IN endpoint
+const unsigned RTL_USB_EP_DISABLE_POLLS = 10000;
+// Non-periodic transmit request queue depth (GHWCFG2.NPTXQDEPTH)
+const uint32_t RTL_USB_NPTX_QUEUE_DEPTH = 8;
+
+// Scoped hold of the SDK's PCD lock (usb_os_spinlock() is a FreeRTOS mutex, not a critical section)
+class SdkLock {
+public:
+    explicit SdkLock(void* pcd)
+            : lock_(*(usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET)) {
+        usb_os_spinlock(lock_);
+    }
+
+    ~SdkLock() {
+        usb_os_spinunlock(lock_);
+    }
+
+    SdkLock(const SdkLock&) = delete;
+    SdkLock& operator=(const SdkLock&) = delete;
+
+private:
+    usb_spinlock_t* lock_;
+};
+
+bool waitForBits(volatile u32* reg, u32 bits) {
+    for (unsigned i = 0; i < RTL_USB_EP_DISABLE_POLLS; i++) {
+        if (*reg & bits) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool nonPeriodicTxFifoEmpty() {
+    const uint32_t empty = (RTL_USB_NPTX_QUEUE_DEPTH << USB_OTG_GNPTXSTS_NPTQXSAV_Pos) | (USB_GLOBAL->GNPTXFSIZ >> 16);
+    return (USB_GLOBAL->GNPTXSTS & (USB_OTG_GNPTXSTS_NPTQXSAV | USB_OTG_GNPTXSTS_NPTXFSAV)) == empty;
+}
+
+// Every IN endpoint but isochronous ones shares TX FIFO 0 (usbd_hal_get_tx_fifo_num())
+bool usesSharedTxFifo(unsigned ep) {
+    return (USB_INEP(ep)->DIEPCTL & USB_OTG_DIEPCTL_EPTYP) != USB_OTG_DIEPCTL_EPTYP_0;
+}
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+// Another endpoint's packet is on top of the shared request queue
+bool otherEpOnTopOfTxQueue() {
+    const uint32_t sts = USB_GLOBAL->GNPTXSTS;
+    const uint32_t free = (sts & USB_OTG_GNPTXSTS_NPTQXSAV) >> USB_OTG_GNPTXSTS_NPTQXSAV_Pos;
+    const uint32_t topEp = (sts & USB_OTG_GNPTXSTS_NPTXQTOP) >> (USB_OTG_GNPTXSTS_NPTXQTOP_Pos + 3);
+    return free != RTL_USB_NPTX_QUEUE_DEPTH && topEp != 0;
+}
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
 
 } // anonymous
 
@@ -114,11 +179,26 @@ u32 __wrap_usb_hal_read_interrupts(void) {
         // Reset the stack manually
         RtlUsbDriver::instance()->reset();
     }
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if ((val & USB_OTG_GINTSTS_NPTXFE) && RtlUsbDriver::instance()->txFifoEmptyStormCheck()) {
+        // Masked: nothing for the SDK's handler to do on this pass
+        val &= ~USB_OTG_GINTSTS_NPTXFE;
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     return val;
 }
 
 void __wrap_usb_hal_clear_interrupts(u32 interrupt) {
     __real_usb_hal_clear_interrupts(interrupt);
+}
+
+u8 __real_usbd_core_setup_stage(usb_dev_t* dev, u8* setup);
+
+u8 __wrap_usbd_core_setup_stage(usb_dev_t* dev, u8* setup) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    RtlUsbDriver::instance()->setupStage(dev);
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    return __real_usbd_core_setup_stage(dev, setup);
 }
 
 // FIXME: This is a nasty workaround for the SDK USB driver
@@ -128,6 +208,11 @@ int usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 int __real_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown);
 
 int __wrap_usb_hal_read_packet(void* ptr, uint32_t size, void* unknown) {
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    if (size == sizeof(sLastUsbSetupRequest)) {
+        RtlUsbDriver::instance()->cancelControlTransferOnSetup(ptr);
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     int r = __real_usb_hal_read_packet(ptr, size, unknown);
     bool fixed = false;
     if (size == sizeof(sLastUsbSetupRequest)) {
@@ -197,73 +282,221 @@ int RtlUsbDriver::detach() {
     usbd_unregister_class();
     usbd_deinit();
     resetCount_ = 0;
+    cancelledInEps_ = 0;
+    ep0CancelStreak_ = 0;
+    txFifoEmptyIdle_ = false;
+    txFifoEmptyMasked_ = false;
     return 0;
 }
 
+bool RtlUsbDriver::reattach() {
+    std::lock_guard<RtlUsbDriver> lk(*this);
+    detach();
+    attach();
+    return initialized_;
+}
+
 void RtlUsbDriver::reset() {
-    if (config_ != 0) {
-        config_ = 0;
-        usb_hal_disable_global_interrupt();
-        needsReset_ = true;
-        resetCount_ = 0;
-    } else {
-        if (resetCount_++ >= RTL_USB_RESET_COUNT_THRESHOLD) {
-            usb_hal_disable_global_interrupt();
-            needsReset_ = true;
-            resetCount_ = 0;
-        }
+    if (config_ != 0 || resetCount_++ >= RTL_USB_RESET_COUNT_THRESHOLD) {
+        requestReattach();
     }
+}
+
+void RtlUsbDriver::requestReattach() {
+    config_ = 0;
+    usb_hal_disable_global_interrupt();
+    needsReset_ = true;
+    resetCount_ = 0;
 }
 
 void RtlUsbDriver::loop(void* ctx) {
     auto self = static_cast<RtlUsbDriver*>(ctx);
-    constexpr auto period = 1000;
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-    bool error = false;
-#else
+    constexpr auto RTL_USB_WATCH_PERIOD = 1000;
     static bool error = false;
-    static system_tick_t last = HAL_Timer_Get_Milli_Seconds();
-#endif
 
 #if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     while (true) {
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         if (!self->initialized_ && !error) {
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-            HAL_Delay_Milliseconds(period / 10);
+            HAL_Delay_Milliseconds(RTL_USB_WATCH_PERIOD / 10);
             continue;
-#else
-            return;
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
         }
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        HAL_Delay_Milliseconds(period);
+        HAL_Delay_Milliseconds(RTL_USB_WATCH_PERIOD);
+        if (self->needsReset_ || error) {
+            error = !self->reattach();
+        }
+        self->watch();
+    }
 #else
-    if (HAL_Timer_Get_Milli_Seconds() - last >= period) {
-        last = HAL_Timer_Get_Milli_Seconds();
-    } else {
+    // Polled from DFU_Check_Reset() in the bootloader's main loop, not run in a dedicated thread.
+    static system_tick_t last = HAL_Timer_Get_Milli_Seconds();
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    if ((self->initialized_ || error) && now - last >= RTL_USB_WATCH_PERIOD) {
+        last = now;
+        if (self->needsReset_ || error) {
+            error = !self->reattach();
+        }
+    }
+#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+}
+
+#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+void RtlUsbDriver::watch() {
+    bool nakCleared = false;
+    bool ep0Wedged = false;
+    {
+        std::lock_guard<RtlUsbDriver> lk(*this);
+        if (!initialized_ || !rtlDev_) {
+            return;
+        }
+        {
+            SdkLock sdk(pcd());
+            nakCleared = clearGlobalNak();
+            if (txFifoEmptyMasked_) {
+                txFifoEmptyMasked_ = false;
+                USB_GLOBAL->GINTMSK |= USB_OTG_GINTMSK_NPTXFEM;
+            }
+            ep0Wedged = ep0WatchdogCheck();
+        }
+        completeCancelledInTransfers(rtlDev_);
+    }
+    if (nakCleared) {
+        LOG(WARN, "Global NAK stuck, cleared");
+    }
+    if (ep0Wedged) {
+        LOG(WARN, "EP0 not progressing for %u ms, reattaching", (unsigned)RTL_USB_EP0_WATCHDOG_TIMEOUT);
+    }
+}
+
+bool RtlUsbDriver::clearGlobalNak() {
+    const uint32_t dctl = USB_DEVICE->DCTL;
+    if (!(dctl & (USB_OTG_DCTL_GINSTS | USB_OTG_DCTL_GONSTS))) {
+        return false;
+    }
+    if ((dctl & USB_OTG_DCTL_GINSTS) && otherEpOnTopOfTxQueue()) {
+        __atomic_fetch_or(&cancelledInEps_, stopInTransfers(1UL << 0) & ~(1UL << 0), __ATOMIC_SEQ_CST);
+    }
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK | USB_OTG_DCTL_CGONAK;
+    return true;
+}
+
+bool RtlUsbDriver::ep0WatchdogCheck() {
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    const bool nak = (USB_INEP(0)->DIEPINT & USB_OTG_DIEPINT_NAK) || (USB_OUTEP(0)->DOEPINT & USB_OTG_DOEPINT_NAK);
+    USB_INEP(0)->DIEPINT = USB_OTG_DIEPINT_NAK;
+    USB_OUTEP(0)->DOEPINT = USB_OTG_DOEPINT_NAK;
+    const unsigned setups = ep0Setups_;
+    const bool progress = setups != ep0LastSetups_;
+    ep0LastSetups_ = setups;
+    const bool replyStuck = ep0CancelStreak_ >= RTL_USB_EP0_STUCK_REPLY_SETUPS &&
+            now - ep0CancelStreakStart_ >= RTL_USB_EP0_WATCHDOG_TIMEOUT;
+    if (config_ == 0 || needsReset_ || (!replyStuck && (progress || !nak))) {
+        ep0WaitStart_ = now;
+        return false;
+    }
+    if (!replyStuck && now - ep0WaitStart_ < RTL_USB_EP0_WATCHDOG_TIMEOUT) {
+        return false;
+    }
+    requestReattach();
+    return true;
+}
+
+void RtlUsbDriver::setupStage(usb_dev_t* dev) {
+    ep0Setups_++;
+    completeCancelledInTransfers(dev);
+}
+
+void RtlUsbDriver::completeCancelledInTransfers(usb_dev_t* dev) {
+    const uint32_t eps = __atomic_exchange_n(&cancelledInEps_, 0, __ATOMIC_SEQ_CST);
+    for (unsigned ep = 1; eps && ep < USBD_MAX_ENDPOINTS; ep++) {
+        if (eps & (1UL << ep)) {
+            epDataInCb(dev, ep);
+        }
+    }
+}
+
+bool RtlUsbDriver::isSetupBuffer(const void* ptr) const {
+    return rtlDev_ && ptr == *((void**)((uint8_t*)pcd() + RTL_USB_PCD_SETUP_BUF_OFFSET));
+}
+
+void RtlUsbDriver::cancelControlTransferOnSetup(void* ptr) {
+    if (!isSetupBuffer(ptr)) {
         return;
     }
+    if (!(USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+        ep0CancelStreak_ = 0;
+        return;
+    }
+    if (ep0CancelStreak_++ == 0) {
+        ep0CancelStreakStart_ = HAL_Timer_Get_Milli_Seconds();
+    }
+    __atomic_fetch_or(&cancelledInEps_, stopInTransfers(1UL << 0) & ~(1UL << 0), __ATOMIC_SEQ_CST);
+}
+
+bool RtlUsbDriver::txFifoEmptyStormCheck() {
+    if (!nonPeriodicTxFifoEmpty() || (USB_INEP(0)->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+        txFifoEmptyIdle_ = false;
+        return false;
+    }
+    const system_tick_t now = HAL_Timer_Get_Milli_Seconds();
+    if (!txFifoEmptyIdle_) {
+        txFifoEmptyIdle_ = true;
+        txFifoEmptyStart_ = now;
+        return false;
+    }
+    if (now - txFifoEmptyStart_ < RTL_USB_TX_FIFO_EMPTY_STORM_TIMEOUT) {
+        return false;
+    }
+    txFifoEmptyIdle_ = false;
+    txFifoEmptyMasked_ = true;
+    USB_GLOBAL->GINTMSK &= ~USB_OTG_GINTMSK_NPTXFEM;
+    return true;
+}
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
-        if (self->needsReset_ || error) {
-            {
-                std::lock_guard<RtlUsbDriver> lk(*self);
-                self->detach();
-            }
-            self->needsReset_ = false;
-            {
-                std::lock_guard<RtlUsbDriver> lk(*self);
-                self->attach();
-            }
-            if (!self->initialized_) {
-                error = true;
-            } else {
-                error = false;
+
+uint32_t RtlUsbDriver::stopInTransfers(uint32_t eps) {
+    const bool flush = !nonPeriodicTxFifoEmpty();
+    if (flush) {
+        for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
+            if (usesSharedTxFifo(ep)) {
+                eps |= 1UL << ep;
             }
         }
-#if MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
-#endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_SGINAK;
+    if (!waitForBits(&USB_GLOBAL->GINTSTS, USB_OTG_GINTSTS_GINAKEFF)) {
+        USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+        return 0;
+    }
+    uint32_t stopped = 0;
+    bool failed = false;
+    for (unsigned ep = 0; ep < USBD_MAX_ENDPOINTS; ep++) {
+        auto in = USB_INEP(ep);
+        // A disabled endpoint's SDK record may belong to a transfer usbd_pcd_ep_transmit() is just starting
+        if (!(eps & (1UL << ep)) || !(in->DIEPCTL & USB_OTG_DIEPCTL_EPENA)) {
+            continue;
+        }
+        in->DIEPCTL |= USB_OTG_DIEPCTL_SNAK | USB_OTG_DIEPCTL_EPDIS;
+        if (!waitForBits(&in->DIEPINT, USB_OTG_DIEPINT_EPDISD)) {
+            failed = true;
+        }
+        in->DIEPINT = USB_OTG_DIEPINT_EPDISD;
+        auto sdkEp = (uint8_t*)pcd() + RTL_USB_PCD_IN_EP_OFFSET + ep * RTL_USB_PCD_EP_SIZE;
+        auto len = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_LEN_OFFSET);
+        auto count = (volatile uint32_t*)(sdkEp + RTL_USB_PCD_EP_XFER_COUNT_OFFSET);
+        *count = *len;
+        if (!(in->DIEPINT & USB_OTG_DIEPINT_XFRC)) {
+            stopped |= 1UL << ep;
+        }
+    }
+    if (flush && usb_hal_flush_tx_fifo(0) != 0) {
+        failed = true;
+    }
+    USB_DEVICE->DCTL |= USB_OTG_DCTL_CGINAK;
+    if (failed) {
+        // FIFO and request queue state unknown
+        requestReattach();
+    }
+    return stopped;
 }
 
 int RtlUsbDriver::suspend() {
@@ -313,30 +546,24 @@ int RtlUsbDriver::closeEndpoint(unsigned ep) {
 
 int RtlUsbDriver::flushEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
-    auto self = instance();
-    std::lock_guard<RtlUsbDriver> lk(*self);
-    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
-    usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
-    usb_os_spinlock(lock);
-    auto r = usb_hal_flush_tx_fifo(ep & 0x7f);
-    // FIXME: USB stack may get into a weird state with EP0 endpoint.
-    // Additionally flushing RX fifo seems to resolve the issue.
-    usb_hal_flush_tx_fifo(0x00);
-    usb_hal_flush_rx_fifo();
-    usb_os_spinunlock(lock);
-    return CHECK_RTL_USB_TO_SYSTEM(r);
+    std::lock_guard<RtlUsbDriver> lk(*this);
+    if (ep & SetupRequest::DIRECTION_DEVICE_TO_HOST) {
+        SdkLock sdk(pcd());
+        // The caller abandons its own transfer; report only other endpoints the shared FIFO flush stopped
+        const uint32_t self = 1UL << (ep & 0x7f);
+        __atomic_fetch_or(&cancelledInEps_, stopInTransfers(self) & ~(self | 1UL), __ATOMIC_SEQ_CST);
+    }
+    return 0;
 }
 
 int RtlUsbDriver::stallEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
-    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
-    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_set_stall(pcd, ep));
+    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_set_stall(pcd(), ep));
 }
 
 int RtlUsbDriver::clearStallEndpoint(unsigned ep) {
     SPARK_ASSERT(rtlDev_);
-    void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
-    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_clear_stall(pcd, ep));
+    return CHECK_RTL_USB_TO_SYSTEM(usbd_pcd_ep_clear_stall(pcd(), ep));
 }
 
 EndpointStatus RtlUsbDriver::getEndpointStatus(unsigned ep) {
@@ -365,16 +592,11 @@ int RtlUsbDriver::endpointTransferRemaining(unsigned ep) {
 
 int RtlUsbDriver::transferIn(unsigned ep, const uint8_t* ptr, size_t size) {
     SPARK_ASSERT(rtlDev_);
-    auto self = instance();
-    std::lock_guard<RtlUsbDriver> lk(*self);
+    std::lock_guard<RtlUsbDriver> lk(*this);
     if (ptr == nullptr && size == 0) {
         // FIXME
-        void* pcd = *((void**)((uint8_t*)rtlDev_ + RTL_USB_DEV_PCD_OFFSET));
-        usb_spinlock_t* lock = *((usb_spinlock_t**)((uint8_t*)pcd + RTL_USB_PCD_SPINLOCK_OFFSET));
-        usb_os_spinlock(lock);
-        auto r = usb_hal_write_packet(nullptr, ep & 0x7f, 0);
-        usb_os_spinunlock(lock);
-        return CHECK_RTL_USB_TO_SYSTEM(r);
+        SdkLock sdk(pcd());
+        return CHECK_RTL_USB_TO_SYSTEM(usb_hal_write_packet(nullptr, ep & 0x7f, 0));
     }
     return CHECK_RTL_USB_TO_SYSTEM(usbd_ep_transmit(rtlDev_, ep | SetupRequest::DIRECTION_DEVICE_TO_HOST, (uint8_t*)ptr, size));
 }

@@ -567,6 +567,9 @@ void particle::UsbControlRequestChannel::finishActiveRequest(Request* req) {
         activeReqs_ = req->next;
     }
     --activeReqCount_;
+    if (curReq_ == req) {
+        curReq_ = nullptr;
+    }
     // Free request data
     if (req->state == RequestState::ALLOC_PENDING || req->state == RequestState::PENDING) { // ALLOC_PENDING, PENDING
         // Mark this request as completed to make the system thread free the request data
@@ -693,7 +696,6 @@ uint8_t particle::UsbControlRequestChannel::halVendorRequestStateCallback(HAL_US
             // Set a result code that will be passed to the request completion handler
             req->result = SYSTEM_ERROR_NONE;
             channel->finishActiveRequest(req);
-            channel->curReq_ = nullptr;
         }
         break;
     }

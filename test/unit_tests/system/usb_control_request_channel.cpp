@@ -73,6 +73,11 @@ public:
         return *this;
     }
 
+    ServiceRequest& abandon() { // The host abandons the data stage: no TX_COMPLETED notification
+        abandon_ = true;
+        return *this;
+    }
+
     ServiceType serviceType() const {
         return serviceType_;
     }
@@ -84,6 +89,7 @@ private:
     std::string data_;
     ServiceType serviceType_;
     uint16_t id_, type_, size_;
+    bool abandon_;
 
     // Use Channel::serviceRequest() to construct instances of this class
     ServiceRequest(ServiceType type, Channel* channel) :
@@ -91,7 +97,8 @@ private:
             serviceType_(type),
             id_(USB_REQUEST_INVALID_ID),
             type_(0),
-            size_(0) {
+            size_(0),
+            abandon_(false) {
     }
 
     friend class Channel;
@@ -381,7 +388,7 @@ private:
                 serviceRep_ = ServiceReply::parse(data); // Protocol data
             }
             // Notify completion of the data transfer
-            if (!invokeHalStateCallback(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED)) {
+            if (!req.abandon_ && !invokeHalStateCallback(HAL_USB_VENDOR_REQUEST_STATE_TX_COMPLETED)) {
                 return false;
             }
         }
@@ -785,6 +792,26 @@ TEST_CASE("UsbControlRequestChannel") {
                 CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
                 CHECK(channel.serviceReply().status() == ServiceReply::OK);
             }
+        }
+        SECTION("can cancel a request whose CHECK reply transfer was abandoned by the host") {
+            channel.requestHandler([](ctrl_request* req, ControlRequestChannel* ch) {
+                ch->setResult(req, SYSTEM_ERROR_NONE);
+            });
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+            uint16_t id = channel.serviceReply().id();
+            CHECK(processNextTask());
+            // Request without reply data: completing the CHECK transfer would finish it, but it never completes
+            CHECK(channel.serviceRequest(ServiceRequest::CHECK).id(id).abandon().send());
+            CHECK(channel.serviceReply().status() == ServiceReply::OK);
+            // The completion of the RESET transfer must not finish the cancelled request again
+            CHECK(channel.serviceRequest(ServiceRequest::RESET).id(id).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::OK);
+            for (unsigned i = 0; i < USB_REQUEST_MAX_ACTIVE_COUNT; ++i) {
+                CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+                CHECK(channel.serviceReply().status() == ServiceReply::OK);
+            }
+            CHECK(channel.serviceRequest(ServiceRequest::INIT).type(TEST_REQ).send());
+            CHECK(channel.serviceReply().status() == ServiceReply::BUSY); // Active request count is consistent
         }
     }
 
