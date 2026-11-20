@@ -418,6 +418,7 @@ private:
     void* context_;                                         /**< Context of the scan result callback function. */
     os_timer_t scanGuardTimer_;                             /**< Timer to guard the scanning procedure is terminated successfully.  */
     Vector<hal_ble_scan_result_evt_t> pendingResults_;
+    StaticRecursiveMutex scanCallbackMutex_;
 };
 
 class BleObject::ConnectionsManager {
@@ -1444,17 +1445,14 @@ int BleObject::Observer::continueScanning(bool stop) {
 void BleObject::Observer::onScanGuardTimerExpired(os_timer_t timer) {
     Observer* observer;
     os_timer_get_id(timer, (void**)&observer);
-    observer->stopScanning();
+    BleLock lk;
+    observer->stopScanningImpl();
 }
 
 int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, void* context) {
     BleLock lk;
 
     CHECK_FALSE(isScanning_, SYSTEM_ERROR_INVALID_STATE);
-    SCOPE_GUARD ({
-        stopScanning();
-        clearPendingResult();
-    });
     ble_gap_scan_params_t bleGapScanParams = toPlatformScanParams();
     LOG_DEBUG(TRACE, "| interval(ms)   window(ms)   timeout(ms) |");
     LOG_DEBUG(TRACE, "  %d*0.625        %d*0.625      %d",
@@ -1473,6 +1471,11 @@ int BleObject::Observer::startScanning(hal_ble_on_scan_result_cb_t callback, voi
         }
     }
     lk.unlock();
+    SCOPE_GUARD ({
+        stopScanning();
+        std::lock_guard<StaticRecursiveMutex> cbLk(scanCallbackMutex_);
+        clearPendingResult();
+    });
     if (os_semaphore_take(scanSemaphore_, CONCURRENT_WAIT_FOREVER, false)) {
         SPARK_ASSERT(false);
         return SYSTEM_ERROR_TIMEOUT;
@@ -1507,9 +1510,12 @@ int BleObject::Observer::stopScanningImpl() {
 }
 
 int BleObject::Observer::stopScanning() {
-    BleLock lk;
-
-    return stopScanningImpl();
+    {
+        BleLock lk;
+        CHECK(stopScanningImpl());
+    }
+    std::lock_guard<StaticRecursiveMutex> cbLk(scanCallbackMutex_);
+    return SYSTEM_ERROR_NONE;
 }
 
 ble_gap_scan_params_t BleObject::Observer::toPlatformScanParams() const {
@@ -1600,6 +1606,7 @@ void BleObject::Observer::notifyScanResultEvent(const hal_ble_scan_result_evt_t&
 }
 
 int BleObject::Observer::processAdvReportEventFromThread(const ble_evt_t* event) {
+    std::lock_guard<StaticRecursiveMutex> lk(scanCallbackMutex_);
     if (!isScanning_) {
         if (event->evt.gap_evt.params.adv_report.data.p_data) {
             BleObject::getInstance().dispatcher()->freeEventData(event->evt.gap_evt.params.adv_report.data.p_data);
@@ -3978,7 +3985,7 @@ int hal_ble_stack_deinit(void* reserved) {
     BleLock lk;
     LOG_DEBUG(TRACE, "hal_ble_stack_deinit().");
     CHECK_TRUE(BleObject::getInstance().initialized(), SYSTEM_ERROR_INVALID_STATE);
-    CHECK(BleObject::getInstance().observer()->stopScanning());
+    CHECK(BleObject::getInstance().observer()->stopScanningImpl());
     CHECK(BleObject::getInstance().connMgr()->disconnectAll());
     // Disconnected event may result in re-advertising.
     CHECK(BleObject::getInstance().broadcaster()->stopAdvertising());

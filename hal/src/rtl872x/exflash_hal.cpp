@@ -538,7 +538,9 @@ private:
             mpu_cfg.sh = MPU_NON_SHAREABLE;
             mpu_cfg.attr_idx = MPU_MEM_ATTR_IDX_NC;
         }
+        const int irqState = HAL_disable_irq();
         mpu_region_cfg(mpuEntry_, &mpu_cfg);
+        HAL_enable_irq(irqState);
 #endif // MODULE_FUNCTION != MOD_FUNC_BOOTLOADER
     }
 

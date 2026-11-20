@@ -1,15 +1,28 @@
 'use strict';
 /* eslint no-undef: 'off' */
 
+const dgram = require('dgram');
 const { WifiAp, WifiApUnavailableError, ACQUIRE_TIMEOUT } = require('../../test/wifi_ap');
 
 suite('Wi-Fi');
 platform('wifi');
 systemThread('enabled');
 tag('wifi_ap');
+timeout(20 * 60 * 1000);
 
 const STATION_TIMEOUT = 60000;
 const CLEANUP_TIMEOUT = 180000;
+
+const RX_STRESS_PORT = 50100;
+const RX_STRESS_PPS = 500;
+const RX_STRESS_BROADCAST_PORT = 50101;
+const RX_STRESS_BROADCAST_PPS = 300;
+const RX_STRESS_SIZE = 64;
+const RX_STRESS_FILL = 0x55;
+const RX_STRESS_INTERVAL = 20;
+const AP_BASIC_RATES = '10 20 55 110';
+const RX_STRESS_AP_TX_POWER = 5;
+const RX_STRESS_PLATFORM_TAG = 'rtl872x';
 
 const WNM_CATEGORY = 10;
 const WNM_BTM_REQUEST = 7;
@@ -32,10 +45,49 @@ let ap = null;
 let apCredentials = null;
 let sta = null;
 let restored = false;
+let stopFloods = [];
 
 async function runDeviceTest(name) {
     await device.startTest(name);
     return device.waitTest({ timeout: CLEANUP_TIMEOUT });
+}
+
+function startUdpFlood(ip, port, pps, size, broadcast = false) {
+    const socket = dgram.createSocket('udp4');
+    socket.on('error', () => {});
+    const payload = Buffer.alloc(size, RX_STRESS_FILL);
+    const batch = Math.max(1, Math.round(pps * RX_STRESS_INTERVAL / 1000));
+    let timer = null;
+    let closed = false;
+    socket.bind(() => {
+        if (closed) {
+            return;
+        }
+        socket.setBroadcast(broadcast);
+        timer = setInterval(() => {
+            for (let i = 0; i < batch; i++) {
+                socket.send(payload, port, ip, () => {});
+            }
+        }, RX_STRESS_INTERVAL);
+    });
+    return () => {
+        closed = true;
+        clearInterval(timer);
+        socket.close();
+    };
+}
+
+function skipRxStressIfUnsupported(ctx) {
+    if (!device.platform.tags.includes(RX_STRESS_PLATFORM_TAG)) {
+        ctx.skip();
+    }
+}
+
+function stopUdpFlood() {
+    for (const stop of stopFloods) {
+        stop();
+    }
+    stopFloods = [];
 }
 
 function btmRequest(mode, optional) {
@@ -87,6 +139,7 @@ before(async function() {
 });
 
 after(async function() {
+    stopUdpFlood();
     if (!ap) {
         return;
     }
@@ -107,7 +160,7 @@ test('WIFI_00_prepare', async function() {
 });
 
 test('WIFI_01_start_ap', async function() {
-    apCredentials = await ap.start();
+    apCredentials = await ap.start({ basicRates: AP_BASIC_RATES });
     const usbDevice = await device.getUsbDevice();
     await usbDevice.setWifiCredentials({ ssid: apCredentials.ssid, security: 'WPA2_PSK', password: apCredentials.passphrase });
 });
@@ -160,6 +213,30 @@ test('WIFI_23_enable_ap', async function() {
 });
 
 test('WIFI_24_reconnect_when_ap_returns', async function() {
+});
+
+test('WIFI_30_rx_stress_prepare', async function() {
+    skipRxStressIfUnsupported(this);
+    await ap.setTxPower(RX_STRESS_AP_TX_POWER);
+    const unicast = await ap.forwardUdp(sta, RX_STRESS_PORT);
+    stopFloods.push(startUdpFlood(unicast.address, unicast.port, RX_STRESS_PPS, RX_STRESS_SIZE));
+    const bc = await ap.forwardUdpBroadcast(RX_STRESS_BROADCAST_PORT);
+    stopFloods.push(startUdpFlood(bc.address, bc.port, RX_STRESS_BROADCAST_PPS, RX_STRESS_SIZE, bc.broadcast));
+});
+
+test('WIFI_31_rx_stress_keeps_receiving', async function() {
+    skipRxStressIfUnsupported(this);
+    stopUdpFlood();
+    const msg = device.mailBox.pop();
+    if (msg) {
+        console.log(`RX stress: ${msg.d}`);
+    }
+});
+
+test('WIFI_32_rx_stress_cleanup', async function() {
+    skipRxStressIfUnsupported(this);
+    stopUdpFlood();
+    await ap.setTxPower();
 });
 
 test('WIFI_97_reset', async function() {
